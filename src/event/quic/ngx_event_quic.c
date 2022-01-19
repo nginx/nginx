@@ -131,8 +131,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
 
     qc = ngx_quic_get_connection(c);
 
-    scid.data = qc->socket->cid->id;
-    scid.len = qc->socket->cid->len;
+    scid.data = qc->path->cid->id;
+    scid.len = qc->path->cid->len;
 
     if (scid.len != ctp->initial_scid.len
         || ngx_memcmp(scid.data, ctp->initial_scid.data, scid.len) != 0)
@@ -373,7 +373,7 @@ ngx_quic_handle_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
     {
         cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
 
-        if (cid->seqnum == 0 || cid->refcnt == 0) {
+        if (cid->seqnum == 0 || !cid->used) {
             /*
              * No stateless reset token in initial connection id.
              * Don't accept a token from an unused connection id.
@@ -673,10 +673,12 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
     u_char                 *p, *start;
     ngx_int_t               rc;
     ngx_uint_t              good;
+    ngx_quic_path_t        *path;
     ngx_quic_header_t       pkt;
     ngx_quic_connection_t  *qc;
 
     good = 0;
+    path = NULL;
 
     size = b->last - b->pos;
 
@@ -690,6 +692,7 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         pkt.len = b->last - p;
         pkt.log = c->log;
         pkt.first = (p == start) ? 1 : 0;
+        pkt.path = path;
         pkt.flags = p[0];
         pkt.raw->pos++;
 
@@ -719,6 +722,8 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         if (rc == NGX_OK) {
             good = 1;
         }
+
+        path = pkt.path; /* preserve packet path from 1st packet */
 
         /* NGX_OK || NGX_DECLINED */
 
@@ -825,14 +830,15 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
 
             if (pkt->first) {
-                if (ngx_quic_find_path(c, c->udp->dgram->sockaddr,
-                                       c->udp->dgram->socklen)
-                    == NULL)
+                if (ngx_cmp_sockaddr(c->udp->dgram->sockaddr,
+                                     c->udp->dgram->socklen,
+                                     qc->path->sockaddr, qc->path->socklen, 1)
+                    != NGX_OK)
                 {
                     /* packet comes from unknown path, possibly migration */
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                   "quic too early migration attempt");
-                    return NGX_DECLINED;
+                    return NGX_DONE;
                 }
             }
 
@@ -991,9 +997,12 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     pkt->decrypted = 1;
 
-    if (pkt->first) {
-        if (ngx_quic_update_paths(c, pkt) != NGX_OK) {
-            return NGX_ERROR;
+    c->log->action = "handling decrypted packet";
+
+    if (pkt->path == NULL) {
+        rc = ngx_quic_set_path(c, pkt);
+        if (rc != NGX_OK) {
+            return rc;
         }
     }
 
@@ -1012,9 +1021,10 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
          */
         ngx_quic_discard_ctx(c, ssl_encryption_initial);
 
-        if (qc->socket->path->state != NGX_QUIC_PATH_VALIDATED) {
-            qc->socket->path->state = NGX_QUIC_PATH_VALIDATED;
-            qc->socket->path->limited = 0;
+        if (!qc->path->validated) {
+            qc->path->validated = 1;
+            qc->path->limited = 0;
+            ngx_quic_path_dbg(c, "in handshake", qc->path);
             ngx_post_event(&qc->push, &ngx_posted_events);
         }
     }
@@ -1153,7 +1163,6 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_uint_t              do_close, nonprobing;
     ngx_chain_t             chain;
     ngx_quic_frame_t        frame;
-    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1335,7 +1344,8 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         case NGX_QUIC_FT_PATH_CHALLENGE:
 
-            if (ngx_quic_handle_path_challenge_frame(c, &frame.u.path_challenge)
+            if (ngx_quic_handle_path_challenge_frame(c, pkt,
+                                                     &frame.u.path_challenge)
                 != NGX_OK)
             {
                 return NGX_ERROR;
@@ -1394,26 +1404,18 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         ngx_quic_close_connection(c, NGX_OK);
     }
 
-    qsock = ngx_quic_get_socket(c);
+    if (pkt->path != qc->path && nonprobing) {
 
-    if (qsock != qc->socket) {
-
-        if (qsock->path != qc->socket->path && nonprobing) {
-            /*
-             * RFC 9000, 9.2.  Initiating Connection Migration
-             *
-             * An endpoint can migrate a connection to a new local
-             * address by sending packets containing non-probing frames
-             * from that address.
-             */
-            if (ngx_quic_handle_migration(c, pkt) != NGX_OK) {
-                return NGX_ERROR;
-            }
-        }
         /*
-         * else: packet arrived via non-default socket;
-         *       no reason to change active path
+         * RFC 9000, 9.2.  Initiating Connection Migration
+         *
+         * An endpoint can migrate a connection to a new local
+         * address by sending packets containing non-probing frames
+         * from that address.
          */
+        if (ngx_quic_handle_migration(c, pkt) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     if (ngx_quic_ack_packet(c, pkt) != NGX_OK) {

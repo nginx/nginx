@@ -497,7 +497,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
     ngx_quic_queue_frame(qc, frame);
 
     if (qc->conf->retry) {
-        if (ngx_quic_send_new_token(c, qc->socket->path) != NGX_OK) {
+        if (ngx_quic_send_new_token(c, qc->path) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -541,6 +541,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     ssize_t                 len;
     ngx_str_t               dcid;
     ngx_ssl_conn_t         *ssl_conn;
+    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -569,8 +570,10 @@ ngx_quic_init_connection(ngx_connection_t *c)
     SSL_set_quic_use_legacy_codepoint(ssl_conn, qc->version != 1);
 #endif
 
-    dcid.data = qc->socket->sid.id;
-    dcid.len = qc->socket->sid.len;
+    qsock = ngx_quic_get_socket(c);
+
+    dcid.data = qsock->sid.id;
+    dcid.len = qsock->sid.len;
 
     if (ngx_quic_new_sr_token(c, &dcid, qc->conf->sr_token_key, qc->tp.sr_token)
         != NGX_OK)

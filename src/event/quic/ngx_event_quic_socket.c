@@ -14,11 +14,12 @@ ngx_int_t
 ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt)
 {
-    ngx_quic_path_t       *path;
     ngx_quic_socket_t     *qsock, *tmp;
     ngx_quic_client_id_t  *cid;
 
     /*
+     * qc->path = NULL
+     *
      * qc->nclient_ids = 0
      * qc->nsockets = 0
      * qc->max_retired_seqnum = 0
@@ -51,6 +52,8 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
         return NGX_ERROR;
     }
 
+    qsock->used = 1;
+
     qc->tp.initial_scid.len = qsock->sid.len;
     qc->tp.initial_scid.data = ngx_pnalloc(c->pool, qsock->sid.len);
     if (qc->tp.initial_scid.data == NULL) {
@@ -69,19 +72,20 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
         goto failed;
     }
 
-    /* the client arrived from this path */
-    path = ngx_quic_add_path(c, c->sockaddr, c->socklen);
-    if (path == NULL) {
+    /* path of the first packet is our initial active path */
+    qc->path = ngx_quic_new_path(c, c->sockaddr, c->socklen, cid);
+    if (qc->path == NULL) {
         goto failed;
     }
 
+    qc->path->tag = NGX_QUIC_PATH_ACTIVE;
+
     if (pkt->validated) {
-        path->state = NGX_QUIC_PATH_VALIDATED;
-        path->limited = 0;
+        qc->path->validated = 1;
+        qc->path->limited = 0;
     }
 
-    /* now bind socket to client and path */
-    ngx_quic_connect(c, qsock, path, cid);
+    ngx_quic_path_dbg(c, "set active", qc->path);
 
     tmp = ngx_pcalloc(c->pool, sizeof(ngx_quic_socket_t));
     if (tmp == NULL) {
@@ -96,16 +100,6 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
     if (ngx_quic_listen(c, qc, tmp) != NGX_OK) {
         goto failed;
     }
-
-    ngx_quic_connect(c, tmp, path, cid);
-
-    /* use this socket as default destination */
-    qc->socket = qsock;
-
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic active socket is #%uL:%uL:%uL (%s)",
-                   qsock->sid.seqnum, qsock->cid->seqnum, qsock->path->seqnum,
-                   ngx_quic_path_state_str(qsock->path));
 
     return NGX_OK;
 
@@ -165,39 +159,9 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
     qc->nsockets--;
 
-    if (qsock->path) {
-        ngx_quic_unref_path(c, qsock->path);
-    }
-
-    if (qsock->cid) {
-        ngx_quic_unref_client_id(c, qsock->cid);
-    }
-
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic socket #%L closed nsock:%ui",
                    (int64_t) qsock->sid.seqnum, qc->nsockets);
-}
-
-
-void
-ngx_quic_unref_path(ngx_connection_t *c, ngx_quic_path_t *path)
-{
-    ngx_quic_connection_t  *qc;
-
-    path->refcnt--;
-
-    if (path->refcnt) {
-        return;
-    }
-
-    qc = ngx_quic_get_connection(c);
-
-    ngx_queue_remove(&path->queue);
-    ngx_queue_insert_head(&qc->free_paths, &path->queue);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic path #%uL addr:%V removed",
-                   path->seqnum, &path->addr_text);
 }
 
 
@@ -225,23 +189,6 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
                    (int64_t) sid->seqnum, &id, qc->nsockets);
 
     return NGX_OK;
-}
-
-
-void
-ngx_quic_connect(ngx_connection_t *c, ngx_quic_socket_t *sock,
-    ngx_quic_path_t *path, ngx_quic_client_id_t *cid)
-{
-    sock->path = path;
-    path->refcnt++;
-
-    sock->cid = cid;
-    cid->refcnt++;
-
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic socket #%L connected to cid #%uL path:%uL",
-                   (int64_t) sock->sid.seqnum,
-                   sock->cid->seqnum, path->seqnum);
 }
 
 
@@ -280,30 +227,6 @@ ngx_quic_find_socket(ngx_connection_t *c, uint64_t seqnum)
 
         if (qsock->sid.seqnum == seqnum) {
             return qsock;
-        }
-    }
-
-    return NULL;
-}
-
-
-ngx_quic_socket_t *
-ngx_quic_get_unconnected_socket(ngx_connection_t *c)
-{
-    ngx_queue_t            *q;
-    ngx_quic_socket_t      *sock;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    for (q = ngx_queue_head(&qc->sockets);
-         q != ngx_queue_sentinel(&qc->sockets);
-         q = ngx_queue_next(q))
-    {
-        sock = ngx_queue_data(q, ngx_quic_socket_t, queue);
-
-        if (sock->cid == NULL) {
-            return sock;
         }
     }
 

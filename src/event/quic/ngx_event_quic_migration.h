@@ -11,29 +11,29 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
-#define NGX_QUIC_PATH_RETRIES          3
+#define NGX_QUIC_PATH_RETRIES   3
 
-#define NGX_QUIC_PATH_NEW              0
-#define NGX_QUIC_PATH_VALIDATING       1
-#define NGX_QUIC_PATH_VALIDATED        2
+#define NGX_QUIC_PATH_PROBE     0
+#define NGX_QUIC_PATH_ACTIVE    1
+#define NGX_QUIC_PATH_BACKUP    2
 
-
-#define ngx_quic_path_state_str(p)                                            \
-    ((p)->state == NGX_QUIC_PATH_NEW) ? "new" :                               \
-        (((p)->state == NGX_QUIC_PATH_VALIDATED) ? "validated" : "validating")
-
+#define ngx_quic_path_dbg(c, msg, path)                                       \
+    ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,                            \
+                   "quic path#%uL %s sent:%O recvd:%O state:%s%s%s",          \
+                   path->seqnum, msg, path->sent, path->received,             \
+                   path->limited ? "L" : "", path->validated ? "V": "N",      \
+                   path->validating ? "R": "");
 
 ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
-    ngx_quic_path_challenge_frame_t *f);
+    ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);
 ngx_int_t ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     ngx_quic_path_challenge_frame_t *f);
 
-ngx_quic_path_t *ngx_quic_find_path(ngx_connection_t *c,
-    struct sockaddr *sockaddr, socklen_t socklen);
-ngx_quic_path_t *ngx_quic_add_path(ngx_connection_t *c,
-    struct sockaddr *sockaddr, socklen_t socklen);
+ngx_quic_path_t *ngx_quic_new_path(ngx_connection_t *c,
+    struct sockaddr *sockaddr, socklen_t socklen, ngx_quic_client_id_t *cid);
+ngx_int_t ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path);
 
-ngx_int_t ngx_quic_update_paths(ngx_connection_t *c, ngx_quic_header_t *pkt);
+ngx_int_t ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt);
 ngx_int_t ngx_quic_handle_migration(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 

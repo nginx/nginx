@@ -300,6 +300,7 @@ struct ngx_quic_frame_s {
 
 typedef struct {
     ngx_log_t                                  *log;
+    ngx_quic_path_t                            *path;
 
     ngx_quic_keys_t                            *keys;
 
@@ -335,6 +336,7 @@ typedef struct {
     unsigned                                    validated:1;
     unsigned                                    retried:1;
     unsigned                                    first:1;
+    unsigned                                    rebound:1;
 } ngx_quic_header_t;
 
 

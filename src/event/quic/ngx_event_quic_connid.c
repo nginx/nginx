@@ -15,13 +15,10 @@
 #if (NGX_QUIC_BPF)
 static ngx_int_t ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id);
 #endif
-static ngx_int_t ngx_quic_send_retire_connection_id(ngx_connection_t *c,
-    uint64_t seqnum);
-
+static ngx_int_t ngx_quic_retire_client_id(ngx_connection_t *c,
+    ngx_quic_client_id_t *cid);
 static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
     ngx_quic_connection_t *qc);
-static ngx_int_t ngx_quic_replace_retired_client_id(ngx_connection_t *c,
-    ngx_quic_client_id_t *retired_cid);
 static ngx_int_t ngx_quic_send_server_id(ngx_connection_t *c,
     ngx_quic_server_id_t *sid);
 
@@ -77,9 +74,9 @@ ngx_int_t
 ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
     ngx_quic_new_conn_id_frame_t *f)
 {
-    uint64_t                seq;
     ngx_str_t               id;
     ngx_queue_t            *q;
+    ngx_quic_frame_t       *frame;
     ngx_quic_client_id_t   *cid, *item;
     ngx_quic_connection_t  *qc;
 
@@ -97,9 +94,16 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
          *  done so for that sequence number.
          */
 
-        if (ngx_quic_send_retire_connection_id(c, f->seqnum) != NGX_OK) {
+        frame = ngx_quic_alloc_frame(c);
+        if (frame == NULL) {
             return NGX_ERROR;
         }
+
+        frame->level = ssl_encryption_application;
+        frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
+        frame->u.retire_cid.sequence_number = f->seqnum;
+
+        ngx_quic_queue_frame(qc, frame);
 
         goto retire;
     }
@@ -173,20 +177,7 @@ retire:
             continue;
         }
 
-        /* this connection id must be retired */
-        seq = cid->seqnum;
-
-        if (cid->refcnt) {
-            /* we are going to retire client id which is in use */
-            if (ngx_quic_replace_retired_client_id(c, cid) != NGX_OK) {
-                return NGX_ERROR;
-            }
-
-        } else {
-            ngx_quic_unref_client_id(c, cid);
-        }
-
-        if (ngx_quic_send_retire_connection_id(c, seq) != NGX_OK) {
+        if (ngx_quic_retire_client_id(c, cid) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -213,25 +204,47 @@ done:
 
 
 static ngx_int_t
-ngx_quic_send_retire_connection_id(ngx_connection_t *c, uint64_t seqnum)
+ngx_quic_retire_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
 {
-    ngx_quic_frame_t       *frame;
+    ngx_queue_t            *q;
+    ngx_quic_path_t        *path;
+    ngx_quic_client_id_t   *new_cid;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    frame = ngx_quic_alloc_frame(c);
-    if (frame == NULL) {
-        return NGX_ERROR;
+    if (!cid->used) {
+        return ngx_quic_free_client_id(c, cid);
     }
 
-    frame->level = ssl_encryption_application;
-    frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
-    frame->u.retire_cid.sequence_number = seqnum;
+    /* we are going to retire client id which is in use */
 
-    ngx_quic_queue_frame(qc, frame);
+    q = ngx_queue_head(&qc->paths);
 
-    /* we are no longer going to use this client id */
+    while (q != ngx_queue_sentinel(&qc->paths)) {
+
+        path = ngx_queue_data(q, ngx_quic_path_t, queue);
+        q = ngx_queue_next(q);
+
+        if (path->cid != cid) {
+            continue;
+        }
+
+        if (path == qc->path) {
+            /* this is the active path: update it with new CID */
+            new_cid = ngx_quic_next_client_id(c);
+            if (new_cid == NULL) {
+                return NGX_ERROR;
+            }
+
+            qc->path->cid = new_cid;
+            new_cid->used = 1;
+
+            return ngx_quic_free_client_id(c, cid);
+        }
+
+        return ngx_quic_free_path(c, path);
+    }
 
     return NGX_OK;
 }
@@ -318,37 +331,8 @@ ngx_quic_next_client_id(ngx_connection_t *c)
     {
         cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
 
-        if (cid->refcnt == 0) {
+        if (!cid->used) {
             return cid;
-        }
-    }
-
-    return NULL;
-}
-
-
-ngx_quic_client_id_t *
-ngx_quic_used_client_id(ngx_connection_t *c, ngx_quic_path_t *path)
-{
-    ngx_queue_t            *q;
-    ngx_quic_socket_t      *qsock;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    /* best guess: cid used by active path is good for us */
-    if (qc->socket->path == path) {
-        return qc->socket->cid;
-    }
-
-    for (q = ngx_queue_head(&qc->sockets);
-         q != ngx_queue_sentinel(&qc->sockets);
-         q = ngx_queue_next(q))
-    {
-        qsock = ngx_queue_data(q, ngx_quic_socket_t, queue);
-
-        if (qsock->path && qsock->path == path) {
-            return qsock->cid;
         }
     }
 
@@ -360,9 +344,7 @@ ngx_int_t
 ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
     ngx_quic_retire_cid_frame_t *f)
 {
-    ngx_quic_path_t        *path;
-    ngx_quic_socket_t      *qsock, **tmp;
-    ngx_quic_client_id_t   *cid;
+    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -408,76 +390,14 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic socket #%uL is retired", qsock->sid.seqnum);
 
-    /* check if client is willing to retire sid we have in use */
-    if (qsock->sid.seqnum == qc->socket->sid.seqnum) {
-        tmp = &qc->socket;
-
-    } else if (qc->backup && qsock->sid.seqnum == qc->backup->sid.seqnum) {
-        tmp = &qc->backup;
-
-    } else {
-
-        ngx_quic_close_socket(c, qsock);
-
-        /* restore socket count up to a limit after deletion */
-        if (ngx_quic_create_sockets(c) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        return NGX_OK;
-    }
-
-    /* preserve path/cid from retired socket */
-    path = qsock->path;
-    cid = qsock->cid;
-
-    /* ensure that closing_socket will not drop path and cid */
-    path->refcnt++;
-    cid->refcnt++;
-
     ngx_quic_close_socket(c, qsock);
-
-    /* restore original values */
-    path->refcnt--;
-    cid->refcnt--;
 
     /* restore socket count up to a limit after deletion */
     if (ngx_quic_create_sockets(c) != NGX_OK) {
-        goto failed;
+        return NGX_ERROR;
     }
-
-    qsock = ngx_quic_get_unconnected_socket(c);
-    if (qsock == NULL) {
-        qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
-        qc->error_reason = "not enough server IDs";
-        goto failed;
-    }
-
-    ngx_quic_connect(c, qsock, path, cid);
-
-    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic %s socket is now #%uL:%uL:%uL (%s)",
-                   (*tmp) == qc->socket ? "active" : "backup",
-                   qsock->sid.seqnum, qsock->cid->seqnum,
-                   qsock->path->seqnum,
-                   ngx_quic_path_state_str(qsock->path));
-
-    /* restore active/backup pointer in quic connection */
-    *tmp = qsock;
 
     return NGX_OK;
-
-failed:
-
-    /*
-     * socket was closed, path and cid were preserved artifically
-     * to be reused, but it didn't happen, thus unref here
-     */
-
-    ngx_quic_unref_path(c, path);
-    ngx_quic_unref_client_id(c, cid);
-
-    return NGX_ERROR;
 }
 
 
@@ -552,62 +472,31 @@ ngx_quic_send_server_id(ngx_connection_t *c, ngx_quic_server_id_t *sid)
 }
 
 
-static ngx_int_t
-ngx_quic_replace_retired_client_id(ngx_connection_t *c,
-    ngx_quic_client_id_t *retired_cid)
+ngx_int_t
+ngx_quic_free_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
 {
-    ngx_queue_t            *q;
-    ngx_quic_socket_t      *qsock;
-    ngx_quic_client_id_t   *cid;
+    ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    for (q = ngx_queue_head(&qc->sockets);
-         q != ngx_queue_sentinel(&qc->sockets);
-         q = ngx_queue_next(q))
-    {
-        qsock = ngx_queue_data(q, ngx_quic_socket_t, queue);
-
-        if (qsock->cid == retired_cid) {
-
-            cid = ngx_quic_next_client_id(c);
-            if (cid == NULL) {
-                return NGX_ERROR;
-            }
-
-            qsock->cid = cid;
-            cid->refcnt++;
-
-            ngx_quic_unref_client_id(c, retired_cid);
-
-            if (retired_cid->refcnt == 0) {
-                return NGX_OK;
-            }
-        }
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        return NGX_ERROR;
     }
 
-    return NGX_OK;
-}
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
+    frame->u.retire_cid.sequence_number = cid->seqnum;
 
+    ngx_quic_queue_frame(qc, frame);
 
-void
-ngx_quic_unref_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
-{
-    ngx_quic_connection_t  *qc;
-
-    if (cid->refcnt) {
-        cid->refcnt--;
-    } /* else: unused client id */
-
-    if (cid->refcnt) {
-        return;
-    }
-
-    qc = ngx_quic_get_connection(c);
+    /* we are no longer going to use this client id */
 
     ngx_queue_remove(&cid->queue);
     ngx_queue_insert_head(&qc->free_client_ids, &cid->queue);
 
     qc->nclient_ids--;
+
+    return NGX_OK;
 }

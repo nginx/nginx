@@ -69,7 +69,7 @@ struct ngx_quic_client_id_s {
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
     u_char                            sr_token[NGX_QUIC_SR_TOKEN_LEN];
-    ngx_uint_t                        refcnt;
+    ngx_uint_t                        used;  /* unsigned  used:1; */
 };
 
 
@@ -83,20 +83,22 @@ struct ngx_quic_server_id_s {
 struct ngx_quic_path_s {
     ngx_queue_t                       queue;
     struct sockaddr                  *sockaddr;
+    ngx_sockaddr_t                    sa;
     socklen_t                         socklen;
-    ngx_uint_t                        state;
-    ngx_uint_t                        limited; /* unsigned  limited:1; */
+    ngx_quic_client_id_t             *cid;
     ngx_msec_t                        expires;
-    ngx_msec_t                        last_seen;
     ngx_uint_t                        tries;
+    ngx_uint_t                        tag;
     off_t                             sent;
     off_t                             received;
     u_char                            challenge1[8];
     u_char                            challenge2[8];
-    ngx_uint_t                        refcnt;
     uint64_t                          seqnum;
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
+    unsigned                          validated:1;
+    unsigned                          validating:1;
+    unsigned                          limited:1;
 };
 
 
@@ -104,11 +106,8 @@ struct ngx_quic_socket_s {
     ngx_udp_connection_t              udp;
     ngx_quic_connection_t            *quic;
     ngx_queue_t                       queue;
-
     ngx_quic_server_id_t              sid;
-
-    ngx_quic_path_t                  *path;
-    ngx_quic_client_id_t             *cid;
+    ngx_uint_t                        used; /* unsigned  used:1; */
 };
 
 
@@ -184,8 +183,7 @@ struct ngx_quic_send_ctx_s {
 struct ngx_quic_connection_s {
     uint32_t                          version;
 
-    ngx_quic_socket_t                *socket;
-    ngx_quic_socket_t                *backup;
+    ngx_quic_path_t                  *path;
 
     ngx_queue_t                       sockets;
     ngx_queue_t                       paths;

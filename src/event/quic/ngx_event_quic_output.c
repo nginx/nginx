@@ -51,7 +51,7 @@ static ssize_t ngx_quic_send_segments(ngx_connection_t *c, u_char *buf,
 static ssize_t ngx_quic_output_packet(ngx_connection_t *c,
     ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min);
 static void ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    ngx_quic_header_t *pkt);
+    ngx_quic_header_t *pkt, ngx_quic_path_t *path);
 static ngx_uint_t ngx_quic_get_padding_level(ngx_connection_t *c);
 static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     struct sockaddr *sockaddr, socklen_t socklen);
@@ -131,7 +131,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
-    path = qc->socket->path;
+    path = qc->path;
 
     while (cg->in_flight < cg->window) {
 
@@ -269,7 +269,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
         return 0;
     }
 
-    if (qc->socket->path->limited) {
+    if (qc->path->limited) {
         /* don't even try to be faster on non-validated paths */
         return 0;
     }
@@ -325,7 +325,7 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
-    path = qc->socket->path;
+    path = qc->path;
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
 
@@ -505,17 +505,18 @@ static ssize_t
 ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     u_char *data, size_t max, size_t min)
 {
-    size_t              len, pad, min_payload, max_payload;
-    u_char             *p;
-    ssize_t             flen;
-    ngx_str_t           res;
-    ngx_int_t           rc;
-    ngx_uint_t          nframes, expand;
-    ngx_msec_t          now;
-    ngx_queue_t        *q;
-    ngx_quic_frame_t   *f;
-    ngx_quic_header_t   pkt;
-    static u_char       src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+    size_t                  len, pad, min_payload, max_payload;
+    u_char                 *p;
+    ssize_t                 flen;
+    ngx_str_t               res;
+    ngx_int_t               rc;
+    ngx_uint_t              nframes, expand;
+    ngx_msec_t              now;
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
+    ngx_quic_header_t       pkt;
+    ngx_quic_connection_t  *qc;
+    static u_char           src[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     if (ngx_queue_empty(&ctx->frames)) {
         return 0;
@@ -525,7 +526,9 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                    "quic output %s packet max:%uz min:%uz",
                    ngx_quic_level_name(ctx->level), max, min);
 
-    ngx_quic_init_packet(c, ctx, &pkt);
+    qc = ngx_quic_get_connection(c);
+
+    ngx_quic_init_packet(c, ctx, &pkt, qc->path);
 
     min_payload = ngx_quic_payload_size(&pkt, min);
     max_payload = ngx_quic_payload_size(&pkt, max);
@@ -668,14 +671,14 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
 static void
 ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    ngx_quic_header_t *pkt)
+    ngx_quic_header_t *pkt, ngx_quic_path_t *path)
 {
     ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
 
-    qsock = qc->socket;
+    qsock = ngx_quic_get_socket(c);
 
     ngx_memzero(pkt, sizeof(ngx_quic_header_t));
 
@@ -693,8 +696,8 @@ ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         }
     }
 
-    pkt->dcid.data = qsock->cid->id;
-    pkt->dcid.len = qsock->cid->len;
+    pkt->dcid.data = path->cid->id;
+    pkt->dcid.len = path->cid->len;
 
     pkt->scid.data = qsock->sid.id;
     pkt->scid.len = qsock->sid.len;
@@ -1202,7 +1205,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
 
-    ngx_quic_init_packet(c, ctx, &pkt);
+    ngx_quic_init_packet(c, ctx, &pkt, path);
 
     min = ngx_quic_path_limit(c, path, min);
 
