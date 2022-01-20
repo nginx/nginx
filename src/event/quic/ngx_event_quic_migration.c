@@ -255,6 +255,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_queue_t            *q;
     ngx_quic_path_t        *path, *probe;
     ngx_quic_socket_t      *qsock;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
 
@@ -290,6 +291,16 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     /* packet from new path, drop current probe, if any */
+
+    ctx = ngx_quic_get_send_ctx(qc, pkt->level);
+
+    /*
+     * only accept highest-numbered packets to prevent connection id
+     * exhaustion by excessive probing packets from unknown paths
+     */
+    if (pkt->pn != ctx->largest_pn) {
+        return NGX_DONE;
+    }
 
     if (probe && ngx_quic_free_path(c, probe) != NGX_OK) {
         return NGX_ERROR;
