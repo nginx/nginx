@@ -1431,7 +1431,7 @@ ngx_quic_push_handler(ngx_event_t *ev)
 {
     ngx_connection_t  *c;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic push timer");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic push handler");
 
     c = ev->data;
 
