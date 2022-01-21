@@ -23,7 +23,6 @@ ngx_int_t ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
 void ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock);
 
 ngx_quic_socket_t *ngx_quic_find_socket(ngx_connection_t *c, uint64_t seqnum);
-ngx_quic_socket_t *ngx_quic_get_unconnected_socket(ngx_connection_t *c);
 
 
 #endif /* _NGX_EVENT_QUIC_SOCKET_H_INCLUDED_ */
