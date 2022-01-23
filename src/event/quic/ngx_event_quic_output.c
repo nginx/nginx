@@ -813,7 +813,7 @@ ngx_quic_negotiate_version(ngx_connection_t *c, ngx_quic_header_t *inpkt)
 
     (void) ngx_quic_send(c, buf, len, c->sockaddr, c->socklen);
 
-    return NGX_ERROR;
+    return NGX_DONE;
 }
 
 
