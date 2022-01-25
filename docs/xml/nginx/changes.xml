@@ -5,6 +5,44 @@
 <change_log title="nginx">
 
 
+<changes ver="1.21.6" date="2022-01-25">
+
+<change type="bugfix">
+<para lang="ru">
+при использование EPOLLEXCLUSIVE на Linux
+распределение клиентских соединений между рабочими процессами
+было неравномерным.
+</para>
+<para lang="en">
+when using EPOLLEXCLUSIVE on Linux
+client connections were unevenly distributed
+among worker processes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+во время плавного завершения старых рабочих процессов
+nginx возвращал в ответах строку заголовка "Connection: keep-alive".
+</para>
+<para lang="en">
+nginx returned the "Connection: keep-alive" header line in responses
+during graceful shutdown of old worker processes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве ssl_session_ticket_key при использовании TLSv1.3.
+</para>
+<para lang="en">
+in the "ssl_session_ticket_key" when using TLSv1.3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.5" date="2021-12-28">
 
 <change type="change">
