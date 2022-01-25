@@ -208,7 +208,7 @@ ngx_sendmsg_vec(ngx_connection_t *c, ngx_iovec_t *vec)
 {
     struct msghdr    msg;
 
-#if defined(NGX_HAVE_ADDRINFO_CMSG)
+#if (NGX_HAVE_ADDRINFO_CMSG)
     struct cmsghdr  *cmsg;
     u_char           msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
 #endif
@@ -223,7 +223,7 @@ ngx_sendmsg_vec(ngx_connection_t *c, ngx_iovec_t *vec)
     msg.msg_iov = vec->iovs;
     msg.msg_iovlen = vec->count;
 
-#if defined(NGX_HAVE_ADDRINFO_CMSG)
+#if (NGX_HAVE_ADDRINFO_CMSG)
     if (c->listening && c->listening->wildcard && c->local_sockaddr) {
 
         msg.msg_control = msg_control;
@@ -240,7 +240,7 @@ ngx_sendmsg_vec(ngx_connection_t *c, ngx_iovec_t *vec)
 }
 
 
-#if defined(NGX_HAVE_ADDRINFO_CMSG)
+#if (NGX_HAVE_ADDRINFO_CMSG)
 
 size_t
 ngx_set_srcaddr_cmsg(struct cmsghdr *cmsg, struct sockaddr *local_sockaddr)
