@@ -12,7 +12,7 @@
 
 static ngx_chain_t *ngx_udp_output_chain_to_iovec(ngx_iovec_t *vec,
     ngx_chain_t *in, ngx_log_t *log);
-static ssize_t ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec);
+static ssize_t ngx_sendmsg_vec(ngx_connection_t *c, ngx_iovec_t *vec);
 
 
 ngx_chain_t *
@@ -88,7 +88,7 @@ ngx_udp_unix_sendmsg_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         send += vec.size;
 
-        n = ngx_sendmsg(c, &vec);
+        n = ngx_sendmsg_vec(c, &vec);
 
         if (n == NGX_ERROR) {
             return NGX_CHAIN_ERROR;
@@ -204,24 +204,13 @@ ngx_udp_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in, ngx_log_t *log)
 
 
 static ssize_t
-ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec)
+ngx_sendmsg_vec(ngx_connection_t *c, ngx_iovec_t *vec)
 {
-    ssize_t        n;
-    ngx_err_t      err;
-    struct msghdr  msg;
+    struct msghdr    msg;
 
-#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
-
-#if (NGX_HAVE_IP_SENDSRCADDR)
-    u_char         msg_control[CMSG_SPACE(sizeof(struct in_addr))];
-#elif (NGX_HAVE_IP_PKTINFO)
-    u_char         msg_control[CMSG_SPACE(sizeof(struct in_pktinfo))];
-#endif
-
-#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
-    u_char         msg_control6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-#endif
-
+#if (NGX_HAVE_ADDRINFO_CMSG)
+    struct cmsghdr  *cmsg;
+    u_char           msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
 #endif
 
     ngx_memzero(&msg, sizeof(struct msghdr));
@@ -234,88 +223,115 @@ ngx_sendmsg(ngx_connection_t *c, ngx_iovec_t *vec)
     msg.msg_iov = vec->iovs;
     msg.msg_iovlen = vec->count;
 
-#if (NGX_HAVE_MSGHDR_MSG_CONTROL)
-
+#if (NGX_HAVE_ADDRINFO_CMSG)
     if (c->listening && c->listening->wildcard && c->local_sockaddr) {
 
+        msg.msg_control = msg_control;
+        msg.msg_controllen = sizeof(msg_control);
+        ngx_memzero(msg_control, sizeof(msg_control));
+
+        cmsg = CMSG_FIRSTHDR(&msg);
+
+        msg.msg_controllen = ngx_set_srcaddr_cmsg(cmsg, c->local_sockaddr);
+    }
+#endif
+
+    return ngx_sendmsg(c, &msg, 0);
+}
+
+
+#if (NGX_HAVE_ADDRINFO_CMSG)
+
+size_t
+ngx_set_srcaddr_cmsg(struct cmsghdr *cmsg, struct sockaddr *local_sockaddr)
+{
+    size_t                len;
 #if (NGX_HAVE_IP_SENDSRCADDR)
-
-        if (c->local_sockaddr->sa_family == AF_INET) {
-            struct cmsghdr      *cmsg;
-            struct in_addr      *addr;
-            struct sockaddr_in  *sin;
-
-            msg.msg_control = &msg_control;
-            msg.msg_controllen = sizeof(msg_control);
-
-            cmsg = CMSG_FIRSTHDR(&msg);
-            cmsg->cmsg_level = IPPROTO_IP;
-            cmsg->cmsg_type = IP_SENDSRCADDR;
-            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
-
-            sin = (struct sockaddr_in *) c->local_sockaddr;
-
-            addr = (struct in_addr *) CMSG_DATA(cmsg);
-            *addr = sin->sin_addr;
-        }
-
+    struct in_addr       *addr;
+    struct sockaddr_in   *sin;
 #elif (NGX_HAVE_IP_PKTINFO)
-
-        if (c->local_sockaddr->sa_family == AF_INET) {
-            struct cmsghdr      *cmsg;
-            struct in_pktinfo   *pkt;
-            struct sockaddr_in  *sin;
-
-            msg.msg_control = &msg_control;
-            msg.msg_controllen = sizeof(msg_control);
-
-            cmsg = CMSG_FIRSTHDR(&msg);
-            cmsg->cmsg_level = IPPROTO_IP;
-            cmsg->cmsg_type = IP_PKTINFO;
-            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-
-            sin = (struct sockaddr_in *) c->local_sockaddr;
-
-            pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
-            ngx_memzero(pkt, sizeof(struct in_pktinfo));
-            pkt->ipi_spec_dst = sin->sin_addr;
-        }
-
+    struct in_pktinfo    *pkt;
+    struct sockaddr_in   *sin;
 #endif
 
 #if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+    struct in6_pktinfo   *pkt6;
+    struct sockaddr_in6  *sin6;
+#endif
 
-        if (c->local_sockaddr->sa_family == AF_INET6) {
-            struct cmsghdr       *cmsg;
-            struct in6_pktinfo   *pkt6;
-            struct sockaddr_in6  *sin6;
 
-            msg.msg_control = &msg_control6;
-            msg.msg_controllen = sizeof(msg_control6);
+#if (NGX_HAVE_IP_SENDSRCADDR) || (NGX_HAVE_IP_PKTINFO)
 
-            cmsg = CMSG_FIRSTHDR(&msg);
-            cmsg->cmsg_level = IPPROTO_IPV6;
-            cmsg->cmsg_type = IPV6_PKTINFO;
-            cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+    if (local_sockaddr->sa_family == AF_INET) {
 
-            sin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+        cmsg->cmsg_level = IPPROTO_IP;
 
-            pkt6 = (struct in6_pktinfo *) CMSG_DATA(cmsg);
-            ngx_memzero(pkt6, sizeof(struct in6_pktinfo));
-            pkt6->ipi6_addr = sin6->sin6_addr;
-        }
+#if (NGX_HAVE_IP_SENDSRCADDR)
+
+        cmsg->cmsg_type = IP_SENDSRCADDR;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
+        len = CMSG_SPACE(sizeof(struct in_addr));
+
+        sin = (struct sockaddr_in *) local_sockaddr;
+
+        addr = (struct in_addr *) CMSG_DATA(cmsg);
+        *addr = sin->sin_addr;
+
+#elif (NGX_HAVE_IP_PKTINFO)
+
+        cmsg->cmsg_type = IP_PKTINFO;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+        len = CMSG_SPACE(sizeof(struct in_pktinfo));
+
+        sin = (struct sockaddr_in *) local_sockaddr;
+
+        pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
+        ngx_memzero(pkt, sizeof(struct in_pktinfo));
+        pkt->ipi_spec_dst = sin->sin_addr;
 
 #endif
+        return len;
     }
 
 #endif
 
+#if (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)
+    if (local_sockaddr->sa_family == AF_INET6) {
+
+        cmsg->cmsg_level = IPPROTO_IPV6;
+        cmsg->cmsg_type = IPV6_PKTINFO;
+        cmsg->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+        len = CMSG_SPACE(sizeof(struct in6_pktinfo));
+
+        sin6 = (struct sockaddr_in6 *) local_sockaddr;
+
+        pkt6 = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+        ngx_memzero(pkt6, sizeof(struct in6_pktinfo));
+        pkt6->ipi6_addr = sin6->sin6_addr;
+
+        return len;
+    }
+#endif
+
+    return 0;
+}
+
+#endif
+
+
+ssize_t
+ngx_sendmsg(ngx_connection_t *c, struct msghdr *msg, int flags)
+{
+    ssize_t    n;
+    ngx_err_t  err;
+#if (NGX_DEBUG)
+    size_t      size;
+    ngx_uint_t  i;
+#endif
+
 eintr:
 
-    n = sendmsg(c->fd, &msg, 0);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "sendmsg: %z of %uz", n, vec->size);
+    n = sendmsg(c->fd, msg, flags);
 
     if (n == -1) {
         err = ngx_errno;
@@ -337,6 +353,15 @@ eintr:
             return NGX_ERROR;
         }
     }
+
+#if (NGX_DEBUG)
+    for (i = 0, size = 0; i < (size_t) msg->msg_iovlen; i++) {
+        size += msg->msg_iov[i].iov_len;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "sendmsg: %z of %uz", n, size);
+#endif
 
     return n;
 }
