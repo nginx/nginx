@@ -5,6 +5,9 @@ if exists("b:current_syntax")
   finish
 end
 
+let s:save_cpo = &cpo
+set cpo&vim
+
 " general syntax
 
 if has("patch-7.4.1142")
@@ -2484,5 +2487,8 @@ hi def link ngxDirectiveThirdPartyDeprecated Error
 
 hi def link ngxListenOptions Keyword
 hi def link ngxListenOptionsDeprecated Error
+
+let &cpo = s:save_cpo
+unlet s:save_cpo
 
 let b:current_syntax = "nginx"
