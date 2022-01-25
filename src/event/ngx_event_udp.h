@@ -41,6 +41,8 @@ typedef union {
 
 size_t ngx_set_srcaddr_cmsg(struct cmsghdr *cmsg,
     struct sockaddr *local_sockaddr);
+ngx_int_t ngx_get_srcaddr_cmsg(struct cmsghdr *cmsg,
+    struct sockaddr *local_sockaddr);
 
 #endif
 
