@@ -89,7 +89,8 @@ EVENT_DEPS="src/event/ngx_event.h \
             src/event/ngx_event_timer.h \
             src/event/ngx_event_posted.h \
             src/event/ngx_event_connect.h \
-            src/event/ngx_event_pipe.h"
+            src/event/ngx_event_pipe.h \
+            src/event/ngx_event_udp.h"
 
 EVENT_SRCS="src/event/ngx_event.c \
             src/event/ngx_event_timer.c \
