@@ -536,14 +536,16 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
             continue;
         }
 
-        for (p = b->pos + offset; p != b->last && in; /* void */ ) {
+        p = b->pos + offset;
+
+        while (in) {
 
             if (!ngx_buf_in_memory(in->buf) || in->buf->pos == in->buf->last) {
                 in = in->next;
                 continue;
             }
 
-            if (limit == 0) {
+            if (p == b->last || limit == 0) {
                 break;
             }
 
