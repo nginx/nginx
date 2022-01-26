@@ -224,7 +224,7 @@ Example configuration:
 
     [1] https://datatracker.ietf.org/doc/html/rfc9000
     [2] https://datatracker.ietf.org/doc/html/draft-ietf-quic-http
-    [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
+    [3] https://mailman.nginx.org/mailman3/lists/nginx-devel.nginx.org/
     [4] https://boringssl.googlesource.com/boringssl/
     [5] https://datatracker.ietf.org/doc/html/rfc9002
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
