@@ -232,4 +232,20 @@ ngx_feature_test="struct crypt_data  cd;
 ngx_include="sys/vfs.h";     . auto/include
 
 
+# UDP segmentation offloading
+
+ngx_feature="UDP_SEGMENT"
+ngx_feature_name="NGX_HAVE_UDP_SEGMENT"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <stdint.h>
+                  #include <netinet/udp.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="socklen_t optlen = sizeof(int);
+                  int val;
+                  getsockopt(0, SOL_UDP, UDP_SEGMENT, &val, &optlen)"
+. auto/feature
+
+
 CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
