@@ -1474,5 +1474,3 @@ ngx_quic_shutdown_quic(ngx_connection_t *c)
 
     ngx_quic_finalize_connection(c, qc->shutdown_code, qc->shutdown_reason);
 }
-
-
