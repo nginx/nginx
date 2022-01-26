@@ -34,6 +34,7 @@ static ngx_int_t ngx_quic_control_flow(ngx_connection_t *c, uint64_t last);
 static ngx_int_t ngx_quic_update_flow(ngx_connection_t *c, uint64_t last);
 static ngx_int_t ngx_quic_update_max_stream_data(ngx_connection_t *c);
 static ngx_int_t ngx_quic_update_max_data(ngx_connection_t *c);
+static void ngx_quic_set_event(ngx_event_t *ev);
 
 
 ngx_connection_t *
@@ -156,7 +157,6 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
     ngx_pool_t         *pool;
     ngx_queue_t        *q;
-    ngx_event_t        *rev, *wev;
     ngx_rbtree_t       *tree;
     ngx_rbtree_node_t  *node;
     ngx_quic_stream_t  *qs;
@@ -195,17 +195,8 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
         qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
         qs->send_state = NGX_QUIC_STREAM_SEND_RESET_SENT;
 
-        rev = qs->connection->read;
-        rev->ready = 1;
-
-        wev = qs->connection->write;
-        wev->ready = 1;
-
-        ngx_post_event(rev, &ngx_posted_events);
-
-        if (rev->timer_set) {
-            ngx_del_timer(rev);
-        }
+        ngx_quic_set_event(qs->connection->read);
+        ngx_quic_set_event(qs->connection->write);
 
 #if (NGX_DEBUG)
         ns++;
@@ -1028,7 +1019,6 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
     uint64_t                  last;
-    ngx_event_t              *rev;
     ngx_connection_t         *sc;
     ngx_quic_stream_t        *qs;
     ngx_quic_connection_t    *qc;
@@ -1106,12 +1096,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (f->offset == qs->recv_offset) {
-        rev = sc->read;
-        rev->ready = 1;
-
-        if (rev->active) {
-            ngx_post_event(rev, &ngx_posted_events);
-        }
+        ngx_quic_set_event(sc->read);
     }
 
     return NGX_OK;
@@ -1122,7 +1107,6 @@ ngx_int_t
 ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     ngx_quic_max_data_frame_t *f)
 {
-    ngx_event_t            *wev;
     ngx_rbtree_t           *tree;
     ngx_rbtree_node_t      *node;
     ngx_quic_stream_t      *qs;
@@ -1144,12 +1128,7 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
              node = ngx_rbtree_next(tree, node))
         {
             qs = (ngx_quic_stream_t *) node;
-            wev = qs->connection->write;
-
-            if (wev->active) {
-                wev->ready = 1;
-                ngx_post_event(wev, &ngx_posted_events);
-            }
+            ngx_quic_set_event(qs->connection->write);
         }
     }
 
@@ -1210,7 +1189,6 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_stream_data_frame_t *f)
 {
     uint64_t                sent;
-    ngx_event_t            *wev;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1240,12 +1218,7 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     sent = qs->connection->sent;
 
     if (sent >= qs->send_max_data) {
-        wev = qs->connection->write;
-
-        if (wev->active) {
-            wev->ready = 1;
-            ngx_post_event(wev, &ngx_posted_events);
-        }
+        ngx_quic_set_event(qs->connection->write);
     }
 
     qs->send_max_data = f->limit;
@@ -1258,7 +1231,6 @@ ngx_int_t
 ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f)
 {
-    ngx_event_t            *rev;
     ngx_connection_t       *sc;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
@@ -1312,12 +1284,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    rev = sc->read;
-    rev->ready = 1;
-
-    if (rev->active) {
-        ngx_post_event(rev, &ngx_posted_events);
-    }
+    ngx_quic_set_event(qs->connection->read);
 
     return NGX_OK;
 }
@@ -1327,7 +1294,6 @@ ngx_int_t
 ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f)
 {
-    ngx_event_t            *wev;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1354,12 +1320,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
-    wev = qs->connection->write;
-
-    if (wev->active) {
-        wev->ready = 1;
-        ngx_post_event(wev, &ngx_posted_events);
-    }
+    ngx_quic_set_event(qs->connection->write);
 
     return NGX_OK;
 }
@@ -1398,7 +1359,6 @@ void
 ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
     uint64_t                sent, unacked;
-    ngx_event_t            *wev;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1409,13 +1369,11 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
         return;
     }
 
-    wev = qs->connection->write;
     sent = qs->connection->sent;
     unacked = sent - qs->acked;
 
-    if (unacked >= qc->conf->stream_buffer_size && wev->active) {
-        wev->ready = 1;
-        ngx_post_event(wev, &ngx_posted_events);
+    if (unacked >= qc->conf->stream_buffer_size) {
+        ngx_quic_set_event(qs->connection->write);
     }
 
     qs->acked += f->u.stream.length;
@@ -1586,6 +1544,17 @@ ngx_quic_update_max_data(ngx_connection_t *c)
     ngx_quic_queue_frame(qc, frame);
 
     return NGX_OK;
+}
+
+
+static void
+ngx_quic_set_event(ngx_event_t *ev)
+{
+    ev->ready = 1;
+
+    if (ev->active) {
+        ngx_post_event(ev, &ngx_posted_events);
+    }
 }
 
 
