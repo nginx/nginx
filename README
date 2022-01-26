@@ -34,8 +34,7 @@ Experimental QUIC support for nginx
 
     What works now:
 
-    Currently we support IETF-QUIC draft-29 through final RFC documents.
-    Earlier drafts are NOT supported as they have incompatible wire format.
+    We support IETF QUIC version 1.  Internet drafts are no longer supported.
 
     nginx should be able to respond to HTTP/3 requests over QUIC and
     it should be possible to upload and download big files without errors.
@@ -178,20 +177,11 @@ Example configuration:
 
     * Browsers
 
-        Known to work: Firefox 80+ and Chrome 85+ (QUIC draft 29+)
+        Known to work: Firefox 90+ and Chrome 92+ (QUIC version 1)
 
         Beware of strange issues: sometimes browser may decide to ignore QUIC
         Cache clearing/restart might help.  Always check access.log and
         error.log to make sure you are using HTTP/3 and not TCP https.
-
-        + to enable QUIC in Firefox, set the following in 'about:config':
-          network.http.http3.enabled = true
-
-        + to enable QUIC in Chrome, enable it on command line and force it
-          on your site:
-
-        $ ./chrome --enable-quic --quic-version=h3-29 \
-                       --origin-to-force-quic-on=example.com:8443
 
     * Console clients
 
@@ -201,10 +191,7 @@ Example configuration:
 
         $ ./neqo-client https://127.0.0.1:8443/
 
-        $ chromium-build/out/my_build/quic_client http://example.com:8443 \
-                  --quic_version=h3-29 \
-                  --allow_unknown_root_cert \
-                  --disable_certificate_verification
+        $ chromium-build/out/my_build/quic_client http://example.com:8443
 
 
    If you've got it right, in the access log you should see something like:
@@ -222,7 +209,7 @@ Example configuration:
     + Ensure you are using the proper SSL library in runtime
       (`nginx -V` will show you what you are using)
 
-    + Ensure your client is actually sending QUIC requests
+    + Ensure your client is actually sending requests over QUIC
       (see "Clients" section about browsers and cache)
 
       We recommend to start with simple console client like ngtcp2
