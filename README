@@ -52,21 +52,6 @@ Experimental QUIC support for nginx
     + Lost packets are detected and retransmitted properly
     + Clients may migrate to new address
 
-     Not (yet) supported features:
-
-    - Explicit Congestion Notification (ECN) as specified in quic-recovery [5]
-    - A connection with the spin bit succeeds and the bit is spinning
-    - Structured Logging
-
-    Since the code is experimental and still under development,
-    a lot of things may not work as expected, for example:
-
-    - Flow control mechanism is basic and intended to avoid CPU hog and make
-      simple interactions possible
-
-    - Not all protocol requirements are strictly followed; some of checks are
-      omitted for the sake of simplicity of initial implementation
-
 2. Installing
 
     You will need a BoringSSL [4] library that provides QUIC support
