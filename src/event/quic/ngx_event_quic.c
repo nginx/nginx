@@ -1477,15 +1477,3 @@ ngx_quic_shutdown_quic(ngx_connection_t *c)
 }
 
 
-uint32_t
-ngx_quic_version(ngx_connection_t *c)
-{
-    uint32_t                version;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
-
-    version = qc->version;
-
-    return (version & 0xff000000) == 0xff000000 ? version & 0xff : version;
-}

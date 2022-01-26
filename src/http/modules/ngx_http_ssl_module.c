@@ -419,9 +419,6 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     unsigned char *outlen, const unsigned char *in, unsigned int inlen,
     void *arg)
 {
-#if (NGX_HTTP_V3)
-    const char              *fmt;
-#endif
     unsigned int             srvlen;
     unsigned char           *srv;
 #if (NGX_DEBUG)
@@ -466,23 +463,11 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
         if (h3scf->hq) {
             srv = (unsigned char *) NGX_HTTP_V3_HQ_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_HQ_ALPN_PROTO) - 1;
-            fmt = NGX_HTTP_V3_HQ_ALPN_DRAFT_FMT;
         } else
 #endif
         {
             srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
-            fmt = NGX_HTTP_V3_ALPN_DRAFT_FMT;
-        }
-
-        /* QUIC draft */
-
-        if (ngx_quic_version(c) > 1) {
-            srv = ngx_pnalloc(c->pool, sizeof("\x05h3-xx") - 1);
-            if (srv == NULL) {
-                return SSL_TLSEXT_ERR_NOACK;
-            }
-            srvlen = ngx_sprintf(srv, fmt, ngx_quic_version(c)) - srv;
         }
 
     } else
