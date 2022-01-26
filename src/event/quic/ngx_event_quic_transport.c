@@ -73,8 +73,6 @@
 #define ngx_quic_build_int_set(p, value, len, bits)                           \
     (*(p)++ = ((value >> ((len) * 8)) & 0xff) | ((bits) << 6))
 
-#define NGX_QUIC_VERSION(c)       (0xff000000 + (c))
-
 
 static u_char *ngx_quic_parse_int(u_char *pos, u_char *end, uint64_t *out);
 static ngx_uint_t ngx_quic_varint_len(uint64_t value);
@@ -137,10 +135,6 @@ static ngx_int_t ngx_quic_parse_transport_param(u_char *p, u_char *end,
 uint32_t  ngx_quic_versions[] = {
     /* QUICv1 */
     0x00000001,
-    NGX_QUIC_VERSION(29),
-    NGX_QUIC_VERSION(30),
-    NGX_QUIC_VERSION(31),
-    NGX_QUIC_VERSION(32),
 };
 
 #define NGX_QUIC_NVERSIONS \

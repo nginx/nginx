@@ -329,8 +329,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         }
     }
 
-    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid,
-                                         qc->version)
+    if (ngx_quic_keys_set_initial_secret(c->pool, qc->keys, &pkt->dcid)
         != NGX_OK)
     {
         return NULL;

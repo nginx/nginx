@@ -19,7 +19,7 @@
 
 ngx_quic_keys_t *ngx_quic_keys_new(ngx_pool_t *pool);
 ngx_int_t ngx_quic_keys_set_initial_secret(ngx_pool_t *pool,
-    ngx_quic_keys_t *keys, ngx_str_t *secret, uint32_t version);
+    ngx_quic_keys_t *keys, ngx_str_t *secret);
 ngx_int_t ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool,
     ngx_uint_t is_write, ngx_quic_keys_t *keys,
     enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
