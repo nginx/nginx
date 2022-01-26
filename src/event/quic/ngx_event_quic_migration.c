@@ -346,8 +346,8 @@ update:
     path->received += len;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet len:%O via sock#%uL path#%uL",
-                   len, qsock->sid.seqnum, path->seqnum);
+                   "quic packet len:%O via sock#%L path#%uL",
+                   len, (int64_t) qsock->sid.seqnum, path->seqnum);
     ngx_quic_path_dbg(c, "status", path);
 
     return NGX_OK;

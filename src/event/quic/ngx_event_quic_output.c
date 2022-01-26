@@ -673,12 +673,9 @@ static void
 ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_quic_header_t *pkt, ngx_quic_path_t *path)
 {
-    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
-
-    qsock = ngx_quic_get_socket(c);
 
     ngx_memzero(pkt, sizeof(ngx_quic_header_t));
 
@@ -699,8 +696,7 @@ ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     pkt->dcid.data = path->cid->id;
     pkt->dcid.len = path->cid->len;
 
-    pkt->scid.data = qsock->sid.id;
-    pkt->scid.len = qsock->sid.len;
+    pkt->scid = qc->tp.initial_scid;
 
     pkt->version = qc->version;
     pkt->log = c->log;
