@@ -395,6 +395,8 @@ done:
         if (ngx_http_v3_send_ack_section(c, c->quic->id) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        ngx_http_v3_ack_insert_count(c, st->prefix.insert_count);
     }
 
     st->state = sw_start;

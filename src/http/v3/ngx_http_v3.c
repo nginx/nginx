@@ -47,6 +47,10 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     h3c->keepalive.handler = ngx_http_v3_keepalive_handler;
     h3c->keepalive.cancelable = 1;
 
+    h3c->table.send_insert_count.log = pc->log;
+    h3c->table.send_insert_count.data = pc;
+    h3c->table.send_insert_count.handler = ngx_http_v3_inc_insert_count_handler;
+
     cln = ngx_pool_cleanup_add(pc->pool, 0);
     if (cln == NULL) {
         goto failed;
@@ -92,6 +96,10 @@ ngx_http_v3_cleanup_session(void *data)
 
     if (h3c->keepalive.timer_set) {
         ngx_del_timer(&h3c->keepalive);
+    }
+
+    if (h3c->table.send_insert_count.posted) {
+        ngx_delete_posted_event(&h3c->table.send_insert_count);
     }
 }
 

@@ -26,9 +26,13 @@ typedef struct {
     ngx_uint_t                    base;
     size_t                        size;
     size_t                        capacity;
+    uint64_t                      insert_count;
+    uint64_t                      ack_insert_count;
+    ngx_event_t                   send_insert_count;
 } ngx_http_v3_dynamic_table_t;
 
 
+void ngx_http_v3_inc_insert_count_handler(ngx_event_t *ev);
 void ngx_http_v3_cleanup_table(ngx_http_v3_session_t *h3c);
 ngx_int_t ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value);
@@ -46,6 +50,7 @@ ngx_int_t ngx_http_v3_decode_insert_count(ngx_connection_t *c,
     ngx_uint_t *insert_count);
 ngx_int_t ngx_http_v3_check_insert_count(ngx_connection_t *c,
     ngx_uint_t insert_count);
+void ngx_http_v3_ack_insert_count(ngx_connection_t *c, uint64_t insert_count);
 ngx_int_t ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id,
     uint64_t value);
 

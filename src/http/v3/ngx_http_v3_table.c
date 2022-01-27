@@ -232,17 +232,43 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
     dt->elts[dt->nelts++] = field;
     dt->size += size;
 
-    /* TODO increment can be sent less often */
+    dt->insert_count++;
 
-    if (ngx_http_v3_send_inc_insert_count(c, 1) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    ngx_post_event(&dt->send_insert_count, &ngx_posted_events);
 
     if (ngx_http_v3_new_entry(c) != NGX_OK) {
         return NGX_ERROR;
     }
 
     return NGX_OK;
+}
+
+
+void
+ngx_http_v3_inc_insert_count_handler(ngx_event_t *ev)
+{
+    ngx_connection_t             *c;
+    ngx_http_v3_session_t        *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 inc insert count handler");
+
+    h3c = ngx_http_v3_get_session(c);
+    dt = &h3c->table;
+
+    if (dt->insert_count > dt->ack_insert_count) {
+        if (ngx_http_v3_send_inc_insert_count(c,
+                                       dt->insert_count - dt->ack_insert_count)
+            != NGX_OK)
+        {
+            return;
+        }
+
+        dt->ack_insert_count = dt->insert_count;
+    }
 }
 
 
@@ -604,6 +630,21 @@ ngx_http_v3_check_insert_count(ngx_connection_t *c, ngx_uint_t insert_count)
                    "http3 blocked:%ui", h3c->nblocked);
 
     return NGX_BUSY;
+}
+
+
+void
+ngx_http_v3_ack_insert_count(ngx_connection_t *c, uint64_t insert_count)
+{
+    ngx_http_v3_session_t        *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    h3c = ngx_http_v3_get_session(c);
+    dt = &h3c->table;
+
+    if (dt->ack_insert_count < insert_count) {
+        dt->ack_insert_count = insert_count;
+    }
 }
 
 
