@@ -566,7 +566,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-#if BORINGSSL_API_VERSION >= 13
+#if (BORINGSSL_API_VERSION >= 13 && BORINGSSL_API_VERSION < 15)
     SSL_set_quic_use_legacy_codepoint(ssl_conn, 0);
 #endif
 
