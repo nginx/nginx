@@ -160,7 +160,7 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     qc->nsockets--;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic socket #%L closed nsock:%ui",
+                   "quic socket seq:%L closed nsock:%ui",
                    (int64_t) qsock->sid.seqnum, qc->nsockets);
 }
 
@@ -185,7 +185,7 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     qsock->quic = qc;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic socket #%L listening at sid:%xV nsock:%ui",
+                   "quic socket seq:%L listening at sid:%xV nsock:%ui",
                    (int64_t) sid->seqnum, &id, qc->nsockets);
 
     return NGX_OK;

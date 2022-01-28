@@ -308,7 +308,7 @@ ngx_quic_create_client_id(ngx_connection_t *c, ngx_str_t *id,
     }
 
     ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic cid #%uL received id:%uz:%xV:%*xs",
+                   "quic cid seq:%uL received id:%uz:%xV:%*xs",
                     cid->seqnum, id->len, id,
                     (size_t) NGX_QUIC_SR_TOKEN_LEN, cid->sr_token);
 
@@ -388,7 +388,7 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic socket #%uL is retired", qsock->sid.seqnum);
+                   "quic socket seq:%uL is retired", qsock->sid.seqnum);
 
     ngx_quic_close_socket(c, qsock);
 

@@ -160,7 +160,7 @@ valid:
     }
 
     ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                  "quic path #%uL addr:%V successfully validated",
+                  "quic path seq:%uL addr:%V successfully validated",
                   path->seqnum, &path->addr_text);
 
     ngx_quic_path_dbg(c, "is validated", path);
@@ -218,7 +218,7 @@ ngx_quic_new_path(ngx_connection_t *c,
                                         NGX_SOCKADDR_STRLEN, 1);
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic path #%uL created addr:%V",
+                   "quic path seq:%uL created addr:%V",
                    path->seqnum, &path->addr_text);
     return path;
 }
@@ -346,7 +346,7 @@ update:
     path->received += len;
 
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic packet len:%O via sock#%L path#%uL",
+                   "quic packet len:%O via sock seq:%L path seq:%uL",
                    len, (int64_t) qsock->sid.seqnum, path->seqnum);
     ngx_quic_path_dbg(c, "status", path);
 
@@ -375,7 +375,7 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic path #%uL addr:%V retired",
+                   "quic path seq:%uL addr:%V retired",
                    path->seqnum, &path->addr_text);
 
     return NGX_OK;
@@ -398,7 +398,7 @@ ngx_quic_set_connection_path(ngx_connection_t *c, ngx_quic_path_t *path)
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic send path set to #%uL addr:%V",
+                   "quic send path set to seq:%uL addr:%V",
                    path->seqnum, &path->addr_text);
 }
 
@@ -475,7 +475,7 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                  "quic migrated to path#%uL addr:%V",
+                  "quic migrated to path seq:%uL addr:%V",
                   qc->path->seqnum, &qc->path->addr_text);
 
     ngx_quic_path_dbg(c, "is now active", qc->path);
@@ -494,7 +494,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
     qc = ngx_quic_get_connection(c);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic initiated validation of path #%uL", path->seqnum);
+                   "quic initiated validation of path seq:%uL", path->seqnum);
 
     path->validating = 1;
 
@@ -530,7 +530,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_quic_frame_t  frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic path #%uL send path_challenge tries:%ui",
+                   "quic path seq:%uL send path_challenge tries:%ui",
                    path->seqnum, path->tries);
 
     ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
@@ -620,7 +620,7 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                       "quic path #%uL validation failed", path->seqnum);
+                       "quic path seq:%uL validation failed", path->seqnum);
 
         /* found expired path */
 
@@ -654,7 +654,7 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
             ngx_quic_set_connection_path(c, qc->path);
 
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "quic path #%uL addr:%V is restored from backup",
+                          "quic path seq:%uL addr:%V is restored from backup",
                           qc->path->seqnum, &qc->path->addr_text);
 
             ngx_quic_path_dbg(c, "is active", qc->path);
