@@ -26,7 +26,8 @@ typedef struct {
 
 static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
-static void ngx_http_v3_dummy_write_handler(ngx_event_t *wev);
+static void ngx_http_v3_uni_dummy_read_handler(ngx_event_t *wev);
+static void ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev);
 static void ngx_http_v3_push_cleanup(void *data);
 static ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);
@@ -68,7 +69,7 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
     c->data = us;
 
     c->read->handler = ngx_http_v3_uni_read_handler;
-    c->write->handler = ngx_http_v3_dummy_write_handler;
+    c->write->handler = ngx_http_v3_uni_dummy_write_handler;
 
     ngx_http_v3_uni_read_handler(c->read);
 }
@@ -252,7 +253,33 @@ failed:
 
 
 static void
-ngx_http_v3_dummy_write_handler(ngx_event_t *wev)
+ngx_http_v3_uni_dummy_read_handler(ngx_event_t *rev)
+{
+    u_char             ch;
+    ngx_connection_t  *c;
+
+    c = rev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 dummy read handler");
+
+    if (rev->ready) {
+        if (c->recv(c, &ch, 1) != 0) {
+            ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_NO_ERROR, NULL);
+            ngx_http_v3_close_uni_stream(c);
+            return;
+        }
+    }
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        NULL);
+        ngx_http_v3_close_uni_stream(c);
+    }
+}
+
+
+static void
+ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev)
 {
     ngx_connection_t  *c;
 
@@ -393,8 +420,8 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
 
     sc->data = us;
 
-    sc->read->handler = ngx_http_v3_uni_read_handler;
-    sc->write->handler = ngx_http_v3_dummy_write_handler;
+    sc->read->handler = ngx_http_v3_uni_dummy_read_handler;
+    sc->write->handler = ngx_http_v3_uni_dummy_write_handler;
 
     if (index >= 0) {
         h3c->known_streams[index] = sc;
@@ -408,6 +435,8 @@ ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
     if (sc->send(sc, buf, n) != (ssize_t) n) {
         goto failed;
     }
+
+    ngx_post_event(sc->read, &ngx_posted_events);
 
     return sc;
 
