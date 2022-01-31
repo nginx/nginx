@@ -40,11 +40,12 @@ ngx_connection_t *
 ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
 {
     uint64_t                id;
-    ngx_quic_stream_t      *qs, *nqs;
+    ngx_connection_t       *pc;
+    ngx_quic_stream_t      *nqs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->quic;
-    qc = ngx_quic_get_connection(qs->parent);
+    pc = c->quic ? c->quic->parent : c;
+    qc = ngx_quic_get_connection(pc);
 
     if (bidi) {
         if (qc->streams.server_streams_bidi
@@ -90,7 +91,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
         qc->streams.server_streams_uni++;
     }
 
-    nqs = ngx_quic_create_stream(qs->parent, id);
+    nqs = ngx_quic_create_stream(pc, id);
     if (nqs == NULL) {
         return NULL;
     }

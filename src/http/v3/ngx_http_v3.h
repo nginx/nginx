@@ -78,7 +78,8 @@
 
 
 #define ngx_http_quic_get_connection(c)                                       \
-    ((ngx_http_connection_t *) (c)->quic->parent->data)
+    ((ngx_http_connection_t *) ((c)->quic ? (c)->quic->parent->data           \
+                                          : (c)->data))
 
 #define ngx_http_v3_get_session(c)  ngx_http_quic_get_connection(c)->v3_session
 
@@ -91,10 +92,12 @@
                                  module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
-    ngx_quic_finalize_connection(c->quic->parent, code, reason)
+    ngx_quic_finalize_connection((c)->quic ? (c)->quic->parent : (c),         \
+                                 code, reason)
 
 #define ngx_http_v3_shutdown_connection(c, code, reason)                      \
-    ngx_quic_shutdown_connection(c->quic->parent, code, reason)
+    ngx_quic_shutdown_connection((c)->quic ? (c)->quic->parent : (c),         \
+                                 code, reason)
 
 
 typedef struct {
