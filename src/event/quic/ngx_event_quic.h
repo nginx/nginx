@@ -28,6 +28,26 @@
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
 
+typedef enum {
+    NGX_QUIC_STREAM_SEND_READY = 0,
+    NGX_QUIC_STREAM_SEND_SEND,
+    NGX_QUIC_STREAM_SEND_DATA_SENT,
+    NGX_QUIC_STREAM_SEND_DATA_RECVD,
+    NGX_QUIC_STREAM_SEND_RESET_SENT,
+    NGX_QUIC_STREAM_SEND_RESET_RECVD
+} ngx_quic_stream_send_state_e;
+
+
+typedef enum {
+    NGX_QUIC_STREAM_RECV_RECV = 0,
+    NGX_QUIC_STREAM_RECV_SIZE_KNOWN,
+    NGX_QUIC_STREAM_RECV_DATA_RECVD,
+    NGX_QUIC_STREAM_RECV_DATA_READ,
+    NGX_QUIC_STREAM_RECV_RESET_RECVD,
+    NGX_QUIC_STREAM_RECV_RESET_READ
+} ngx_quic_stream_recv_state_e;
+
+
 typedef struct {
     ngx_ssl_t                 *ssl;
 
@@ -66,6 +86,8 @@ struct ngx_quic_stream_s {
     ngx_chain_t               *in;
     ngx_chain_t               *out;
     ngx_uint_t                 cancelable;  /* unsigned  cancelable:1; */
+    ngx_quic_stream_send_state_e  send_state;
+    ngx_quic_stream_recv_state_e  recv_state;
 };
 
 
