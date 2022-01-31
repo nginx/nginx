@@ -49,45 +49,45 @@ typedef enum {
 
 
 typedef struct {
-    ngx_ssl_t                 *ssl;
+    ngx_ssl_t                     *ssl;
 
-    ngx_flag_t                 retry;
-    ngx_flag_t                 gso_enabled;
-    ngx_flag_t                 disable_active_migration;
-    ngx_msec_t                 timeout;
-    ngx_str_t                  host_key;
-    size_t                     mtu;
-    size_t                     stream_buffer_size;
-    ngx_uint_t                 max_concurrent_streams_bidi;
-    ngx_uint_t                 max_concurrent_streams_uni;
-    ngx_uint_t                 active_connection_id_limit;
-    ngx_int_t                  stream_close_code;
-    ngx_int_t                  stream_reject_code_uni;
-    ngx_int_t                  stream_reject_code_bidi;
+    ngx_flag_t                     retry;
+    ngx_flag_t                     gso_enabled;
+    ngx_flag_t                     disable_active_migration;
+    ngx_msec_t                     timeout;
+    ngx_str_t                      host_key;
+    size_t                         mtu;
+    size_t                         stream_buffer_size;
+    ngx_uint_t                     max_concurrent_streams_bidi;
+    ngx_uint_t                     max_concurrent_streams_uni;
+    ngx_uint_t                     active_connection_id_limit;
+    ngx_int_t                      stream_close_code;
+    ngx_int_t                      stream_reject_code_uni;
+    ngx_int_t                      stream_reject_code_bidi;
 
-    u_char                     av_token_key[NGX_QUIC_AV_KEY_LEN];
-    u_char                     sr_token_key[NGX_QUIC_SR_KEY_LEN];
+    u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
+    u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];
 } ngx_quic_conf_t;
 
 
 struct ngx_quic_stream_s {
-    ngx_rbtree_node_t          node;
-    ngx_queue_t                queue;
-    ngx_connection_t          *parent;
-    ngx_connection_t          *connection;
-    uint64_t                   id;
-    uint64_t                   acked;
-    uint64_t                   send_max_data;
-    uint64_t                   recv_max_data;
-    uint64_t                   recv_offset;
-    uint64_t                   recv_window;
-    uint64_t                   recv_last;
-    uint64_t                   final_size;
-    ngx_chain_t               *in;
-    ngx_chain_t               *out;
-    ngx_uint_t                 cancelable;  /* unsigned  cancelable:1; */
-    ngx_quic_stream_send_state_e  send_state;
-    ngx_quic_stream_recv_state_e  recv_state;
+    ngx_rbtree_node_t              node;
+    ngx_queue_t                    queue;
+    ngx_connection_t              *parent;
+    ngx_connection_t              *connection;
+    uint64_t                       id;
+    uint64_t                       acked;
+    uint64_t                       send_max_data;
+    uint64_t                       recv_max_data;
+    uint64_t                       recv_offset;
+    uint64_t                       recv_window;
+    uint64_t                       recv_last;
+    uint64_t                       final_size;
+    ngx_chain_t                   *in;
+    ngx_chain_t                   *out;
+    ngx_uint_t                     cancelable;  /* unsigned  cancelable:1; */
+    ngx_quic_stream_send_state_e   send_state;
+    ngx_quic_stream_recv_state_e   recv_state;
 };
 
 
