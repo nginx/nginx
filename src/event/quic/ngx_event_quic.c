@@ -764,8 +764,8 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     rc = ngx_quic_parse_packet(pkt);
 
-    if (rc == NGX_DECLINED || rc == NGX_ERROR) {
-        return rc;
+    if (rc == NGX_ERROR) {
+        return NGX_DECLINED;
     }
 
     pkt->parsed = 1;

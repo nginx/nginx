@@ -285,14 +285,14 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
 
         if (ngx_quic_parse_short_header(pkt, NGX_QUIC_SERVER_CID_LEN) != NGX_OK)
         {
-            return NGX_DECLINED;
+            return NGX_ERROR;
         }
 
         return NGX_OK;
     }
 
     if (ngx_quic_parse_long_header(pkt) != NGX_OK) {
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     if (!ngx_quic_supported_version(pkt->version)) {
@@ -300,7 +300,7 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
     }
 
     if (ngx_quic_parse_long_header_v1(pkt) != NGX_OK) {
-        return NGX_DECLINED;
+        return NGX_ERROR;
     }
 
     return NGX_OK;
