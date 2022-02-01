@@ -1756,6 +1756,11 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
             break;
         }
 
+        if (fcn->deleting) {
+            wait = 1;
+            break;
+        }
+
         p = ngx_hex_dump(key, (u_char *) &fcn->node.key,
                          sizeof(ngx_rbtree_key_t));
         len = NGX_HTTP_CACHE_KEY_LEN - sizeof(ngx_rbtree_key_t);
