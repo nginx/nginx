@@ -459,19 +459,17 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_close_connection rc:%i", rc);
-
     qc = ngx_quic_get_connection(c);
 
     if (qc == NULL) {
-        if (rc == NGX_ERROR) {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic close connection early error");
-        }
-
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic packet rejected rc:%i, cleanup connection", rc);
         goto quic_done;
     }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic close %s rc:%i",
+                   qc->closing ? "resumed": "initiated", rc);
 
     if (!qc->closing) {
 
@@ -490,10 +488,11 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
              *  closed and its state is discarded when it remains idle
              */
 
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic closing %s connection",
-                           qc->draining ? "drained" : "idle");
+            /* this case also handles some errors from ngx_quic_run() */
 
+             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                            "quic close silent drain:%d timedout:%d",
+                            qc->draining, c->read->timedout);
         } else {
 
             /*
@@ -508,7 +507,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
             if (rc == NGX_OK) {
                 ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic immediate close drain:%d",
+                               "quic close immediate drain:%d",
                                qc->draining);
 
                 qc->close.log = c->log;
@@ -528,7 +527,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
                 }
 
                 ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic immediate close due to %s error: %ui %s",
+                               "quic close immediate due to %serror: %ui %s",
                                qc->error_app ? "app " : "", qc->error,
                                qc->error_reason ? qc->error_reason : "");
             }
@@ -576,8 +575,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
     ngx_quic_close_sockets(c);
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic part of connection is terminated");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic close completed");
 
     /* may be tested from SSL callback during SSL shutdown */
     c->udp = NULL;
@@ -685,12 +683,13 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
 #if (NGX_DEBUG)
         if (pkt.parsed) {
             ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic packet %s done decr:%d pn:%L perr:%ui rc:%i",
-                           ngx_quic_level_name(pkt.level), pkt.decrypted,
-                           pkt.pn, pkt.error, rc);
+                           "quic packet done rc:%i level:%s"
+                           " decr:%d pn:%L perr:%ui",
+                           rc, ngx_quic_level_name(pkt.level),
+                           pkt.decrypted, pkt.pn, pkt.error);
         } else {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic packet done parse failed rc:%i", rc);
+                           "quic packet done rc:%i parse failed", rc);
         }
 #endif
 
@@ -770,7 +769,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     pkt->parsed = 1;
 
-    c->log->action = "processing quic packet";
+    c->log->action = "handling quic packet";
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic packet rx dcid len:%uz %xV",
@@ -855,10 +854,12 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     }
 
     if (pkt->level != ssl_encryption_initial) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic expected initial, got handshake");
         return NGX_ERROR;
     }
 
-    c->log->action = "processing initial packet";
+    c->log->action = "handling initial packet";
 
     if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
         /* RFC 9000, 7.2.  Negotiating Connection IDs */
