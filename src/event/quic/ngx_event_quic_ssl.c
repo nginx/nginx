@@ -546,7 +546,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
 
-    if (ngx_ssl_create_connection(qc->conf->ssl, c, NGX_SSL_BUFFER) != NGX_OK) {
+    if (ngx_ssl_create_connection(qc->conf->ssl, c, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
