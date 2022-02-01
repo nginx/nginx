@@ -16,7 +16,6 @@ static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 
-static ngx_int_t ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc);
 static void ngx_quic_close_timer_handler(ngx_event_t *ev);
 
 static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
@@ -455,7 +454,9 @@ ngx_quic_input_handler(ngx_event_t *rev)
 void
 ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 {
+    ngx_uint_t              i;
     ngx_pool_t             *pool;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -469,40 +470,8 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
                            "quic close connection early error");
         }
 
-    } else if (ngx_quic_close_quic(c, rc) == NGX_AGAIN) {
-        return;
+        goto quic_done;
     }
-
-    if (c->ssl) {
-        (void) ngx_ssl_shutdown(c);
-    }
-
-    if (c->read->timer_set) {
-        ngx_del_timer(c->read);
-    }
-
-#if (NGX_STAT_STUB)
-    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
-#endif
-
-    c->destroyed = 1;
-
-    pool = c->pool;
-
-    ngx_close_connection(c);
-
-    ngx_destroy_pool(pool);
-}
-
-
-static ngx_int_t
-ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
-{
-    ngx_uint_t              i;
-    ngx_quic_send_ctx_t    *ctx;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
 
     if (!qc->closing) {
 
@@ -582,7 +551,7 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
     }
 
     if (ngx_quic_close_streams(c, qc) == NGX_AGAIN) {
-        return NGX_AGAIN;
+        return;
     }
 
     if (qc->push.timer_set) {
@@ -602,7 +571,7 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
     }
 
     if (qc->close.timer_set) {
-        return NGX_AGAIN;
+        return;
     }
 
     ngx_quic_close_sockets(c);
@@ -613,7 +582,27 @@ ngx_quic_close_quic(ngx_connection_t *c, ngx_int_t rc)
     /* may be tested from SSL callback during SSL shutdown */
     c->udp = NULL;
 
-    return NGX_OK;
+quic_done:
+
+    if (c->ssl) {
+        (void) ngx_ssl_shutdown(c);
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+#if (NGX_STAT_STUB)
+    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
+#endif
+
+    c->destroyed = 1;
+
+    pool = c->pool;
+
+    ngx_close_connection(c);
+
+    ngx_destroy_pool(pool);
 }
 
 
