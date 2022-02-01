@@ -979,7 +979,7 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
         return NGX_ERROR;
     }
 
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 

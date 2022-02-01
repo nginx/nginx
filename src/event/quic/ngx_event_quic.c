@@ -210,16 +210,12 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
 
     rc = ngx_quic_handle_datagram(c, c->buffer, conf);
     if (rc != NGX_OK) {
-        ngx_quic_close_connection(c, rc == NGX_DECLINED ? NGX_DONE : NGX_ERROR);
+        ngx_quic_close_connection(c, rc);
         return;
     }
 
+    /* quic connection is now created */
     qc = ngx_quic_get_connection(c);
-
-    if (qc == NULL) {
-        ngx_quic_close_connection(c, NGX_DONE);
-        return;
-    }
 
     ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     ngx_quic_connstate_dbg(c);
@@ -443,7 +439,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    if (rc == NGX_DECLINED) {
+    if (rc == NGX_DONE) {
         return;
     }
 
@@ -709,13 +705,8 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         }
 #endif
 
-        if (rc == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        if (rc == NGX_DONE) {
-            /* stop further processing */
-            return NGX_DECLINED;
+        if (rc == NGX_ERROR || rc == NGX_DONE) {
+            return rc;
         }
 
         if (rc == NGX_OK) {
@@ -750,7 +741,7 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
     }
 
     if (!good) {
-        return NGX_DECLINED;
+        return NGX_DONE;
     }
 
     qc = ngx_quic_get_connection(c);
