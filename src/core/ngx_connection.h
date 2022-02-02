@@ -184,6 +184,7 @@ struct ngx_connection_s {
     unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
 
     unsigned            need_last_buf:1;
+    unsigned            need_flush_buf:1;
 
 #if (NGX_HAVE_SENDFILE_NODISKIO || NGX_COMPAT)
     unsigned            busy_count:2;

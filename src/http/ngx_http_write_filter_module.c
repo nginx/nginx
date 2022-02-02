@@ -227,7 +227,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (size == 0
         && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
-        && !(last && c->need_last_buf))
+        && !(last && c->need_last_buf)
+        && !(flush && c->need_flush_buf))
     {
         if (last || flush || sync) {
             for (cl = r->out; cl; /* void */) {
