@@ -158,7 +158,14 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
                   ? NGX_QUIC_MIN_INITIAL_SIZE - (p - dst) : 0;
 
             if (min > len) {
-                continue;
+                /* padding can't be applied - avoid sending the packet */
+
+                for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+                    ctx = &qc->send_ctx[i];
+                    ngx_quic_revert_send(c, ctx, preserved_pnum[i]);
+                }
+
+                return NGX_OK;
             }
 
             n = ngx_quic_output_packet(c, ctx, p, len, min);
