@@ -104,7 +104,12 @@ ngx_quic_output(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (in_flight != cg->in_flight && !qc->send_timer_set && !qc->closing) {
+    if (in_flight == cg->in_flight || qc->closing) {
+        /* no ack-eliciting data was sent or we are done */
+        return NGX_OK;
+    }
+
+    if (!qc->send_timer_set) {
         qc->send_timer_set = 1;
         ngx_add_timer(c->read, qc->tp.max_idle_timeout);
     }
