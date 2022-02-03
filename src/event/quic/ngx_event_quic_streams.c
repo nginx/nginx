@@ -762,7 +762,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     if (len == 0) {
         rev->ready = 0;
 
-        if (qs->recv_state == NGX_QUIC_STREAM_RECV_SIZE_KNOWN
+        if (qs->recv_state == NGX_QUIC_STREAM_RECV_DATA_RECVD
             && qs->recv_offset == qs->final_size)
         {
             qs->recv_state = NGX_QUIC_STREAM_RECV_DATA_READ;
@@ -1018,6 +1018,7 @@ ngx_int_t
 ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
+    size_t                    size;
     uint64_t                  last;
     ngx_connection_t         *sc;
     ngx_quic_stream_t        *qs;
@@ -1089,10 +1090,18 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (ngx_quic_write_chain(c, &qs->in, frame->data, f->length,
-                             f->offset - qs->recv_offset, NULL)
+                             f->offset - qs->recv_offset, &size)
         == NGX_CHAIN_ERROR)
     {
         return NGX_ERROR;
+    }
+
+    qs->recv_size += size;
+
+    if (qs->recv_state == NGX_QUIC_STREAM_RECV_SIZE_KNOWN
+        && qs->recv_size == qs->final_size)
+    {
+        qs->recv_state = NGX_QUIC_STREAM_RECV_DATA_RECVD;
     }
 
     if (f->offset == qs->recv_offset) {
