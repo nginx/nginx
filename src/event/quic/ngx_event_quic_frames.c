@@ -554,16 +554,16 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
 
             if (b->sync) {
                 ngx_memcpy(p, in->buf->pos, n);
+
+                if (size) {
+                    *size += n;
+                }
             }
 
             p += n;
             in->buf->pos += n;
             offset += n;
             limit -= n;
-
-            if (size) {
-                *size += n;
-            }
         }
 
         if (b->sync && p == b->last) {
