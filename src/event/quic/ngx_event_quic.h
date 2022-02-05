@@ -78,12 +78,14 @@ struct ngx_quic_stream_s {
     uint64_t                       id;
     uint64_t                       acked;
     uint64_t                       send_max_data;
+    uint64_t                       send_offset;
+    uint64_t                       send_final_size;
     uint64_t                       recv_max_data;
     uint64_t                       recv_offset;
     uint64_t                       recv_window;
     uint64_t                       recv_last;
     uint64_t                       recv_size;
-    uint64_t                       final_size;
+    uint64_t                       recv_final_size;
     ngx_chain_t                   *in;
     ngx_chain_t                   *out;
     ngx_uint_t                     cancelable;  /* unsigned  cancelable:1; */

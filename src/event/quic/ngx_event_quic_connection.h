@@ -114,13 +114,16 @@ struct ngx_quic_socket_s {
 typedef struct {
     ngx_rbtree_t                      tree;
     ngx_rbtree_node_t                 sentinel;
+
     ngx_queue_t                       uninitialized;
+    ngx_queue_t                       free;
 
     uint64_t                          sent;
     uint64_t                          recv_offset;
     uint64_t                          recv_window;
     uint64_t                          recv_last;
     uint64_t                          recv_max_data;
+    uint64_t                          send_offset;
     uint64_t                          send_max_data;
 
     uint64_t                          server_max_streams_uni;

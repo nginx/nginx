@@ -303,6 +303,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ctp->active_connection_id_limit = 2;
 
     ngx_queue_init(&qc->streams.uninitialized);
+    ngx_queue_init(&qc->streams.free);
 
     qc->streams.recv_max_data = qc->tp.initial_max_data;
     qc->streams.recv_window = qc->streams.recv_max_data;

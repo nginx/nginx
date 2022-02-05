@@ -391,6 +391,10 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
         return NGX_ERROR;
     }
 
+    if (f->type == NGX_QUIC_FT_STREAM) {
+        f->u.stream.fin = 0;
+    }
+
     ngx_queue_insert_after(&f->queue, &nf->queue);
 
     return NGX_OK;

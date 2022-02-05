@@ -295,8 +295,6 @@ ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev)
 }
 
 
-/* XXX async & buffered stream writes */
-
 ngx_connection_t *
 ngx_http_v3_create_push_stream(ngx_connection_t *c, uint64_t push_id)
 {
