@@ -3385,6 +3385,12 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
+#ifdef SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY
+            || n == SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY        /*  291 */
+#endif
+#ifdef SSL_R_APPLICATION_DATA_ON_SHUTDOWN
+            || n == SSL_R_APPLICATION_DATA_ON_SHUTDOWN               /*  291 */
+#endif
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
             || n == SSL_R_RENEGOTIATE_EXT_TOO_LONG                   /*  335 */
             || n == SSL_R_RENEGOTIATION_ENCODING_ERR                 /*  336 */
