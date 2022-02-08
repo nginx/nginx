@@ -202,6 +202,10 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->mtu, prev->mtu,
                               NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
+    ngx_conf_merge_size_value(conf->stream_buffer_size,
+                              prev->stream_buffer_size,
+                              65536);
+
     ngx_conf_merge_uint_value(conf->max_concurrent_streams_bidi,
                               prev->max_concurrent_streams_bidi, 16);
 
