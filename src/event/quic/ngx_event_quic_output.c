@@ -165,7 +165,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
             if (min > len) {
                 /* padding can't be applied - avoid sending the packet */
 
-                for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+                while (i-- > 0) {
                     ctx = &qc->send_ctx[i];
                     ngx_quic_revert_send(c, ctx, preserved_pnum[i]);
                 }
