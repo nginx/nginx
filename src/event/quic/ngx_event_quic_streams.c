@@ -883,7 +883,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     ngx_quic_queue_frame(qc, frame);
 
-    if (in) {
+    if (flow == (off_t) n) {
         wev->ready = 0;
     }
 
