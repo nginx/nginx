@@ -1092,7 +1092,6 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
         ngx_queue_remove(q);
 
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        ngx_quic_congestion_ack(c, f);
         ngx_quic_free_frame(c, f);
     }
 
