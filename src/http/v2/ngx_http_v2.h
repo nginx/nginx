@@ -153,12 +153,12 @@ struct ngx_http_v2_connection_s {
     ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
+    ngx_uint_t                       closed_nodes;
     ngx_uint_t                       last_sid;
     ngx_uint_t                       last_push;
 
     time_t                           lingering_time;
 
-    unsigned                         closed_nodes:8;
     unsigned                         settings_ack:1;
     unsigned                         table_update:1;
     unsigned                         blocked:1;

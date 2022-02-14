@@ -19,6 +19,7 @@
          || NGX_HAVE_IP_PKTINFO                                               \
          || (NGX_HAVE_INET6 && NGX_HAVE_IPV6_RECVPKTINFO)))
 #define NGX_HAVE_ADDRINFO_CMSG  1
+
 #endif
 
 
@@ -59,7 +60,6 @@ ngx_int_t ngx_get_srcaddr_cmsg(struct cmsghdr *cmsg,
     struct sockaddr *local_sockaddr);
 
 #endif
-
 
 void ngx_event_recvmsg(ngx_event_t *ev);
 ssize_t ngx_sendmsg(ngx_connection_t *c, struct msghdr *msg, int flags);

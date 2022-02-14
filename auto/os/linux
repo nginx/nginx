@@ -232,9 +232,6 @@ ngx_feature_test="struct crypt_data  cd;
 ngx_include="sys/vfs.h";     . auto/include
 
 
-CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
-
-
 # BPF sockhash
 
 ngx_feature="BPF sockhash"
@@ -293,3 +290,6 @@ ngx_feature_test="socklen_t optlen = sizeof(int);
                   int val;
                   getsockopt(0, SOL_UDP, UDP_SEGMENT, &val, &optlen)"
 . auto/feature
+
+
+CC_AUX_FLAGS="$cc_aux_flags -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"

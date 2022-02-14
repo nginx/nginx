@@ -235,7 +235,7 @@ ngx_stream_write_filter(ngx_stream_session_t *s, ngx_chain_t *in,
     if (size == 0
         && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
         && !(last && c->need_last_buf)
-        && !(c->type == SOCK_DGRAM && flush))
+        && !(flush && c->need_flush_buf))
     {
         if (last || flush || sync) {
             for (cl = *out; cl; /* void */) {

@@ -665,6 +665,7 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     fc->send_chain = ngx_http_v2_send_chain;
     fc->need_last_buf = 1;
+    fc->need_flush_buf = 1;
 
     return ngx_http_v2_filter_send(fc, stream);
 }
@@ -1815,7 +1816,11 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
 static ngx_inline ngx_int_t
 ngx_http_v2_filter_send(ngx_connection_t *fc, ngx_http_v2_stream_t *stream)
 {
-    if (stream->queued == 0) {
+    ngx_connection_t  *c;
+
+    c = stream->connection->connection;
+
+    if (stream->queued == 0 && !c->buffered) {
         fc->buffered &= ~NGX_HTTP_V2_BUFFERED;
         return NGX_OK;
     }

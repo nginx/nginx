@@ -179,6 +179,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         c->recv = ngx_udp_recv;
         c->send = ngx_send;
         c->send_chain = ngx_udp_send_chain;
+
+        c->need_flush_buf = 1;
     }
 
     c->log_error = pc->log_error;
