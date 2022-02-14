@@ -421,6 +421,10 @@ ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
         qb->offset += n;
     }
 
+    if (qb->offset >= qb->last_offset) {
+        qb->last_chain = NULL;
+    }
+
     qb->chain = *ll;
     *ll = NULL;
 
@@ -462,6 +466,10 @@ ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     if (qb->chain == NULL) {
         qb->offset = offset;
     }
+
+    if (qb->offset >= qb->last_offset) {
+        qb->last_chain = NULL;
+    }
 }
 
 
@@ -493,8 +501,14 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     ngx_buf_t    *b;
     ngx_chain_t  *cl, **chain;
 
-    base = qb->offset;
-    chain = &qb->chain;
+    if (qb->last_chain && offset >= qb->last_offset) {
+        base = qb->last_offset;
+        chain = qb->last_chain;
+
+    } else {
+        base = qb->offset;
+        chain = &qb->chain;
+    }
 
     while (in && limit) {
 
@@ -584,6 +598,9 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
             b->sync = 0;
         }
     }
+
+    qb->last_offset = base;
+    qb->last_chain = chain;
 
     return in;
 }
