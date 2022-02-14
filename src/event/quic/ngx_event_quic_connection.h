@@ -160,8 +160,7 @@ typedef struct {
 struct ngx_quic_send_ctx_s {
     enum ssl_encryption_level_t       level;
 
-    ngx_chain_t                      *crypto;
-    uint64_t                          crypto_received;
+    ngx_quic_buffer_t                 crypto;
     uint64_t                          crypto_sent;
 
     uint64_t                          pnum;        /* to be sent */

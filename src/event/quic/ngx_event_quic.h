@@ -49,6 +49,13 @@ typedef enum {
 
 
 typedef struct {
+    uint64_t                       size;
+    uint64_t                       offset;
+    ngx_chain_t                   *chain;
+} ngx_quic_buffer_t;
+
+
+typedef struct {
     ngx_ssl_t                     *ssl;
 
     ngx_flag_t                     retry;
@@ -84,13 +91,12 @@ struct ngx_quic_stream_s {
     uint64_t                       recv_offset;
     uint64_t                       recv_window;
     uint64_t                       recv_last;
-    uint64_t                       recv_size;
     uint64_t                       recv_final_size;
-    ngx_chain_t                   *in;
-    ngx_chain_t                   *out;
-    ngx_uint_t                     cancelable;  /* unsigned  cancelable:1; */
+    ngx_quic_buffer_t              send;
+    ngx_quic_buffer_t              recv;
     ngx_quic_stream_send_state_e   send_state;
     ngx_quic_stream_recv_state_e   recv_state;
+    ngx_uint_t                     cancelable;  /* unsigned  cancelable:1; */
 };
 
 

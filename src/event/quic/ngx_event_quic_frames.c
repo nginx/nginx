@@ -340,6 +340,7 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 {
     size_t                     shrink;
     ngx_quic_frame_t          *nf;
+    ngx_quic_buffer_t          qb;
     ngx_quic_ordered_frame_t  *of, *onf;
 
     switch (f->type) {
@@ -375,6 +376,14 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
         return NGX_ERROR;
     }
 
+    ngx_memzero(&qb, sizeof(ngx_quic_buffer_t));
+    qb.chain = f->data;
+
+    f->data = ngx_quic_read_buffer(c, &qb, of->length);
+    if (f->data == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
+    }
+
     nf = ngx_quic_alloc_frame(c);
     if (nf == NULL) {
         return NGX_ERROR;
@@ -385,11 +394,7 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
     onf->offset += of->length;
     onf->length = shrink;
     nf->len = ngx_quic_create_frame(NULL, nf);
-
-    f->data = ngx_quic_read_chain(c, &nf->data, of->length);
-    if (f->data == NGX_CHAIN_ERROR) {
-        return NGX_ERROR;
-    }
+    nf->data = qb.chain;
 
     if (f->type == NGX_QUIC_FT_STREAM) {
         f->u.stream.fin = 0;
@@ -402,13 +407,13 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 
 
 ngx_chain_t *
-ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
+ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
 {
-    off_t         n;
+    uint64_t      n;
     ngx_buf_t    *b;
     ngx_chain_t  *out, **ll;
 
-    out = *chain;
+    out = qb->chain;
 
     for (ll = &out; *ll; ll = &(*ll)->next) {
         b = (*ll)->buf;
@@ -433,12 +438,50 @@ ngx_quic_read_chain(ngx_connection_t *c, ngx_chain_t **chain, off_t limit)
         }
 
         limit -= n;
+        qb->offset += n;
     }
 
-    *chain = *ll;
+    qb->chain = *ll;
     *ll = NULL;
 
     return out;
+}
+
+
+void
+ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
+    uint64_t offset)
+{
+    size_t        n;
+    ngx_buf_t    *b;
+    ngx_chain_t  *cl;
+
+    while (qb->chain) {
+        if (qb->offset >= offset) {
+            break;
+        }
+
+        cl = qb->chain;
+        b = cl->buf;
+        n = b->last - b->pos;
+
+        if (qb->offset + n > offset) {
+            n = offset - qb->offset;
+            b->pos += n;
+            qb->offset += n;
+            break;
+        }
+
+        qb->offset += n;
+        qb->chain = cl->next;
+
+        cl->next = NULL;
+        ngx_quic_free_chain(c, cl);
+    }
+
+    if (qb->chain == NULL) {
+        qb->offset = offset;
+    }
 }
 
 
@@ -496,17 +539,16 @@ ngx_quic_copy_buf(ngx_connection_t *c, u_char *data, size_t len)
 
 
 ngx_chain_t *
-ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
-    off_t limit, off_t offset, size_t *size)
+ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
+    ngx_chain_t *in, uint64_t limit, uint64_t offset)
 {
-    off_t         n;
     u_char       *p;
+    uint64_t      n, base;
     ngx_buf_t    *b;
-    ngx_chain_t  *cl;
+    ngx_chain_t  *cl, **chain;
 
-    if (size) {
-        *size = 0;
-    }
+    base = qb->offset;
+    chain = &qb->chain;
 
     while (in && limit) {
         cl = *chain;
@@ -526,21 +568,21 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
         b = cl->buf;
         n = b->last - b->pos;
 
-        if (n <= offset) {
-            offset -= n;
+        if (base + n <= offset) {
+            base += n;
             chain = &cl->next;
             continue;
         }
 
-        if (b->sync && offset > 0) {
-            if (ngx_quic_split_chain(c, cl, offset) != NGX_OK) {
+        if (b->sync && offset > base) {
+            if (ngx_quic_split_chain(c, cl, offset - base) != NGX_OK) {
                 return NGX_CHAIN_ERROR;
             }
 
             continue;
         }
 
-        p = b->pos + offset;
+        p = b->pos + (offset - base);
 
         while (in) {
 
@@ -558,10 +600,7 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
 
             if (b->sync) {
                 ngx_memcpy(p, in->buf->pos, n);
-
-                if (size) {
-                    *size += n;
-                }
+                qb->size += n;
             }
 
             p += n;
@@ -585,6 +624,15 @@ ngx_quic_write_chain(ngx_connection_t *c, ngx_chain_t **chain, ngx_chain_t *in,
     }
 
     return in;
+}
+
+
+void
+ngx_quic_free_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb)
+{
+    ngx_quic_free_chain(c, qb->chain);
+
+    qb->chain = NULL;
 }
 
 

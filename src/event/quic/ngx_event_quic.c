@@ -1077,7 +1077,7 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
 
     ctx = ngx_quic_get_send_ctx(qc, level);
 
-    ngx_quic_free_chain(c, ctx->crypto);
+    ngx_quic_free_buffer(c, &ctx->crypto);
 
     while (!ngx_queue_empty(&ctx->sent)) {
         q = ngx_queue_head(&ctx->sent);

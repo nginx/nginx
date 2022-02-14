@@ -331,10 +331,8 @@ ngx_int_t
 ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
-    size_t                    len;
     uint64_t                  last;
-    ngx_buf_t                *b;
-    ngx_chain_t              *cl, **ll;
+    ngx_chain_t              *cl;
     ngx_quic_send_ctx_t      *ctx;
     ngx_quic_connection_t    *qc;
     ngx_quic_crypto_frame_t  *f;
@@ -346,12 +344,12 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     /* no overflow since both values are 62-bit */
     last = f->offset + f->length;
 
-    if (last > ctx->crypto_received + NGX_QUIC_MAX_BUFFERED) {
+    if (last > ctx->crypto.offset + NGX_QUIC_MAX_BUFFERED) {
         qc->error = NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED;
         return NGX_ERROR;
     }
 
-    if (last <= ctx->crypto_received) {
+    if (last <= ctx->crypto.offset) {
         if (pkt->level == ssl_encryption_initial) {
             /* speeding up handshake completion */
 
@@ -368,45 +366,23 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    if (f->offset > ctx->crypto_received) {
-        if (ngx_quic_write_chain(c, &ctx->crypto, frame->data, f->length,
-                                 f->offset - ctx->crypto_received, NULL)
+    if (f->offset == ctx->crypto.offset) {
+        if (ngx_quic_crypto_input(c, frame->data) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        ngx_quic_skip_buffer(c, &ctx->crypto, last);
+
+    } else {
+        if (ngx_quic_write_buffer(c, &ctx->crypto, frame->data, f->length,
+                                  f->offset)
             == NGX_CHAIN_ERROR)
         {
             return NGX_ERROR;
         }
-
-        return NGX_OK;
     }
 
-    ngx_quic_trim_chain(frame->data, ctx->crypto_received - f->offset);
-
-    if (ngx_quic_crypto_input(c, frame->data) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    ngx_quic_trim_chain(ctx->crypto, last - ctx->crypto_received);
-    ctx->crypto_received = last;
-
-    cl = ctx->crypto;
-    ll = &cl;
-    len = 0;
-
-    while (*ll) {
-        b = (*ll)->buf;
-
-        if (b->sync && b->pos != b->last) {
-            /* hole */
-            break;
-        }
-
-        len += b->last - b->pos;
-        ll = &(*ll)->next;
-    }
-
-    ctx->crypto_received += len;
-    ctx->crypto = *ll;
-    *ll = NULL;
+    cl = ngx_quic_read_buffer(c, &ctx->crypto, (uint64_t) -1);
 
     if (cl) {
         if (ngx_quic_crypto_input(c, cl) != NGX_OK) {
