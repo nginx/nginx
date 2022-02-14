@@ -259,26 +259,6 @@ ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
 
 
 void
-ngx_quic_trim_chain(ngx_chain_t *in, size_t size)
-{
-    size_t      n;
-    ngx_buf_t  *b;
-
-    while (in && size > 0) {
-        b = in->buf;
-        n = ngx_min((size_t) (b->last - b->pos), size);
-
-        b->pos += n;
-        size -= n;
-
-        if (b->pos == b->last) {
-            in = in->next;
-        }
-    }
-}
-
-
-void
 ngx_quic_free_chain(ngx_connection_t *c, ngx_chain_t *in)
 {
     ngx_chain_t  *cl;
@@ -551,6 +531,22 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     chain = &qb->chain;
 
     while (in && limit) {
+
+        if (offset < base) {
+            n = ngx_min((uint64_t) (in->buf->last - in->buf->pos),
+                        ngx_min(base - offset, limit));
+
+            in->buf->pos += n;
+            offset += n;
+            limit -= n;
+
+            if (in->buf->pos == in->buf->last) {
+                in = in->next;
+            }
+
+            continue;
+        }
+
         cl = *chain;
 
         if (cl == NULL) {

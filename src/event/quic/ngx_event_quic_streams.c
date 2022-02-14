@@ -1115,11 +1115,6 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    if (f->offset < qs->recv_offset) {
-        ngx_quic_trim_chain(frame->data, qs->recv_offset - f->offset);
-        f->offset = qs->recv_offset;
-    }
-
     if (f->fin) {
         if (qs->recv_final_size != (uint64_t) -1 && qs->recv_final_size != last)
         {
