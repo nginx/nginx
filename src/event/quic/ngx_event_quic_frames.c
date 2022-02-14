@@ -485,40 +485,6 @@ ngx_quic_alloc_chain(ngx_connection_t *c)
 
 
 ngx_chain_t *
-ngx_quic_copy_buf(ngx_connection_t *c, u_char *data, size_t len)
-{
-    size_t        n;
-    ngx_buf_t    *b;
-    ngx_chain_t  *cl, *out, **ll;
-
-    out = NULL;
-    ll = &out;
-
-    while (len) {
-        cl = ngx_quic_alloc_chain(c);
-        if (cl == NULL) {
-            return NGX_CHAIN_ERROR;
-        }
-
-        b = cl->buf;
-        n = ngx_min((size_t) (b->end - b->last), len);
-
-        b->last = ngx_cpymem(b->last, data, n);
-
-        data += n;
-        len -= n;
-
-        *ll = cl;
-        ll = &cl->next;
-    }
-
-    *ll = NULL;
-
-    return out;
-}
-
-
-ngx_chain_t *
 ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     ngx_chain_t *in, uint64_t limit, uint64_t offset)
 {
