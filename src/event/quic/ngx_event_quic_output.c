@@ -476,6 +476,7 @@ ngx_quic_send_segments(ngx_connection_t *c, u_char *buf, size_t len,
 static ngx_uint_t
 ngx_quic_get_padding_level(ngx_connection_t *c)
 {
+    ngx_uint_t              i;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_send_ctx_t    *ctx;
@@ -499,13 +500,15 @@ ngx_quic_get_padding_level(ngx_connection_t *c)
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
         if (f->need_ack) {
-            ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_handshake);
+            for (i = 0; i + 1 < NGX_QUIC_SEND_CTX_LAST; i++) {
+                ctx = &qc->send_ctx[i + 1];
 
-            if (ngx_queue_empty(&ctx->frames)) {
-                return 0;
+                if (ngx_queue_empty(&ctx->frames)) {
+                    break;
+                }
             }
 
-            return 1;
+            return i;
         }
     }
 
