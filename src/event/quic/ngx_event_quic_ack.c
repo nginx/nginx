@@ -834,7 +834,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
-         ctx = &qc->send_ctx[i];
+        ctx = &qc->send_ctx[i];
 
         if (ngx_queue_empty(&ctx->sent)) {
             continue;
@@ -1166,7 +1166,7 @@ ngx_quic_generate_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         return NGX_OK;
     }
 
-    if (ctx->level == ssl_encryption_application)  {
+    if (ctx->level == ssl_encryption_application) {
 
         delay = ngx_current_msec - ctx->ack_delay_start;
         qc = ngx_quic_get_connection(c);

@@ -491,9 +491,9 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
             /* this case also handles some errors from ngx_quic_run() */
 
-             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                            "quic close silent drain:%d timedout:%d",
-                            qc->draining, c->read->timedout);
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic close silent drain:%d timedout:%d",
+                           qc->draining, c->read->timedout);
         } else {
 
             /*
@@ -816,7 +816,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                 {
                     /* packet comes from unknown path, possibly migration */
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                                  "quic too early migration attempt");
+                                   "quic too early migration attempt");
                     return NGX_DONE;
                 }
             }

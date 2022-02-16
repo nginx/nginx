@@ -126,7 +126,7 @@ int ngx_quic_select_socket_by_dcid(struct sk_reuseport_md *ctx)
 
     default:
         debugmsg("nginx quic bpf_sk_select_reuseport err: %d key 0x%llx",
-                  rc, key);
+                 rc, key);
         goto failed;
     }
 

@@ -27,7 +27,7 @@ ngx_int_t
 ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
     u_char *token)
 {
-    ngx_str_t tmp;
+    ngx_str_t  tmp;
 
     tmp.data = secret;
     tmp.len = NGX_QUIC_SR_KEY_LEN;

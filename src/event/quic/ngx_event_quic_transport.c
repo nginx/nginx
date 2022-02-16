@@ -588,7 +588,7 @@ ngx_quic_payload_size(ngx_quic_header_t *pkt, size_t pkt_len)
 
     /* flags, version, dcid and scid with lengths and zero-length token */
     len = 5 + 2 + pkt->dcid.len + pkt->scid.len
-           + (pkt->level == ssl_encryption_initial ? 1 : 0);
+          + (pkt->level == ssl_encryption_initial ? 1 : 0);
 
     if (len > pkt_len) {
         return 0;
@@ -1052,7 +1052,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
             goto error;
         }
 
-        p = ngx_quic_parse_int(p, end,  &f->u.max_stream_data.limit);
+        p = ngx_quic_parse_int(p, end, &f->u.max_stream_data.limit);
         if (p == NULL) {
             goto error;
         }
@@ -1555,7 +1555,7 @@ ngx_quic_create_max_streams(u_char *p, ngx_quic_max_streams_frame_t *ms)
     u_char      *start;
     ngx_uint_t   type;
 
-    type = ms->bidi ?  NGX_QUIC_FT_MAX_STREAMS : NGX_QUIC_FT_MAX_STREAMS2;
+    type = ms->bidi ? NGX_QUIC_FT_MAX_STREAMS : NGX_QUIC_FT_MAX_STREAMS2;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(type);

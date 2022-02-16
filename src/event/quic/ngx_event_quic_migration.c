@@ -108,7 +108,7 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                  "quic stale PATH_RESPONSE ignored");
+                   "quic stale PATH_RESPONSE ignored");
 
     return NGX_OK;
 
@@ -387,7 +387,7 @@ ngx_quic_set_connection_path(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     size_t  len;
 
-    ngx_memcpy(c->sockaddr, path->sockaddr,  path->socklen);
+    ngx_memcpy(c->sockaddr, path->sockaddr, path->socklen);
     c->socklen = path->socklen;
 
     if (c->addr_text.data) {

@@ -38,7 +38,7 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
     qc->tp.original_dcid.len = pkt->odcid.len;
     qc->tp.original_dcid.data = ngx_pstrdup(c->pool, &pkt->odcid);
     if (qc->tp.original_dcid.data == NULL) {
-         return NGX_ERROR;
+        return NGX_ERROR;
     }
 
     /* socket to use for further processing (id auto-generated) */
