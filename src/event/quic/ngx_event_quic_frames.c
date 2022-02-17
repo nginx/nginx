@@ -503,7 +503,7 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
 
     if (qb->last_chain && offset >= qb->last_offset) {
         base = qb->last_offset;
-        chain = qb->last_chain;
+        chain = &qb->last_chain;
 
     } else {
         base = qb->offset;
@@ -600,7 +600,7 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     }
 
     qb->last_offset = base;
-    qb->last_chain = chain;
+    qb->last_chain = *chain;
 
     return in;
 }

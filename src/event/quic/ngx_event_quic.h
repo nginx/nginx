@@ -53,7 +53,7 @@ typedef struct {
     uint64_t                       offset;
     uint64_t                       last_offset;
     ngx_chain_t                   *chain;
-    ngx_chain_t                  **last_chain;
+    ngx_chain_t                   *last_chain;
 } ngx_quic_buffer_t;
 
 
