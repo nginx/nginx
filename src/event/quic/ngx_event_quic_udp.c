@@ -8,36 +8,33 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_event_quic_connection.h>
 
 
-#if !(NGX_WIN32)
-
-static void ngx_close_accepted_udp_connection(ngx_connection_t *c);
-static ssize_t ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf,
-    size_t size);
-static ngx_int_t ngx_insert_udp_connection(ngx_connection_t *c);
-static ngx_connection_t *ngx_lookup_udp_connection(ngx_listening_t *ls,
-    struct sockaddr *sockaddr, socklen_t socklen,
-    struct sockaddr *local_sockaddr, socklen_t local_socklen);
+static void ngx_quic_close_accepted_connection(ngx_connection_t *c);
+static ngx_connection_t *ngx_quic_lookup_connection(ngx_listening_t *ls,
+    ngx_str_t *key, struct sockaddr *local_sockaddr, socklen_t local_socklen);
 
 
 void
-ngx_event_recvmsg(ngx_event_t *ev)
+ngx_quic_recvmsg(ngx_event_t *ev)
 {
-    ssize_t            n;
-    ngx_buf_t          buf;
-    ngx_log_t         *log;
-    ngx_err_t          err;
-    socklen_t          socklen, local_socklen;
-    ngx_event_t       *rev, *wev;
-    struct iovec       iov[1];
-    struct msghdr      msg;
-    ngx_sockaddr_t     sa, lsa;
-    struct sockaddr   *sockaddr, *local_sockaddr;
-    ngx_listening_t   *ls;
-    ngx_event_conf_t  *ecf;
-    ngx_connection_t  *c, *lc;
-    static u_char      buffer[65535];
+    ssize_t             n;
+    ngx_str_t           key;
+    ngx_buf_t           buf;
+    ngx_log_t          *log;
+    ngx_err_t           err;
+    socklen_t           socklen, local_socklen;
+    ngx_event_t        *rev, *wev;
+    struct iovec        iov[1];
+    struct msghdr       msg;
+    ngx_sockaddr_t      sa, lsa;
+    struct sockaddr    *sockaddr, *local_sockaddr;
+    ngx_listening_t    *ls;
+    ngx_event_conf_t   *ecf;
+    ngx_connection_t   *c, *lc;
+    ngx_quic_socket_t  *qsock;
+    static u_char       buffer[65535];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
     u_char             msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
@@ -62,7 +59,8 @@ ngx_event_recvmsg(ngx_event_t *ev)
     ev->ready = 0;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, ev->log, 0,
-                   "recvmsg on %V, ready: %d", &ls->addr_text, ev->available);
+                   "quic recvmsg on %V, ready: %d",
+                   &ls->addr_text, ev->available);
 
     do {
         ngx_memzero(&msg, sizeof(struct msghdr));
@@ -91,11 +89,11 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
             if (err == NGX_EAGAIN) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, err,
-                               "recvmsg() not ready");
+                               "quic recvmsg() not ready");
                 return;
             }
 
-            ngx_log_error(NGX_LOG_ALERT, ev->log, err, "recvmsg() failed");
+            ngx_log_error(NGX_LOG_ALERT, ev->log, err, "quic recvmsg() failed");
 
             return;
         }
@@ -103,7 +101,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
 #if (NGX_HAVE_ADDRINFO_CMSG)
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                          "recvmsg() truncated data");
+                          "quic recvmsg() truncated data");
             continue;
         }
 #endif
@@ -115,17 +113,21 @@ ngx_event_recvmsg(ngx_event_t *ev)
             socklen = sizeof(ngx_sockaddr_t);
         }
 
-        if (socklen == 0) {
+#if (NGX_HAVE_UNIX_DOMAIN)
 
-            /*
-             * on Linux recvmsg() returns zero msg_namelen
-             * when receiving packets from unbound AF_UNIX sockets
-             */
+        if (sockaddr->sa_family == AF_UNIX) {
+            struct sockaddr_un *saun = (struct sockaddr_un *) sockaddr;
 
-            socklen = sizeof(struct sockaddr);
-            ngx_memzero(&sa, sizeof(struct sockaddr));
-            sa.sockaddr.sa_family = ls->sockaddr->sa_family;
+            if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)
+                || saun->sun_path[0] == '\0')
+            {
+                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
+                               "unbound unix socket");
+                goto next;
+            }
         }
+
+#endif
 
         local_sockaddr = ls->sockaddr;
         local_socklen = ls->socklen;
@@ -150,8 +152,11 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 #endif
 
-        c = ngx_lookup_udp_connection(ls, sockaddr, socklen, local_sockaddr,
-                                      local_socklen);
+        if (ngx_quic_get_packet_dcid(ev->log, buffer, n, &key) != NGX_OK) {
+            goto next;
+        }
+
+        c = ngx_quic_lookup_connection(ls, &key, local_sockaddr, local_socklen);
 
         if (c) {
 
@@ -163,7 +168,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
                 c->log->handler = NULL;
 
                 ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "recvmsg: fd:%d n:%z", c->fd, n);
+                               "quic recvmsg: fd:%d n:%z", c->fd, n);
 
                 c->log->handler = handler;
             }
@@ -173,11 +178,17 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
             buf.pos = buffer;
             buf.last = buffer + n;
+            buf.start = buf.pos;
+            buf.end = buffer + sizeof(buffer);
 
-            rev = c->read;
+            qsock = ngx_quic_get_socket(c);
+
+            ngx_memcpy(&qsock->sockaddr.sockaddr, sockaddr, socklen);
+            qsock->socklen = socklen;
 
             c->udp->buffer = &buf;
 
+            rev = c->read;
             rev->ready = 1;
             rev->active = 0;
 
@@ -215,13 +226,13 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
-            ngx_close_accepted_udp_connection(c);
+            ngx_quic_close_accepted_connection(c);
             return;
         }
 
-        c->sockaddr = ngx_palloc(c->pool, socklen);
+        c->sockaddr = ngx_palloc(c->pool, NGX_SOCKADDRLEN);
         if (c->sockaddr == NULL) {
-            ngx_close_accepted_udp_connection(c);
+            ngx_quic_close_accepted_connection(c);
             return;
         }
 
@@ -229,17 +240,11 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
         log = ngx_palloc(c->pool, sizeof(ngx_log_t));
         if (log == NULL) {
-            ngx_close_accepted_udp_connection(c);
+            ngx_quic_close_accepted_connection(c);
             return;
         }
 
         *log = ls->log;
-
-        c->recv = ngx_udp_shared_recv;
-        c->send = ngx_udp_send;
-        c->send_chain = ngx_udp_send_chain;
-
-        c->need_flush_buf = 1;
 
         c->log = log;
         c->pool->log = log;
@@ -248,7 +253,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         if (local_sockaddr == &lsa.sockaddr) {
             local_sockaddr = ngx_palloc(c->pool, local_socklen);
             if (local_sockaddr == NULL) {
-                ngx_close_accepted_udp_connection(c);
+                ngx_quic_close_accepted_connection(c);
                 return;
             }
 
@@ -260,7 +265,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
         c->buffer = ngx_create_temp_buf(c->pool, n);
         if (c->buffer == NULL) {
-            ngx_close_accepted_udp_connection(c);
+            ngx_quic_close_accepted_connection(c);
             return;
         }
 
@@ -295,7 +300,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
         if (ls->addr_ntop) {
             c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
             if (c->addr_text.data == NULL) {
-                ngx_close_accepted_udp_connection(c);
+                ngx_quic_close_accepted_connection(c);
                 return;
             }
 
@@ -303,7 +308,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
                                              c->addr_text.data,
                                              ls->addr_text_max_len, 0);
             if (c->addr_text.len == 0) {
-                ngx_close_accepted_udp_connection(c);
+                ngx_quic_close_accepted_connection(c);
                 return;
             }
         }
@@ -321,17 +326,12 @@ ngx_event_recvmsg(ngx_event_t *ev)
                                      NGX_SOCKADDR_STRLEN, 1);
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
-                           "*%uA recvmsg: %V fd:%d n:%z",
+                           "*%uA quic recvmsg: %V fd:%d n:%z",
                            c->number, &addr, c->fd, n);
         }
 
         }
 #endif
-
-        if (ngx_insert_udp_connection(c) != NGX_OK) {
-            ngx_close_accepted_udp_connection(c);
-            return;
-        }
 
         log->data = NULL;
         log->handler = NULL;
@@ -349,7 +349,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
 
 
 static void
-ngx_close_accepted_udp_connection(ngx_connection_t *c)
+ngx_quic_close_accepted_connection(ngx_connection_t *c)
 {
     ngx_free_connection(c);
 
@@ -365,39 +365,14 @@ ngx_close_accepted_udp_connection(ngx_connection_t *c)
 }
 
 
-static ssize_t
-ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf, size_t size)
-{
-    ssize_t     n;
-    ngx_buf_t  *b;
-
-    if (c->udp == NULL || c->udp->buffer == NULL) {
-        return NGX_AGAIN;
-    }
-
-    b = c->udp->buffer;
-
-    n = ngx_min(b->last - b->pos, (ssize_t) size);
-
-    ngx_memcpy(buf, b->pos, n);
-
-    c->udp->buffer = NULL;
-
-    c->read->ready = 0;
-    c->read->active = 1;
-
-    return n;
-}
-
-
 void
-ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
+ngx_quic_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
 {
-    ngx_int_t               rc;
-    ngx_connection_t       *c, *ct;
-    ngx_rbtree_node_t     **p;
-    ngx_udp_connection_t   *udp, *udpt;
+    ngx_int_t            rc;
+    ngx_connection_t    *c, *ct;
+    ngx_rbtree_node_t  **p;
+    ngx_quic_socket_t   *qsock, *qsockt;
 
     for ( ;; ) {
 
@@ -411,14 +386,14 @@ ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
         } else { /* node->key == temp->key */
 
-            udp = (ngx_udp_connection_t *) node;
-            c = udp->connection;
+            qsock = (ngx_quic_socket_t *) node;
+            c = qsock->udp.connection;
 
-            udpt = (ngx_udp_connection_t *) temp;
-            ct = udpt->connection;
+            qsockt = (ngx_quic_socket_t *) temp;
+            ct = qsockt->udp.connection;
 
-            rc = ngx_cmp_sockaddr(c->sockaddr, c->socklen,
-                                  ct->sockaddr, ct->socklen, 1);
+            rc = ngx_memn2cmp(qsock->sid.id, qsockt->sid.id,
+                              qsock->sid.len, qsockt->sid.len);
 
             if (rc == 0 && c->listening->wildcard) {
                 rc = ngx_cmp_sockaddr(c->local_sockaddr, c->local_socklen,
@@ -443,103 +418,23 @@ ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
 }
 
 
-static ngx_int_t
-ngx_insert_udp_connection(ngx_connection_t *c)
-{
-    uint32_t               hash;
-    ngx_pool_cleanup_t    *cln;
-    ngx_udp_connection_t  *udp;
-
-    if (c->udp) {
-        return NGX_OK;
-    }
-
-    udp = ngx_pcalloc(c->pool, sizeof(ngx_udp_connection_t));
-    if (udp == NULL) {
-        return NGX_ERROR;
-    }
-
-    udp->connection = c;
-
-    ngx_crc32_init(hash);
-    ngx_crc32_update(&hash, (u_char *) c->sockaddr, c->socklen);
-
-    if (c->listening->wildcard) {
-        ngx_crc32_update(&hash, (u_char *) c->local_sockaddr, c->local_socklen);
-    }
-
-    ngx_crc32_final(hash);
-
-    udp->node.key = hash;
-
-    cln = ngx_pool_cleanup_add(c->pool, 0);
-    if (cln == NULL) {
-        return NGX_ERROR;
-    }
-
-    cln->data = c;
-    cln->handler = ngx_delete_udp_connection;
-
-    ngx_rbtree_insert(&c->listening->rbtree, &udp->node);
-
-    c->udp = udp;
-
-    return NGX_OK;
-}
-
-
-void
-ngx_delete_udp_connection(void *data)
-{
-    ngx_connection_t  *c = data;
-
-    if (c->udp == NULL) {
-        return;
-    }
-
-    ngx_rbtree_delete(&c->listening->rbtree, &c->udp->node);
-
-    c->udp = NULL;
-}
-
-
 static ngx_connection_t *
-ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
-    socklen_t socklen, struct sockaddr *local_sockaddr, socklen_t local_socklen)
+ngx_quic_lookup_connection(ngx_listening_t *ls, ngx_str_t *key,
+    struct sockaddr *local_sockaddr, socklen_t local_socklen)
 {
-    uint32_t               hash;
-    ngx_int_t              rc;
-    ngx_connection_t      *c;
-    ngx_rbtree_node_t     *node, *sentinel;
-    ngx_udp_connection_t  *udp;
+    uint32_t            hash;
+    ngx_int_t           rc;
+    ngx_connection_t   *c;
+    ngx_rbtree_node_t  *node, *sentinel;
+    ngx_quic_socket_t  *qsock;
 
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-    if (sockaddr->sa_family == AF_UNIX) {
-        struct sockaddr_un *saun = (struct sockaddr_un *) sockaddr;
-
-        if (socklen <= (socklen_t) offsetof(struct sockaddr_un, sun_path)
-            || saun->sun_path[0] == '\0')
-        {
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
-                           "unbound unix socket");
-            return NULL;
-        }
+    if (key->len == 0) {
+        return NULL;
     }
-
-#endif
 
     node = ls->rbtree.root;
     sentinel = ls->rbtree.sentinel;
-
-    ngx_crc32_init(hash);
-    ngx_crc32_update(&hash, (u_char *) sockaddr, socklen);
-
-    if (ls->wildcard) {
-        ngx_crc32_update(&hash, (u_char *) local_sockaddr, local_socklen);
-    }
-
-    ngx_crc32_final(hash);
+    hash = ngx_crc32_long(key->data, key->len);
 
     while (node != sentinel) {
 
@@ -555,12 +450,11 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
 
         /* hash == node->key */
 
-        udp = (ngx_udp_connection_t *) node;
+        qsock = (ngx_quic_socket_t *) node;
 
-        c = udp->connection;
+        rc = ngx_memn2cmp(key->data, qsock->sid.id, key->len, qsock->sid.len);
 
-        rc = ngx_cmp_sockaddr(sockaddr, socklen,
-                              c->sockaddr, c->socklen, 1);
+        c = qsock->udp.connection;
 
         if (rc == 0 && ls->wildcard) {
             rc = ngx_cmp_sockaddr(local_sockaddr, local_socklen,
@@ -568,6 +462,7 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
         }
 
         if (rc == 0) {
+            c->udp = &qsock->udp;
             return c;
         }
 
@@ -576,13 +471,3 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
 
     return NULL;
 }
-
-#else
-
-void
-ngx_delete_udp_connection(void *data)
-{
-    return;
-}
-
-#endif

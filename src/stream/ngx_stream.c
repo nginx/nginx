@@ -519,8 +519,23 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
 #endif
 
 #if (NGX_STREAM_QUIC)
+
             ls->quic = addr[i].opt.quic;
+
+            if (ls->quic) {
+                ngx_rbtree_init(&ls->rbtree, &ls->sentinel,
+                                ngx_quic_rbtree_insert_value);
+            }
+
 #endif
+
+#if !(NGX_WIN32)
+            if (!ls->quic) {
+                ngx_rbtree_init(&ls->rbtree, &ls->sentinel,
+                                ngx_udp_rbtree_insert_value);
+            }
+#endif
+
             stport = ngx_palloc(cf->pool, sizeof(ngx_stream_port_t));
             if (stport == NULL) {
                 return NGX_CONF_ERROR;

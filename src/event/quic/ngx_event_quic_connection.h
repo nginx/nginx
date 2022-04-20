@@ -107,6 +107,8 @@ struct ngx_quic_socket_s {
     ngx_quic_connection_t            *quic;
     ngx_queue_t                       queue;
     ngx_quic_server_id_t              sid;
+    ngx_sockaddr_t                    sockaddr;
+    socklen_t                         socklen;
     ngx_uint_t                        used; /* unsigned  used:1; */
 };
 

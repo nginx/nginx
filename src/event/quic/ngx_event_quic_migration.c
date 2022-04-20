@@ -264,7 +264,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     len = pkt->raw->last - pkt->raw->start;
 
-    if (c->udp->dgram == NULL) {
+    if (c->udp->buffer == NULL) {
         /* first ever packet in connection, path already exists  */
         path = qc->path;
         goto update;
@@ -278,7 +278,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     {
         path = ngx_queue_data(q, ngx_quic_path_t, queue);
 
-        if (ngx_cmp_sockaddr(c->udp->dgram->sockaddr, c->udp->dgram->socklen,
+        if (ngx_cmp_sockaddr(&qsock->sockaddr.sockaddr, qsock->socklen,
                              path->sockaddr, path->socklen, 1)
             == NGX_OK)
         {
@@ -315,8 +315,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DONE;
     }
 
-    path = ngx_quic_new_path(c, c->udp->dgram->sockaddr,
-                             c->udp->dgram->socklen, cid);
+    path = ngx_quic_new_path(c, &qsock->sockaddr.sockaddr, qsock->socklen, cid);
     if (path == NULL) {
         return NGX_ERROR;
     }

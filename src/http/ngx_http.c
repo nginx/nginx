@@ -1822,7 +1822,14 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->wildcard = addr->opt.wildcard;
 
 #if (NGX_HTTP_V3)
+
     ls->quic = addr->opt.http3;
+
+    if (ls->quic) {
+        ngx_rbtree_init(&ls->rbtree, &ls->sentinel,
+                        ngx_quic_rbtree_insert_value);
+    }
+
 #endif
 
     return ls;

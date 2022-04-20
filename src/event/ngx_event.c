@@ -886,8 +886,16 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
 #else
 
-        rev->handler = (c->type == SOCK_STREAM) ? ngx_event_accept
-                                                : ngx_event_recvmsg;
+        if (c->type == SOCK_STREAM) {
+            rev->handler = ngx_event_accept;
+
+#if (NGX_QUIC)
+        } else if (ls[i].quic) {
+            rev->handler = ngx_quic_recvmsg;
+#endif
+        } else {
+            rev->handler = ngx_event_recvmsg;
+        }
 
 #if (NGX_HAVE_REUSEPORT)
 

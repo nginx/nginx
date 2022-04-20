@@ -430,7 +430,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    b = c->udp->dgram->buffer;
+    b = c->udp->buffer;
 
     rc = ngx_quic_handle_datagram(c, b, NULL);
 
@@ -758,6 +758,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
+    ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
     c->log->action = "parsing quic packet";
@@ -809,8 +810,9 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             }
 
             if (pkt->first) {
-                if (ngx_cmp_sockaddr(c->udp->dgram->sockaddr,
-                                     c->udp->dgram->socklen,
+                qsock = ngx_quic_get_socket(c);
+
+                if (ngx_cmp_sockaddr(&qsock->sockaddr.sockaddr, qsock->socklen,
                                      qc->path->sockaddr, qc->path->socklen, 1)
                     != NGX_OK)
                 {
