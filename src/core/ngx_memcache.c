@@ -18,6 +18,7 @@
 
 #define MC_INVALID_HASH ((ngx_uint_t) - 1)
 #define MC_REQ_POOL_SIZE 1024
+#define SHA256_KEY_LENGTH 64
 
 static int mc_sndbuf_len = 256 * 1024;
 
@@ -74,6 +75,7 @@ static ngx_int_t ngx_memcache_process_any_response
 /* hashing functions to elect a memcached server for caching */
 static ngx_uint_t ngx_memcache_hash (u_char *key, size_t len);
 static ngx_uint_t ngx_memcache_perl_hash (u_char *key, size_t len);
+static ngx_str_t ngx_sha256_hash (ngx_pool_t* p, u_char *key, size_t len);
 
 /* generic event handler to read any memcache response */
 static void ngx_memcache_any_read_handler (ngx_event_t *rev);
@@ -516,24 +518,26 @@ ngx_memcache_do_post (
     mcf = (ngx_memcache_conf_t *)ngx_get_conf(ngx_cycle->conf_ctx, ngx_memcache_module);
     contexts = (mc_context_t *)mcf->contexts.elts;
 
-    h = ngx_memcache_hash(key.data, key.len);
+    ngx_log_debug1 (NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0, "ngx_mc_log, org_key=[%s]", key.data);
+    h = ngx_memcache_hash (key.data, key.len);
 
-    if (h == MC_INVALID_HASH)
-    {
+    ngx_log_debug1 (NGX_LOG_DEBUG_CORE, l, 0,
+        "ngx_mc_log, posting memcache request to cache server #%d", h);
+    mcctx =  contexts + h;
+
+    if (h == MC_INVALID_HASH) {
         ngx_log_error (NGX_LOG_NOTICE, l, 0,
-            "no memcache server available, cannot post request");
+            "ngx_mc_log, no memcache server available, cannot post request");
         w->response_code = mcres_failure_unavailable;
         w->on_failure(w);
         return;
     }
 
-    ngx_log_debug1 (NGX_LOG_DEBUG_CORE, l, 0,
-        "posting memcache request to cache server #%d", h);
-    mcctx =  contexts + h;
-
     if (p == NULL) {
         p = ngx_create_pool(MC_REQ_POOL_SIZE, l);
         if (p == NULL) {
+            ngx_log_error (NGX_LOG_NOTICE, l, 0,
+                "ngx_mc_log, failed to create pool, cannot post request");
             w->response_code = mcres_failure_unavailable;
             w->on_failure(w);
             return;
@@ -541,8 +545,20 @@ ngx_memcache_do_post (
         reclaim = 1;
     }
 
+    key = ngx_sha256_hash (p, key.data, key.len);
+    if (0 == key.len || NULL == key.data) {
+        ngx_log_error (NGX_LOG_NOTICE, l, 0,
+            "ngx_mc_log, failed to hash the key, cannot post request");
+        w->response_code = mcres_failure_unavailable;
+        w->on_failure(w);
+        return;
+    }
+    ngx_log_debug1 (NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0, "ngx_mc_log, hashed_key=[%s]", key.data);
+
     pdu = ngx_memcache_create_pdu(p, w, key, value, ttl, l);
     if (pdu.data == NULL) {
+        ngx_log_error (NGX_LOG_NOTICE, l, 0,
+            "ngx_mc_log, failed to create pdu, cannot post request");
         w->response_code = mcres_failure_normal;
         w->on_failure(w);
         return;
@@ -556,6 +572,8 @@ ngx_memcache_do_post (
 
     r = ngx_pcalloc(p, sizeof(mc_workqueue_t));
     if (r == NULL) {
+        ngx_log_error (NGX_LOG_NOTICE, l, 0,
+            "ngx_mc_log, failed to allocate memory, cannot post request");
         w->response_code = mcres_failure_unavailable;
         w->on_failure(w);
         return;
@@ -579,7 +597,7 @@ ngx_memcache_do_post (
                 ngx_unlock(&mcctx->lock);
 
             ngx_log_error (NGX_LOG_NOTICE, l, 0,
-                    "memcached channel %V orderly shutdown when posting request",
+                    "ngx_mc_log, memcached channel %V orderly shutdown when posting request",
                     mcctx->srvconn->name);
 
             mcctx->status = mcchan_bad;
@@ -593,8 +611,7 @@ ngx_memcache_do_post (
         }
     }
 
-    if (t == pdu.len)
-    {
+    if (t == pdu.len) {
         /* set the read timeout on the server channel *only* if there is no 
            outstanding timer set already (this is to opportunistically catch
            any responses before the stipulated timeout
@@ -615,10 +632,11 @@ ngx_memcache_do_post (
 
     ngx_memcache_wq_enqueue (&mcctx->wq_head, r);
 
-    if (locked)
+    if (locked) {
         ngx_unlock(&mcctx->lock);
-    ngx_log_debug2 (NGX_LOG_DEBUG_CORE, l, 0, "posted request(%p) on server #%d",
-                    r, h);
+    }
+    ngx_log_debug2 (NGX_LOG_DEBUG_CORE, l, 0,
+        "ngx_mc_log, posted request(%p) on server #%d", r, h);
 
     return;
 }
@@ -1982,6 +2000,17 @@ static ngx_uint_t ngx_memcache_perl_hash (u_char *key, size_t len)
     h += (h << 15);
 
     return h;
+}
+
+static ngx_str_t ngx_sha256_hash (ngx_pool_t* p, u_char* key, size_t len)
+{
+    ngx_str_t hashed_key;
+    u_char * digest = ngx_pnalloc(p, SHA256_KEY_LENGTH);
+    SHA256(key, len, digest);
+    hashed_key.data = ngx_memcache_hexstr(digest, SHA256_KEY_LENGTH);
+    hashed_key.len = strlen((const char *)hashed_key.data);
+
+    return hashed_key;
 }
 
 static inline void
