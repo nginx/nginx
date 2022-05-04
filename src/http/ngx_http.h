@@ -167,6 +167,14 @@ ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 #endif
 
 
+#if (NGX_HTTP_V2)
+ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
+    u_char **dst, ngx_uint_t last, ngx_log_t *log);
+size_t ngx_http_huff_encode(u_char *src, size_t len, u_char *dst,
+    ngx_uint_t lower);
+#endif
+
+
 extern ngx_module_t  ngx_http_module;
 
 extern ngx_str_t  ngx_http_html_default_types[];

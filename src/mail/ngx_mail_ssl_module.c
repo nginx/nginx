@@ -14,6 +14,12 @@
 #define NGX_DEFAULT_ECDH_CURVE  "auto"
 
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+static int ngx_mail_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **out, unsigned char *outlen,
+    const unsigned char *in, unsigned int inlen, void *arg);
+#endif
+
 static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
@@ -25,6 +31,9 @@ static char *ngx_mail_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_mail_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+
+static char *ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
 
 
 static ngx_conf_enum_t  ngx_mail_starttls_state[] = {
@@ -59,6 +68,10 @@ static ngx_conf_enum_t  ngx_mail_ssl_verify[] = {
 static ngx_conf_deprecated_t  ngx_mail_ssl_deprecated = {
     ngx_conf_deprecated, "ssl", "listen ... ssl"
 };
+
+
+static ngx_conf_post_t  ngx_mail_ssl_conf_command_post =
+    { ngx_mail_ssl_conf_command_check };
 
 
 static ngx_command_t  ngx_mail_ssl_commands[] = {
@@ -196,6 +209,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       offsetof(ngx_mail_ssl_conf_t, crl),
       NULL },
 
+    { ngx_string("ssl_conf_command"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_keyval_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, conf_commands),
+      &ngx_mail_ssl_conf_command_post },
+
       ngx_null_command
 };
 
@@ -230,6 +250,54 @@ ngx_module_t  ngx_mail_ssl_module = {
 static ngx_str_t ngx_mail_ssl_sess_id_ctx = ngx_string("MAIL");
 
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+static int
+ngx_mail_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
+    unsigned char *outlen, const unsigned char *in, unsigned int inlen,
+    void *arg)
+{
+    unsigned int               srvlen;
+    unsigned char             *srv;
+    ngx_connection_t          *c;
+    ngx_mail_session_t        *s;
+    ngx_mail_core_srv_conf_t  *cscf;
+#if (NGX_DEBUG)
+    unsigned int               i;
+#endif
+
+    c = ngx_ssl_get_connection(ssl_conn);
+    s = c->data;
+
+#if (NGX_DEBUG)
+    for (i = 0; i < inlen; i += in[i] + 1) {
+        ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                       "SSL ALPN supported by client: %*s",
+                       (size_t) in[i], &in[i + 1]);
+    }
+#endif
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    srv = cscf->protocol->alpn.data;
+    srvlen = cscf->protocol->alpn.len;
+
+    if (SSL_select_next_proto((unsigned char **) out, outlen, srv, srvlen,
+                              in, inlen)
+        != OPENSSL_NPN_NEGOTIATED)
+    {
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "SSL ALPN selected: %*s", (size_t) *outlen, *out);
+
+    return SSL_TLSEXT_ERR_OK;
+}
+
+#endif
+
+
 static void *
 ngx_mail_ssl_create_conf(ngx_conf_t *cf)
 {
@@ -259,6 +327,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     scf->certificates = NGX_CONF_UNSET_PTR;
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
     scf->passwords = NGX_CONF_UNSET_PTR;
+    scf->conf_commands = NGX_CONF_UNSET_PTR;
     scf->prefer_server_ciphers = NGX_CONF_UNSET;
     scf->verify = NGX_CONF_UNSET_UINT;
     scf->verify_depth = NGX_CONF_UNSET_UINT;
@@ -315,6 +384,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->crl, prev->crl, "");
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
+
+    ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
 
 
     conf->ssl.log = cf->log;
@@ -377,6 +448,17 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    SSL_CTX_set_alpn_select_cb(conf->ssl.ctx, ngx_mail_ssl_alpn_select, NULL);
+#endif
+
+    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
+                        conf->prefer_server_ciphers)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
                              conf->certificate_keys, conf->passwords)
         != NGX_OK)
@@ -411,13 +493,6 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
-    }
-
-    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
-                        conf->prefer_server_ciphers)
-        != NGX_OK)
-    {
-        return NGX_CONF_ERROR;
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
@@ -458,6 +533,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_session_ticket_keys(cf, &conf->ssl, conf->session_ticket_keys)
         != NGX_OK)
     {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
@@ -653,4 +732,15 @@ invalid:
                        "invalid session cache \"%V\"", &value[i]);
 
     return NGX_CONF_ERROR;
+}
+
+
+static char *
+ngx_mail_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
+{
+#ifndef SSL_CONF_FLAG_FILE
+    return "is not supported on this platform";
+#else
+    return NGX_CONF_OK;
+#endif
 }

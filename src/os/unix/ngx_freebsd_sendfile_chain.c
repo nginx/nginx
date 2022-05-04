@@ -32,23 +32,22 @@
 ngx_chain_t *
 ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    int               rc, flags;
-    off_t             send, prev_send, sent;
-    size_t            file_size;
-    ssize_t           n;
-    ngx_uint_t        eintr, eagain;
-    ngx_err_t         err;
-    ngx_buf_t        *file;
-    ngx_event_t      *wev;
-    ngx_chain_t      *cl;
-    ngx_iovec_t       header, trailer;
-    struct sf_hdtr    hdtr;
-    struct iovec      headers[NGX_IOVS_PREALLOCATE];
-    struct iovec      trailers[NGX_IOVS_PREALLOCATE];
-#if (NGX_HAVE_AIO_SENDFILE)
-    ngx_uint_t        ebusy;
-    ngx_event_aio_t  *aio;
+    int              rc, flags;
+    off_t            send, prev_send, sent;
+    size_t           file_size;
+    ssize_t          n;
+    ngx_err_t        err;
+    ngx_buf_t       *file;
+    ngx_uint_t       eintr, eagain;
+#if (NGX_HAVE_SENDFILE_NODISKIO)
+    ngx_uint_t       ebusy;
 #endif
+    ngx_event_t     *wev;
+    ngx_chain_t     *cl;
+    ngx_iovec_t      header, trailer;
+    struct sf_hdtr   hdtr;
+    struct iovec     headers[NGX_IOVS_PREALLOCATE];
+    struct iovec     trailers[NGX_IOVS_PREALLOCATE];
 
     wev = c->write;
 
@@ -77,11 +76,6 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     eagain = 0;
     flags = 0;
 
-#if (NGX_HAVE_AIO_SENDFILE && NGX_SUPPRESS_WARN)
-    aio = NULL;
-    file = NULL;
-#endif
-
     header.iovs = headers;
     header.nalloc = NGX_IOVS_PREALLOCATE;
 
@@ -90,7 +84,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     for ( ;; ) {
         eintr = 0;
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_SENDFILE_NODISKIO)
         ebusy = 0;
 #endif
         prev_send = send;
@@ -179,9 +173,14 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             sent = 0;
 
-#if (NGX_HAVE_AIO_SENDFILE)
-            aio = file->file->aio;
-            flags = (aio && aio->preload_handler) ? SF_NODISKIO : 0;
+#if (NGX_HAVE_SENDFILE_NODISKIO)
+
+            flags = (c->busy_count <= 2) ? SF_NODISKIO : 0;
+
+            if (file->file->directio) {
+                flags |= SF_NOCACHE;
+            }
+
 #endif
 
             rc = sendfile(file->file->fd, c->fd, file->file_pos,
@@ -199,7 +198,7 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                     eintr = 1;
                     break;
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_SENDFILE_NODISKIO)
                 case NGX_EBUSY:
                     ebusy = 1;
                     break;
@@ -252,54 +251,30 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
         in = ngx_chain_update_sent(in, sent);
 
-#if (NGX_HAVE_AIO_SENDFILE)
+#if (NGX_HAVE_SENDFILE_NODISKIO)
 
         if (ebusy) {
-            if (aio->event.active) {
-                /*
-                 * tolerate duplicate calls; they can happen due to subrequests
-                 * or multiple calls of the next body filter from a filter
-                 */
-
-                if (sent) {
-                    c->busy_count = 0;
-                }
-
-                return in;
-            }
-
             if (sent == 0) {
                 c->busy_count++;
 
-                if (c->busy_count > 2) {
-                    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                                  "sendfile(%V) returned busy again",
-                                  &file->file->name);
-
-                    c->busy_count = 0;
-                    aio->preload_handler = NULL;
-
-                    send = prev_send;
-                    continue;
-                }
+                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "sendfile() busy, count:%d", c->busy_count);
 
             } else {
                 c->busy_count = 0;
             }
 
-            n = aio->preload_handler(file);
-
-            if (n > 0) {
-                send = prev_send + sent;
-                continue;
+            if (wev->posted) {
+                ngx_delete_posted_event(wev);
             }
 
+            ngx_post_event(wev, &ngx_posted_next_events);
+
+            wev->ready = 0;
             return in;
         }
 
-        if (flags == SF_NODISKIO) {
-            c->busy_count = 0;
-        }
+        c->busy_count = 0;
 
 #endif
 

@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd December 5, 2019
+.Dd November 5, 2020
 .Dt NGINX 8
 .Os
 .Sh NAME
@@ -35,6 +35,7 @@
 .Nm
 .Op Fl ?hqTtVv
 .Op Fl c Ar file
+.Op Fl e Ar file
 .Op Fl g Ar directives
 .Op Fl p Ar prefix
 .Op Fl s Ar signal
@@ -54,6 +55,12 @@ Print help.
 .It Fl c Ar file
 Use an alternative configuration
 .Ar file .
+.It Fl e Ar file
+Use an alternative error log
+.Ar file .
+Special value
+.Cm stderr
+indicates that the standard error output should be used.
 .It Fl g Ar directives
 Set global configuration directives.
 See
@@ -198,10 +205,10 @@ Development of
 started in 2002, with the first public release on October 4, 2004.
 .Sh AUTHORS
 .An -nosplit
-.An Igor Sysoev Aq igor@sysoev.ru .
+.An Igor Sysoev Aq Mt igor@sysoev.ru .
 .Pp
 This manual page was originally written by
-.An Sergey A. Osokin Aq osa@FreeBSD.org.ru
+.An Sergey A. Osokin Aq Mt osa@FreeBSD.org.ru
 as a result of compiling many
 .Nm
 documents from all over the world.

@@ -179,6 +179,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         c->recv = ngx_udp_recv;
         c->send = ngx_send;
         c->send_chain = ngx_udp_send_chain;
+
+        c->need_flush_buf = 1;
     }
 
     c->log_error = pc->log_error;
@@ -192,6 +194,8 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
     pc->connection = c;
 
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+
+    c->start_time = ngx_current_msec;
 
     if (ngx_add_conn) {
         if (ngx_add_conn(c) == NGX_ERROR) {

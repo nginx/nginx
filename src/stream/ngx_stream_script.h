@@ -112,6 +112,8 @@ ngx_int_t ngx_stream_compile_complex_value(
     ngx_stream_compile_complex_value_t *ccv);
 char *ngx_stream_set_complex_value_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+char *ngx_stream_set_complex_value_zero_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 char *ngx_stream_set_complex_value_size_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 

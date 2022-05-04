@@ -124,6 +124,7 @@ STREAM_GEOIP=NO
 STREAM_MAP=YES
 STREAM_SPLIT_CLIENTS=YES
 STREAM_RETURN=YES
+STREAM_SET=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
 STREAM_UPSTREAM_RANDOM=YES
@@ -131,8 +132,10 @@ STREAM_UPSTREAM_ZONE=YES
 STREAM_SSL_PREREAD=NO
 
 DYNAMIC_MODULES=
+DYNAMIC_MODULES_SRCS=
 
 NGX_ADDONS=
+NGX_ADDON_SRCS=
 NGX_ADDON_DEPS=
 DYNAMIC_ADDONS=
 
@@ -143,6 +146,7 @@ PCRE=NONE
 PCRE_OPT=
 PCRE_CONF_OPT=
 PCRE_JIT=NO
+PCRE2=YES
 
 USE_OPENSSL=NO
 OPENSSL=NONE
@@ -324,6 +328,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --without-stream_split_clients_module)
                                          STREAM_SPLIT_CLIENTS=NO    ;;
         --without-stream_return_module)  STREAM_RETURN=NO           ;;
+        --without-stream_set_module)     STREAM_SET=NO              ;;
         --without-stream_upstream_hash_module)
                                          STREAM_UPSTREAM_HASH=NO    ;;
         --without-stream_upstream_least_conn_module)
@@ -353,6 +358,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-pcre=*)                   PCRE="$value"              ;;
         --with-pcre-opt=*)               PCRE_OPT="$value"          ;;
         --with-pcre-jit)                 PCRE_JIT=YES               ;;
+        --without-pcre2)                 PCRE2=DISABLED             ;;
 
         --with-openssl=*)                OPENSSL="$value"           ;;
         --with-openssl-opt=*)            OPENSSL_OPT="$value"       ;;
@@ -538,6 +544,7 @@ cat << END
   --without-stream_split_clients_module
                                      disable ngx_stream_split_clients_module
   --without-stream_return_module     disable ngx_stream_return_module
+  --without-stream_set_module        disable ngx_stream_set_module
   --without-stream_upstream_hash_module
                                      disable ngx_stream_upstream_hash_module
   --without-stream_upstream_least_conn_module
@@ -568,6 +575,7 @@ cat << END
   --with-pcre=DIR                    set path to PCRE library sources
   --with-pcre-opt=OPTIONS            set additional build options for PCRE
   --with-pcre-jit                    build PCRE with JIT compilation support
+  --without-pcre2                    do not use PCRE2 library
 
   --with-zlib=DIR                    set path to zlib library sources
   --with-zlib-opt=OPTIONS            set additional build options for zlib

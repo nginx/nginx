@@ -510,6 +510,10 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->ipv6only = addr[i].opt.ipv6only;
 #endif
 
+#if (NGX_HAVE_TCP_FASTOPEN)
+            ls->fastopen = addr[i].opt.fastopen;
+#endif
+
 #if (NGX_HAVE_REUSEPORT)
             ls->reuseport = addr[i].opt.reuseport;
 #endif

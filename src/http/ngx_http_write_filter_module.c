@@ -227,7 +227,8 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (size == 0
         && !(c->buffered & NGX_LOWLEVEL_BUFFERED)
-        && !(last && c->need_last_buf))
+        && !(last && c->need_last_buf)
+        && !(flush && c->need_flush_buf))
     {
         if (last || flush || sync) {
             for (cl = r->out; cl; /* void */) {
@@ -321,18 +322,13 @@ ngx_http_write_filter(ngx_http_request_t *r, ngx_chain_t *in)
         delay = (ngx_msec_t) ((nsent - sent) * 1000 / r->limit_rate);
 
         if (delay > 0) {
-            limit = 0;
             c->write->delayed = 1;
             ngx_add_timer(c->write, delay);
         }
     }
 
-    if (limit
-        && c->write->ready
-        && c->sent - sent >= limit - (off_t) (2 * ngx_pagesize))
-    {
-        c->write->delayed = 1;
-        ngx_add_timer(c->write, 1);
+    if (chain && c->write->ready && !c->write->delayed) {
+        ngx_post_event(c->write, &ngx_posted_next_events);
     }
 
     for (cl = r->out; cl && cl != chain; /* void */) {

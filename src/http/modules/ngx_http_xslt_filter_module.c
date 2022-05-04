@@ -233,6 +233,7 @@ ngx_http_xslt_header_filter(ngx_http_request_t *r)
     ngx_http_set_ctx(r, ctx, ngx_http_xslt_filter_module);
 
     r->main_filter_need_in_memory = 1;
+    r->allow_ranges = 0;
 
     return NGX_OK;
 }

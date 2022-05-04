@@ -960,6 +960,22 @@ ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
         return NGX_OK;
     }
 
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "input data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+        p->upstream_done = 1;
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        return NGX_OK;
+    }
+
     cl = ngx_chain_get_free_buf(p->pool, &p->free);
     if (cl == NULL) {
         return NGX_ERROR;
@@ -984,6 +1000,18 @@ ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     p->last_in = &cl->next;
 
     if (p->length == -1) {
+        return NGX_OK;
+    }
+
+    if (b->last - b->pos > p->length) {
+
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent more data than specified in "
+                      "\"Content-Length\" header");
+
+        b->last = b->pos + p->length;
+        p->upstream_done = 1;
+
         return NGX_OK;
     }
 

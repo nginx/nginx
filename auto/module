@@ -17,7 +17,6 @@ if [ "$ngx_module_link" = DYNAMIC ]; then
     done
 
     DYNAMIC_MODULES="$DYNAMIC_MODULES $ngx_module"
-    eval ${ngx_module}_SRCS=\"$ngx_module_srcs\"
 
     eval ${ngx_module}_MODULES=\"$ngx_module_name\"
 
@@ -30,6 +29,30 @@ if [ "$ngx_module_link" = DYNAMIC ]; then
     else
         eval ${ngx_module}_ORDER=\"$ngx_module_order\"
     fi
+
+    srcs=
+    shrd=
+    for src in $ngx_module_srcs
+    do
+        found=no
+        for old in $DYNAMIC_MODULES_SRCS
+        do
+            if [ $src = $old ]; then
+                found=yes
+                break
+            fi
+        done
+
+        if [ $found = no ]; then
+            srcs="$srcs $src"
+        else
+            shrd="$shrd $src"
+        fi
+    done
+    eval ${ngx_module}_SRCS=\"$srcs\"
+    eval ${ngx_module}_SHRD=\"$shrd\"
+
+    DYNAMIC_MODULES_SRCS="$DYNAMIC_MODULES_SRCS $srcs"
 
     if test -n "$ngx_module_incs"; then
         CORE_INCS="$CORE_INCS $ngx_module_incs"
@@ -107,7 +130,24 @@ elif [ "$ngx_module_link" = ADDON ]; then
     eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
                                       $ngx_module_name\"
 
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_module_srcs"
+    srcs=
+    for src in $ngx_module_srcs
+    do
+        found=no
+        for old in $NGX_ADDON_SRCS
+        do
+            if [ $src = $old ]; then
+                found=yes
+                break
+            fi
+        done
+
+        if [ $found = no ]; then
+            srcs="$srcs $src"
+        fi
+    done
+
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $srcs"
 
     if test -n "$ngx_module_incs"; then
         eval ${ngx_var}_INCS=\"\$${ngx_var}_INCS $ngx_module_incs\"

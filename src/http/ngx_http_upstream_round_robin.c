@@ -10,8 +10,8 @@
 #include <ngx_http.h>
 
 
-#define ngx_http_upstream_tries(p) ((p)->number                               \
-                                    + ((p)->next ? (p)->next->number : 0))
+#define ngx_http_upstream_tries(p) ((p)->tries                                \
+                                    + ((p)->next ? (p)->next->tries : 0))
 
 
 static ngx_http_upstream_rr_peer_t *ngx_http_upstream_get_peer(
@@ -32,7 +32,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us)
 {
     ngx_url_t                      u;
-    ngx_uint_t                     i, j, n, w;
+    ngx_uint_t                     i, j, n, w, t;
     ngx_http_upstream_server_t    *server;
     ngx_http_upstream_rr_peer_t   *peer, **peerp;
     ngx_http_upstream_rr_peers_t  *peers, *backup;
@@ -44,6 +44,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
         n = 0;
         w = 0;
+        t = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
             if (server[i].backup) {
@@ -52,6 +53,10 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
             n += server[i].naddrs;
             w += server[i].naddrs * server[i].weight;
+
+            if (!server[i].down) {
+                t += server[i].naddrs;
+            }
         }
 
         if (n == 0) {
@@ -75,6 +80,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         peers->number = n;
         peers->weighted = (w != n);
         peers->total_weight = w;
+        peers->tries = t;
         peers->name = &us->host;
 
         n = 0;
@@ -110,6 +116,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
         n = 0;
         w = 0;
+        t = 0;
 
         for (i = 0; i < us->servers->nelts; i++) {
             if (!server[i].backup) {
@@ -118,6 +125,10 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
             n += server[i].naddrs;
             w += server[i].naddrs * server[i].weight;
+
+            if (!server[i].down) {
+                t += server[i].naddrs;
+            }
         }
 
         if (n == 0) {
@@ -139,6 +150,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
         backup->number = n;
         backup->weighted = (w != n);
         backup->total_weight = w;
+        backup->tries = t;
         backup->name = &us->host;
 
         n = 0;
@@ -214,6 +226,7 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     peers->number = n;
     peers->weighted = 0;
     peers->total_weight = n;
+    peers->tries = n;
     peers->name = &us->host;
 
     peerp = &peers->peer;
@@ -332,6 +345,7 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
 
     peers->single = (ur->naddrs == 1);
     peers->number = ur->naddrs;
+    peers->tries = ur->naddrs;
     peers->name = &ur->host;
 
     if (ur->sockaddr) {

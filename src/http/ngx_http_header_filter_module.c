@@ -197,6 +197,10 @@ ngx_http_header_filter(ngx_http_request_t *r)
         }
     }
 
+    if (r->keepalive && (ngx_terminate || ngx_exiting)) {
+        r->keepalive = 0;
+    }
+
     len = sizeof("HTTP/1.x ") - 1 + sizeof(CRLF) - 1
           /* the end of the header */
           + sizeof(CRLF) - 1;

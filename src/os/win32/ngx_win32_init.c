@@ -295,7 +295,7 @@ ngx_os_status(ngx_log_t *log)
         osviex_stub = (ngx_osviex_stub_t *) &osvi.wServicePackMinor;
 
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "OS: %ud build:%ud, \"%s\", suite:%Xd, type:%ud",
+                      "OS: %ui build:%ud, \"%s\", suite:%Xd, type:%ud",
                       ngx_win32_version, osvi.dwBuildNumber, osvi.szCSDVersion,
                       osviex_stub->wSuiteMask, osviex_stub->wProductType);
 
@@ -305,7 +305,7 @@ ngx_os_status(ngx_log_t *log)
             /* Win9x build */
 
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "OS: %u build:%ud.%ud.%ud, \"%s\"",
+                          "OS: %ui build:%ud.%ud.%ud, \"%s\"",
                           ngx_win32_version,
                           osvi.dwBuildNumber >> 24,
                           (osvi.dwBuildNumber >> 16) & 0xff,
@@ -321,7 +321,7 @@ ngx_os_status(ngx_log_t *log)
              * and we do not support VER_PLATFORM_WIN32s at all
              */
 
-            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %ud build:%ud, \"%s\"",
+            ngx_log_error(NGX_LOG_INFO, log, 0, "OS: %ui build:%ud, \"%s\"",
                           ngx_win32_version, osvi.dwBuildNumber,
                           osvi.szCSDVersion);
         }

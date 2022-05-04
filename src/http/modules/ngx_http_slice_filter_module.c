@@ -180,6 +180,11 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
     r->headers_out.content_range->hash = 0;
     r->headers_out.content_range = NULL;
 
+    if (r->headers_out.accept_ranges) {
+        r->headers_out.accept_ranges->hash = 0;
+        r->headers_out.accept_ranges = NULL;
+    }
+
     r->allow_ranges = 1;
     r->subrequest_ranges = 1;
     r->single_range = 1;

@@ -42,10 +42,12 @@ typedef struct {
     ngx_str_t        client_certificate;
     ngx_str_t        trusted_certificate;
     ngx_str_t        crl;
+    ngx_str_t        alpn;
 
     ngx_str_t        ciphers;
 
     ngx_array_t     *passwords;
+    ngx_array_t     *conf_commands;
 
     ngx_shm_zone_t  *shm_zone;
 

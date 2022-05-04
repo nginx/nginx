@@ -68,6 +68,7 @@ struct ngx_http_upstream_rr_peers_s {
 #endif
 
     ngx_uint_t                      total_weight;
+    ngx_uint_t                      tries;
 
     unsigned                        single:1;
     unsigned                        weighted:1;

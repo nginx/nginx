@@ -14,6 +14,8 @@ extern "C" {
   #include <ngx_mail_pop3_module.h>
   #include <ngx_mail_imap_module.h>
   #include <ngx_mail_smtp_module.h>
+
+  #include <ngx_stream.h>
 }
 
 // nginx header files should go before other, because they define 64-bit off_t
