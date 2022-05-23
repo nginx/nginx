@@ -1737,7 +1737,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
 
                 cl->buf->temporary = (n ? 1 : 0);
                 cl->buf->last_buf = src->read->eof;
-                cl->buf->flush = 1;
+                cl->buf->flush = !src->read->eof;
 
                 (*packets)++;
                 *received += n;
