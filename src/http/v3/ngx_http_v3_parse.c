@@ -474,7 +474,13 @@ done:
     }
 
     if (st->sign) {
+        if (st->insert_count <= st->delta_base) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent negative base");
+            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+        }
+
         st->base = st->insert_count - st->delta_base - 1;
+
     } else {
         st->base = st->insert_count + st->delta_base;
     }
