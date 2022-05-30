@@ -1827,6 +1827,10 @@ static ngx_int_t
 ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
+    if (ngx_http_process_header_line(r, h, offset) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (ngx_strcasestrn(h->value.data, "close", 5 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
