@@ -5175,6 +5175,9 @@ static ngx_int_t
 ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
+    u_char                *p;
+    size_t                 len;
+    ngx_str_t              vary;
     ngx_table_elt_t      **ph;
     ngx_http_upstream_t   *u;
 
@@ -5192,17 +5195,52 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (r->cache == NULL) {
+    if (r->cache == NULL || !u->cacheable) {
         return NGX_OK;
     }
 
-    if (h->value.len > NGX_HTTP_CACHE_VARY_LEN
-        || (h->value.len == 1 && h->value.data[0] == '*'))
-    {
+    if (h->value.len == 1 && h->value.data[0] == '*') {
+        u->cacheable = 0;
+        return NGX_OK;
+    }
+
+    if (u->headers_in.vary->next) {
+
+        len = 0;
+
+        for (h = u->headers_in.vary; h; h = h->next) {
+            len += h->value.len + 2;
+        }
+
+        len -= 2;
+
+        p = ngx_pnalloc(r->pool, len);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        vary.len = len;
+        vary.data = p;
+
+        for (h = u->headers_in.vary; h; h = h->next) {
+            p = ngx_copy(p, h->value.data, h->value.len);
+
+            if (h->next == NULL) {
+                break;
+            }
+
+            *p++ = ','; *p++ = ' ';
+        }
+
+    } else {
+        vary = h->value;
+    }
+
+    if (vary.len > NGX_HTTP_CACHE_VARY_LEN) {
         u->cacheable = 0;
     }
 
-    r->cache->vary = h->value;
+    r->cache->vary = vary;
 
 #endif
 
