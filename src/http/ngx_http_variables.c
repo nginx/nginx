@@ -919,7 +919,7 @@ static ngx_int_t
 ngx_http_variable_unknown_header_in(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                             &r->headers_in.headers.part,
                                             sizeof("http_") - 1);
 }
@@ -929,7 +929,7 @@ static ngx_int_t
 ngx_http_variable_unknown_header_out(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                             &r->headers_out.headers.part,
                                             sizeof("sent_http_") - 1);
 }
@@ -939,19 +939,26 @@ static ngx_int_t
 ngx_http_variable_unknown_trailer_out(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                             &r->headers_out.trailers.part,
                                             sizeof("sent_trailer_") - 1);
 }
 
 
 ngx_int_t
-ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
+ngx_http_variable_unknown_header(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, ngx_str_t *var,
     ngx_list_part_t *part, size_t prefix)
 {
-    u_char            ch;
+    u_char           *p, ch;
+    size_t            len;
     ngx_uint_t        i, n;
-    ngx_table_elt_t  *header;
+    ngx_table_elt_t  *header, *h, **ph;
+
+    ph = &h;
+#if (NGX_SUPPRESS_WARN)
+    len = 0;
+#endif
 
     header = part->elts;
 
@@ -971,7 +978,11 @@ ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
             continue;
         }
 
-        for (n = 0; n + prefix < var->len && n < header[i].key.len; n++) {
+        if (header[i].key.len != var->len - prefix) {
+            continue;
+        }
+
+        for (n = 0; n < var->len - prefix; n++) {
             ch = header[i].key.data[n];
 
             if (ch >= 'A' && ch <= 'Z') {
@@ -986,18 +997,59 @@ ngx_http_variable_unknown_header(ngx_http_variable_value_t *v, ngx_str_t *var,
             }
         }
 
-        if (n + prefix == var->len && n == header[i].key.len) {
-            v->len = header[i].value.len;
-            v->valid = 1;
-            v->no_cacheable = 0;
-            v->not_found = 0;
-            v->data = header[i].value.data;
-
-            return NGX_OK;
+        if (n != var->len - prefix) {
+            continue;
         }
+
+        len += header[i].value.len + 2;
+
+        *ph = &header[i];
+        ph = &header[i].next;
     }
 
-    v->not_found = 1;
+    *ph = NULL;
+
+    if (h == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    len -= 2;
+
+    if (h->next == NULL) {
+
+        v->len = h->value.len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = h->value.data;
+
+        return NGX_OK;
+    }
+
+    p = ngx_pnalloc(r->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    for ( ;; ) {
+
+        p = ngx_copy(p, h->value.data, h->value.len);
+
+        if (h->next == NULL) {
+            break;
+        }
+
+        *p++ = ','; *p++ = ' ';
+
+        h = h->next;
+    }
 
     return NGX_OK;
 }
@@ -1879,7 +1931,7 @@ ngx_http_variable_sent_location(ngx_http_request_t *r,
 
     ngx_str_set(&name, "sent_http_location");
 
-    return ngx_http_variable_unknown_header(v, &name,
+    return ngx_http_variable_unknown_header(r, v, &name,
                                             &r->headers_out.headers.part,
                                             sizeof("sent_http_") - 1);
 }

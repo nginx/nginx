@@ -5703,7 +5703,7 @@ ngx_http_upstream_header_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                          &r->upstream->headers_in.headers.part,
                                          sizeof("upstream_http_") - 1);
 }
@@ -5718,7 +5718,7 @@ ngx_http_upstream_trailer_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                         &r->upstream->headers_in.trailers.part,
                                         sizeof("upstream_trailer_") - 1);
 }

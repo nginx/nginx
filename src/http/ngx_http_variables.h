@@ -57,8 +57,9 @@ ngx_http_variable_value_t *ngx_http_get_flushed_variable(ngx_http_request_t *r,
 ngx_http_variable_value_t *ngx_http_get_variable(ngx_http_request_t *r,
     ngx_str_t *name, ngx_uint_t key);
 
-ngx_int_t ngx_http_variable_unknown_header(ngx_http_variable_value_t *v,
-    ngx_str_t *var, ngx_list_part_t *part, size_t prefix);
+ngx_int_t ngx_http_variable_unknown_header(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, ngx_str_t *var, ngx_list_part_t *part,
+    size_t prefix);
 
 
 #if (NGX_PCRE)
