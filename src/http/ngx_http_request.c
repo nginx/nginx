@@ -22,8 +22,6 @@ static ngx_int_t ngx_http_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_unique_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
-static ngx_int_t ngx_http_process_multi_header_lines(ngx_http_request_t *r,
-    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_host(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
@@ -164,7 +162,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #if (NGX_HTTP_X_FORWARDED_FOR)
     { ngx_string("X-Forwarded-For"),
                  offsetof(ngx_http_headers_in_t, x_forwarded_for),
-                 ngx_http_process_multi_header_lines },
+                 ngx_http_process_header_line },
 #endif
 
 #if (NGX_HTTP_REALIP)
@@ -197,7 +195,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 #endif
 
     { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookie),
-                 ngx_http_process_multi_header_lines },
+                 ngx_http_process_header_line },
 
     { ngx_null_string, 0, NULL }
 };
@@ -1742,10 +1740,10 @@ ngx_http_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     ph = (ngx_table_elt_t **) ((char *) &r->headers_in + offset);
 
-    if (*ph == NULL) {
-        *ph = h;
-        h->next = NULL;
-    }
+    while (*ph) { ph = &(*ph)->next; }
+
+    *ph = h;
+    h->next = NULL;
 
     return NGX_OK;
 }
@@ -1851,12 +1849,9 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 {
     u_char  *user_agent, *msie;
 
-    if (r->headers_in.user_agent) {
-        return NGX_OK;
+    if (ngx_http_process_header_line(r, h, offset) != NGX_OK) {
+        return NGX_ERROR;
     }
-
-    r->headers_in.user_agent = h;
-    h->next = NULL;
 
     /* check some widespread browsers while the header is in CPU cache */
 
@@ -1914,23 +1909,6 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
             r->headers_in.konqueror = 1;
         }
     }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
-    ngx_uint_t offset)
-{
-    ngx_table_elt_t  **ph;
-
-    ph = (ngx_table_elt_t **) ((char *) &r->headers_in + offset);
-
-    while (*ph) { ph = &(*ph)->next; }
-
-    *ph = h;
-    h->next = NULL;
 
     return NGX_OK;
 }

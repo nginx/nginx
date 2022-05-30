@@ -27,8 +27,6 @@ static ngx_int_t ngx_http_variable_header(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_variable_cookies(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t ngx_http_variable_headers(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_headers_internal(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data, u_char sep);
 
@@ -178,7 +176,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 #endif
 
 #if (NGX_HTTP_X_FORWARDED_FOR)
-    { ngx_string("http_x_forwarded_for"), NULL, ngx_http_variable_headers,
+    { ngx_string("http_x_forwarded_for"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.x_forwarded_for), 0, 0 },
 #endif
 
@@ -327,10 +325,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("sent_http_transfer_encoding"), NULL,
       ngx_http_variable_sent_transfer_encoding, 0, 0, 0 },
 
-    { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_headers,
+    { ngx_string("sent_http_cache_control"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_out.cache_control), 0, 0 },
 
-    { ngx_string("sent_http_link"), NULL, ngx_http_variable_headers,
+    { ngx_string("sent_http_link"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_out.link), 0, 0 },
 
     { ngx_string("limit_rate"), ngx_http_variable_set_limit_rate,
@@ -807,22 +805,7 @@ static ngx_int_t
 ngx_http_variable_header(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
-    ngx_table_elt_t  *h;
-
-    h = *(ngx_table_elt_t **) ((char *) r + data);
-
-    if (h) {
-        v->len = h->value.len;
-        v->valid = 1;
-        v->no_cacheable = 0;
-        v->not_found = 0;
-        v->data = h->value.data;
-
-    } else {
-        v->not_found = 1;
-    }
-
-    return NGX_OK;
+    return ngx_http_variable_headers_internal(r, v, data, ',');
 }
 
 
@@ -831,14 +814,6 @@ ngx_http_variable_cookies(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     return ngx_http_variable_headers_internal(r, v, data, ';');
-}
-
-
-static ngx_int_t
-ngx_http_variable_headers(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data)
-{
-    return ngx_http_variable_headers_internal(r, v, data, ',');
 }
 
 
