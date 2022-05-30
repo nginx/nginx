@@ -242,6 +242,8 @@ typedef struct {
 
     unsigned                          connection_type:2;
     unsigned                          chunked:1;
+    unsigned                          multi:1;
+    unsigned                          multi_linked:1;
     unsigned                          msie:1;
     unsigned                          msie6:1;
     unsigned                          opera:1;

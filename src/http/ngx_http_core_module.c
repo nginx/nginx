@@ -2802,6 +2802,80 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
 }
 
 
+ngx_int_t
+ngx_http_link_multi_headers(ngx_http_request_t *r)
+{
+    ngx_uint_t        i, j;
+    ngx_list_part_t  *part, *ppart;
+    ngx_table_elt_t  *header, *pheader, **ph;
+
+    if (r->headers_in.multi_linked) {
+        return NGX_OK;
+    }
+
+    r->headers_in.multi_linked = 1;
+
+    part = &r->headers_in.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        header[i].next = NULL;
+
+        /*
+         * search for previous headers with the same name;
+         * if there are any, link to them
+         */
+
+        ppart = &r->headers_in.headers.part;
+        pheader = ppart->elts;
+
+        for (j = 0; /* void */; j++) {
+
+            if (j >= ppart->nelts) {
+                if (ppart->next == NULL) {
+                    break;
+                }
+
+                ppart = ppart->next;
+                pheader = ppart->elts;
+                j = 0;
+            }
+
+            if (part == ppart && i == j) {
+                break;
+            }
+
+            if (header[i].key.len == pheader[j].key.len
+                && ngx_strncasecmp(header[i].key.data, pheader[j].key.data,
+                                   header[i].key.len)
+                   == 0)
+            {
+                ph = &pheader[j].next;
+                while (*ph) { ph = &(*ph)->next; }
+                *ph = &header[i];
+
+                r->headers_in.multi = 1;
+
+                break;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 static char *
 ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
 {
