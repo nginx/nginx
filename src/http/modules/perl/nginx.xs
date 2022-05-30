@@ -304,28 +304,10 @@ header_in(r, key)
 
         if (hh->offset == offsetof(ngx_http_headers_in_t, cookie)) {
             sep = ';';
-            goto multi;
-        }
-#if (NGX_HTTP_X_FORWARDED_FOR)
-        if (hh->offset == offsetof(ngx_http_headers_in_t, x_forwarded_for)) {
+
+        } else {
             sep = ',';
-            goto multi;
         }
-#endif
-
-        ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
-
-        if (*ph) {
-            ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
-
-            goto done;
-        }
-
-        XSRETURN_UNDEF;
-
-    multi:
-
-        /* Cookie, X-Forwarded-For */
 
         ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
 
