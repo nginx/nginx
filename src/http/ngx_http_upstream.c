@@ -4691,8 +4691,8 @@ static ngx_int_t
 ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    ngx_table_elt_t     **ph;
-    ngx_http_upstream_t  *u;
+    ngx_table_elt_t      **ph;
+    ngx_http_upstream_t   *u;
 
     u = r->upstream;
     ph = &u->headers_in.cache_control;
@@ -4980,7 +4980,11 @@ static ngx_int_t
 ngx_http_upstream_process_charset(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    if (r->upstream->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_CHARSET) {
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_CHARSET) {
         return NGX_OK;
     }
 
@@ -4994,13 +4998,16 @@ static ngx_int_t
 ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    r->upstream->headers_in.connection = h;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+    u->headers_in.connection = h;
 
     if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
                          (u_char *) "close", 5 - 1)
         != NULL)
     {
-        r->upstream->headers_in.connection_close = 1;
+        u->headers_in.connection_close = 1;
     }
 
     return NGX_OK;
@@ -5011,13 +5018,16 @@ static ngx_int_t
 ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    r->upstream->headers_in.transfer_encoding = h;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+    u->headers_in.transfer_encoding = h;
 
     if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
                          (u_char *) "chunked", 7 - 1)
         != NULL)
     {
-        r->upstream->headers_in.chunked = 1;
+        u->headers_in.chunked = 1;
     }
 
     return NGX_OK;
