@@ -5183,9 +5183,6 @@ static ngx_int_t
 ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    u_char                *p;
-    size_t                 len;
-    ngx_str_t              vary;
     ngx_table_elt_t      **ph;
     ngx_http_upstream_t   *u;
 
@@ -5198,6 +5195,10 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
     h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
+    {
+    u_char     *p;
+    size_t      len;
+    ngx_str_t   vary;
 
     if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_VARY) {
         return NGX_OK;
@@ -5249,7 +5250,7 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
     }
 
     r->cache->vary = vary;
-
+    }
 #endif
 
     return NGX_OK;
