@@ -272,7 +272,7 @@ header_in(r, key)
     ngx_uint_t                  i, n, hash;
     ngx_array_t                *a;
     ngx_list_part_t            *part;
-    ngx_table_elt_t            *h, **ph;
+    ngx_table_elt_t            *h, *header, **ph;
     ngx_http_header_t          *hh;
     ngx_http_core_main_conf_t  *cmcf;
 
@@ -311,46 +311,13 @@ header_in(r, key)
 
         ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
 
-        if (*ph == NULL) {
-            XSRETURN_UNDEF;
-        }
-
-        if ((*ph)->next == NULL) {
-            ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
-
-            goto done;
-        }
-
-        size = - (ssize_t) (sizeof("; ") - 1);
-
-        for (h = *ph; h; h = h->next) {
-            size += h->value.len + sizeof("; ") - 1;
-        }
-
-        value = ngx_pnalloc(r->pool, size);
-        if (value == NULL) {
-            ctx->error = 1;
-            croak("ngx_pnalloc() failed");
-        }
-
-        p = value;
-
-        for (h = *ph; h; h = h->next) {
-            p = ngx_copy(p, h->value.data, h->value.len);
-
-            if (h->next == NULL) {
-                break;
-            }
-
-            *p++ = sep; *p++ = ' ';
-        }
-
-        ngx_http_perl_set_targ(value, size);
-
-        goto done;
+        goto found;
     }
 
     /* iterate over all headers */
+
+    sep = ',';
+    ph = &header;
 
     part = &r->headers_in.headers.part;
     h = part->elts;
@@ -373,12 +340,49 @@ header_in(r, key)
             continue;
         }
 
-        ngx_http_perl_set_targ(h[i].value.data, h[i].value.len);
+        *ph = &h[i];
+        ph = &h[i].next;
+    }
 
+    *ph = NULL;
+    ph = &header;
+
+    found:
+
+    if (*ph == NULL) {
+        XSRETURN_UNDEF;
+    }
+
+    if ((*ph)->next == NULL) {
+        ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
         goto done;
     }
 
-    XSRETURN_UNDEF;
+    size = - (ssize_t) (sizeof("; ") - 1);
+
+    for (h = *ph; h; h = h->next) {
+        size += h->value.len + sizeof("; ") - 1;
+    }
+
+    value = ngx_pnalloc(r->pool, size);
+    if (value == NULL) {
+        ctx->error = 1;
+        croak("ngx_pnalloc() failed");
+    }
+
+    p = value;
+
+    for (h = *ph; h; h = h->next) {
+        p = ngx_copy(p, h->value.data, h->value.len);
+
+        if (h->next == NULL) {
+            break;
+        }
+
+        *p++ = sep; *p++ = ' ';
+    }
+
+    ngx_http_perl_set_targ(value, size);
 
     done:
 
