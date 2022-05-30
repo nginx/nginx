@@ -4610,6 +4610,7 @@ ngx_http_upstream_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     if (*ph == NULL) {
         *ph = h;
+        h->next = NULL;
     }
 
     return NGX_OK;
@@ -4632,6 +4633,7 @@ ngx_http_upstream_process_content_length(ngx_http_request_t *r,
 
     u = r->upstream;
 
+    h->next = NULL;
     u->headers_in.content_length = h;
     u->headers_in.content_length_n = ngx_atoof(h->value.data, h->value.len);
 
@@ -4647,6 +4649,7 @@ ngx_http_upstream_process_last_modified(ngx_http_request_t *r,
 
     u = r->upstream;
 
+    h->next = NULL;
     u->headers_in.last_modified = h;
     u->headers_in.last_modified_time = ngx_parse_http_time(h->value.data,
                                                            h->value.len);
@@ -4816,6 +4819,7 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     u = r->upstream;
     u->headers_in.expires = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -4856,6 +4860,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
 
     u = r->upstream;
     u->headers_in.x_accel_expires = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -4915,6 +4920,7 @@ ngx_http_upstream_process_limit_rate(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     u = r->upstream;
     u->headers_in.x_accel_limit_rate = h;
+    h->next = NULL;
 
     if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_LIMIT_RATE) {
         return NGX_OK;
@@ -4995,6 +5001,7 @@ ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     u = r->upstream;
     u->headers_in.connection = h;
+    h->next = NULL;
 
     if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
                          (u_char *) "close", 5 - 1)
@@ -5015,6 +5022,7 @@ ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
 
     u = r->upstream;
     u->headers_in.transfer_encoding = h;
+    h->next = NULL;
 
     if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
                          (u_char *) "chunked", 7 - 1)
@@ -5035,6 +5043,7 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
 
     u = r->upstream;
     u->headers_in.vary = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
 

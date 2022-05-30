@@ -1965,6 +1965,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_str_set(&h->key, "Server");
                 ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "server";
+                h->next = NULL;
             }
 
             if (r->upstream->headers_in.date == NULL) {
@@ -1978,6 +1979,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_str_set(&h->key, "Date");
                 ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "date";
+                h->next = NULL;
             }
 
             /* clear content length if response is chunked */
