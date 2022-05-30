@@ -845,13 +845,13 @@ ngx_http_uwsgi_create_key(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 {
-    u_char                        ch, *lowcase_key;
+    u_char                        ch, sep, *lowcase_key;
     size_t                        key_len, val_len, len, allocated;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
-    ngx_table_elt_t              *header, **ignored;
+    ngx_table_elt_t              *header, *hn, **ignored;
     ngx_http_uwsgi_params_t      *params;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t      e, le;
@@ -905,7 +905,11 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
         allocated = 0;
         lowcase_key = NULL;
 
-        if (params->number) {
+        if (ngx_http_link_multi_headers(r) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (params->number || r->headers_in.multi) {
             n = 0;
             part = &r->headers_in.headers.part;
 
@@ -933,6 +937,12 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 part = part->next;
                 header = part->elts;
                 i = 0;
+            }
+
+            for (n = 0; n < header_params; n++) {
+                if (&header[i] == ignored[n]) {
+                    goto next_length;
+                }
             }
 
             if (params->number) {
@@ -968,6 +978,15 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
             len += 2 + sizeof("HTTP_") - 1 + header[i].key.len
                  + 2 + header[i].value.len;
+
+            for (hn = header[i].next; hn; hn = hn->next) {
+                len += hn->value.len + 2;
+                ignored[header_params++] = hn;
+            }
+
+        next_length:
+
+            continue;
         }
     }
 
@@ -1086,7 +1105,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
             for (n = 0; n < header_params; n++) {
                 if (&header[i] == ignored[n]) {
-                    goto next;
+                    goto next_value;
                 }
             }
 
@@ -1109,15 +1128,41 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             }
 
             val_len = header[i].value.len;
+
+            for (hn = header[i].next; hn; hn = hn->next) {
+                val_len += hn->value.len + 2;
+            }
+
             *b->last++ = (u_char) (val_len & 0xff);
             *b->last++ = (u_char) ((val_len >> 8) & 0xff);
-            b->last = ngx_copy(b->last, header[i].value.data, val_len);
+            b->last = ngx_copy(b->last, header[i].value.data,
+                               header[i].value.len);
+
+            if (header[i].next) {
+
+                if (header[i].key.len == sizeof("Cookie") - 1
+                    && ngx_strncasecmp(header[i].key.data, (u_char *) "Cookie",
+                                       sizeof("Cookie") - 1)
+                       == 0)
+                {
+                    sep = ';';
+
+                } else {
+                    sep = ',';
+                }
+
+                for (hn = header[i].next; hn; hn = hn->next) {
+                    *b->last++ = sep;
+                    *b->last++ = ' ';
+                    b->last = ngx_copy(b->last, hn->value.data, hn->value.len);
+                }
+            }
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "uwsgi param: \"%*s: %*s\"",
                            key_len, b->last - (key_len + 2 + val_len),
                            val_len, b->last - val_len);
-        next:
+        next_value:
 
             continue;
         }
