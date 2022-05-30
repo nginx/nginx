@@ -377,6 +377,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 
         cc = ngx_list_push(&r->headers_out.headers);
         if (cc == NULL) {
+            e->hash = 0;
             return NGX_ERROR;
         }
 
@@ -410,6 +411,8 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
 
     e->value.data = ngx_pnalloc(r->pool, len);
     if (e->value.data == NULL) {
+        e->hash = 0;
+        cc->hash = 0;
         return NGX_ERROR;
     }
 
@@ -447,6 +450,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
     cc->value.data = ngx_pnalloc(r->pool,
                                  sizeof("max-age=") + NGX_TIME_T_LEN + 1);
     if (cc->value.data == NULL) {
+        cc->hash = 0;
         return NGX_ERROR;
     }
 
