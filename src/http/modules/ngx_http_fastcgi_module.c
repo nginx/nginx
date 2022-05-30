@@ -2007,8 +2007,12 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                    h->lowcase_key, h->key.len);
 
-                if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                    return NGX_ERROR;
+                if (hh) {
+                    rc = hh->handler(r, h, hh->offset);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

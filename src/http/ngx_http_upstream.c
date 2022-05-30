@@ -4633,9 +4633,33 @@ ngx_http_upstream_process_content_length(ngx_http_request_t *r,
 
     u = r->upstream;
 
+    if (u->headers_in.content_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\"",
+                      &h->key, &h->value,
+                      &u->headers_in.content_length->key,
+                      &u->headers_in.content_length->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    if (u->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent \"Content-Length\" and "
+                      "\"Transfer-Encoding\" headers at the same time");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
     h->next = NULL;
     u->headers_in.content_length = h;
     u->headers_in.content_length_n = ngx_atoof(h->value.data, h->value.len);
+
+    if (u->headers_in.content_length_n == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent invalid \"Content-Length\" header: "
+                      "\"%V: %V\"", &h->key, &h->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
 
     return NGX_OK;
 }
@@ -5021,14 +5045,37 @@ ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
+
+    if (u->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\"",
+                      &h->key, &h->value,
+                      &u->headers_in.transfer_encoding->key,
+                      &u->headers_in.transfer_encoding->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    if (u->headers_in.content_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent \"Content-Length\" and "
+                      "\"Transfer-Encoding\" headers at the same time");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
     u->headers_in.transfer_encoding = h;
     h->next = NULL;
 
-    if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
-                         (u_char *) "chunked", 7 - 1)
-        != NULL)
+    if (h->value.len == 7
+        && ngx_strncasecmp(h->value.data, (u_char *) "chunked", 7) == 0)
     {
         u->headers_in.chunked = 1;
+
+    } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent unknown \"Transfer-Encoding\": \"%V\"",
+                      &h->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
     return NGX_OK;
