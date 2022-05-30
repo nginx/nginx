@@ -362,6 +362,7 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         }
 
         r->headers_out.expires = e;
+        e->next = NULL;
 
         e->hash = 1;
         ngx_str_set(&e->key, "Expires");
@@ -621,6 +622,7 @@ ngx_http_set_response_header(ngx_http_request_t *r, ngx_http_header_val_t *hv,
         }
 
         *old = h;
+        h->next = NULL;
     }
 
     h->hash = 1;

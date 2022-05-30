@@ -154,6 +154,7 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
                 }
 
                 *ho = *h;
+                ho->next = NULL;
 
                 r->headers_out.www_authenticate = ho;
             }

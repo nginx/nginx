@@ -1007,6 +1007,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
         }
 
         r->headers_out.location->hash = 1;
+        r->headers_out.location->next = NULL;
         ngx_str_set(&r->headers_out.location->key, "Location");
 
         if (r->args.len == 0) {
@@ -1687,6 +1688,7 @@ ngx_http_set_etag(ngx_http_request_t *r)
     }
 
     etag->hash = 1;
+    etag->next = NULL;
     ngx_str_set(&etag->key, "ETag");
 
     etag->value.data = ngx_pnalloc(r->pool, NGX_OFF_T_LEN + NGX_TIME_T_LEN + 3);
@@ -1781,6 +1783,7 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         }
 
         r->headers_out.location->hash = 1;
+        r->headers_out.location->next = NULL;
         ngx_str_set(&r->headers_out.location->key, "Location");
         r->headers_out.location->value = val;
 

@@ -573,6 +573,7 @@ header_out(r, key, value)
     }
 
     header->hash = 1;
+    header->next = NULL;
 
     if (ngx_http_perl_sv2str(aTHX_ r, &header->key, key) != NGX_OK) {
         header->hash = 0;

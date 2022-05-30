@@ -2681,6 +2681,7 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
                 }
 
                 *h = *u->headers_in.www_authenticate;
+                h->next = NULL;
 
                 r->headers_out.www_authenticate = h;
             }
@@ -5075,6 +5076,7 @@ ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     if (offset) {
         ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
         *ph = ho;
+        ho->next = NULL;
     }
 
     return NGX_OK;
@@ -5169,6 +5171,7 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     r->headers_out.last_modified = ho;
     r->headers_out.last_modified_time =
@@ -5191,6 +5194,7 @@ ngx_http_upstream_rewrite_location(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_redirect) {
         rc = r->upstream->rewrite_redirect(r, ho, 0);
@@ -5236,6 +5240,7 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_redirect) {
 
@@ -5281,6 +5286,7 @@ ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_cookie) {
         rc = r->upstream->rewrite_cookie(r, ho);
@@ -5334,6 +5340,7 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     r->headers_out.accept_ranges = ho;
 
