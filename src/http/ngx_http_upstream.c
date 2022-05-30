@@ -2647,7 +2647,7 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
 {
     ngx_int_t                  status;
     ngx_uint_t                 i;
-    ngx_table_elt_t           *h;
+    ngx_table_elt_t           *h, *ho, **ph;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -2676,18 +2676,26 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
             if (status == NGX_HTTP_UNAUTHORIZED
                 && u->headers_in.www_authenticate)
             {
-                h = ngx_list_push(&r->headers_out.headers);
+                h = u->headers_in.www_authenticate;
+                ph = &r->headers_out.www_authenticate;
 
-                if (h == NULL) {
-                    ngx_http_upstream_finalize_request(r, u,
+                while (h) {
+                    ho = ngx_list_push(&r->headers_out.headers);
+
+                    if (ho == NULL) {
+                        ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
-                    return NGX_OK;
+                        return NGX_OK;
+                    }
+
+                    *ho = *h;
+                    ho->next = NULL;
+
+                    *ph = ho;
+                    ph = &ho->next;
+
+                    h = h->next;
                 }
-
-                *h = *u->headers_in.www_authenticate;
-                h->next = NULL;
-
-                r->headers_out.www_authenticate = h;
             }
 
 #if (NGX_HTTP_CACHE)
