@@ -196,7 +196,7 @@ ngx_http_header_t  ngx_http_headers_in[] = {
                  ngx_http_process_header_line },
 #endif
 
-    { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookies),
+    { ngx_string("Cookie"), offsetof(ngx_http_headers_in_t, cookie),
                  ngx_http_process_multi_header_lines },
 
     { ngx_null_string, 0, NULL }
@@ -1744,6 +1744,7 @@ ngx_http_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     if (*ph == NULL) {
         *ph = h;
+        h->next = NULL;
     }
 
     return NGX_OK;
@@ -1760,6 +1761,7 @@ ngx_http_process_unique_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     if (*ph == NULL) {
         *ph = h;
+        h->next = NULL;
         return NGX_OK;
     }
 
@@ -1792,6 +1794,7 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->headers_in.host = h;
+    h->next = NULL;
 
     host = h->value;
 
@@ -1853,6 +1856,7 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->headers_in.user_agent = h;
+    h->next = NULL;
 
     /* check some widespread browsers while the header is in CPU cache */
 
@@ -1919,27 +1923,15 @@ static ngx_int_t
 ngx_http_process_multi_header_lines(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ngx_array_t       *headers;
     ngx_table_elt_t  **ph;
 
-    headers = (ngx_array_t *) ((char *) &r->headers_in + offset);
+    ph = (ngx_table_elt_t **) ((char *) &r->headers_in + offset);
 
-    if (headers->elts == NULL) {
-        if (ngx_array_init(headers, r->pool, 1, sizeof(ngx_table_elt_t *))
-            != NGX_OK)
-        {
-            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return NGX_ERROR;
-        }
-    }
-
-    ph = ngx_array_push(headers);
-    if (ph == NULL) {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return NGX_ERROR;
-    }
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = h;
+    h->next = NULL;
+
     return NGX_OK;
 }
 

@@ -2024,8 +2024,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
 {
     time_t                     date, expires;
     ngx_uint_t                 p;
-    ngx_array_t               *cc;
-    ngx_table_elt_t           *e, *d, *ae;
+    ngx_table_elt_t           *e, *d, *ae, *cc;
     ngx_http_core_loc_conf_t  *clcf;
 
     r->gzip_tested = 1;
@@ -2118,30 +2117,30 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    cc = &r->headers_out.cache_control;
+    cc = r->headers_out.cache_control;
 
-    if (cc->elts) {
+    if (cc) {
 
         if ((p & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_cache,
+            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_cache,
                                                  NULL)
-               >= 0)
+               != NULL)
         {
             goto ok;
         }
 
         if ((p & NGX_HTTP_GZIP_PROXIED_NO_STORE)
-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_no_store,
+            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_store,
                                                  NULL)
-               >= 0)
+               != NULL)
         {
             goto ok;
         }
 
         if ((p & NGX_HTTP_GZIP_PROXIED_PRIVATE)
-            && ngx_http_parse_multi_header_lines(cc, &ngx_http_gzip_private,
+            && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_private,
                                                  NULL)
-               >= 0)
+               != NULL)
         {
             goto ok;
         }
@@ -2712,12 +2711,12 @@ ngx_http_set_disable_symlinks(ngx_http_request_t *r,
 
 ngx_int_t
 ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
-    ngx_array_t *headers, ngx_str_t *value, ngx_array_t *proxies,
+    ngx_table_elt_t *headers, ngx_str_t *value, ngx_array_t *proxies,
     int recursive)
 {
-    ngx_int_t          rc;
-    ngx_uint_t         i, found;
-    ngx_table_elt_t  **h;
+    ngx_int_t         rc;
+    ngx_uint_t        found;
+    ngx_table_elt_t  *h, *next;
 
     if (headers == NULL) {
         return ngx_http_get_forwarded_addr_internal(r, addr, value->data,
@@ -2725,16 +2724,23 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
                                                     recursive);
     }
 
-    i = headers->nelts;
-    h = headers->elts;
+    /* revert headers order */
+
+    for (h = headers, headers = NULL; h; h = next) {
+        next = h->next;
+        h->next = headers;
+        headers = h;
+    }
+
+    /* iterate over all headers in reverse order */
 
     rc = NGX_DECLINED;
 
     found = 0;
 
-    while (i-- > 0) {
-        rc = ngx_http_get_forwarded_addr_internal(r, addr, h[i]->value.data,
-                                                  h[i]->value.len, proxies,
+    for (h = headers; h; h = h->next) {
+        rc = ngx_http_get_forwarded_addr_internal(r, addr, h->value.data,
+                                                  h->value.len, proxies,
                                                   recursive);
 
         if (!recursive) {
@@ -2751,6 +2757,14 @@ ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
         }
 
         found = 1;
+    }
+
+    /* restore headers order */
+
+    for (h = headers, headers = NULL; h; h = next) {
+        next = h->next;
+        h->next = headers;
+        headers = h;
     }
 
     return rc;

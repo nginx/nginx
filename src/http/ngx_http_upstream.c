@@ -246,7 +246,7 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Set-Cookie"),
                  ngx_http_upstream_process_set_cookie,
-                 offsetof(ngx_http_upstream_headers_in_t, cookies),
+                 offsetof(ngx_http_upstream_headers_in_t, set_cookie),
                  ngx_http_upstream_rewrite_set_cookie, 0, 1 },
 
     { ngx_string("Content-Disposition"),
@@ -4666,26 +4666,16 @@ static ngx_int_t
 ngx_http_upstream_process_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ngx_array_t           *pa;
     ngx_table_elt_t      **ph;
     ngx_http_upstream_t   *u;
 
     u = r->upstream;
-    pa = &u->headers_in.cookies;
+    ph = &u->headers_in.set_cookie;
 
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 1, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
-
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     if (!(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_SET_COOKIE)) {
@@ -4701,26 +4691,16 @@ static ngx_int_t
 ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    ngx_array_t          *pa;
     ngx_table_elt_t     **ph;
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
-    pa = &u->headers_in.cache_control;
+    ph = &u->headers_in.cache_control;
 
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
-
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -5103,17 +5083,7 @@ static ngx_int_t
 ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    ngx_array_t      *pa;
     ngx_table_elt_t  *ho, **ph;
-
-    pa = (ngx_array_t *) ((char *) &r->headers_out + offset);
-
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
 
     ho = ngx_list_push(&r->headers_out.headers);
     if (ho == NULL) {
@@ -5122,12 +5092,12 @@ ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
 
     *ho = *h;
 
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
+
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = ho;
+    ho->next = NULL;
 
     return NGX_OK;
 }
@@ -5740,9 +5710,9 @@ ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
     s.len = name->len - (sizeof("upstream_cookie_") - 1);
     s.data = name->data + sizeof("upstream_cookie_") - 1;
 
-    if (ngx_http_parse_set_cookie_lines(&r->upstream->headers_in.cookies,
+    if (ngx_http_parse_set_cookie_lines(r, r->upstream->headers_in.set_cookie,
                                         &s, &cookie)
-        == NGX_DECLINED)
+        == NULL)
     {
         v->not_found = 1;
         return NGX_OK;

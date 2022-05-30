@@ -302,7 +302,7 @@ header_in(r, key)
 
     if (hh) {
 
-        if (hh->offset == offsetof(ngx_http_headers_in_t, cookies)) {
+        if (hh->offset == offsetof(ngx_http_headers_in_t, cookie)) {
             sep = ';';
             goto multi;
         }
@@ -327,17 +327,13 @@ header_in(r, key)
 
         /* Cookie, X-Forwarded-For */
 
-        a = (ngx_array_t *) ((char *) &r->headers_in + hh->offset);
+        ph = (ngx_table_elt_t **) ((char *) &r->headers_in + hh->offset);
 
-        n = a->nelts;
-
-        if (n == 0) {
+        if (*ph == NULL) {
             XSRETURN_UNDEF;
         }
 
-        ph = a->elts;
-
-        if (n == 1) {
+        if ((*ph)->next == NULL) {
             ngx_http_perl_set_targ((*ph)->value.data, (*ph)->value.len);
 
             goto done;
@@ -345,8 +341,8 @@ header_in(r, key)
 
         size = - (ssize_t) (sizeof("; ") - 1);
 
-        for (i = 0; i < n; i++) {
-            size += ph[i]->value.len + sizeof("; ") - 1;
+        for (h = *ph; h; h = h->next) {
+            size += h->value.len + sizeof("; ") - 1;
         }
 
         value = ngx_pnalloc(r->pool, size);
@@ -357,10 +353,10 @@ header_in(r, key)
 
         p = value;
 
-        for (i = 0; /* void */ ; i++) {
-            p = ngx_copy(p, ph[i]->value.data, ph[i]->value.len);
+        for (h = *ph; h; h = h->next) {
+            p = ngx_copy(p, h->value.data, h->value.len);
 
-            if (i == n - 1) {
+            if (h->next == NULL) {
                 break;
             }
 

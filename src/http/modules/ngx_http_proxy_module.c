@@ -2559,22 +2559,20 @@ static ngx_int_t
 ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    size_t             len;
-    u_char            *p;
-    ngx_uint_t         i, n;
-    ngx_table_elt_t  **h;
+    size_t            len;
+    u_char           *p;
+    ngx_table_elt_t  *h, *xfwd;
 
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    n = r->headers_in.x_forwarded_for.nelts;
-    h = r->headers_in.x_forwarded_for.elts;
+    xfwd = r->headers_in.x_forwarded_for;
 
     len = 0;
 
-    for (i = 0; i < n; i++) {
-        len += h[i]->value.len + sizeof(", ") - 1;
+    for (h = xfwd; h; h = h->next) {
+        len += h->value.len + sizeof(", ") - 1;
     }
 
     if (len == 0) {
@@ -2593,8 +2591,8 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     v->len = len;
     v->data = p;
 
-    for (i = 0; i < n; i++) {
-        p = ngx_copy(p, h[i]->value.data, h[i]->value.len);
+    for (h = xfwd; h; h = h->next) {
+        p = ngx_copy(p, h->value.data, h->value.len);
         *p++ = ','; *p++ = ' ';
     }
 

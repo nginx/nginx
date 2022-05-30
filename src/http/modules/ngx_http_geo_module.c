@@ -327,15 +327,15 @@ static ngx_int_t
 ngx_http_geo_addr(ngx_http_request_t *r, ngx_http_geo_ctx_t *ctx,
     ngx_addr_t *addr)
 {
-    ngx_array_t  *xfwd;
+    ngx_table_elt_t  *xfwd;
 
     if (ngx_http_geo_real_addr(r, ctx, addr) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    xfwd = &r->headers_in.x_forwarded_for;
+    xfwd = r->headers_in.x_forwarded_for;
 
-    if (xfwd->nelts > 0 && ctx->proxies != NULL) {
+    if (xfwd != NULL && ctx->proxies != NULL) {
         (void) ngx_http_get_forwarded_addr(r, addr, xfwd, NULL,
                                            ctx->proxies, ctx->proxy_recursive);
     }
