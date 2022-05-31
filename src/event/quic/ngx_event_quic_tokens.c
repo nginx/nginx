@@ -11,14 +11,6 @@
 #include <ngx_event_quic_connection.h>
 
 
-#define NGX_QUIC_MAX_TOKEN_SIZE              64
-    /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
-
-/* RFC 3602, 2.1 and 2.4 for AES-CBC block size and IV length */
-#define NGX_QUIC_AES_256_CBC_IV_LEN          16
-#define NGX_QUIC_AES_256_CBC_BLOCK_SIZE      16
-
-
 static void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
     ngx_uint_t no_port, u_char buf[20]);
 
@@ -48,7 +40,7 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
 
 
 ngx_int_t
-ngx_quic_new_token(ngx_connection_t *c, struct sockaddr *sockaddr,
+ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
     socklen_t socklen, u_char *key, ngx_str_t *token, ngx_str_t *odcid,
     time_t exp, ngx_uint_t is_retry)
 {
@@ -80,9 +72,9 @@ ngx_quic_new_token(ngx_connection_t *c, struct sockaddr *sockaddr,
     cipher = EVP_aes_256_cbc();
     iv_len = NGX_QUIC_AES_256_CBC_IV_LEN;
 
-    token->len = iv_len + len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE;
-    token->data = ngx_pnalloc(c->pool, token->len);
-    if (token->data == NULL) {
+    if ((size_t) (iv_len + len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE) > token->len)
+    {
+        ngx_log_error(NGX_LOG_ALERT, log, 0, "quic token buffer is too small");
         return NGX_ERROR;
     }
 
@@ -119,7 +111,7 @@ ngx_quic_new_token(ngx_connection_t *c, struct sockaddr *sockaddr,
     EVP_CIPHER_CTX_free(ctx);
 
 #ifdef NGX_QUIC_DEBUG_PACKETS
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic new token len:%uz %xV", token->len, token);
 #endif
 
@@ -268,10 +260,8 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     if (odcid.len) {
         pkt->odcid.len = odcid.len;
-        pkt->odcid.data = ngx_pstrdup(c->pool, &odcid);
-        if (pkt->odcid.data == NULL) {
-            return NGX_ERROR;
-        }
+        pkt->odcid.data = pkt->odcid_buf;
+        ngx_memcpy(pkt->odcid.data, odcid.data, odcid.len);
 
     } else {
         pkt->odcid = pkt->dcid;

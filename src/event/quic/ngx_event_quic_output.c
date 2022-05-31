@@ -1009,10 +1009,14 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     u_char             buf[NGX_QUIC_RETRY_BUFFER_SIZE];
     u_char             dcid[NGX_QUIC_SERVER_CID_LEN];
+    u_char             tbuf[NGX_QUIC_TOKEN_BUF_SIZE];
 
     expires = ngx_time() + NGX_QUIC_RETRY_TOKEN_LIFETIME;
 
-    if (ngx_quic_new_token(c, c->sockaddr, c->socklen, conf->av_token_key,
+    token.data = tbuf;
+    token.len = NGX_QUIC_TOKEN_BUF_SIZE;
+
+    if (ngx_quic_new_token(c->log, c->sockaddr, c->socklen, conf->av_token_key,
                            &token, &inpkt->dcid, expires, 1)
         != NGX_OK)
     {
@@ -1075,11 +1079,16 @@ ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
 
+    u_char                  tbuf[NGX_QUIC_TOKEN_BUF_SIZE];
+
     qc = ngx_quic_get_connection(c);
 
     expires = ngx_time() + NGX_QUIC_NEW_TOKEN_LIFETIME;
 
-    if (ngx_quic_new_token(c, path->sockaddr, path->socklen,
+    token.data = tbuf;
+    token.len = NGX_QUIC_TOKEN_BUF_SIZE;
+
+    if (ngx_quic_new_token(c->log, path->sockaddr, path->socklen,
                            qc->conf->av_token_key, &token, NULL, expires, 0)
         != NGX_OK)
     {

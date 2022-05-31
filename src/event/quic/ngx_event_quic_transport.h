@@ -322,6 +322,7 @@ typedef struct {
 
     /* cleartext fields */
     ngx_str_t                                   odcid; /* retry packet tag */
+    u_char                                      odcid_buf[NGX_QUIC_MAX_CID_LEN];
     ngx_str_t                                   dcid;
     ngx_str_t                                   scid;
     uint64_t                                    pn;
