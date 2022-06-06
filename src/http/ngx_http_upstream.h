@@ -293,6 +293,8 @@ typedef struct {
 
     unsigned                         connection_close:1;
     unsigned                         chunked:1;
+    unsigned                         no_cache:1;
+    unsigned                         expired:1;
 } ngx_http_upstream_headers_in_t;
 
 

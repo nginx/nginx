@@ -2702,6 +2702,10 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
 
             if (r->cache) {
 
+                if (u->headers_in.no_cache || u->headers_in.expired) {
+                    u->cacheable = 0;
+                }
+
                 if (u->cacheable) {
                     time_t  valid;
 
@@ -2795,6 +2799,10 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_http_upstream_main_conf_t  *umcf;
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+    if (u->headers_in.no_cache || u->headers_in.expired) {
+        u->cacheable = 0;
+    }
 
     if (u->headers_in.x_accel_redirect
         && !(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT))
@@ -4791,18 +4799,18 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
-        return NGX_OK;
-    }
-
     start = h->value.data;
     last = start + h->value.len;
+
+    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
+        goto extensions;
+    }
 
     if (ngx_strlcasestrn(start, last, (u_char *) "no-cache", 8 - 1) != NULL
         || ngx_strlcasestrn(start, last, (u_char *) "no-store", 8 - 1) != NULL
         || ngx_strlcasestrn(start, last, (u_char *) "private", 7 - 1) != NULL)
     {
-        u->cacheable = 0;
+        u->headers_in.no_cache = 1;
         return NGX_OK;
     }
 
@@ -4832,12 +4840,15 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         }
 
         if (n == 0) {
-            u->cacheable = 0;
+            u->headers_in.no_cache = 1;
             return NGX_OK;
         }
 
         r->cache->valid_sec = ngx_time() + n;
+        u->headers_in.expired = 0;
     }
+
+extensions:
 
     p = ngx_strlcasestrn(start, last, (u_char *) "stale-while-revalidate=",
                          23 - 1);
@@ -4932,7 +4943,7 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
     expires = ngx_parse_http_time(h->value.data, h->value.len);
 
     if (expires == NGX_ERROR || expires < ngx_time()) {
-        u->cacheable = 0;
+        u->headers_in.expired = 1;
         return NGX_OK;
     }
 
@@ -4996,6 +5007,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
 
         default:
             r->cache->valid_sec = ngx_time() + n;
+            u->headers_in.no_cache = 0;
+            u->headers_in.expired = 0;
             return NGX_OK;
         }
     }
@@ -5007,6 +5020,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
 
     if (n != NGX_ERROR) {
         r->cache->valid_sec = n;
+        u->headers_in.no_cache = 0;
+        u->headers_in.expired = 0;
     }
     }
 #endif
