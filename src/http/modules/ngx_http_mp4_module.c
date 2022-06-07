@@ -2331,7 +2331,7 @@ ngx_http_mp4_crop_stts_data(ngx_http_mp4_file_t *mp4,
         }
 
         start_sample += count;
-        start_time -= count * duration;
+        start_time -= (uint64_t) count * duration;
         entries--;
         entry++;
     }
