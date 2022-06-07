@@ -4955,8 +4955,9 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
         return NGX_ERROR;
     }
 
-    if (plcf->upstream.ssl_certificate) {
-
+    if (plcf->upstream.ssl_certificate
+        && plcf->upstream.ssl_certificate->value.len)
+    {
         if (plcf->upstream.ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"proxy_ssl_certificate_key\" is defined "

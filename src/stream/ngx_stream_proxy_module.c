@@ -1069,8 +1069,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
         }
     }
 
-    if (pscf->ssl_certificate && (pscf->ssl_certificate->lengths
-                                  || pscf->ssl_certificate_key->lengths))
+    if (pscf->ssl_certificate
+        && pscf->ssl_certificate->value.len
+        && (pscf->ssl_certificate->lengths
+            || pscf->ssl_certificate_key->lengths))
     {
         if (ngx_stream_proxy_ssl_certificate(s) != NGX_OK) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -2225,8 +2227,9 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
         return NGX_ERROR;
     }
 
-    if (pscf->ssl_certificate) {
-
+    if (pscf->ssl_certificate
+        && pscf->ssl_certificate->value.len)
+    {
         if (pscf->ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"proxy_ssl_certificate_key\" is defined "

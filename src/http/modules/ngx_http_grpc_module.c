@@ -4906,8 +4906,9 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
         return NGX_ERROR;
     }
 
-    if (glcf->upstream.ssl_certificate) {
-
+    if (glcf->upstream.ssl_certificate
+        && glcf->upstream.ssl_certificate->value.len)
+    {
         if (glcf->upstream.ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"grpc_ssl_certificate_key\" is defined "

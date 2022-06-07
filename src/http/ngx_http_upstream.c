@@ -1690,8 +1690,10 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         }
     }
 
-    if (u->conf->ssl_certificate && (u->conf->ssl_certificate->lengths
-                                     || u->conf->ssl_certificate_key->lengths))
+    if (u->conf->ssl_certificate
+        && u->conf->ssl_certificate->value.len
+        && (u->conf->ssl_certificate->lengths
+            || u->conf->ssl_certificate_key->lengths))
     {
         if (ngx_http_upstream_ssl_certificate(r, u, c) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,

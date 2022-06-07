@@ -2487,8 +2487,9 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
         return NGX_ERROR;
     }
 
-    if (uwcf->upstream.ssl_certificate) {
-
+    if (uwcf->upstream.ssl_certificate
+        && uwcf->upstream.ssl_certificate->value.len)
+    {
         if (uwcf->upstream.ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"uwsgi_ssl_certificate_key\" is defined "
