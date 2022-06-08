@@ -699,9 +699,10 @@ ngx_http_v3_set_param(ngx_connection_t *c, uint64_t id, uint64_t value)
                        "http3 param QPACK_MAX_TABLE_CAPACITY:%uL", value);
         break;
 
-    case NGX_HTTP_V3_PARAM_MAX_HEADER_LIST_SIZE:
+    case NGX_HTTP_V3_PARAM_MAX_FIELD_SECTION_SIZE:
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                       "http3 param SETTINGS_MAX_HEADER_LIST_SIZE:%uL", value);
+                       "http3 param SETTINGS_MAX_FIELD_SECTION_SIZE:%uL",
+                       value);
         break;
 
     case NGX_HTTP_V3_PARAM_BLOCKED_STREAMS:
