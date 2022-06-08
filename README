@@ -64,7 +64,7 @@ Experimental QUIC support for nginx
                                       -L../boringssl/build/crypto"
     $ make
 
-    Alternatively, nginx can be configured with QuicTLS [9]
+    Alternatively, nginx can be configured with QuicTLS [5]
 
     $ ./auto/configure --with-debug --with-http_v3_module         \
                        --with-cc-opt="-I../quictls/build/include" \
@@ -103,7 +103,7 @@ Experimental QUIC support for nginx
 
         quic_gso on;
 
-    To limit maximum packet size:
+    To limit maximum UDP payload size on receive path:
 
         quic_mtu <size>;
 
@@ -112,7 +112,7 @@ Experimental QUIC support for nginx
         quic_host_key <filename>;
 
 
-    By default this Linux-specific optimization [8] is disabled.
+    By default, GSO Linux-specific optimization [8] is disabled.
     Enable if your network interface is configured to support GSO.
 
     A number of directives were added that configure HTTP/3:
@@ -223,11 +223,10 @@ Example configuration:
 7. Links
 
     [1] https://datatracker.ietf.org/doc/html/rfc9000
-    [2] https://datatracker.ietf.org/doc/html/draft-ietf-quic-http
+    [2] https://datatracker.ietf.org/doc/html/rfc9114
     [3] https://mailman.nginx.org/mailman3/lists/nginx-devel.nginx.org/
     [4] https://boringssl.googlesource.com/boringssl/
-    [5] https://datatracker.ietf.org/doc/html/rfc9002
+    [5] https://github.com/quictls/openssl
     [6] https://nginx.org/en/docs/http/ngx_http_core_module.html#listen
     [7] https://nginx.org/en/docs/debugging_log.html
     [8] http://vger.kernel.org/lpc_net2018_talks/willemdebruijn-lpc2018-udpgso-paper-DRAFT-1.pdf
-    [9] https://github.com/quictls/openssl
