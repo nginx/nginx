@@ -269,8 +269,7 @@ header_in(r, key)
     u_char                     *p, *lowcase_key, *value, sep;
     STRLEN                      len;
     ssize_t                     size;
-    ngx_uint_t                  i, n, hash;
-    ngx_array_t                *a;
+    ngx_uint_t                  i, hash;
     ngx_list_part_t            *part;
     ngx_table_elt_t            *h, *header, **ph;
     ngx_http_header_t          *hh;
