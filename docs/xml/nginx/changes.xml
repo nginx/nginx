@@ -5,6 +5,107 @@
 <change_log title="nginx">
 
 
+<changes ver="1.23.0" date="2022-06-21">
+
+<change>
+<para lang="ru">
+Изменение во внутреннем API:
+теперь строки заголовков представлены связными списками.
+</para>
+<para lang="en">
+Change in internal API:
+now header lines are represented as linked lists.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx объединяет произвольные строки заголовков с одинаковыми именами
+при отправке на FastCGI-, SCGI- и uwsgi-бэкенды,
+в методе $r->header_in() модуля ngx_http_perl_module,
+и при доступе через переменные "$http_...", "$sent_http_...",
+"$sent_trailer_...", "$upstream_http_..." и "$upstream_trailer_...".
+</para>
+<para lang="en">
+now nginx combines arbitrary header lines with identical names
+when sending to FastCGI, SCGI, and uwsgi backends,
+in the $r->header_in() method of the ngx_http_perl_module,
+and during lookup of the "$http_...", "$sent_http_...",
+"$sent_trailer_...", "$upstream_http_...", and "$upstream_trailer_..."
+variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в заголовке ответа бэкенда было несколько строк "Vary",
+при кэшировании nginx учитывал только последнюю из них.
+</para>
+<para lang="en">
+if there were multiple "Vary" header lines in the backend response,
+nginx only used the last of them when caching.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+если в заголовке ответа бэкенда было несколько строк "WWW-Authenticate"
+и использовался перехват ошибок с кодом 401 от бэкенда
+или директива auth_request,
+nginx пересылал клиенту только первую из этих строк.
+</para>
+<para lang="en">
+if there were multiple "WWW-Authenticate" header lines in the backend response
+and errors with code 401 were intercepted
+or the "auth_request" directive was used,
+nginx only sent the first of the header lines to the client.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "application data after close notify"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the "application data after close notify" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения могли зависать, если nginx был собран на Linux 2.6.17 и новее,
+а использовался на системах без поддержки EPOLLRDHUP, в частности, на
+системах с эмуляцией epoll;
+ошибка появилась в 1.17.5.<br/>
+Спасибо Marcus Ball.
+</para>
+<para lang="en">
+connections might hang if nginx was built on Linux 2.6.17 or newer,
+but was used on systems without EPOLLRDHUP support, notably with epoll
+emulation layers;
+the bug had appeared in 1.17.5.<br/>
+Thanks to Marcus Ball.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не кэшировал ответ,
+если строка заголовка ответа "Expires" запрещала кэширование,
+а последующая строка заголовка "Cache-Control" разрешала кэширование.
+</para>
+<para lang="en">
+nginx did not cache the response
+if the "Expires" response header line disabled caching,
+but following "Cache-Control" header line enabled caching.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.21.6" date="2022-01-25">
 
 <change type="bugfix">
