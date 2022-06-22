@@ -633,14 +633,14 @@ static ngx_int_t
 ngx_http_scgi_create_request(ngx_http_request_t *r)
 {
     off_t                         content_length_n;
-    u_char                        ch, *key, *val, *lowcase_key;
+    u_char                        ch, sep, *key, *val, *lowcase_key;
     size_t                        len, key_len, val_len, allocated;
     ngx_buf_t                    *b;
     ngx_str_t                     content_length;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
-    ngx_table_elt_t              *header, **ignored;
+    ngx_table_elt_t              *header, *hn, **ignored;
     ngx_http_scgi_params_t       *params;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t      e, le;
@@ -707,7 +707,11 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
         allocated = 0;
         lowcase_key = NULL;
 
-        if (params->number) {
+        if (ngx_http_link_multi_headers(r) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (params->number || r->headers_in.multi) {
             n = 0;
             part = &r->headers_in.headers.part;
 
@@ -735,6 +739,12 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
                 part = part->next;
                 header = part->elts;
                 i = 0;
+            }
+
+            for (n = 0; n < header_params; n++) {
+                if (&header[i] == ignored[n]) {
+                    goto next_length;
+                }
             }
 
             if (params->number) {
@@ -770,6 +780,15 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 
             len += sizeof("HTTP_") - 1 + header[i].key.len + 1
                 + header[i].value.len + 1;
+
+            for (hn = header[i].next; hn; hn = hn->next) {
+                len += hn->value.len + 2;
+                ignored[header_params++] = hn;
+            }
+
+        next_length:
+
+            continue;
         }
     }
 
@@ -869,7 +888,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 
             for (n = 0; n < header_params; n++) {
                 if (&header[i] == ignored[n]) {
-                    goto next;
+                    goto next_value;
                 }
             }
 
@@ -893,12 +912,33 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 
             val = b->last;
             b->last = ngx_copy(val, header[i].value.data, header[i].value.len);
+
+            if (header[i].next) {
+
+                if (header[i].key.len == sizeof("Cookie") - 1
+                    && ngx_strncasecmp(header[i].key.data, (u_char *) "Cookie",
+                                       sizeof("Cookie") - 1)
+                       == 0)
+                {
+                    sep = ';';
+
+                } else {
+                    sep = ',';
+                }
+
+                for (hn = header[i].next; hn; hn = hn->next) {
+                    *b->last++ = sep;
+                    *b->last++ = ' ';
+                    b->last = ngx_copy(b->last, hn->value.data, hn->value.len);
+                }
+            }
+
             *b->last++ = (u_char) 0;
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "scgi param: \"%s: %s\"", key, val);
 
-        next:
+        next_value:
 
             continue;
         }
@@ -1074,8 +1114,12 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
             hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                h->lowcase_key, h->key.len);
 
-            if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                return NGX_ERROR;
+            if (hh) {
+                rc = hh->handler(r, h, hh->offset);
+
+                if (rc != NGX_OK) {
+                    return rc;
+                }
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

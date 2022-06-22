@@ -1082,6 +1082,7 @@ ngx_http_dav_location(ngx_http_request_t *r)
     }
 
     r->headers_out.location->hash = 1;
+    r->headers_out.location->next = NULL;
     ngx_str_set(&r->headers_out.location->key, "Location");
 
     escape = 2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len, NGX_ESCAPE_URI);

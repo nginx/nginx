@@ -1891,8 +1891,12 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                    h->lowcase_key, h->key.len);
 
-                if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                    return NGX_ERROR;
+                if (hh) {
+                    rc = hh->handler(r, h, hh->offset);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
                 }
 
                 continue;
@@ -4902,8 +4906,9 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
         return NGX_ERROR;
     }
 
-    if (glcf->upstream.ssl_certificate) {
-
+    if (glcf->upstream.ssl_certificate
+        && glcf->upstream.ssl_certificate->value.len)
+    {
         if (glcf->upstream.ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"grpc_ssl_certificate_key\" is defined "

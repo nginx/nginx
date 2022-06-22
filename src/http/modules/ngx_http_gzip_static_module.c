@@ -242,6 +242,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
     }
 
     h->hash = 1;
+    h->next = NULL;
     ngx_str_set(&h->key, "Content-Encoding");
     ngx_str_set(&h->value, "gzip");
     r->headers_out.content_encoding = h;

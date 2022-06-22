@@ -1930,8 +1930,12 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                h->lowcase_key, h->key.len);
 
-            if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                return NGX_ERROR;
+            if (hh) {
+                rc = hh->handler(r, h, hh->offset);
+
+                if (rc != NGX_OK) {
+                    return rc;
+                }
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1965,6 +1969,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_str_set(&h->key, "Server");
                 ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "server";
+                h->next = NULL;
             }
 
             if (r->upstream->headers_in.date == NULL) {
@@ -1978,6 +1983,7 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_str_set(&h->key, "Date");
                 ngx_str_null(&h->value);
                 h->lowcase_key = (u_char *) "date";
+                h->next = NULL;
             }
 
             /* clear content length if response is chunked */
@@ -2559,22 +2565,20 @@ static ngx_int_t
 ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    size_t             len;
-    u_char            *p;
-    ngx_uint_t         i, n;
-    ngx_table_elt_t  **h;
+    size_t            len;
+    u_char           *p;
+    ngx_table_elt_t  *h, *xfwd;
 
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    n = r->headers_in.x_forwarded_for.nelts;
-    h = r->headers_in.x_forwarded_for.elts;
+    xfwd = r->headers_in.x_forwarded_for;
 
     len = 0;
 
-    for (i = 0; i < n; i++) {
-        len += h[i]->value.len + sizeof(", ") - 1;
+    for (h = xfwd; h; h = h->next) {
+        len += h->value.len + sizeof(", ") - 1;
     }
 
     if (len == 0) {
@@ -2593,8 +2597,8 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     v->len = len;
     v->data = p;
 
-    for (i = 0; i < n; i++) {
-        p = ngx_copy(p, h[i]->value.data, h[i]->value.len);
+    for (h = xfwd; h; h = h->next) {
+        p = ngx_copy(p, h->value.data, h->value.len);
         *p++ = ','; *p++ = ' ';
     }
 
@@ -4951,8 +4955,9 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
         return NGX_ERROR;
     }
 
-    if (plcf->upstream.ssl_certificate) {
-
+    if (plcf->upstream.ssl_certificate
+        && plcf->upstream.ssl_certificate->value.len)
+    {
         if (plcf->upstream.ssl_certificate_key == NULL) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"proxy_ssl_certificate_key\" is defined "

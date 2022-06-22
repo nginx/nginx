@@ -835,14 +835,14 @@ static ngx_int_t
 ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 {
     off_t                         file_pos;
-    u_char                        ch, *pos, *lowcase_key;
+    u_char                        ch, sep, *pos, *lowcase_key;
     size_t                        size, len, key_len, val_len, padding,
                                   allocated;
     ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
-    ngx_table_elt_t              *header, **ignored;
+    ngx_table_elt_t              *header, *hn, **ignored;
     ngx_http_upstream_t          *u;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t      e, le;
@@ -900,7 +900,11 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         allocated = 0;
         lowcase_key = NULL;
 
-        if (params->number) {
+        if (ngx_http_link_multi_headers(r) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (params->number || r->headers_in.multi) {
             n = 0;
             part = &r->headers_in.headers.part;
 
@@ -928,6 +932,12 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 part = part->next;
                 header = part->elts;
                 i = 0;
+            }
+
+            for (n = 0; n < header_params; n++) {
+                if (&header[i] == ignored[n]) {
+                    goto next_length;
+                }
             }
 
             if (params->number) {
@@ -959,15 +969,23 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                     ignored[header_params++] = &header[i];
                     continue;
                 }
-
-                n += sizeof("HTTP_") - 1;
-
-            } else {
-                n = sizeof("HTTP_") - 1 + header[i].key.len;
             }
 
-            len += ((n > 127) ? 4 : 1) + ((header[i].value.len > 127) ? 4 : 1)
-                + n + header[i].value.len;
+            key_len = sizeof("HTTP_") - 1 + header[i].key.len;
+
+            val_len = header[i].value.len;
+
+            for (hn = header[i].next; hn; hn = hn->next) {
+                val_len += hn->value.len + 2;
+                ignored[header_params++] = hn;
+            }
+
+            len += ((key_len > 127) ? 4 : 1) + key_len
+                   + ((val_len > 127) ? 4 : 1) + val_len;
+
+        next_length:
+
+            continue;
         }
     }
 
@@ -1109,7 +1127,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
             for (n = 0; n < header_params; n++) {
                 if (&header[i] == ignored[n]) {
-                    goto next;
+                    goto next_value;
                 }
             }
 
@@ -1125,6 +1143,11 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
             }
 
             val_len = header[i].value.len;
+
+            for (hn = header[i].next; hn; hn = hn->next) {
+                val_len += hn->value.len + 2;
+            }
+
             if (val_len > 127) {
                 *b->last++ = (u_char) (((val_len >> 24) & 0x7f) | 0x80);
                 *b->last++ = (u_char) ((val_len >> 16) & 0xff);
@@ -1150,13 +1173,34 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 *b->last++ = ch;
             }
 
-            b->last = ngx_copy(b->last, header[i].value.data, val_len);
+            b->last = ngx_copy(b->last, header[i].value.data,
+                               header[i].value.len);
+
+            if (header[i].next) {
+
+                if (header[i].key.len == sizeof("Cookie") - 1
+                    && ngx_strncasecmp(header[i].key.data, (u_char *) "Cookie",
+                                       sizeof("Cookie") - 1)
+                       == 0)
+                {
+                    sep = ';';
+
+                } else {
+                    sep = ',';
+                }
+
+                for (hn = header[i].next; hn; hn = hn->next) {
+                    *b->last++ = sep;
+                    *b->last++ = ' ';
+                    b->last = ngx_copy(b->last, hn->value.data, hn->value.len);
+                }
+            }
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "fastcgi param: \"%*s: %*s\"",
                            key_len, b->last - (key_len + val_len),
                            val_len, b->last - val_len);
-        next:
+        next_value:
 
             continue;
         }
@@ -1963,8 +2007,12 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
                 hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                    h->lowcase_key, h->key.len);
 
-                if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-                    return NGX_ERROR;
+                if (hh) {
+                    rc = hh->handler(r, h, hh->offset);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
                 }
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

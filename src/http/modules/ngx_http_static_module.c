@@ -195,6 +195,7 @@ ngx_http_static_handler(ngx_http_request_t *r)
         }
 
         r->headers_out.location->hash = 1;
+        r->headers_out.location->next = NULL;
         ngx_str_set(&r->headers_out.location->key, "Location");
         r->headers_out.location->value.len = len;
         r->headers_out.location->value.data = location;

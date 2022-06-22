@@ -1389,6 +1389,7 @@ ngx_resolver_send_tcp_query(ngx_resolver_t *r, ngx_resolver_connection_t *rec,
 
         rec->tcp->data = rec;
         rec->tcp->write->handler = ngx_resolver_tcp_write;
+        rec->tcp->write->cancelable = 1;
         rec->tcp->read->handler = ngx_resolver_tcp_read;
         rec->tcp->read->resolver = 1;
 

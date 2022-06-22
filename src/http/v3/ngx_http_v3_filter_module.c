@@ -609,13 +609,13 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_v3_push_resources(ngx_http_request_t *r, ngx_chain_t ***out)
 {
-    u_char                     *start, *end, *last;
-    ngx_str_t                   path;
-    ngx_int_t                   rc;
-    ngx_uint_t                  i, push;
-    ngx_table_elt_t           **h;
-    ngx_http_v3_loc_conf_t     *h3lcf;
-    ngx_http_complex_value_t   *pushes;
+    u_char                    *start, *end, *last;
+    ngx_str_t                  path;
+    ngx_int_t                  rc;
+    ngx_uint_t                 i, push;
+    ngx_table_elt_t           *h;
+    ngx_http_v3_loc_conf_t    *h3lcf;
+    ngx_http_complex_value_t  *pushes;
 
     h3lcf = ngx_http_get_module_loc_conf(r, ngx_http_v3_module);
 
@@ -654,15 +654,13 @@ ngx_http_v3_push_resources(ngx_http_request_t *r, ngx_chain_t ***out)
         return NGX_OK;
     }
 
-    h = r->headers_out.link.elts;
-
-    for (i = 0; i < r->headers_out.link.nelts; i++) {
+    for (h = r->headers_out.link; h; h = h->next) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 parse link: \"%V\"", &h[i]->value);
+                       "http3 parse link: \"%V\"", &h->value);
 
-        start = h[i]->value.data;
-        end = h[i]->value.data + h[i]->value.len;
+        start = h->value.data;
+        end = h->value.data + h->value.len;
 
     next_link:
 

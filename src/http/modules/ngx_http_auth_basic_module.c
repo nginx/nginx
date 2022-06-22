@@ -339,6 +339,7 @@ ngx_http_auth_basic_set_realm(ngx_http_request_t *r, ngx_str_t *realm)
     *p = '"';
 
     r->headers_out.www_authenticate->hash = 1;
+    r->headers_out.www_authenticate->next = NULL;
     ngx_str_set(&r->headers_out.www_authenticate->key, "WWW-Authenticate");
     r->headers_out.www_authenticate->value.data = basic;
     r->headers_out.www_authenticate->value.len = len;
