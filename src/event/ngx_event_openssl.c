@@ -3343,6 +3343,12 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_NO_SUITABLE_KEY_SHARE
             || n == SSL_R_NO_SUITABLE_KEY_SHARE                      /*  101 */
 #endif
+#ifdef SSL_R_BAD_KEY_SHARE
+            || n == SSL_R_BAD_KEY_SHARE                              /*  108 */
+#endif
+#ifdef SSL_R_BAD_EXTENSION
+            || n == SSL_R_BAD_EXTENSION                              /*  110 */
+#endif
 #ifdef SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM
             || n == SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM            /*  118 */
 #endif
@@ -3357,6 +3363,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
 #endif
             || n == SSL_R_NO_CIPHERS_SPECIFIED                       /*  183 */
+#ifdef SSL_R_BAD_CIPHER
+            || n == SSL_R_BAD_CIPHER                                 /*  186 */
+#endif
             || n == SSL_R_NO_COMPRESSION_SPECIFIED                   /*  187 */
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
@@ -3390,6 +3399,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_APPLICATION_DATA_ON_SHUTDOWN
             || n == SSL_R_APPLICATION_DATA_ON_SHUTDOWN               /*  291 */
+#endif
+#ifdef SSL_R_BAD_ECPOINT
+            || n == SSL_R_BAD_ECPOINT                                /*  306 */
 #endif
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
             || n == SSL_R_RENEGOTIATE_EXT_TOO_LONG                   /*  335 */
