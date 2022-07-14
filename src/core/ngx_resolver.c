@@ -3684,10 +3684,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     }
 
     rn->qlen = (u_short) len;
-
-    if (r->ipv4) {
-        rn->query = p;
-    }
+    rn->query = p;
 
 #if (NGX_HAVE_INET6)
     if (r->ipv6) {
