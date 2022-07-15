@@ -46,6 +46,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
                 return 0;
 
             } else {
+                rev->ready = 0;
                 return NGX_AGAIN;
             }
         }
@@ -63,6 +64,7 @@ ngx_readv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
                        rev->pending_eof, rev->available);
 
         if (rev->available == 0 && !rev->pending_eof) {
+            rev->ready = 0;
             return NGX_AGAIN;
         }
     }
