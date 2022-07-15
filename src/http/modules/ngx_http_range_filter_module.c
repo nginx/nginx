@@ -425,6 +425,10 @@ ngx_http_range_singlepart_header(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
+    if (r->headers_out.content_range) {
+        r->headers_out.content_range->hash = 0;
+    }
+
     r->headers_out.content_range = content_range;
 
     content_range->hash = 1;
@@ -582,6 +586,11 @@ ngx_http_range_multipart_header(ngx_http_request_t *r,
         r->headers_out.content_length = NULL;
     }
 
+    if (r->headers_out.content_range) {
+        r->headers_out.content_range->hash = 0;
+        r->headers_out.content_range = NULL;
+    }
+
     return ngx_http_next_header_filter(r);
 }
 
@@ -596,6 +605,10 @@ ngx_http_range_not_satisfiable(ngx_http_request_t *r)
     content_range = ngx_list_push(&r->headers_out.headers);
     if (content_range == NULL) {
         return NGX_ERROR;
+    }
+
+    if (r->headers_out.content_range) {
+        r->headers_out.content_range->hash = 0;
     }
 
     r->headers_out.content_range = content_range;
