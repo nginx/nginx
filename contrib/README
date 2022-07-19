@@ -6,6 +6,12 @@ geo2nginx.pl 		by Andrei Nigmatulin
 	for use by the ngx_http_geo_module.
 
 
+management.sh           by Sergio Casero
+
+        Small bash script to manage the Nginx ecosystem in a very
+        basic way to save time.
+
+
 unicode2nginx		by Maxim Dounin
 
 	The perl script to convert unicode mappings ( available
