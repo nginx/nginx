@@ -5,6 +5,72 @@
 <change_log title="nginx">
 
 
+<changes ver="1.23.1" date="2022-07-19">
+
+<change type="feature">
+<para lang="ru">
+оптимизация использования памяти
+в конфигурациях с SSL-проксированием.
+</para>
+<para lang="en">
+memory usage optimization
+in configurations with SSL proxying.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь с помощью параметра "ipv4=off" директивы "resolver"
+можно запретить поиск IPv4-адресов при преобразовании имён в адреса.
+</para>
+<para lang="en">
+looking up of IPv4 addresses while resolving now can be disabled
+with the "ipv4=off" parameter of the "resolver" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "bad key share", "bad extension",
+"bad cipher" и "bad ecpoint"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the "bad key share", "bad extension",
+"bad cipher", and "bad ecpoint" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при возврате диапазонов
+nginx не удалял строку заголовка "Content-Range",
+если она присутствовала в исходном ответе бэкенда.
+</para>
+<para lang="en">
+while returning byte ranges
+nginx did not remove the "Content-Range" header line
+if it was present in the original backend response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+проксированный ответ мог быть отправлен не полностью
+при переконфигурации на Linux;
+ошибка появилась в 1.17.5.
+</para>
+<para lang="en">
+a proxied response might be truncated
+during reconfiguration on Linux;
+the bug had appeared in 1.17.5.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.23.0" date="2022-06-21">
 
 <change>

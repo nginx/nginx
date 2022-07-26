@@ -157,6 +157,8 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
     cln->handler = ngx_resolver_cleanup;
     cln->data = r;
 
+    r->ipv4 = 1;
+
     ngx_rbtree_init(&r->name_rbtree, &r->name_sentinel,
                     ngx_resolver_rbtree_insert_value);
 
@@ -225,6 +227,23 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
         }
 
 #if (NGX_HAVE_INET6)
+        if (ngx_strncmp(names[i].data, "ipv4=", 5) == 0) {
+
+            if (ngx_strcmp(&names[i].data[5], "on") == 0) {
+                r->ipv4 = 1;
+
+            } else if (ngx_strcmp(&names[i].data[5], "off") == 0) {
+                r->ipv4 = 0;
+
+            } else {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid parameter: %V", &names[i]);
+                return NULL;
+            }
+
+            continue;
+        }
+
         if (ngx_strncmp(names[i].data, "ipv6=", 5) == 0) {
 
             if (ngx_strcmp(&names[i].data[5], "on") == 0) {
@@ -272,6 +291,14 @@ ngx_resolver_create(ngx_conf_t *cf, ngx_str_t *names, ngx_uint_t n)
             rec[j].resolver = r;
         }
     }
+
+#if (NGX_HAVE_INET6)
+    if (r->ipv4 + r->ipv6 == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"ipv4\" and \"ipv6\" cannot both be \"off\"");
+        return NULL;
+    }
+#endif
 
     if (n && r->connections.nelts == 0) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no name servers defined");
@@ -836,7 +863,7 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
         r->last_connection = 0;
     }
 
-    rn->naddrs = (u_short) -1;
+    rn->naddrs = r->ipv4 ? (u_short) -1 : 0;
     rn->tcp = 0;
 #if (NGX_HAVE_INET6)
     rn->naddrs6 = r->ipv6 ? (u_short) -1 : 0;
@@ -1263,7 +1290,7 @@ ngx_resolver_send_query(ngx_resolver_t *r, ngx_resolver_node_t *rn)
         rec->log.action = "resolving";
     }
 
-    if (rn->naddrs == (u_short) -1) {
+    if (rn->query && rn->naddrs == (u_short) -1) {
         rc = rn->tcp ? ngx_resolver_send_tcp_query(r, rec, rn->query, rn->qlen)
                      : ngx_resolver_send_udp_query(r, rec, rn->query, rn->qlen);
 
@@ -1765,10 +1792,13 @@ ngx_resolver_process_response(ngx_resolver_t *r, u_char *buf, size_t n,
              q = ngx_queue_next(q))
         {
             rn = ngx_queue_data(q, ngx_resolver_node_t, queue);
-            qident = (rn->query[0] << 8) + rn->query[1];
 
-            if (qident == ident) {
-                goto dns_error_name;
+            if (rn->query) {
+                qident = (rn->query[0] << 8) + rn->query[1];
+
+                if (qident == ident) {
+                    goto dns_error_name;
+                }
             }
 
 #if (NGX_HAVE_INET6)
@@ -3645,7 +3675,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     len = sizeof(ngx_resolver_hdr_t) + nlen + sizeof(ngx_resolver_qs_t);
 
 #if (NGX_HAVE_INET6)
-    p = ngx_resolver_alloc(r, r->ipv6 ? len * 2 : len);
+    p = ngx_resolver_alloc(r, len * (r->ipv4 + r->ipv6));
 #else
     p = ngx_resolver_alloc(r, len);
 #endif
@@ -3658,19 +3688,21 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
 
 #if (NGX_HAVE_INET6)
     if (r->ipv6) {
-        rn->query6 = p + len;
+        rn->query6 = r->ipv4 ? (p + len) : p;
     }
 #endif
 
     query = (ngx_resolver_hdr_t *) p;
 
-    ident = ngx_random();
+    if (r->ipv4) {
+        ident = ngx_random();
 
-    ngx_log_debug2(NGX_LOG_DEBUG_CORE, r->log, 0,
-                   "resolve: \"%V\" A %i", name, ident & 0xffff);
+        ngx_log_debug2(NGX_LOG_DEBUG_CORE, r->log, 0,
+                       "resolve: \"%V\" A %i", name, ident & 0xffff);
 
-    query->ident_hi = (u_char) ((ident >> 8) & 0xff);
-    query->ident_lo = (u_char) (ident & 0xff);
+        query->ident_hi = (u_char) ((ident >> 8) & 0xff);
+        query->ident_lo = (u_char) (ident & 0xff);
+    }
 
     /* recursion query */
     query->flags_hi = 1; query->flags_lo = 0;
@@ -3731,7 +3763,9 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
 
     p = rn->query6;
 
-    ngx_memcpy(p, rn->query, rn->qlen);
+    if (r->ipv4) {
+        ngx_memcpy(p, rn->query, rn->qlen);
+    }
 
     query = (ngx_resolver_hdr_t *) p;
 
