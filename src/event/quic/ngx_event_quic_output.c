@@ -961,7 +961,7 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_keys_set_initial_secret(c->pool, pkt.keys, &inpkt->dcid)
+    if (ngx_quic_keys_set_initial_secret(pkt.keys, &inpkt->dcid, c->log)
         != NGX_OK)
     {
         return NGX_ERROR;

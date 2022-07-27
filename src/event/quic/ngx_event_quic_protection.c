@@ -113,7 +113,7 @@ static ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
 static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
 static ngx_int_t ngx_quic_hkdf_expand(ngx_quic_hkdf_t *hkdf,
-    const EVP_MD *digest, ngx_pool_t *pool);
+    const EVP_MD *digest, ngx_log_t *log);
 
 static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
@@ -179,8 +179,8 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
 
 
 ngx_int_t
-ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
-    ngx_str_t *secret)
+ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
+    ngx_log_t *log)
 {
     size_t              is_len;
     uint8_t             is[SHA256_DIGEST_LENGTH];
@@ -217,12 +217,12 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
         .len = is_len
     };
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic ngx_quic_set_initial_secret");
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic salt len:%uz %*xs", sizeof(salt), sizeof(salt), salt);
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic initial secret len:%uz %*xs", is_len, is_len, is);
 #endif
 
@@ -251,7 +251,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-        if (ngx_quic_hkdf_expand(&seq[i], digest, pool) != NGX_OK) {
+        if (ngx_quic_hkdf_expand(&seq[i], digest, log) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -261,7 +261,7 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
 
 
 static ngx_int_t
-ngx_quic_hkdf_expand(ngx_quic_hkdf_t *h, const EVP_MD *digest, ngx_pool_t *pool)
+ngx_quic_hkdf_expand(ngx_quic_hkdf_t *h, const EVP_MD *digest, ngx_log_t *log)
 {
     size_t    info_len;
     uint8_t  *p;
@@ -280,13 +280,13 @@ ngx_quic_hkdf_expand(ngx_quic_hkdf_t *h, const EVP_MD *digest, ngx_pool_t *pool)
                         h->prk, h->prk_len, info, info_len)
         != NGX_OK)
     {
-        ngx_ssl_error(NGX_LOG_INFO, pool->log, 0,
+        ngx_ssl_error(NGX_LOG_INFO, log, 0,
                       "ngx_hkdf_expand(%*s) failed", h->label_len, h->label);
         return NGX_ERROR;
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic expand \"%*s\" len:%uz %*xs",
                    h->label_len, h->label, h->out_len, h->out_len, h->out);
 #endif
@@ -667,7 +667,7 @@ failed:
 
 
 ngx_int_t
-ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
+ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
     ngx_quic_keys_t *keys, enum ssl_encryption_level_t level,
     const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len)
 {
@@ -685,12 +685,12 @@ ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
 
     if (key_len == NGX_ERROR) {
-        ngx_ssl_error(NGX_LOG_INFO, pool->log, 0, "unexpected cipher");
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "unexpected cipher");
         return NGX_ERROR;
     }
 
     if (sizeof(peer_secret->secret.data) < secret_len) {
-        ngx_log_error(NGX_LOG_ALERT, pool->log, 0,
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "unexpected secret len: %uz", secret_len);
         return NGX_ERROR;
     }
@@ -712,7 +712,7 @@ ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, pool) != NGX_OK) {
+        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, log) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -802,7 +802,7 @@ ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->pool) != NGX_OK) {
+        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->log) != NGX_OK) {
             return NGX_ERROR;
         }
     }
