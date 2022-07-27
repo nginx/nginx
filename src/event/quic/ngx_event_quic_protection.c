@@ -17,6 +17,9 @@
 
 #define NGX_QUIC_AES_128_KEY_LEN      16
 
+/* largest hash used in TLS is SHA-384 */
+#define NGX_QUIC_MAX_MD_SIZE          48
+
 #define NGX_AES_128_GCM_SHA256        0x1301
 #define NGX_AES_256_GCM_SHA384        0x1302
 #define NGX_CHACHA20_POLY1305_SHA256  0x1303
@@ -30,6 +33,18 @@
 
 
 typedef struct {
+    size_t                    len;
+    u_char                    data[NGX_QUIC_MAX_MD_SIZE];
+} ngx_quic_md_t;
+
+
+typedef struct {
+    size_t                    len;
+    u_char                    data[NGX_QUIC_IV_LEN];
+} ngx_quic_iv_t;
+
+
+typedef struct {
     const ngx_quic_cipher_t  *c;
     const EVP_CIPHER         *hp;
     const EVP_MD             *d;
@@ -37,10 +52,10 @@ typedef struct {
 
 
 typedef struct ngx_quic_secret_s {
-    ngx_str_t                 secret;
-    ngx_str_t                 key;
-    ngx_str_t                 iv;
-    ngx_str_t                 hp;
+    ngx_quic_md_t             secret;
+    ngx_quic_md_t             key;
+    ngx_quic_iv_t             iv;
+    ngx_quic_md_t             hp;
 } ngx_quic_secret_t;
 
 
@@ -55,6 +70,25 @@ struct ngx_quic_keys_s {
     ngx_quic_secrets_t        next_key;
     ngx_uint_t                cipher;
 };
+
+
+typedef struct {
+    size_t                    out_len;
+    u_char                   *out;
+
+    size_t                    prk_len;
+    const uint8_t            *prk;
+
+    size_t                    label_len;
+    const u_char             *label;
+} ngx_quic_hkdf_t;
+
+#define ngx_quic_hkdf_set(label, out, prk)                                    \
+    {                                                                         \
+        (out)->len, (out)->data,                                              \
+        (prk)->len, (prk)->data,                                              \
+        (sizeof(label) - 1), (u_char *)(label),                               \
+    }
 
 
 static ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
@@ -78,8 +112,8 @@ static ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
     ngx_str_t *ad, ngx_log_t *log);
 static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
-static ngx_int_t ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest,
-    ngx_str_t *out, ngx_str_t *label, const uint8_t *prk, size_t prk_len);
+static ngx_int_t ngx_quic_hkdf_expand(ngx_quic_hkdf_t *hkdf,
+    const EVP_MD *digest, ngx_pool_t *pool);
 
 static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
@@ -204,28 +238,20 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
     client->iv.len = NGX_QUIC_IV_LEN;
     server->iv.len = NGX_QUIC_IV_LEN;
 
-    struct {
-        ngx_str_t   label;
-        ngx_str_t  *key;
-        ngx_str_t  *prk;
-    } seq[] = {
+    ngx_quic_hkdf_t seq[] = {
         /* labels per RFC 9001, 5.1. Packet Protection Keys */
-        { ngx_string("tls13 client in"), &client->secret, &iss },
-        { ngx_string("tls13 quic key"),  &client->key,    &client->secret },
-        { ngx_string("tls13 quic iv"),   &client->iv,     &client->secret },
-        { ngx_string("tls13 quic hp"),   &client->hp,     &client->secret },
-        { ngx_string("tls13 server in"), &server->secret, &iss },
-        { ngx_string("tls13 quic key"),  &server->key,    &server->secret },
-        { ngx_string("tls13 quic iv"),   &server->iv,     &server->secret },
-        { ngx_string("tls13 quic hp"),   &server->hp,     &server->secret },
+        ngx_quic_hkdf_set("tls13 client in", &client->secret, &iss),
+        ngx_quic_hkdf_set("tls13 quic key",  &client->key,    &client->secret),
+        ngx_quic_hkdf_set("tls13 quic iv",   &client->iv,     &client->secret),
+        ngx_quic_hkdf_set("tls13 quic hp",   &client->hp,     &client->secret),
+        ngx_quic_hkdf_set("tls13 server in", &server->secret, &iss),
+        ngx_quic_hkdf_set("tls13 quic key",  &server->key,    &server->secret),
+        ngx_quic_hkdf_set("tls13 quic iv",   &server->iv,     &server->secret),
+        ngx_quic_hkdf_set("tls13 quic hp",   &server->hp,     &server->secret),
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-
-        if (ngx_quic_hkdf_expand(pool, digest, seq[i].key, &seq[i].label,
-                                 seq[i].prk->data, seq[i].prk->len)
-            != NGX_OK)
-        {
+        if (ngx_quic_hkdf_expand(&seq[i], digest, pool) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -235,40 +261,34 @@ ngx_quic_keys_set_initial_secret(ngx_pool_t *pool, ngx_quic_keys_t *keys,
 
 
 static ngx_int_t
-ngx_quic_hkdf_expand(ngx_pool_t *pool, const EVP_MD *digest, ngx_str_t *out,
-    ngx_str_t *label, const uint8_t *prk, size_t prk_len)
+ngx_quic_hkdf_expand(ngx_quic_hkdf_t *h, const EVP_MD *digest, ngx_pool_t *pool)
 {
     size_t    info_len;
     uint8_t  *p;
     uint8_t   info[20];
 
-    if (out->data == NULL) {
-        out->data = ngx_pnalloc(pool, out->len);
-        if (out->data == NULL) {
-            return NGX_ERROR;
-        }
-    }
-
-    info_len = 2 + 1 + label->len + 1;
+    info_len = 2 + 1 + h->label_len + 1;
 
     info[0] = 0;
-    info[1] = out->len;
-    info[2] = label->len;
-    p = ngx_cpymem(&info[3], label->data, label->len);
+    info[1] = h->out_len;
+    info[2] = h->label_len;
+
+    p = ngx_cpymem(&info[3], h->label, h->label_len);
     *p = '\0';
 
-    if (ngx_hkdf_expand(out->data, out->len, digest,
-                        prk, prk_len, info, info_len)
+    if (ngx_hkdf_expand(h->out, h->out_len, digest,
+                        h->prk, h->prk_len, info, info_len)
         != NGX_OK)
     {
         ngx_ssl_error(NGX_LOG_INFO, pool->log, 0,
-                      "ngx_hkdf_expand(%V) failed", label);
+                      "ngx_hkdf_expand(%*s) failed", h->label_len, h->label);
         return NGX_ERROR;
     }
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
-    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pool->log, 0,
-                   "quic expand %V key len:%uz %xV", label, out->len, out);
+    ngx_log_debug5(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "quic expand \"%*s\" len:%uz %*xs",
+                   h->label_len, h->label, h->out_len, h->out_len, h->out);
 #endif
 
     return NGX_OK;
@@ -652,6 +672,7 @@ ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len)
 {
     ngx_int_t            key_len;
+    ngx_str_t            secret_str;
     ngx_uint_t           i;
     ngx_quic_secret_t   *peer_secret;
     ngx_quic_ciphers_t   ciphers;
@@ -668,8 +689,9 @@ ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
         return NGX_ERROR;
     }
 
-    peer_secret->secret.data = ngx_pnalloc(pool, secret_len);
-    if (peer_secret->secret.data == NULL) {
+    if (sizeof(peer_secret->secret.data) < secret_len) {
+        ngx_log_error(NGX_LOG_ALERT, pool->log, 0,
+                      "unexpected secret len: %uz", secret_len);
         return NGX_ERROR;
     }
 
@@ -680,22 +702,17 @@ ngx_quic_keys_set_encryption_secret(ngx_pool_t *pool, ngx_uint_t is_write,
     peer_secret->iv.len = NGX_QUIC_IV_LEN;
     peer_secret->hp.len = key_len;
 
-    struct {
-        ngx_str_t       label;
-        ngx_str_t      *key;
-        const uint8_t  *secret;
-    } seq[] = {
-        { ngx_string("tls13 quic key"), &peer_secret->key, secret },
-        { ngx_string("tls13 quic iv"),  &peer_secret->iv,  secret },
-        { ngx_string("tls13 quic hp"),  &peer_secret->hp,  secret },
+    secret_str.len = secret_len;
+    secret_str.data = (u_char *) secret;
+
+    ngx_quic_hkdf_t seq[] = {
+        ngx_quic_hkdf_set("tls13 quic key", &peer_secret->key, &secret_str),
+        ngx_quic_hkdf_set("tls13 quic iv", &peer_secret->iv, &secret_str),
+        ngx_quic_hkdf_set("tls13 quic hp", &peer_secret->hp, &secret_str),
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-
-        if (ngx_quic_hkdf_expand(pool, ciphers.d, seq[i].key, &seq[i].label,
-                                 seq[i].secret, secret_len)
-            != NGX_OK)
-        {
+        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, pool) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -769,49 +786,23 @@ ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
     next->server.iv.len = NGX_QUIC_IV_LEN;
     next->server.hp = current->server.hp;
 
-    struct {
-        ngx_str_t   label;
-        ngx_str_t  *key;
-        ngx_str_t  *secret;
-    } seq[] = {
-        {
-            ngx_string("tls13 quic ku"),
-            &next->client.secret,
-            &current->client.secret,
-        },
-        {
-            ngx_string("tls13 quic key"),
-            &next->client.key,
-            &next->client.secret,
-        },
-        {
-            ngx_string("tls13 quic iv"),
-            &next->client.iv,
-            &next->client.secret,
-        },
-        {
-            ngx_string("tls13 quic ku"),
-            &next->server.secret,
-            &current->server.secret,
-        },
-        {
-            ngx_string("tls13 quic key"),
-            &next->server.key,
-            &next->server.secret,
-        },
-        {
-            ngx_string("tls13 quic iv"),
-            &next->server.iv,
-            &next->server.secret,
-        },
+    ngx_quic_hkdf_t seq[] = {
+        ngx_quic_hkdf_set("tls13 quic ku",
+                          &next->client.secret, &current->client.secret),
+        ngx_quic_hkdf_set("tls13 quic key",
+                          &next->client.key, &next->client.secret),
+        ngx_quic_hkdf_set("tls13 quic iv",
+                          &next->client.iv, &next->client.secret),
+        ngx_quic_hkdf_set("tls13 quic ku",
+                          &next->server.secret, &current->server.secret),
+        ngx_quic_hkdf_set("tls13 quic key",
+                          &next->server.key, &next->server.secret),
+        ngx_quic_hkdf_set("tls13 quic iv",
+                          &next->server.iv, &next->server.secret),
     };
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
-
-        if (ngx_quic_hkdf_expand(c->pool, ciphers.d, seq[i].key, &seq[i].label,
-                                 seq[i].secret->data, seq[i].secret->len)
-            != NGX_OK)
-        {
+        if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->pool) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -909,7 +900,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     }
 
     secret.key.len = sizeof(key);
-    secret.key.data = key;
+    ngx_memcpy(secret.key.data, key, sizeof(key));
     secret.iv.len = NGX_QUIC_IV_LEN;
 
     if (ngx_quic_tls_seal(ciphers.c, &secret, &itag, nonce, &in, &ad, pkt->log)
