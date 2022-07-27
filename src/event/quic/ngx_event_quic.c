@@ -238,7 +238,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
-    qc->keys = ngx_quic_keys_new(c->pool);
+    qc->keys = ngx_pcalloc(c->pool, sizeof(ngx_quic_keys_t));
     if (qc->keys == NULL) {
         return NULL;
     }

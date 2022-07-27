@@ -928,6 +928,7 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
 {
     ssize_t            len;
     ngx_str_t          res;
+    ngx_quic_keys_t    keys;
     ngx_quic_frame_t   frame;
     ngx_quic_header_t  pkt;
 
@@ -956,10 +957,9 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
         return NGX_ERROR;
     }
 
-    pkt.keys = ngx_quic_keys_new(c->pool);
-    if (pkt.keys == NULL) {
-        return NGX_ERROR;
-    }
+    ngx_memzero(&keys, sizeof(ngx_quic_keys_t));
+
+    pkt.keys = &keys;
 
     if (ngx_quic_keys_set_initial_secret(pkt.keys, &inpkt->dcid, c->log)
         != NGX_OK)
