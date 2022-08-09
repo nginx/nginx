@@ -3423,6 +3423,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_VERSION_TOO_LOW
             || n == SSL_R_VERSION_TOO_LOW                            /*  396 */
 #endif
+#ifdef SSL_R_BAD_RECORD_TYPE
+            || n == SSL_R_BAD_RECORD_TYPE                            /*  443 */
+#endif
             || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
 #ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
             || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE             /* 1010 */
