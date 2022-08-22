@@ -55,7 +55,7 @@ static const struct {
 
 
 void
-ngx_http_v3_init(ngx_connection_t *c)
+ngx_http_v3_init_stream(ngx_connection_t *c)
 {
     ngx_http_connection_t     *hc, *phc;
     ngx_http_v3_srv_conf_t    *h3scf;
@@ -362,7 +362,7 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 
 
 void
-ngx_http_v3_reset_connection(ngx_connection_t *c)
+ngx_http_v3_reset_stream(ngx_connection_t *c)
 {
     ngx_http_v3_srv_conf_t  *h3scf;
 
