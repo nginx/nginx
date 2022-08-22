@@ -414,6 +414,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     }
 
     if (c->close) {
+        qc->error = NGX_QUIC_ERR_NO_ERROR;
         qc->error_reason = "graceful shutdown";
         ngx_quic_close_connection(c, NGX_OK);
         return;
@@ -506,31 +507,26 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
             qc->error_level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
                                      : ssl_encryption_initial;
 
-            if (rc == NGX_OK) {
-                ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic close immediate drain:%d",
-                               qc->draining);
+            if (qc->error == (ngx_uint_t) -1) {
+                qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+                qc->error_app = 0;
+            }
 
+            ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic close immediate term:%d drain:%d "
+                           "%serror:%ui \"%s\"",
+                           rc == NGX_ERROR ? 1 : 0, qc->draining,
+                           qc->error_app ? "app " : "", qc->error,
+                           qc->error_reason ? qc->error_reason : "");
+
+            if (rc == NGX_OK) {
                 qc->close.log = c->log;
                 qc->close.data = c;
                 qc->close.handler = ngx_quic_close_timer_handler;
                 qc->close.cancelable = 1;
 
                 ctx = ngx_quic_get_send_ctx(qc, qc->error_level);
-
                 ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
-
-                qc->error = NGX_QUIC_ERR_NO_ERROR;
-
-            } else {
-                if (qc->error == (ngx_uint_t) -1 && !qc->error_app) {
-                    qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
-                }
-
-                ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic close immediate due to %serror: %ui %s",
-                               qc->error_app ? "app " : "", qc->error,
-                               qc->error_reason ? qc->error_reason : "");
             }
 
             (void) ngx_quic_send_cc(c);
@@ -617,7 +613,7 @@ ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     qc->error_app = 1;
     qc->error_ftype = 0;
 
-    ngx_quic_close_connection(c, NGX_ERROR);
+    ngx_quic_close_connection(c, NGX_OK);
 }
 
 
