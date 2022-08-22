@@ -253,6 +253,7 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                 break;
 
             case NGX_QUIC_FT_STREAM:
+            case NGX_QUIC_FT_RESET_STREAM:
                 ngx_quic_handle_stream_ack(c, f);
                 break;
             }
