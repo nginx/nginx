@@ -1769,7 +1769,7 @@ ngx_ssl_handshake(ngx_connection_t *c)
 #endif
 #endif
 
-#ifdef BIO_get_ktls_send
+#if (defined BIO_get_ktls_send && !NGX_WIN32)
 
         if (BIO_get_ktls_send(SSL_get_wbio(c->ssl->connection)) == 1) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -1914,7 +1914,7 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
         c->read->ready = 1;
         c->write->ready = 1;
 
-#ifdef BIO_get_ktls_send
+#if (defined BIO_get_ktls_send && !NGX_WIN32)
 
         if (BIO_get_ktls_send(SSL_get_wbio(c->ssl->connection)) == 1) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -2943,7 +2943,7 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
 static ssize_t
 ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 {
-#ifdef BIO_get_ktls_send
+#if (defined BIO_get_ktls_send && !NGX_WIN32)
 
     int        sslerr, flags;
     ssize_t    n;
