@@ -80,8 +80,6 @@ typedef long  time_t;
 
 #pragma warning(default:4201)
 
-/* disable some "-W4" level warnings */
-
 /* 'type cast': from function pointer to data pointer */
 #pragma warning(disable:4054)
 
