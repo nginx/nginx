@@ -104,6 +104,9 @@ typedef long  time_t;
 /* array is too small to include a terminating null character */
 #pragma warning(disable:4295)
 
+/* conversion from 'type1' to 'type2' of greater size */
+#pragma warning(disable:4306)
+
 #endif
 
 
