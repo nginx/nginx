@@ -15,8 +15,7 @@ static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
 static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static void ngx_quic_input_handler(ngx_event_t *rev);
-
-static void ngx_quic_close_timer_handler(ngx_event_t *ev);
+static void ngx_quic_close_handler(ngx_event_t *ev);
 
 static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
     ngx_quic_conf_t *conf);
@@ -283,6 +282,11 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->push.handler = ngx_quic_push_handler;
     qc->push.cancelable = 1;
 
+    qc->close.log = c->log;
+    qc->close.data = c;
+    qc->close.handler = ngx_quic_close_handler;
+    qc->close.cancelable = 1;
+
     qc->path_validation.log = c->log;
     qc->path_validation.data = c;
     qc->path_validation.handler = ngx_quic_path_validation_handler;
@@ -420,18 +424,10 @@ ngx_quic_input_handler(ngx_event_t *rev)
         return;
     }
 
-    if (!rev->ready) {
-        if (qc->closing) {
-            ngx_quic_close_connection(c, NGX_OK);
-
-        } else if (qc->shutdown) {
-            ngx_quic_shutdown_quic(c);
-        }
-
+    b = c->udp->buffer;
+    if (b == NULL) {
         return;
     }
-
-    b = c->udp->buffer;
 
     rc = ngx_quic_handle_datagram(c, b, NULL);
 
@@ -520,11 +516,6 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
                            qc->error_reason ? qc->error_reason : "");
 
             if (rc == NGX_OK) {
-                qc->close.log = c->log;
-                qc->close.data = c;
-                qc->close.handler = ngx_quic_close_timer_handler;
-                qc->close.cancelable = 1;
-
                 ctx = ngx_quic_get_send_ctx(qc, qc->error_level);
                 ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
             }
@@ -568,6 +559,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
     if (qc->close.timer_set) {
         return;
+    }
+
+    if (qc->close.posted) {
+        ngx_delete_posted_event(&qc->close);
     }
 
     ngx_quic_close_sockets(c);
@@ -633,14 +628,22 @@ ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
 
 
 static void
-ngx_quic_close_timer_handler(ngx_event_t *ev)
+ngx_quic_close_handler(ngx_event_t *ev)
 {
-    ngx_connection_t  *c;
+    ngx_connection_t       *c;
+    ngx_quic_connection_t  *qc;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic close timer");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic close handler");
 
     c = ev->data;
-    ngx_quic_close_connection(c, NGX_DONE);
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->closing) {
+        ngx_quic_close_connection(c, NGX_OK);
+
+    } else if (qc->shutdown) {
+        ngx_quic_shutdown_quic(c);
+    }
 }
 
 

@@ -1031,7 +1031,7 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
 
     if (qc->closing) {
         /* schedule handler call to continue ngx_quic_close_connection() */
-        ngx_post_event(pc->read, &ngx_posted_events);
+        ngx_post_event(&qc->close, &ngx_posted_events);
         return NGX_OK;
     }
 
@@ -1057,7 +1057,7 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
     }
 
     if (qc->shutdown) {
-        ngx_post_event(pc->read, &ngx_posted_events);
+        ngx_post_event(&qc->close, &ngx_posted_events);
     }
 
     return NGX_OK;
