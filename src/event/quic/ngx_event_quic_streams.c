@@ -1072,6 +1072,15 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
         return NGX_OK;
     }
 
+    if (!pc->reusable && ngx_quic_can_shutdown(pc) == NGX_OK) {
+        ngx_reusable_connection(pc, 1);
+    }
+
+    if (qc->shutdown) {
+        ngx_quic_shutdown_quic(pc);
+        return NGX_OK;
+    }
+
     if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
         frame = ngx_quic_alloc_frame(pc);
         if (frame == NULL) {
@@ -1091,14 +1100,6 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
         }
 
         ngx_quic_queue_frame(qc, frame);
-    }
-
-    if (!pc->reusable && ngx_quic_can_shutdown(pc) == NGX_OK) {
-        ngx_reusable_connection(pc, 1);
-    }
-
-    if (qc->shutdown) {
-        ngx_quic_shutdown_quic(pc);
     }
 
     return NGX_OK;
