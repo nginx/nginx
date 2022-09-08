@@ -1428,7 +1428,7 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
 #ifdef SSL_CTRL_SET_ECDH_AUTO
     /* not needed in OpenSSL 1.1.0+ */
-    SSL_CTX_set_ecdh_auto(ssl->ctx, 1);
+    (void) SSL_CTX_set_ecdh_auto(ssl->ctx, 1);
 #endif
 
     if (ngx_strcmp(name->data, "auto") == 0) {
