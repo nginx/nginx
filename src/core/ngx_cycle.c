@@ -1379,7 +1379,9 @@ ngx_clean_old_cycles(ngx_event_t *ev)
     cycle = ngx_old_cycles.elts;
     for (i = 0; i < ngx_old_cycles.nelts; i++) {
 
-        if (cycle[i] == NULL) {
+        if (cycle[i] == NULL
+            || cycle[i]->connections == NULL)
+        {
             continue;
         }
 
