@@ -20,15 +20,13 @@ Experimental QUIC support for nginx
 
     The project code base is under the same BSD license as nginx.
 
-    The code is currently at a beta level of quality and should not
-    be used in production.
+    The code is currently at a beta level of quality, however
+    there are several production deployments with it.
 
-    We are working on improving HTTP/3 support with the goal of
-    integrating it to the main NGINX codebase.  Expect frequent
-    updates of this code and don't rely on it for whatever purpose.
-
-    We'll be grateful for any feedback and code submissions however
-    we don't bear any responsibilities for any issues with this code.
+    We are working on improving HTTP/3 support to integrate it into
+    the main NGINX codebase.  Thus, expect further updates of this code,
+    including features, changes in behaviour, bug fixes, and refactoring.
+    We'll be grateful for any feedback and code submissions.
 
     You can always contact us via nginx-devel mailing list [3].
 
