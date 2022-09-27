@@ -13,7 +13,9 @@
 #define NGX_PROXY_PROTOCOL_AF_INET6         2
 
 
-#define ngx_proxy_protocol_parse_uint16(p)  ((p)[0] << 8 | (p)[1])
+#define ngx_proxy_protocol_parse_uint16(p)                                    \
+    ( ((uint16_t) (p)[0] << 8)                                                \
+    + (           (p)[1]) )
 
 #define ngx_proxy_protocol_parse_uint32(p)                                    \
     ( ((uint32_t) (p)[0] << 24)                                               \
