@@ -139,8 +139,14 @@ skip:
 
 invalid:
 
+    for (p = buf; p < last; p++) {
+        if (*p == CR || *p == LF) {
+            break;
+        }
+    }
+
     ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                  "broken header: \"%*s\"", (size_t) (last - buf), buf);
+                  "broken header: \"%*s\"", (size_t) (p - buf), buf);
 
     return NULL;
 }
