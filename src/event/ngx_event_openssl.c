@@ -4229,23 +4229,23 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 ngx_int_t
 ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
 {
-    u_char                         buf[80];
-    size_t                         size;
-    ssize_t                        n;
-    ngx_str_t                     *path;
-    ngx_file_t                     file;
-    ngx_uint_t                     i;
-    ngx_array_t                   *keys;
-    ngx_file_info_t                fi;
-    ngx_pool_cleanup_t            *cln;
-    ngx_ssl_session_ticket_key_t  *key;
+    u_char                 buf[80];
+    size_t                 size;
+    ssize_t                n;
+    ngx_str_t             *path;
+    ngx_file_t             file;
+    ngx_uint_t             i;
+    ngx_array_t           *keys;
+    ngx_file_info_t        fi;
+    ngx_pool_cleanup_t    *cln;
+    ngx_ssl_ticket_key_t  *key;
 
     if (paths == NULL) {
         return NGX_OK;
     }
 
     keys = ngx_array_create(cf->pool, paths->nelts,
-                            sizeof(ngx_ssl_session_ticket_key_t));
+                            sizeof(ngx_ssl_ticket_key_t));
     if (keys == NULL) {
         return NGX_ERROR;
     }
@@ -4372,14 +4372,14 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     HMAC_CTX *hctx, int enc)
 {
-    size_t                         size;
-    SSL_CTX                       *ssl_ctx;
-    ngx_uint_t                     i;
-    ngx_array_t                   *keys;
-    ngx_connection_t              *c;
-    ngx_ssl_session_ticket_key_t  *key;
-    const EVP_MD                  *digest;
-    const EVP_CIPHER              *cipher;
+    size_t                 size;
+    SSL_CTX               *ssl_ctx;
+    ngx_uint_t             i;
+    ngx_array_t           *keys;
+    ngx_connection_t      *c;
+    ngx_ssl_ticket_key_t  *key;
+    const EVP_MD          *digest;
+    const EVP_CIPHER      *cipher;
 
     c = ngx_ssl_get_connection(ssl_conn);
     ssl_ctx = c->ssl->session_ctx;
@@ -4508,7 +4508,7 @@ ngx_ssl_session_ticket_keys_cleanup(void *data)
     ngx_array_t  *keys = data;
 
     ngx_explicit_memzero(keys->elts,
-                         keys->nelts * sizeof(ngx_ssl_session_ticket_key_t));
+                         keys->nelts * sizeof(ngx_ssl_ticket_key_t));
 }
 
 #else
