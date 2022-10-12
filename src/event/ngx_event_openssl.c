@@ -3770,6 +3770,8 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_queue_init(&cache->expire_queue);
 
+    cache->fail_time = 0;
+
     len = sizeof(" in SSL session shared cache \"\"") + shm_zone->shm.name.len;
 
     shpool->log_ctx = ngx_slab_alloc(shpool, len);
@@ -3953,8 +3955,11 @@ failed:
 
     ngx_shmtx_unlock(&shpool->mutex);
 
-    ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                  "could not allocate new session%s", shpool->log_ctx);
+    if (cache->fail_time != ngx_time()) {
+        cache->fail_time = ngx_time();
+        ngx_log_error(NGX_LOG_WARN, c->log, 0,
+                      "could not allocate new session%s", shpool->log_ctx);
+    }
 
     return 0;
 }
