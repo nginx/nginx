@@ -3818,6 +3818,23 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     ngx_ssl_session_cache_t  *cache;
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
 
+#ifdef TLS1_3_VERSION
+
+    /*
+     * OpenSSL tries to save TLSv1.3 sessions into session cache
+     * even when using tickets for stateless session resumption,
+     * "because some applications just want to know about the creation
+     * of a session"; do not cache such sessions
+     */
+
+    if (SSL_version(ssl_conn) == TLS1_3_VERSION
+        && (SSL_get_options(ssl_conn) & SSL_OP_NO_TICKET) == 0)
+    {
+        return 0;
+    }
+
+#endif
+
     len = i2d_SSL_SESSION(sess, NULL);
 
     /* do not cache too big session */
