@@ -4031,6 +4031,8 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
 
             ngx_rbtree_delete(&cache->session_rbtree, node);
 
+            ngx_explicit_memzero(sess_id->session, sess_id->len);
+
 #if (NGX_PTR_SIZE == 8)
             ngx_slab_free_locked(shpool, sess_id->session);
 #endif
@@ -4120,6 +4122,8 @@ ngx_ssl_remove_session(SSL_CTX *ssl, ngx_ssl_session_t *sess)
 
             ngx_rbtree_delete(&cache->session_rbtree, node);
 
+            ngx_explicit_memzero(sess_id->session, sess_id->len);
+
 #if (NGX_PTR_SIZE == 8)
             ngx_slab_free_locked(shpool, sess_id->session);
 #endif
@@ -4167,6 +4171,8 @@ ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
                        "expire session: %08Xi", sess_id->node.key);
 
         ngx_rbtree_delete(&cache->session_rbtree, &sess_id->node);
+
+        ngx_explicit_memzero(sess_id->session, sess_id->len);
 
 #if (NGX_PTR_SIZE == 8)
         ngx_slab_free_locked(shpool, sess_id->session);
