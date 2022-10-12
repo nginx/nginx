@@ -114,6 +114,7 @@ struct ngx_ssl_connection_s {
     unsigned                    no_send_shutdown:1;
     unsigned                    shutdown_without_free:1;
     unsigned                    handshake_buffer_set:1;
+    unsigned                    session_timeout_set:1;
     unsigned                    try_early_data:1;
     unsigned                    in_early:1;
     unsigned                    in_ocsp:1;

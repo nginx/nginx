@@ -1086,6 +1086,53 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 
 #endif
 
+#ifdef TLS1_3_VERSION
+
+    if ((where & SSL_CB_ACCEPT_LOOP) == SSL_CB_ACCEPT_LOOP
+        && SSL_version(ssl_conn) == TLS1_3_VERSION)
+    {
+        time_t        now, time, timeout, conf_timeout;
+        SSL_SESSION  *sess;
+
+        /*
+         * OpenSSL with TLSv1.3 updates the session creation time on
+         * session resumption and keeps the session timeout unmodified,
+         * making it possible to maintain the session forever, bypassing
+         * client certificate expiration and revocation.  To make sure
+         * session timeouts are actually used, we now update the session
+         * creation time and reduce the session timeout accordingly.
+         *
+         * BoringSSL with TLSv1.3 ignores configured session timeouts
+         * and uses a hardcoded timeout instead, 7 days.  So we update
+         * session timeout to the configured value as soon as a session
+         * is created.
+         */
+
+        c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
+        sess = SSL_get0_session(ssl_conn);
+
+        if (!c->ssl->session_timeout_set && sess) {
+            c->ssl->session_timeout_set = 1;
+
+            now = ngx_time();
+            time = SSL_SESSION_get_time(sess);
+            timeout = SSL_SESSION_get_timeout(sess);
+            conf_timeout = SSL_CTX_get_timeout(c->ssl->session_ctx);
+
+            timeout = ngx_min(timeout, conf_timeout);
+
+            if (now - time >= timeout) {
+                SSL_SESSION_set1_id_context(sess, (unsigned char *) "", 0);
+
+            } else {
+                SSL_SESSION_set_time(sess, now);
+                SSL_SESSION_set_timeout(sess, timeout - (now - time));
+            }
+        }
+    }
+
+#endif
+
     if ((where & SSL_CB_ACCEPT_LOOP) == SSL_CB_ACCEPT_LOOP) {
         c = ngx_ssl_get_connection((ngx_ssl_conn_t *) ssl_conn);
 
