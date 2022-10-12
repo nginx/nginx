@@ -71,10 +71,10 @@ static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 #ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
-static int ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
+static int ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     HMAC_CTX *hctx, int enc);
-static void ngx_ssl_session_ticket_keys_cleanup(void *data);
+static void ngx_ssl_ticket_keys_cleanup(void *data);
 #endif
 
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
@@ -131,7 +131,7 @@ ngx_module_t  ngx_openssl_module = {
 int  ngx_ssl_connection_index;
 int  ngx_ssl_server_conf_index;
 int  ngx_ssl_session_cache_index;
-int  ngx_ssl_session_ticket_keys_index;
+int  ngx_ssl_ticket_keys_index;
 int  ngx_ssl_ocsp_index;
 int  ngx_ssl_certificate_index;
 int  ngx_ssl_next_certificate_index;
@@ -208,9 +208,9 @@ ngx_ssl_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    ngx_ssl_session_ticket_keys_index = SSL_CTX_get_ex_new_index(0, NULL, NULL,
-                                                                 NULL, NULL);
-    if (ngx_ssl_session_ticket_keys_index == -1) {
+    ngx_ssl_ticket_keys_index = SSL_CTX_get_ex_new_index(0, NULL, NULL, NULL,
+                                                         NULL);
+    if (ngx_ssl_ticket_keys_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0,
                       "SSL_CTX_get_ex_new_index() failed");
         return NGX_ERROR;
@@ -4255,7 +4255,7 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_ERROR;
     }
 
-    cln->handler = ngx_ssl_session_ticket_keys_cleanup;
+    cln->handler = ngx_ssl_ticket_keys_cleanup;
     cln->data = keys;
 
     path = paths->elts;
@@ -4333,16 +4333,13 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         ngx_explicit_memzero(&buf, 80);
     }
 
-    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_session_ticket_keys_index, keys)
-        == 0)
-    {
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_ticket_keys_index, keys) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set_ex_data() failed");
         return NGX_ERROR;
     }
 
-    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx,
-                                         ngx_ssl_session_ticket_key_callback)
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx, ngx_ssl_ticket_key_callback)
         == 0)
     {
         ngx_log_error(NGX_LOG_WARN, cf->log, 0,
@@ -4368,7 +4365,7 @@ failed:
 
 
 static int
-ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
+ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     HMAC_CTX *hctx, int enc)
 {
@@ -4390,7 +4387,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     digest = EVP_sha256();
 #endif
 
-    keys = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_session_ticket_keys_index);
+    keys = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_ticket_keys_index);
     if (keys == NULL) {
         return -1;
     }
@@ -4503,7 +4500,7 @@ ngx_ssl_session_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
 
 static void
-ngx_ssl_session_ticket_keys_cleanup(void *data)
+ngx_ssl_ticket_keys_cleanup(void *data)
 {
     ngx_array_t  *keys = data;
 
