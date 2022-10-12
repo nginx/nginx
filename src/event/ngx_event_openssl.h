@@ -134,14 +134,14 @@ typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 
 struct ngx_ssl_sess_id_s {
     ngx_rbtree_node_t           node;
-    u_char                     *id;
     size_t                      len;
-    u_char                     *session;
     ngx_queue_t                 queue;
     time_t                      expire;
+    u_char                      id[32];
 #if (NGX_PTR_SIZE == 8)
-    void                       *stub;
-    u_char                      sess_id[32];
+    u_char                     *session;
+#else
+    u_char                      session[1];
 #endif
 };
 
