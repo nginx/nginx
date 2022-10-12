@@ -74,6 +74,7 @@ static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 static int ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     HMAC_CTX *hctx, int enc);
+static ngx_int_t ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log);
 static void ngx_ssl_ticket_keys_cleanup(void *data);
 #endif
 
@@ -3770,6 +3771,9 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     ngx_queue_init(&cache->expire_queue);
 
+    cache->ticket_keys[0].expire = 0;
+    cache->ticket_keys[1].expire = 0;
+
     cache->fail_time = 0;
 
     len = sizeof(" in SSL session shared cache \"\"") + shm_zone->shm.name.len;
@@ -4240,11 +4244,13 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
     ngx_pool_cleanup_t    *cln;
     ngx_ssl_ticket_key_t  *key;
 
-    if (paths == NULL) {
+    if (paths == NULL
+        && SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_session_cache_index) == NULL)
+    {
         return NGX_OK;
     }
 
-    keys = ngx_array_create(cf->pool, paths->nelts,
+    keys = ngx_array_create(cf->pool, paths ? paths->nelts : 2,
                             sizeof(ngx_ssl_ticket_key_t));
     if (keys == NULL) {
         return NGX_ERROR;
@@ -4257,6 +4263,34 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
 
     cln->handler = ngx_ssl_ticket_keys_cleanup;
     cln->data = keys;
+
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_ticket_keys_index, keys) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_ex_data() failed");
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx, ngx_ssl_ticket_key_callback)
+        == 0)
+    {
+        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                      "nginx was built with Session Tickets support, however, "
+                      "now it is linked dynamically to an OpenSSL library "
+                      "which has no tlsext support, therefore Session Tickets "
+                      "are not available");
+        return NGX_OK;
+    }
+
+    if (paths == NULL) {
+
+        /* placeholder for keys in shared memory */
+
+        key = ngx_array_push_n(keys, 2);
+        key[0].shared = 1;
+        key[1].shared = 1;
+
+        return NGX_OK;
+    }
 
     path = paths->elts;
     for (i = 0; i < paths->nelts; i++) {
@@ -4312,6 +4346,8 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
             goto failed;
         }
 
+        key->shared = 0;
+
         if (size == 48) {
             key->size = 48;
             ngx_memcpy(key->name, buf, 16);
@@ -4331,22 +4367,6 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         }
 
         ngx_explicit_memzero(&buf, 80);
-    }
-
-    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_ticket_keys_index, keys) == 0) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set_ex_data() failed");
-        return NGX_ERROR;
-    }
-
-    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx, ngx_ssl_ticket_key_callback)
-        == 0)
-    {
-        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
-                      "nginx was built with Session Tickets support, however, "
-                      "now it is linked dynamically to an OpenSSL library "
-                      "which has no tlsext support, therefore Session Tickets "
-                      "are not available");
     }
 
     return NGX_OK;
@@ -4380,6 +4400,10 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection(ssl_conn);
     ssl_ctx = c->ssl->session_ctx;
+
+    if (ngx_ssl_rotate_ticket_keys(ssl_ctx, c->log) != NGX_OK) {
+        return -1;
+    }
 
 #ifdef OPENSSL_NO_SHA256
     digest = EVP_sha1();
@@ -4496,6 +4520,113 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
         return 1;
     }
+}
+
+
+static ngx_int_t
+ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log)
+{
+    time_t                    now, expire;
+    ngx_array_t              *keys;
+    ngx_shm_zone_t           *shm_zone;
+    ngx_slab_pool_t          *shpool;
+    ngx_ssl_ticket_key_t     *key;
+    ngx_ssl_session_cache_t  *cache;
+    u_char                    buf[80];
+
+    keys = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_ticket_keys_index);
+    if (keys == NULL) {
+        return NGX_OK;
+    }
+
+    key = keys->elts;
+
+    if (!key[0].shared) {
+        return NGX_OK;
+    }
+
+    now = ngx_time();
+    expire = now + SSL_CTX_get_timeout(ssl_ctx);
+
+    shm_zone = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_session_cache_index);
+
+    cache = shm_zone->data;
+    shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
+
+    ngx_shmtx_lock(&shpool->mutex);
+
+    key = cache->ticket_keys;
+
+    if (key[0].expire == 0) {
+
+        /* initialize the current key */
+
+        if (RAND_bytes(buf, 80) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, log, 0, "RAND_bytes() failed");
+            ngx_shmtx_unlock(&shpool->mutex);
+            return NGX_ERROR;
+        }
+
+        key->shared = 1;
+        key->expire = expire;
+        key->size = 80;
+        ngx_memcpy(key->name, buf, 16);
+        ngx_memcpy(key->hmac_key, buf + 16, 32);
+        ngx_memcpy(key->aes_key, buf + 48, 32);
+
+        ngx_explicit_memzero(&buf, 80);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "ssl ticket key: \"%*xs\"",
+                       (size_t) 16, key->name);
+    }
+
+    if (key[1].expire < now) {
+
+        /*
+         * if the previous key is no longer needed (or not initialized),
+         * replace it with the current key and generate new current key
+         */
+
+        key[1] = key[0];
+
+        if (RAND_bytes(buf, 80) != 1) {
+            ngx_ssl_error(NGX_LOG_ALERT, log, 0, "RAND_bytes() failed");
+            ngx_shmtx_unlock(&shpool->mutex);
+            return NGX_ERROR;
+        }
+
+        key->shared = 1;
+        key->expire = expire;
+        key->size = 80;
+        ngx_memcpy(key->name, buf, 16);
+        ngx_memcpy(key->hmac_key, buf + 16, 32);
+        ngx_memcpy(key->aes_key, buf + 48, 32);
+
+        ngx_explicit_memzero(&buf, 80);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "ssl ticket key: \"%*xs\"",
+                       (size_t) 16, key->name);
+    }
+
+    /*
+     * update expiration of the current key: it is going to be needed
+     * at least till the session being created expires
+     */
+
+    if (expire > key[0].expire) {
+        key[0].expire = expire;
+    }
+
+    /* sync keys to the worker process memory */
+
+    ngx_memcpy(keys->elts, cache->ticket_keys,
+               2 * sizeof(ngx_ssl_ticket_key_t));
+
+    ngx_shmtx_unlock(&shpool->mutex);
+
+    return NGX_OK;
 }
 
 

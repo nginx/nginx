@@ -147,23 +147,22 @@ struct ngx_ssl_sess_id_s {
 
 
 typedef struct {
-    ngx_rbtree_t                session_rbtree;
-    ngx_rbtree_node_t           sentinel;
-    ngx_queue_t                 expire_queue;
-    time_t                      fail_time;
-} ngx_ssl_session_cache_t;
-
-
-#ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
-
-typedef struct {
-    size_t                      size;
     u_char                      name[16];
     u_char                      hmac_key[32];
     u_char                      aes_key[32];
+    time_t                      expire;
+    unsigned                    size:8;
+    unsigned                    shared:1;
 } ngx_ssl_ticket_key_t;
 
-#endif
+
+typedef struct {
+    ngx_rbtree_t                session_rbtree;
+    ngx_rbtree_node_t           sentinel;
+    ngx_queue_t                 expire_queue;
+    ngx_ssl_ticket_key_t        ticket_keys[2];
+    time_t                      fail_time;
+} ngx_ssl_session_cache_t;
 
 
 #define NGX_SSL_SSLv2    0x0002
