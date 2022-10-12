@@ -21,6 +21,7 @@ struct ngx_proxy_protocol_s {
     ngx_str_t           dst_addr;
     in_port_t           src_port;
     in_port_t           dst_port;
+    ngx_str_t           tlvs;
 };
 
 
@@ -28,6 +29,8 @@ u_char *ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 u_char *ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf,
     u_char *last);
+ngx_int_t ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
+    ngx_str_t *value);
 
 
 #endif /* _NGX_PROXY_PROTOCOL_H_INCLUDED_ */
