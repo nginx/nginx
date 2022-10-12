@@ -3848,6 +3848,14 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     p = buf;
     i2d_SSL_SESSION(sess, &p);
 
+    session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
+
+    /* do not cache sessions with too long session id */
+
+    if (session_id_length > 32) {
+        return 0;
+    }
+
     c = ngx_ssl_get_connection(ssl_conn);
 
     ssl_ctx = c->ssl->session_ctx;
@@ -3891,8 +3899,6 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
             goto failed;
         }
     }
-
-    session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
 
 #if (NGX_PTR_SIZE == 8)
 
