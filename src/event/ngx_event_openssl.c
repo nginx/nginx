@@ -3773,6 +3773,7 @@ ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data)
 
     cache->ticket_keys[0].expire = 0;
     cache->ticket_keys[1].expire = 0;
+    cache->ticket_keys[2].expire = 0;
 
     cache->fail_time = 0;
 
@@ -4250,7 +4251,7 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_OK;
     }
 
-    keys = ngx_array_create(cf->pool, paths ? paths->nelts : 2,
+    keys = ngx_array_create(cf->pool, paths ? paths->nelts : 3,
                             sizeof(ngx_ssl_ticket_key_t));
     if (keys == NULL) {
         return NGX_ERROR;
@@ -4285,9 +4286,13 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
 
         /* placeholder for keys in shared memory */
 
-        key = ngx_array_push_n(keys, 2);
+        key = ngx_array_push_n(keys, 3);
         key[0].shared = 1;
+        key[0].expire = 0;
         key[1].shared = 1;
+        key[1].expire = 0;
+        key[2].shared = 1;
+        key[2].expire = 0;
 
         return NGX_OK;
     }
@@ -4347,6 +4352,7 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         }
 
         key->shared = 0;
+        key->expire = 1;
 
         if (size == 48) {
             key->size = 48;
@@ -4514,7 +4520,7 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
         /* renew if non-default key */
 
-        if (i != 0) {
+        if (i != 0 && key[i].expire) {
             return 2;
         }
 
@@ -4545,8 +4551,20 @@ ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log)
         return NGX_OK;
     }
 
+    /*
+     * if we don't need to update expiration of the current key
+     * and the previous key is still needed, don't sync with shared
+     * memory to save some work; in the worst case other worker process
+     * will switch to the next key, but this process will still be able
+     * to decrypt tickets encrypted with it
+     */
+
     now = ngx_time();
     expire = now + SSL_CTX_get_timeout(ssl_ctx);
+
+    if (key[0].expire >= expire && key[1].expire >= now) {
+        return NGX_OK;
+    }
 
     shm_zone = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_session_cache_index);
 
@@ -4567,28 +4585,38 @@ ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log)
             return NGX_ERROR;
         }
 
-        key->shared = 1;
-        key->expire = expire;
-        key->size = 80;
-        ngx_memcpy(key->name, buf, 16);
-        ngx_memcpy(key->hmac_key, buf + 16, 32);
-        ngx_memcpy(key->aes_key, buf + 48, 32);
+        key[0].shared = 1;
+        key[0].expire = expire;
+        key[0].size = 80;
+        ngx_memcpy(key[0].name, buf, 16);
+        ngx_memcpy(key[0].hmac_key, buf + 16, 32);
+        ngx_memcpy(key[0].aes_key, buf + 48, 32);
 
         ngx_explicit_memzero(&buf, 80);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                        "ssl ticket key: \"%*xs\"",
-                       (size_t) 16, key->name);
+                       (size_t) 16, key[0].name);
+
+        /*
+         * copy the current key to the next key, as initialization of
+         * the previous key will replace the current key with the next
+         * key
+         */
+
+        key[2] = key[0];
     }
 
     if (key[1].expire < now) {
 
         /*
          * if the previous key is no longer needed (or not initialized),
-         * replace it with the current key and generate new current key
+         * replace it with the current key, replace the current key with
+         * the next key, and generate new next key
          */
 
         key[1] = key[0];
+        key[0] = key[2];
 
         if (RAND_bytes(buf, 80) != 1) {
             ngx_ssl_error(NGX_LOG_ALERT, log, 0, "RAND_bytes() failed");
@@ -4596,18 +4624,18 @@ ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log)
             return NGX_ERROR;
         }
 
-        key->shared = 1;
-        key->expire = expire;
-        key->size = 80;
-        ngx_memcpy(key->name, buf, 16);
-        ngx_memcpy(key->hmac_key, buf + 16, 32);
-        ngx_memcpy(key->aes_key, buf + 48, 32);
+        key[2].shared = 1;
+        key[2].expire = 0;
+        key[2].size = 80;
+        ngx_memcpy(key[2].name, buf, 16);
+        ngx_memcpy(key[2].hmac_key, buf + 16, 32);
+        ngx_memcpy(key[2].aes_key, buf + 48, 32);
 
         ngx_explicit_memzero(&buf, 80);
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                        "ssl ticket key: \"%*xs\"",
-                       (size_t) 16, key->name);
+                       (size_t) 16, key[2].name);
     }
 
     /*
