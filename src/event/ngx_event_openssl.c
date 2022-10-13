@@ -3894,7 +3894,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     /* do not cache too big session */
 
-    if (len > (int) NGX_SSL_MAX_SESSION_SIZE) {
+    if (len > NGX_SSL_MAX_SESSION_SIZE) {
         return 0;
     }
 
