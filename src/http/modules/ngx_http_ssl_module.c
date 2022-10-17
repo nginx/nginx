@@ -1093,7 +1093,7 @@ ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 len++;
             }
 
-            if (len == 0) {
+            if (len == 0 || j == value[i].len) {
                 goto invalid;
             }
 
@@ -1183,7 +1183,7 @@ ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         len++;
     }
 
-    if (len == 0) {
+    if (len == 0 || j == value[1].len) {
         goto invalid;
     }
 
