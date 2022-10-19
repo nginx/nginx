@@ -145,7 +145,10 @@ struct ngx_http_v3_session_s {
     off_t                         total_bytes;
     off_t                         payload_bytes;
 
-    ngx_uint_t                    goaway;  /* unsigned  goaway:1; */
+    unsigned                      goaway:1;
+#if (NGX_HTTP_V3_HQ)
+    unsigned                      hq:1;
+#endif
 
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
 };

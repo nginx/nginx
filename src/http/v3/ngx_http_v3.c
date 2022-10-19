@@ -17,10 +17,13 @@ static void ngx_http_v3_cleanup_session(void *data);
 ngx_int_t
 ngx_http_v3_init_session(ngx_connection_t *c)
 {
-    ngx_connection_t       *pc;
-    ngx_pool_cleanup_t     *cln;
-    ngx_http_connection_t  *hc;
-    ngx_http_v3_session_t  *h3c;
+    ngx_connection_t        *pc;
+    ngx_pool_cleanup_t      *cln;
+    ngx_http_connection_t   *hc;
+    ngx_http_v3_session_t   *h3c;
+#if (NGX_HTTP_V3_HQ)
+    ngx_http_v3_srv_conf_t  *h3scf;
+#endif
 
     pc = c->quic->parent;
     hc = pc->data;
@@ -38,6 +41,13 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 
     h3c->max_push_id = (uint64_t) -1;
     h3c->goaway_push_id = (uint64_t) -1;
+
+#if (NGX_HTTP_V3_HQ)
+    h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+    if (h3scf->hq) {
+        h3c->hq = 1;
+    }
+#endif
 
     ngx_queue_init(&h3c->blocked);
     ngx_queue_init(&h3c->pushing);
@@ -60,6 +70,12 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     cln->data = h3c;
 
     hc->v3_session = h3c;
+
+#if (NGX_HTTP_V3_HQ)
+    if (h3c->hq) {
+        return NGX_OK;
+    }
+#endif
 
     return ngx_http_v3_send_settings(c);
 
