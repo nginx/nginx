@@ -5,6 +5,120 @@
 <change_log title="nginx">
 
 
+<changes ver="1.23.2" date="2022-10-19">
+
+<change type="security">
+<para lang="ru">
+обработка специально созданного mp4-файла модулем ngx_http_mp4_module
+могла приводить к падению рабочего процесса,
+отправке клиенту части содержимого памяти рабочего процесса,
+а также потенциально могла иметь другие последствия
+(CVE-2022-41741, CVE-2022-41742).
+</para>
+<para lang="en">
+processing of a specially crafted mp4 file by the ngx_http_mp4_module
+might cause a worker process crash,
+worker process memory disclosure,
+or might have potential other impact
+(CVE-2022-41741, CVE-2022-41742).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные "$proxy_protocol_tlv_...".
+</para>
+<para lang="en">
+the "$proxy_protocol_tlv_..." variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+ключи шифрования TLS session tickets теперь автоматически меняются
+при использовании разделяемой памяти в ssl_session_cache.
+</para>
+<para lang="en">
+TLS session tickets encryption keys are now automatically rotated
+when using shared memory in the "ssl_session_cache" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL "bad record type"
+понижен с уровня crit до info.<br/>
+Спасибо Murilo Andrade.
+</para>
+<para lang="en">
+the logging level of the "bad record type" SSL errors
+has been lowered from "crit" to "info".<br/>
+Thanks to Murilo Andrade.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при использовании разделяемой памяти в ssl_session_cache
+сообщения "could not allocate new session"
+логгируются на уровне warn вместо alert
+и не чаще одного раза в секунду.
+</para>
+<para lang="en">
+now when using shared memory in the "ssl_session_cache" directive
+the "could not allocate new session" errors
+are logged at the "warn" level instead of "alert"
+and not more often than once per second.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx/Windows не собирался с OpenSSL 3.0.x.
+</para>
+<para lang="en">
+nginx/Windows could not be built with OpenSSL 3.0.x.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логгировании ошибок протокола PROXY.<br/>
+Спасибо Сергею Брестеру.
+</para>
+<para lang="en">
+in logging of the PROXY protocol errors.<br/>
+Thanks to Sergey Brester.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании TLSv1.3 с OpenSSL
+разделяемая память из ssl_session_cache расходовалась
+в том числе на сессии, использующие TLS session tickets.
+</para>
+<para lang="en">
+shared memory from the "ssl_session_cache" directive
+was spent on sessions using TLS session tickets
+when using TLSv1.3 with OpenSSL.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+таймаут, заданный с помощью директивы ssl_session_timeout,
+не работал при использовании TLSv1.3 с OpenSSL или BoringSSL.
+</para>
+<para lang="en">
+timeout specified with the "ssl_session_timeout" directive
+did not work when using TLSv1.3 with OpenSSL or BoringSSL.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.23.1" date="2022-07-19">
 
 <change type="feature">
