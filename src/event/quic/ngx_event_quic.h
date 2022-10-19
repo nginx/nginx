@@ -28,6 +28,9 @@
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
 
+typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
+
+
 typedef enum {
     NGX_QUIC_STREAM_SEND_READY = 0,
     NGX_QUIC_STREAM_SEND_SEND,
@@ -73,6 +76,8 @@ typedef struct {
     ngx_int_t                      stream_close_code;
     ngx_int_t                      stream_reject_code_uni;
     ngx_int_t                      stream_reject_code_bidi;
+
+    ngx_quic_shutdown_pt           shutdown;
 
     u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];

@@ -341,6 +341,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
+    c->idle = 1;
     ngx_reusable_connection(c, 1);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -420,9 +421,19 @@ ngx_quic_input_handler(ngx_event_t *rev)
     }
 
     if (c->close) {
-        qc->error = NGX_QUIC_ERR_NO_ERROR;
-        qc->error_reason = "graceful shutdown";
-        ngx_quic_close_connection(c, NGX_ERROR);
+        c->close = 0;
+
+        if (!ngx_exiting) {
+            qc->error = NGX_QUIC_ERR_NO_ERROR;
+            qc->error_reason = "graceful shutdown";
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
+
+        if (!qc->closing && qc->conf->shutdown) {
+            qc->conf->shutdown(c);
+        }
+
         return;
     }
 

@@ -100,6 +100,37 @@ ngx_http_v3_init(ngx_connection_t *c)
 }
 
 
+void
+ngx_http_v3_shutdown(ngx_connection_t *c)
+{
+    ngx_http_v3_session_t  *h3c;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 shutdown");
+
+    h3c = ngx_http_v3_get_session(c);
+
+    if (h3c == NULL) {
+        ngx_quic_finalize_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+                                     "connection shutdown");
+        return;
+    }
+
+    if (!h3c->goaway) {
+        h3c->goaway = 1;
+
+#if (NGX_HTTP_V3_HQ)
+        if (!h3c->hq)
+#endif
+        {
+            (void) ngx_http_v3_send_goaway(c, h3c->next_request_id);
+        }
+
+        ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+                                        "connection shutdown");
+    }
+}
+
+
 static void
 ngx_http_v3_init_request_stream(ngx_connection_t *c)
 {
@@ -140,6 +171,8 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
 
     pc = c->quic->parent;
 
+    h3c->next_request_id = c->quic->id + 0x04;
+
     if (n + 1 == clcf->keepalive_requests
         || ngx_current_msec - pc->start_time > clcf->keepalive_time)
     {
@@ -149,7 +182,7 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
         if (!h3c->hq)
 #endif
         {
-            if (ngx_http_v3_send_goaway(c, (n + 1) << 2) != NGX_OK) {
+            if (ngx_http_v3_send_goaway(c, h3c->next_request_id) != NGX_OK) {
                 ngx_http_close_connection(c);
                 return;
             }
