@@ -5,6 +5,28 @@
 <change_log title="nginx">
 
 
+<changes ver="1.22.1" date="2022-10-19">
+
+<change type="security">
+<para lang="ru">
+обработка специально созданного mp4-файла модулем ngx_http_mp4_module
+могла приводить к падению рабочего процесса,
+отправке клиенту части содержимого памяти рабочего процесса,
+а также потенциально могла иметь другие последствия
+(CVE-2022-41741, CVE-2022-41742).
+</para>
+<para lang="en">
+processing of a specially crafted mp4 file by the ngx_http_mp4_module
+might cause a worker process crash,
+worker process memory disclosure,
+or might have potential other impact
+(CVE-2022-41741, CVE-2022-41742).
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.22.0" date="2022-05-24">
 
 <change>
