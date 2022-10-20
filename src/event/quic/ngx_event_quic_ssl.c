@@ -18,7 +18,7 @@
 #define NGX_QUIC_MAX_BUFFERED    65535
 
 
-#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
+#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
 static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
@@ -40,7 +40,7 @@ static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data);
 
 
 static SSL_QUIC_METHOD quic_method = {
-#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
+#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
     .set_read_secret = ngx_quic_set_read_secret,
     .set_write_secret = ngx_quic_set_write_secret,
 #else
@@ -52,7 +52,7 @@ static SSL_QUIC_METHOD quic_method = {
 };
 
 
-#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
+#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
 
 static int
 ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
@@ -563,10 +563,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-#if (BORINGSSL_API_VERSION >= 13 && BORINGSSL_API_VERSION < 15)
-    SSL_set_quic_use_legacy_codepoint(ssl_conn, 0);
-#endif
-
     qsock = ngx_quic_get_socket(c);
 
     dcid.data = qsock->sid.id;
@@ -602,7 +598,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-#if BORINGSSL_API_VERSION >= 11
+#ifdef OPENSSL_IS_BORINGSSL
     if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic SSL_set_quic_early_data_context() failed");
