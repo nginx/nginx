@@ -15,9 +15,12 @@
 
 #define NGX_QUIC_AES_128_KEY_LEN      16
 
-#define NGX_AES_128_GCM_SHA256        0x1301
-#define NGX_AES_256_GCM_SHA384        0x1302
-#define NGX_CHACHA20_POLY1305_SHA256  0x1303
+#ifndef TLS1_3_CK_AES_128_GCM_SHA256
+#define TLS1_3_CK_AES_128_GCM_SHA256  0x03001301
+#define TLS1_3_CK_AES_256_GCM_SHA384  0x03001302
+#define TLS1_3_CK_CHACHA20_POLY1305_SHA256                                   \
+                                      0x03001303
+#endif
 
 
 #ifdef OPENSSL_IS_BORINGSSL
@@ -90,12 +93,12 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
     ngx_int_t  len;
 
     if (level == ssl_encryption_initial) {
-        id = NGX_AES_128_GCM_SHA256;
+        id = TLS1_3_CK_AES_128_GCM_SHA256;
     }
 
     switch (id) {
 
-    case NGX_AES_128_GCM_SHA256:
+    case TLS1_3_CK_AES_128_GCM_SHA256:
 #ifdef OPENSSL_IS_BORINGSSL
         ciphers->c = EVP_aead_aes_128_gcm();
 #else
@@ -106,7 +109,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
         len = 16;
         break;
 
-    case NGX_AES_256_GCM_SHA384:
+    case TLS1_3_CK_AES_256_GCM_SHA384:
 #ifdef OPENSSL_IS_BORINGSSL
         ciphers->c = EVP_aead_aes_256_gcm();
 #else
@@ -117,7 +120,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
         len = 32;
         break;
 
-    case NGX_CHACHA20_POLY1305_SHA256:
+    case TLS1_3_CK_CHACHA20_POLY1305_SHA256:
 #ifdef OPENSSL_IS_BORINGSSL
         ciphers->c = EVP_aead_chacha20_poly1305();
 #else
@@ -642,7 +645,7 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
     peer_secret = is_write ? &keys->secrets[level].server
                            : &keys->secrets[level].client;
 
-    keys->cipher = SSL_CIPHER_get_protocol_id(cipher);
+    keys->cipher = SSL_CIPHER_get_id(cipher);
 
     key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
 
