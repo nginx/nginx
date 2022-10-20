@@ -61,6 +61,8 @@ static ngx_int_t ngx_http_variable_proxy_protocol_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_proxy_protocol_tlv(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_server_port(ngx_http_request_t *r,
@@ -213,6 +215,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("proxy_protocol_server_port"), NULL,
       ngx_http_variable_proxy_protocol_port,
       offsetof(ngx_proxy_protocol_t, dst_port), 0, 0 },
+
+    { ngx_string("proxy_protocol_tlv_"), NULL,
+      ngx_http_variable_proxy_protocol_tlv,
+      0, NGX_HTTP_VAR_PREFIX, 0 },
 
     { ngx_string("server_addr"), NULL, ngx_http_variable_server_addr, 0, 0, 0 },
 
@@ -1381,6 +1387,39 @@ ngx_http_variable_proxy_protocol_port(ngx_http_request_t *r,
     if (port > 0 && port < 65536) {
         v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_proxy_protocol_tlv(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t *name = (ngx_str_t *) data;
+
+    ngx_int_t  rc;
+    ngx_str_t  tlv, value;
+
+    tlv.len = name->len - (sizeof("proxy_protocol_tlv_") - 1);
+    tlv.data = name->data + sizeof("proxy_protocol_tlv_") - 1;
+
+    rc = ngx_proxy_protocol_get_tlv(r->connection, &tlv, &value);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_DECLINED) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = value.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = value.data;
 
     return NGX_OK;
 }

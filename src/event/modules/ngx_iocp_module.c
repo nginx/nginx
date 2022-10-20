@@ -231,9 +231,8 @@ ngx_iocp_del_connection(ngx_connection_t *c, ngx_uint_t flags)
 }
 
 
-static
-ngx_int_t ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
-    ngx_uint_t flags)
+static ngx_int_t
+ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                rc;
     u_int              key;
@@ -356,7 +355,7 @@ ngx_iocp_create_conf(ngx_cycle_t *cycle)
 
     cf = ngx_palloc(cycle->pool, sizeof(ngx_iocp_conf_t));
     if (cf == NULL) {
-        return NGX_CONF_ERROR;
+        return NULL;
     }
 
     cf->threads = NGX_CONF_UNSET;

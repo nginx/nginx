@@ -122,6 +122,7 @@ struct ngx_ssl_connection_s {
     unsigned                    no_send_shutdown:1;
     unsigned                    shutdown_without_free:1;
     unsigned                    handshake_buffer_set:1;
+    unsigned                    session_timeout_set:1;
     unsigned                    try_early_data:1;
     unsigned                    in_early:1;
     unsigned                    in_ocsp:1;
@@ -142,35 +143,35 @@ typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 
 struct ngx_ssl_sess_id_s {
     ngx_rbtree_node_t           node;
-    u_char                     *id;
     size_t                      len;
-    u_char                     *session;
     ngx_queue_t                 queue;
     time_t                      expire;
+    u_char                      id[32];
 #if (NGX_PTR_SIZE == 8)
-    void                       *stub;
-    u_char                      sess_id[32];
+    u_char                     *session;
+#else
+    u_char                      session[1];
 #endif
 };
+
+
+typedef struct {
+    u_char                      name[16];
+    u_char                      hmac_key[32];
+    u_char                      aes_key[32];
+    time_t                      expire;
+    unsigned                    size:8;
+    unsigned                    shared:1;
+} ngx_ssl_ticket_key_t;
 
 
 typedef struct {
     ngx_rbtree_t                session_rbtree;
     ngx_rbtree_node_t           sentinel;
     ngx_queue_t                 expire_queue;
+    ngx_ssl_ticket_key_t        ticket_keys[3];
+    time_t                      fail_time;
 } ngx_ssl_session_cache_t;
-
-
-#ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
-
-typedef struct {
-    size_t                      size;
-    u_char                      name[16];
-    u_char                      hmac_key[32];
-    u_char                      aes_key[32];
-} ngx_ssl_session_ticket_key_t;
-
-#endif
 
 
 #define NGX_SSL_SSLv2    0x0002
@@ -212,10 +213,12 @@ ngx_int_t ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
     ngx_uint_t depth, ngx_shm_zone_t *shm_zone);
 ngx_int_t ngx_ssl_ocsp_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_resolver_t *resolver, ngx_msec_t resolver_timeout);
+
 ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
+
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
     ngx_array_t *passwords);
@@ -322,7 +325,7 @@ void ngx_ssl_cleanup_ctx(void *data);
 extern int  ngx_ssl_connection_index;
 extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
-extern int  ngx_ssl_session_ticket_keys_index;
+extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
 extern int  ngx_ssl_certificate_index;
 extern int  ngx_ssl_next_certificate_index;

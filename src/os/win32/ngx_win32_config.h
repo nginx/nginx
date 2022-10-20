@@ -80,8 +80,6 @@ typedef long  time_t;
 
 #pragma warning(default:4201)
 
-/* disable some "-W4" level warnings */
-
 /* 'type cast': from function pointer to data pointer */
 #pragma warning(disable:4054)
 
@@ -105,6 +103,9 @@ typedef long  time_t;
 
 /* array is too small to include a terminating null character */
 #pragma warning(disable:4295)
+
+/* conversion from 'type1' to 'type2' of greater size */
+#pragma warning(disable:4306)
 
 #endif
 
