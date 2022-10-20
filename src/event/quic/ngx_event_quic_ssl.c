@@ -18,7 +18,7 @@
 #define NGX_QUIC_MAX_BUFFERED    65535
 
 
-#if BORINGSSL_API_VERSION >= 10
+#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
 static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
@@ -40,19 +40,19 @@ static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data);
 
 
 static SSL_QUIC_METHOD quic_method = {
-#if BORINGSSL_API_VERSION >= 10
-    ngx_quic_set_read_secret,
-    ngx_quic_set_write_secret,
+#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
+    .set_read_secret = ngx_quic_set_read_secret,
+    .set_write_secret = ngx_quic_set_write_secret,
 #else
-    ngx_quic_set_encryption_secrets,
+    .set_encryption_secrets = ngx_quic_set_encryption_secrets,
 #endif
-    ngx_quic_add_handshake_data,
-    ngx_quic_flush_flight,
-    ngx_quic_send_alert,
+    .add_handshake_data = ngx_quic_add_handshake_data,
+    .flush_flight = ngx_quic_flush_flight,
+    .send_alert = ngx_quic_send_alert,
 };
 
 
-#if BORINGSSL_API_VERSION >= 10
+#if BORINGSSL_API_VERSION >= 10 || defined LIBRESSL_VERSION_NUMBER
 
 static int
 ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
