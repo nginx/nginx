@@ -12,6 +12,7 @@
 
 static void ngx_http_v3_init_request_stream(ngx_connection_t *c);
 static void ngx_http_v3_wait_request_handler(ngx_event_t *rev);
+static void ngx_http_v3_cleanup_connection(void *data);
 static void ngx_http_v3_cleanup_request(void *data);
 static void ngx_http_v3_process_request(ngx_event_t *rev);
 static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
@@ -165,6 +166,7 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
     uint64_t                   n;
     ngx_event_t               *rev;
     ngx_connection_t          *pc;
+    ngx_pool_cleanup_t        *cln;
     ngx_http_connection_t     *hc;
     ngx_http_v3_session_t     *h3c;
     ngx_http_core_loc_conf_t  *clcf;
@@ -220,6 +222,21 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
                                         "reached maximum number of requests");
     }
 
+    cln = ngx_pool_cleanup_add(c->pool, 0);
+    if (cln == NULL) {
+        ngx_http_close_connection(c);
+        return;
+    }
+
+    cln->handler = ngx_http_v3_cleanup_connection;
+    cln->data = c;
+
+    h3c->nrequests++;
+
+    if (h3c->keepalive.timer_set) {
+        ngx_del_timer(&h3c->keepalive);
+    }
+
     rev = c->read;
 
 #if (NGX_HTTP_V3_HQ)
@@ -256,7 +273,6 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
     ngx_connection_t          *c;
     ngx_pool_cleanup_t        *cln;
     ngx_http_request_t        *r;
-    ngx_http_v3_session_t     *h3c;
     ngx_http_connection_t     *hc;
     ngx_http_core_srv_conf_t  *cscf;
 
@@ -377,13 +393,6 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
     cln->handler = ngx_http_v3_cleanup_request;
     cln->data = r;
 
-    h3c = ngx_http_v3_get_session(c);
-    h3c->nrequests++;
-
-    if (h3c->keepalive.timer_set) {
-        ngx_del_timer(&h3c->keepalive);
-    }
-
     rev->handler = ngx_http_v3_process_request;
     ngx_http_v3_process_request(rev);
 }
@@ -418,25 +427,29 @@ ngx_http_v3_reset_stream(ngx_connection_t *c)
 
 
 static void
-ngx_http_v3_cleanup_request(void *data)
+ngx_http_v3_cleanup_connection(void *data)
 {
-    ngx_http_request_t  *r = data;
+    ngx_connection_t  *c = data;
 
-    ngx_connection_t          *c;
     ngx_http_v3_session_t     *h3c;
     ngx_http_core_loc_conf_t  *clcf;
-
-    c = r->connection;
-
-    if (!r->response_sent) {
-        c->error = 1;
-    }
 
     h3c = ngx_http_v3_get_session(c);
 
     if (--h3c->nrequests == 0) {
         clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);
         ngx_add_timer(&h3c->keepalive, clcf->keepalive_timeout);
+    }
+}
+
+
+static void
+ngx_http_v3_cleanup_request(void *data)
+{
+    ngx_http_request_t  *r = data;
+
+    if (!r->response_sent) {
+        r->connection->error = 1;
     }
 }
 
