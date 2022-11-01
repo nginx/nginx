@@ -3008,6 +3008,7 @@ ngx_http_core_server(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         lsopt.socklen = sizeof(struct sockaddr_in);
 
         lsopt.backlog = NGX_LISTEN_BACKLOG;
+        lsopt.type = SOCK_STREAM;
         lsopt.rcvbuf = -1;
         lsopt.sndbuf = -1;
 #if (NGX_HAVE_SETFIB)
