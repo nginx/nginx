@@ -281,7 +281,7 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     ngx_uint_t  port, lport;
 
-    if (last - buf < NGX_PROXY_PROTOCOL_MAX_HEADER) {
+    if (last - buf < NGX_PROXY_PROTOCOL_V1_MAX_HEADER) {
         return NULL;
     }
 
