@@ -195,7 +195,7 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     } else {
         qc->min_rtt = ngx_min(qc->min_rtt, latest_rtt);
 
-        ack_delay = ack->delay * (1 << qc->ctp.ack_delay_exponent) / 1000;
+        ack_delay = (ack->delay << qc->ctp.ack_delay_exponent) / 1000;
 
         if (c->ssl->handshaked) {
             ack_delay = ngx_min(ack_delay, qc->ctp.max_ack_delay);
