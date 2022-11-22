@@ -804,11 +804,23 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     case NGX_QUIC_FT_ACK:
     case NGX_QUIC_FT_ACK_ECN:
 
-        if (!((p = ngx_quic_parse_int(p, end, &f->u.ack.largest))
-              && (p = ngx_quic_parse_int(p, end, &f->u.ack.delay))
-              && (p = ngx_quic_parse_int(p, end, &f->u.ack.range_count))
-              && (p = ngx_quic_parse_int(p, end, &f->u.ack.first_range))))
-        {
+        p = ngx_quic_parse_int(p, end, &f->u.ack.largest);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.ack.delay);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.ack.range_count);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.ack.first_range);
+        if (p == NULL) {
             goto error;
         }
 
@@ -818,10 +830,11 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         for (i = 0; i < f->u.ack.range_count; i++) {
 
             p = ngx_quic_parse_int(p, end, &varint);
-            if (p) {
-                p = ngx_quic_parse_int(p, end, &varint);
+            if (p == NULL) {
+                goto error;
             }
 
+            p = ngx_quic_parse_int(p, end, &varint);
             if (p == NULL) {
                 goto error;
             }
@@ -833,10 +846,18 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         if (f->type == NGX_QUIC_FT_ACK_ECN) {
 
-            if (!((p = ngx_quic_parse_int(p, end, &f->u.ack.ect0))
-                  && (p = ngx_quic_parse_int(p, end, &f->u.ack.ect1))
-                  && (p = ngx_quic_parse_int(p, end, &f->u.ack.ce))))
-            {
+            p = ngx_quic_parse_int(p, end, &f->u.ack.ect0);
+            if (p == NULL) {
+                goto error;
+            }
+
+            p = ngx_quic_parse_int(p, end, &f->u.ack.ect1);
+            if (p == NULL) {
+                goto error;
+            }
+
+            p = ngx_quic_parse_int(p, end, &f->u.ack.ce);
+            if (p == NULL) {
                 goto error;
             }
 
@@ -989,11 +1010,18 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     case NGX_QUIC_FT_RESET_STREAM:
 
-        if (!((p = ngx_quic_parse_int(p, end, &f->u.reset_stream.id))
-              && (p = ngx_quic_parse_int(p, end, &f->u.reset_stream.error_code))
-              && (p = ngx_quic_parse_int(p, end,
-                                         &f->u.reset_stream.final_size))))
-        {
+        p = ngx_quic_parse_int(p, end, &f->u.reset_stream.id);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.reset_stream.error_code);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_parse_int(p, end, &f->u.reset_stream.final_size);
+        if (p == NULL) {
             goto error;
         }
 
