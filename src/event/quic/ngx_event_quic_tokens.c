@@ -178,6 +178,10 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
     u_char             addr_hash[20];
     u_char             tdec[NGX_QUIC_MAX_TOKEN_SIZE];
 
+#if NGX_SUPPRESS_WARN
+    ngx_str_null(&odcid);
+#endif
+
     /* Retry token or NEW_TOKEN in a previous connection */
 
     cipher = EVP_aes_256_cbc();
