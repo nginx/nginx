@@ -39,19 +39,6 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data);
 
 
-static SSL_QUIC_METHOD quic_method = {
-#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
-    .set_read_secret = ngx_quic_set_read_secret,
-    .set_write_secret = ngx_quic_set_write_secret,
-#else
-    .set_encryption_secrets = ngx_quic_set_encryption_secrets,
-#endif
-    .add_handshake_data = ngx_quic_add_handshake_data,
-    .flush_flight = ngx_quic_flush_flight,
-    .send_alert = ngx_quic_send_alert,
-};
-
-
 #if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
 
 static int
@@ -533,13 +520,14 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
 ngx_int_t
 ngx_quic_init_connection(ngx_connection_t *c)
 {
-    u_char                 *p;
-    size_t                  clen;
-    ssize_t                 len;
-    ngx_str_t               dcid;
-    ngx_ssl_conn_t         *ssl_conn;
-    ngx_quic_socket_t      *qsock;
-    ngx_quic_connection_t  *qc;
+    u_char                  *p;
+    size_t                   clen;
+    ssize_t                  len;
+    ngx_str_t                dcid;
+    ngx_ssl_conn_t          *ssl_conn;
+    ngx_quic_socket_t       *qsock;
+    ngx_quic_connection_t   *qc;
+    static SSL_QUIC_METHOD   quic_method;
 
     qc = ngx_quic_get_connection(c);
 
@@ -550,6 +538,18 @@ ngx_quic_init_connection(ngx_connection_t *c)
     c->ssl->no_wait_shutdown = 1;
 
     ssl_conn = c->ssl->connection;
+
+    if (!quic_method.send_alert) {
+#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
+        quic_method.set_read_secret = ngx_quic_set_read_secret;
+        quic_method.set_write_secret = ngx_quic_set_write_secret;
+#else
+        quic_method.set_encryption_secrets = ngx_quic_set_encryption_secrets;
+#endif
+        quic_method.add_handshake_data = ngx_quic_add_handshake_data;
+        quic_method.flush_flight = ngx_quic_flush_flight;
+        quic_method.send_alert = ngx_quic_send_alert;
+    }
 
     if (SSL_set_quic_method(ssl_conn, &quic_method) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,

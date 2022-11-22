@@ -147,6 +147,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
 {
     size_t              is_len;
     uint8_t             is[SHA256_DIGEST_LENGTH];
+    ngx_str_t           iss;
     ngx_uint_t          i;
     const EVP_MD       *digest;
     ngx_quic_hkdf_t     seq[8];
@@ -176,10 +177,8 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         return NGX_ERROR;
     }
 
-    ngx_str_t iss = {
-        .data = is,
-        .len = is_len
-    };
+    iss.len = is_len;
+    iss.data = is;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic ngx_quic_set_initial_secret");
