@@ -988,8 +988,9 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     u_char              *p, *sample;
     size_t               len;
     uint64_t             pn, lpn;
-    ngx_int_t            pnl, rc, key_phase;
+    ngx_int_t            pnl, rc;
     ngx_str_t            in, ad;
+    ngx_uint_t           key_phase;
     ngx_quic_secret_t   *secret;
     ngx_quic_ciphers_t   ciphers;
     uint8_t              nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
