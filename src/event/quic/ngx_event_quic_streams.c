@@ -1147,7 +1147,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return ngx_quic_close_stream(qs);
     }
 
-    if (f->offset == qs->recv_offset) {
+    if (f->offset <= qs->recv_offset) {
         ngx_quic_set_event(qs->connection->read);
     }
 
