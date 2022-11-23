@@ -416,6 +416,7 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
 #if (NGX_HAVE_REUSEPORT)
     ngx_uint_t        i;
+    ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls;
 #endif
 
@@ -442,7 +443,9 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 
 #if (NGX_HAVE_REUSEPORT)
 
-    if (!ngx_test_config) {
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    if (!ngx_test_config && ccf->master) {
 
         ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
