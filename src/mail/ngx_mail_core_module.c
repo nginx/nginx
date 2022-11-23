@@ -308,7 +308,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                  *value, size;
     ngx_url_t                   u;
     ngx_uint_t                  i, n, m;
-    ngx_mail_listen_t          *ls, *als;
+    ngx_mail_listen_t          *ls, *als, *nls;
     ngx_mail_module_t          *module;
     ngx_mail_core_main_conf_t  *cmcf;
 
@@ -333,7 +333,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     cmcf = ngx_mail_conf_get_module_main_conf(cf, ngx_mail_core_module);
 
-    ls = ngx_array_push_n(&cmcf->listen, u.naddrs);
+    ls = ngx_array_push(&cmcf->listen);
     if (ls == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -568,20 +568,40 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    als = cmcf->listen.elts;
-
     for (n = 0; n < u.naddrs; n++) {
-        ls[n] = ls[0];
 
-        ls[n].sockaddr = u.addrs[n].sockaddr;
-        ls[n].socklen = u.addrs[n].socklen;
-        ls[n].addr_text = u.addrs[n].name;
-        ls[n].wildcard = ngx_inet_wildcard(ls[n].sockaddr);
+        for (i = 0; i < n; i++) {
+            if (ngx_cmp_sockaddr(u.addrs[n].sockaddr, u.addrs[n].socklen,
+                                 u.addrs[i].sockaddr, u.addrs[i].socklen, 0)
+                == NGX_OK)
+            {
+                goto next;
+            }
+        }
 
-        for (i = 0; i < cmcf->listen.nelts - u.naddrs + n; i++) {
+        if (n != 0) {
+            nls = ngx_array_push(&cmcf->listen);
+            if (nls == NULL) {
+                return NGX_CONF_ERROR;
+            }
+
+            *nls = *ls;
+
+        } else {
+            nls = ls;
+        }
+
+        nls->sockaddr = u.addrs[n].sockaddr;
+        nls->socklen = u.addrs[n].socklen;
+        nls->addr_text = u.addrs[n].name;
+        nls->wildcard = ngx_inet_wildcard(nls->sockaddr);
+
+        als = cmcf->listen.elts;
+
+        for (i = 0; i < cmcf->listen.nelts - 1; i++) {
 
             if (ngx_cmp_sockaddr(als[i].sockaddr, als[i].socklen,
-                                 ls[n].sockaddr, ls[n].socklen, 1)
+                                 nls->sockaddr, nls->socklen, 1)
                 != NGX_OK)
             {
                 continue;
@@ -589,9 +609,12 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "duplicate \"%V\" address and port pair",
-                               &ls[n].addr_text);
+                               &nls->addr_text);
             return NGX_CONF_ERROR;
         }
+
+    next:
+        continue;
     }
 
     return NGX_CONF_OK;
