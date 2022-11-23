@@ -759,7 +759,6 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     ngx_cpuset_t     *cpu_affinity;
     struct rlimit     rlmt;
     ngx_core_conf_t  *ccf;
-    ngx_listening_t  *ls;
 
     if (ngx_set_environment(cycle, NULL) == NULL) {
         /* fatal */
@@ -888,15 +887,6 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
     tp = ngx_timeofday();
     srandom(((unsigned) ngx_pid << 16) ^ tp->sec ^ tp->msec);
-
-    /*
-     * disable deleting previous events for the listening sockets because
-     * in the worker processes there are no events at all at this point
-     */
-    ls = cycle->listening.elts;
-    for (i = 0; i < cycle->listening.nelts; i++) {
-        ls[i].previous = NULL;
-    }
 
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {

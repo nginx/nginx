@@ -813,7 +813,9 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         rev->deferred_accept = ls[i].deferred_accept;
 #endif
 
-        if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
+        if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)
+            && cycle->old_cycle)
+        {
             if (ls[i].previous) {
 
                 /*
