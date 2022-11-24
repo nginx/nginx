@@ -3020,7 +3020,7 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
     n = SSL_sendfile(c->ssl->connection, file->file->fd, file->file_pos,
                      size, flags);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %d", n);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %z", n);
 
     if (n > 0) {
 
