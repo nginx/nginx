@@ -81,7 +81,9 @@ ngx_http_v3_init(ngx_connection_t *c)
 
     if (phc->ssl_servername) {
         hc->ssl_servername = phc->ssl_servername;
+#if (NGX_PCRE)
         hc->ssl_servername_regex = phc->ssl_servername_regex;
+#endif
         hc->conf_ctx = phc->conf_ctx;
 
         ngx_set_connection_log(c, clcf->error_log);
