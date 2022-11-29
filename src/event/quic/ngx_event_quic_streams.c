@@ -33,6 +33,7 @@ static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
 static ngx_int_t ngx_quic_stream_flush(ngx_quic_stream_t *qs);
 static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_int_t ngx_quic_close_stream(ngx_quic_stream_t *qs);
+static ngx_int_t ngx_quic_can_shutdown(ngx_connection_t *c);
 static ngx_int_t ngx_quic_control_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_max_stream_data(ngx_quic_stream_t *qs);
@@ -50,6 +51,10 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
 
     pc = c->quic ? c->quic->parent : c;
     qc = ngx_quic_get_connection(pc);
+
+    if (qc->closing) {
+        return NULL;
+    }
 
     if (bidi) {
         if (qc->streams.server_streams_bidi
@@ -161,12 +166,9 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
     ngx_pool_t         *pool;
     ngx_queue_t        *q;
     ngx_rbtree_t       *tree;
+    ngx_connection_t   *sc;
     ngx_rbtree_node_t  *node;
     ngx_quic_stream_t  *qs;
-
-#if (NGX_DEBUG)
-    ngx_uint_t          ns;
-#endif
 
     while (!ngx_queue_empty(&qc->streams.uninitialized)) {
         q = ngx_queue_head(&qc->streams.uninitialized);
@@ -185,34 +187,34 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
         return NGX_OK;
     }
 
-#if (NGX_DEBUG)
-    ns = 0;
-#endif
-
     node = ngx_rbtree_min(tree->root, tree->sentinel);
 
     while (node) {
         qs = (ngx_quic_stream_t *) node;
         node = ngx_rbtree_next(tree, node);
+        sc = qs->connection;
 
         qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
         qs->send_state = NGX_QUIC_STREAM_SEND_RESET_SENT;
 
-        if (qs->connection == NULL) {
+        if (sc == NULL) {
             ngx_quic_close_stream(qs);
             continue;
         }
 
-        ngx_quic_set_event(qs->connection->read);
-        ngx_quic_set_event(qs->connection->write);
+        ngx_quic_set_event(sc->read);
+        ngx_quic_set_event(sc->write);
 
-#if (NGX_DEBUG)
-        ns++;
-#endif
+        sc->close = 1;
+        sc->read->handler(sc->read);
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic connection has %ui active streams", ns);
+    if (tree->root == tree->sentinel) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic connection has active streams");
 
     return NGX_AGAIN;
 }
@@ -587,6 +589,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 {
     ngx_log_t              *log;
     ngx_pool_t             *pool;
+    ngx_uint_t              reusable;
     ngx_queue_t            *q;
     ngx_connection_t       *sc;
     ngx_quic_stream_t      *qs;
@@ -639,10 +642,14 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     *log = *c->log;
     pool->log = log;
 
+    reusable = c->reusable;
+    ngx_reusable_connection(c, 0);
+
     sc = ngx_get_connection(c->fd, log);
     if (sc == NULL) {
         ngx_destroy_pool(pool);
         ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
+        ngx_reusable_connection(c, reusable);
         return NULL;
     }
 
@@ -712,6 +719,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
         ngx_close_connection(sc);
         ngx_destroy_pool(pool);
         ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
+        ngx_reusable_connection(c, reusable);
         return NULL;
     }
 
@@ -721,6 +729,31 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     ngx_rbtree_insert(&qc->streams.tree, &qs->node);
 
     return qs;
+}
+
+
+void
+ngx_quic_cancelable_stream(ngx_connection_t *c)
+{
+    ngx_connection_t       *pc;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    if (!qs->cancelable) {
+        qs->cancelable = 1;
+
+        if (ngx_quic_can_shutdown(pc) == NGX_OK) {
+            ngx_reusable_connection(pc, 1);
+
+            if (qc->shutdown) {
+                ngx_quic_shutdown_quic(pc);
+            }
+        }
+    }
 }
 
 
@@ -1056,9 +1089,42 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
         ngx_quic_queue_frame(qc, frame);
     }
 
-    if (qc->shutdown) {
-        ngx_post_event(&qc->close, &ngx_posted_events);
+    if (!pc->reusable && ngx_quic_can_shutdown(pc) == NGX_OK) {
+        ngx_reusable_connection(pc, 1);
     }
+
+    if (qc->shutdown) {
+        ngx_quic_shutdown_quic(pc);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_can_shutdown(ngx_connection_t *c)
+{
+    ngx_rbtree_t           *tree;
+    ngx_rbtree_node_t      *node;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    tree = &qc->streams.tree;
+
+    if (tree->root != tree->sentinel) {
+        for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+             node;
+             node = ngx_rbtree_next(tree, node))
+        {
+            qs = (ngx_quic_stream_t *) node;
+
+            if (!qs->cancelable) {
+                return NGX_DECLINED;
+            }
+        }
+     }
 
     return NGX_OK;
 }

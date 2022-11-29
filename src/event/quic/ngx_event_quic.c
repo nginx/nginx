@@ -341,6 +341,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return NULL;
     }
 
+    ngx_reusable_connection(c, 1);
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic connection created");
 
@@ -420,7 +422,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     if (c->close) {
         qc->error = NGX_QUIC_ERR_NO_ERROR;
         qc->error_reason = "graceful shutdown";
-        ngx_quic_close_connection(c, NGX_OK);
+        ngx_quic_close_connection(c, NGX_ERROR);
         return;
     }
 
@@ -603,12 +605,17 @@ ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
+
+    if (qc->closing) {
+        return;
+    }
+
     qc->error = err;
     qc->error_reason = reason;
     qc->error_app = 1;
     qc->error_ftype = 0;
 
-    ngx_quic_close_connection(c, NGX_OK);
+    ngx_post_event(&qc->close, &ngx_posted_events);
 }
 
 
@@ -630,20 +637,13 @@ ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
 static void
 ngx_quic_close_handler(ngx_event_t *ev)
 {
-    ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
+    ngx_connection_t  *c;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic close handler");
 
     c = ev->data;
-    qc = ngx_quic_get_connection(c);
 
-    if (qc->closing) {
-        ngx_quic_close_connection(c, NGX_OK);
-
-    } else if (qc->shutdown) {
-        ngx_quic_shutdown_quic(c);
-    }
+    ngx_quic_close_connection(c, NGX_OK);
 }
 
 
@@ -1428,31 +1428,10 @@ ngx_quic_push_handler(ngx_event_t *ev)
 void
 ngx_quic_shutdown_quic(ngx_connection_t *c)
 {
-    ngx_rbtree_t           *tree;
-    ngx_rbtree_node_t      *node;
-    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qc = ngx_quic_get_connection(c);
-
-    if (qc->closing) {
-        return;
+    if (c->reusable) {
+        qc = ngx_quic_get_connection(c);
+        ngx_quic_finalize_connection(c, qc->shutdown_code, qc->shutdown_reason);
     }
-
-    tree = &qc->streams.tree;
-
-    if (tree->root != tree->sentinel) {
-        for (node = ngx_rbtree_min(tree->root, tree->sentinel);
-             node;
-             node = ngx_rbtree_next(tree, node))
-        {
-            qs = (ngx_quic_stream_t *) node;
-
-            if (!qs->cancelable) {
-                return;
-            }
-        }
-    }
-
-    ngx_quic_finalize_connection(c, qc->shutdown_code, qc->shutdown_reason);
 }
