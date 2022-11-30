@@ -140,8 +140,8 @@ ngx_copy(u_char *dst, u_char *src, size_t len)
 #endif
 
 
-#define ngx_memmove(dst, src, n)   (void) memmove(dst, src, n)
-#define ngx_movemem(dst, src, n)   (((u_char *) memmove(dst, src, n)) + (n))
+#define ngx_memmove(dst, src, n)  (void) memmove(dst, src, n)
+#define ngx_movemem(dst, src, n)  (((u_char *) memmove(dst, src, n)) + (n))
 
 
 /* msvc and icc7 compile memcmp() to the inline loop */
