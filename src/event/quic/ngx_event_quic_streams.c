@@ -21,6 +21,7 @@ static ngx_quic_stream_t *ngx_quic_get_stream(ngx_connection_t *c, uint64_t id);
 static ngx_int_t ngx_quic_reject_stream(ngx_connection_t *c, uint64_t id);
 static void ngx_quic_init_stream_handler(ngx_event_t *ev);
 static void ngx_quic_init_streams_handler(ngx_connection_t *c);
+static ngx_int_t ngx_quic_do_init_streams(ngx_connection_t *c);
 static ngx_quic_stream_t *ngx_quic_create_stream(ngx_connection_t *c,
     uint64_t id);
 static void ngx_quic_empty_handler(ngx_event_t *ev);
@@ -555,14 +556,21 @@ ngx_quic_init_streams(ngx_connection_t *c)
         return NGX_OK;
     }
 
-    ngx_quic_init_streams_handler(c);
-
-    return NGX_OK;
+    return ngx_quic_do_init_streams(c);
 }
 
 
 static void
 ngx_quic_init_streams_handler(ngx_connection_t *c)
+{
+    if (ngx_quic_do_init_streams(c) != NGX_OK) {
+        ngx_quic_close_connection(c, NGX_ERROR);
+    }
+}
+
+
+static ngx_int_t
+ngx_quic_do_init_streams(ngx_connection_t *c)
 {
     ngx_queue_t            *q;
     ngx_quic_stream_t      *qs;
@@ -571,6 +579,12 @@ ngx_quic_init_streams_handler(ngx_connection_t *c)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic init streams");
 
     qc = ngx_quic_get_connection(c);
+
+    if (qc->conf->init) {
+        if (qc->conf->init(c) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
 
     for (q = ngx_queue_head(&qc->streams.uninitialized);
          q != ngx_queue_sentinel(&qc->streams.uninitialized);
@@ -581,6 +595,8 @@ ngx_quic_init_streams_handler(ngx_connection_t *c)
     }
 
     qc->streams.initialized = 1;
+
+    return NGX_OK;
 }
 
 

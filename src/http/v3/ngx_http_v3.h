@@ -159,6 +159,7 @@ void ngx_http_v3_init_stream(ngx_connection_t *c);
 void ngx_http_v3_reset_stream(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_check_flood(ngx_connection_t *c);
+ngx_int_t ngx_http_v3_init(ngx_connection_t *c);
 void ngx_http_v3_shutdown(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
