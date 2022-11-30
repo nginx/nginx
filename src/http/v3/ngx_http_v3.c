@@ -55,7 +55,6 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     h3c->keepalive.log = pc->log;
     h3c->keepalive.data = pc;
     h3c->keepalive.handler = ngx_http_v3_keepalive_handler;
-    h3c->keepalive.cancelable = 1;
 
     h3c->table.send_insert_count.log = pc->log;
     h3c->table.send_insert_count.data = pc;

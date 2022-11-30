@@ -275,22 +275,18 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->pto.log = c->log;
     qc->pto.data = c;
     qc->pto.handler = ngx_quic_pto_handler;
-    qc->pto.cancelable = 1;
 
     qc->push.log = c->log;
     qc->push.data = c;
     qc->push.handler = ngx_quic_push_handler;
-    qc->push.cancelable = 1;
 
     qc->close.log = c->log;
     qc->close.data = c;
     qc->close.handler = ngx_quic_close_handler;
-    qc->close.cancelable = 1;
 
     qc->path_validation.log = c->log;
     qc->path_validation.data = c;
     qc->path_validation.handler = ngx_quic_path_validation_handler;
-    qc->path_validation.cancelable = 1;
 
     qc->conf = conf;
 
