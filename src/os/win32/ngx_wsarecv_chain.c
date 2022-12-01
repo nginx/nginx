@@ -121,6 +121,7 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
     } else if (bytes == size) {
 
         if (ngx_socket_nread(c->fd, &rev->available) == -1) {
+            rev->ready = 0;
             rev->error = 1;
             ngx_connection_error(c, ngx_socket_errno,
                                  ngx_socket_nread_n " failed");
@@ -138,6 +139,7 @@ ngx_wsarecv_chain(ngx_connection_t *c, ngx_chain_t *chain, off_t limit)
     }
 
     if (bytes == 0) {
+        rev->ready = 0;
         rev->eof = 1;
     }
 
