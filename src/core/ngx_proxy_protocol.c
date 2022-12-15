@@ -109,7 +109,7 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
     len = last - buf;
 
     if (len >= sizeof(ngx_proxy_protocol_header_t)
-        && memcmp(p, signature, sizeof(signature) - 1) == 0)
+        && ngx_memcmp(p, signature, sizeof(signature) - 1) == 0)
     {
         return ngx_proxy_protocol_v2_read(c, buf, last);
     }
@@ -281,7 +281,9 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     ngx_uint_t  port, lport;
 
-    if (last - buf < NGX_PROXY_PROTOCOL_MAX_HEADER) {
+    if (last - buf < NGX_PROXY_PROTOCOL_V1_MAX_HEADER) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "too small buffer for PROXY protocol");
         return NULL;
     }
 
@@ -394,11 +396,11 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         src_sockaddr.sockaddr_in.sin_family = AF_INET;
         src_sockaddr.sockaddr_in.sin_port = 0;
-        memcpy(&src_sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
+        ngx_memcpy(&src_sockaddr.sockaddr_in.sin_addr, in->src_addr, 4);
 
         dst_sockaddr.sockaddr_in.sin_family = AF_INET;
         dst_sockaddr.sockaddr_in.sin_port = 0;
-        memcpy(&dst_sockaddr.sockaddr_in.sin_addr, in->dst_addr, 4);
+        ngx_memcpy(&dst_sockaddr.sockaddr_in.sin_addr, in->dst_addr, 4);
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in->src_port);
         pp->dst_port = ngx_proxy_protocol_parse_uint16(in->dst_port);
@@ -421,11 +423,11 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         src_sockaddr.sockaddr_in6.sin6_family = AF_INET6;
         src_sockaddr.sockaddr_in6.sin6_port = 0;
-        memcpy(&src_sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
+        ngx_memcpy(&src_sockaddr.sockaddr_in6.sin6_addr, in6->src_addr, 16);
 
         dst_sockaddr.sockaddr_in6.sin6_family = AF_INET6;
         dst_sockaddr.sockaddr_in6.sin6_port = 0;
-        memcpy(&dst_sockaddr.sockaddr_in6.sin6_addr, in6->dst_addr, 16);
+        ngx_memcpy(&dst_sockaddr.sockaddr_in6.sin6_addr, in6->dst_addr, 16);
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
         pp->dst_port = ngx_proxy_protocol_parse_uint16(in6->dst_port);

@@ -78,6 +78,7 @@ ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
                                      ngx_socket_nread_n " failed");
 
             if (n == NGX_ERROR) {
+                rev->ready = 0;
                 rev->error = 1;
             }
 
@@ -95,6 +96,7 @@ ngx_wsarecv(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     if (bytes == 0) {
+        rev->ready = 0;
         rev->eof = 1;
     }
 

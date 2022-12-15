@@ -13,7 +13,8 @@
 #include <ngx_core.h>
 
 
-#define NGX_PROXY_PROTOCOL_MAX_HEADER  107
+#define NGX_PROXY_PROTOCOL_V1_MAX_HEADER  107
+#define NGX_PROXY_PROTOCOL_MAX_HEADER     4096
 
 
 struct ngx_proxy_protocol_s {

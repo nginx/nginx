@@ -2204,6 +2204,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 #endif
 
     if (c->ssl->last == NGX_ERROR) {
+        c->read->ready = 0;
         c->read->error = 1;
         return NGX_ERROR;
     }
@@ -2270,6 +2271,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
 #if (NGX_HAVE_FIONREAD)
 
                     if (ngx_socket_nread(c->fd, &c->read->available) == -1) {
+                        c->read->ready = 0;
                         c->read->error = 1;
                         ngx_connection_error(c, ngx_socket_errno,
                                              ngx_socket_nread_n " failed");
@@ -2306,6 +2308,7 @@ ngx_ssl_recv(ngx_connection_t *c, u_char *buf, size_t size)
             return 0;
 
         case NGX_ERROR:
+            c->read->ready = 0;
             c->read->error = 1;
 
             /* fall through */
@@ -2326,6 +2329,7 @@ ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf, size_t size)
     size_t     readbytes;
 
     if (c->ssl->last == NGX_ERROR) {
+        c->read->ready = 0;
         c->read->error = 1;
         return NGX_ERROR;
     }
@@ -2425,6 +2429,7 @@ ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf, size_t size)
             return 0;
 
         case NGX_ERROR:
+            c->read->ready = 0;
             c->read->error = 1;
 
             /* fall through */
@@ -3020,7 +3025,7 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
     n = SSL_sendfile(c->ssl->connection, file->file->fd, file->file_pos,
                      size, flags);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %d", n);
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_sendfile: %z", n);
 
     if (n > 0) {
 
