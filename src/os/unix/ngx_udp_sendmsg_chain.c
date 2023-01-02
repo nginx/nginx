@@ -335,7 +335,7 @@ ngx_get_srcaddr_cmsg(struct cmsghdr *cmsg, struct sockaddr *local_sockaddr)
 #endif
 
 
- #if (NGX_HAVE_IP_RECVDSTADDR)
+#if (NGX_HAVE_IP_RECVDSTADDR)
 
     if (cmsg->cmsg_level == IPPROTO_IP
         && cmsg->cmsg_type == IP_RECVDSTADDR

@@ -572,7 +572,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         for (i = 0; i < n; i++) {
             if (ngx_cmp_sockaddr(u.addrs[n].sockaddr, u.addrs[n].socklen,
-                                 u.addrs[i].sockaddr, u.addrs[i].socklen, 0)
+                                 u.addrs[i].sockaddr, u.addrs[i].socklen, 1)
                 == NGX_OK)
             {
                 goto next;
