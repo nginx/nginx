@@ -13,7 +13,7 @@
 #define ngx_http_v3_table_entry_size(n, v) ((n)->len + (v)->len + 32)
 
 
-static ngx_int_t ngx_http_v3_evict(ngx_connection_t *c, size_t need);
+static ngx_int_t ngx_http_v3_evict(ngx_connection_t *c, size_t target);
 static void ngx_http_v3_unblock(void *data);
 static ngx_int_t ngx_http_v3_new_entry(ngx_connection_t *c);
 
@@ -204,12 +204,14 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
 
     size = ngx_http_v3_table_entry_size(name, value);
 
-    if (ngx_http_v3_evict(c, size) != NGX_OK) {
-        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
-    }
-
     h3c = ngx_http_v3_get_session(c);
     dt = &h3c->table;
+
+    if (size > dt->capacity) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "not enough dynamic table capacity");
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
+    }
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 insert [%ui] \"%V\":\"%V\", size:%uz",
@@ -233,6 +235,10 @@ ngx_http_v3_insert(ngx_connection_t *c, ngx_str_t *name, ngx_str_t *value)
     dt->size += size;
 
     dt->insert_count++;
+
+    if (ngx_http_v3_evict(c, dt->capacity) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     ngx_post_event(&dt->send_insert_count, &ngx_posted_events);
 
@@ -293,14 +299,11 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
         return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
-    dt = &h3c->table;
-
-    if (dt->size > capacity) {
-        if (ngx_http_v3_evict(c, dt->size - capacity) != NGX_OK) {
-            return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
-        }
+    if (ngx_http_v3_evict(c, capacity) != NGX_OK) {
+        return NGX_HTTP_V3_ERR_ENCODER_STREAM_ERROR;
     }
 
+    dt = &h3c->table;
     max = capacity / 32;
     prev_max = dt->capacity / 32;
 
@@ -345,9 +348,9 @@ ngx_http_v3_cleanup_table(ngx_http_v3_session_t *h3c)
 
 
 static ngx_int_t
-ngx_http_v3_evict(ngx_connection_t *c, size_t need)
+ngx_http_v3_evict(ngx_connection_t *c, size_t target)
 {
-    size_t                        size, target;
+    size_t                        size;
     ngx_uint_t                    n;
     ngx_http_v3_field_t          *field;
     ngx_http_v3_session_t        *h3c;
@@ -355,14 +358,6 @@ ngx_http_v3_evict(ngx_connection_t *c, size_t need)
 
     h3c = ngx_http_v3_get_session(c);
     dt = &h3c->table;
-
-    if (need > dt->capacity) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "not enough dynamic table capacity");
-        return NGX_ERROR;
-    }
-
-    target = dt->capacity - need;
     n = 0;
 
     while (dt->size > target) {
