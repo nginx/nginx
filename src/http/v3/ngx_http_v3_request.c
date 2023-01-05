@@ -555,6 +555,12 @@ ngx_http_v3_process_request(ngx_event_t *rev)
                 break;
             }
 
+            if (!rev->timer_set) {
+                cscf = ngx_http_get_module_srv_conf(r,
+                                                    ngx_http_core_module);
+                ngx_add_timer(rev, cscf->client_header_timeout);
+            }
+
             if (ngx_handle_read_event(rev, 0) != NGX_OK) {
                 ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             }
