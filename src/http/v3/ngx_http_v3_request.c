@@ -551,7 +551,7 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
         if (rc == NGX_BUSY) {
             if (rev->error) {
-                ngx_http_close_request(r, NGX_HTTP_CLOSE);
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
                 break;
             }
 
