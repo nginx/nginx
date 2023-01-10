@@ -67,12 +67,6 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    if (level == ssl_encryption_early_data) {
-        if (ngx_quic_init_streams(c) != NGX_OK) {
-            return 0;
-        }
-    }
-
     return 1;
 }
 
@@ -138,10 +132,6 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     }
 
     if (level == ssl_encryption_early_data) {
-        if (ngx_quic_init_streams(c) != NGX_OK) {
-            return 0;
-        }
-
         return 1;
     }
 
@@ -455,11 +445,17 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
             qc->error_reason = "handshake failed";
             return NGX_ERROR;
         }
-
-        return NGX_OK;
     }
 
-    if (SSL_in_init(ssl_conn)) {
+    if (n <= 0 || SSL_in_init(ssl_conn)) {
+        if (ngx_quic_keys_available(qc->keys, ssl_encryption_early_data)
+            && qc->client_tp_done)
+        {
+            if (ngx_quic_init_streams(c) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+
         return NGX_OK;
     }
 
