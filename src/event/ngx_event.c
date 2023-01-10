@@ -274,7 +274,7 @@ ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
     c = rev->data;
 
     if (c->quic) {
-        return ngx_quic_handle_read_event(rev, flags);
+        return NGX_OK;
     }
 
 #endif
@@ -353,7 +353,7 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
 
 #if (NGX_QUIC)
     if (c->quic) {
-        return ngx_quic_handle_write_event(wev, lowat);
+        return NGX_OK;
     }
 #endif
 

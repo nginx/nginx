@@ -700,7 +700,14 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     if ((id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
         || (id & NGX_QUIC_STREAM_SERVER_INITIATED))
     {
+        sc->write->active = 1;
         sc->write->ready = 1;
+    }
+
+    if ((id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
+        || (id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
+    {
+        sc->read->active = 1;
     }
 
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
@@ -1745,32 +1752,4 @@ ngx_quic_set_event(ngx_event_t *ev)
     if (ev->active) {
         ngx_post_event(ev, &ngx_posted_events);
     }
-}
-
-
-ngx_int_t
-ngx_quic_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
-{
-    if (!rev->active && !rev->ready) {
-        rev->active = 1;
-
-    } else if (rev->active && (rev->ready || (flags & NGX_CLOSE_EVENT))) {
-        rev->active = 0;
-    }
-
-    return NGX_OK;
-}
-
-
-ngx_int_t
-ngx_quic_handle_write_event(ngx_event_t *wev, size_t lowat)
-{
-    if (!wev->active && !wev->ready) {
-        wev->active = 1;
-
-    } else if (wev->active && wev->ready) {
-        wev->active = 0;
-    }
-
-    return NGX_OK;
 }
