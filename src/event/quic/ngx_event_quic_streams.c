@@ -203,6 +203,9 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
             continue;
         }
 
+        sc->read->error = 1;
+        sc->write->error = 1;
+
         ngx_quic_set_event(sc->read);
         ngx_quic_set_event(sc->write);
 
@@ -244,6 +247,10 @@ ngx_quic_do_reset_stream(ngx_quic_stream_t *qs, ngx_uint_t err)
 
     qs->send_state = NGX_QUIC_STREAM_SEND_RESET_SENT;
     qs->send_final_size = qs->send_offset;
+
+    if (qs->connection) {
+        qs->connection->write->error = 1;
+    }
 
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
@@ -805,7 +812,6 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
         || qs->recv_state == NGX_QUIC_STREAM_RECV_RESET_READ)
     {
         qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_READ;
-        rev->error = 1;
         return NGX_ERROR;
     }
 
@@ -1383,6 +1389,7 @@ ngx_int_t
 ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f)
 {
+    ngx_event_t            *rev;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1439,7 +1446,10 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return ngx_quic_close_stream(qs);
     }
 
-    ngx_quic_set_event(qs->connection->read);
+    rev = qs->connection->read;
+    rev->error = 1;
+
+    ngx_quic_set_event(rev);
 
     return NGX_OK;
 }
