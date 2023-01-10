@@ -165,7 +165,6 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
 {
     uint64_t                   n;
     ngx_event_t               *rev;
-    ngx_connection_t          *pc;
     ngx_pool_cleanup_t        *cln;
     ngx_http_connection_t     *hc;
     ngx_http_v3_session_t     *h3c;
@@ -199,12 +198,10 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
         return;
     }
 
-    pc = c->quic->parent;
-
     h3c->next_request_id = c->quic->id + 0x04;
 
     if (n + 1 == clcf->keepalive_requests
-        || ngx_current_msec - pc->start_time > clcf->keepalive_time)
+        || ngx_current_msec - c->start_time > clcf->keepalive_time)
     {
         h3c->goaway = 1;
 

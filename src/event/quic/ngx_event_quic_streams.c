@@ -682,6 +682,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     sc->local_sockaddr = c->local_sockaddr;
     sc->local_socklen = c->local_socklen;
     sc->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+    sc->start_time = c->start_time;
     sc->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
 
     sc->recv = ngx_quic_stream_recv;
