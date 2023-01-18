@@ -46,8 +46,8 @@ ngx_connection_t *
 ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
 {
     uint64_t                id;
-    ngx_connection_t       *pc;
-    ngx_quic_stream_t      *nqs;
+    ngx_connection_t       *pc, *sc;
+    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     pc = c->quic ? c->quic->parent : c;
@@ -101,12 +101,21 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
         qc->streams.server_streams_uni++;
     }
 
-    nqs = ngx_quic_create_stream(pc, id);
-    if (nqs == NULL) {
+    qs = ngx_quic_create_stream(pc, id);
+    if (qs == NULL) {
         return NULL;
     }
 
-    return nqs->connection;
+    sc = qs->connection;
+
+    sc->write->active = 1;
+    sc->write->ready = 1;
+
+    if (bidi) {
+        sc->read->active = 1;
+    }
+
+    return sc;
 }
 
 
@@ -534,6 +543,13 @@ ngx_quic_init_stream_handler(ngx_event_t *ev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic init stream");
 
+    if ((qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0) {
+        c->write->active = 1;
+        c->write->ready = 1;
+    }
+
+    c->read->active = 1;
+
     ngx_queue_remove(&qs->queue);
 
     c->listening->handler(c);
@@ -703,19 +719,6 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     sc->write->handler = ngx_quic_empty_handler;
 
     log->connection = sc->number;
-
-    if ((id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
-        || (id & NGX_QUIC_STREAM_SERVER_INITIATED))
-    {
-        sc->write->active = 1;
-        sc->write->ready = 1;
-    }
-
-    if ((id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0
-        || (id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
-    {
-        sc->read->active = 1;
-    }
 
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
