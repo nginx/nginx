@@ -238,7 +238,6 @@ ngx_feature="UDP_SEGMENT"
 ngx_feature_name="NGX_HAVE_UDP_SEGMENT"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/socket.h>
-                  #include <stdint.h>
                   #include <netinet/udp.h>"
 ngx_feature_path=
 ngx_feature_libs=
