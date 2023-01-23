@@ -263,7 +263,7 @@ ngx_feature="SO_COOKIE"
 ngx_feature_name="NGX_HAVE_SO_COOKIE"
 ngx_feature_run=no
 ngx_feature_incs="#include <sys/socket.h>
-                  #include <stdint.h>"
+                  $NGX_INCLUDE_INTTYPES_H"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="socklen_t optlen = sizeof(uint64_t);
