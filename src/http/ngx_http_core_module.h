@@ -463,8 +463,8 @@ struct ngx_http_location_tree_node_s {
     ngx_http_core_loc_conf_t        *exact;
     ngx_http_core_loc_conf_t        *inclusive;
 
+    u_short                          len;
     u_char                           auto_redirect;
-    u_char                           len;
     u_char                           name[1];
 };
 

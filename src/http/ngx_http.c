@@ -1130,7 +1130,7 @@ ngx_http_create_locations_tree(ngx_conf_t *cf, ngx_queue_t *locations,
     node->auto_redirect = (u_char) ((lq->exact && lq->exact->auto_redirect)
                            || (lq->inclusive && lq->inclusive->auto_redirect));
 
-    node->len = (u_char) len;
+    node->len = (u_short) len;
     ngx_memcpy(node->name, &lq->name->data[prefix], len);
 
     ngx_queue_split(locations, q, &tail);
