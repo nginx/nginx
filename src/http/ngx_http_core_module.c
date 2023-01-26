@@ -4320,10 +4320,26 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-#if (NGX_HTTP_SSL && NGX_HTTP_V3)
-    if (lsopt.ssl && lsopt.quic) {
-        return "\"ssl\" parameter is incompatible with \"quic\"";
+#if (NGX_HTTP_V3)
+
+    if (lsopt.quic) {
+#if (NGX_HTTP_SSL)
+        if (lsopt.ssl) {
+            return "\"ssl\" parameter is incompatible with \"quic\"";
+        }
+#endif
+
+#if (NGX_HTTP_V2)
+        if (lsopt.http2) {
+            return "\"http2\" parameter is incompatible with \"quic\"";
+        }
+#endif
+
+        if (lsopt.proxy_protocol) {
+            return "\"proxy_protocol\" parameter is incompatible with \"quic\"";
+        }
     }
+
 #endif
 
     for (n = 0; n < u.naddrs; n++) {
