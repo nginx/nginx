@@ -273,6 +273,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
     b->in_file = b->file_last ? 1 : 0;
     b->last_buf = (r == r->main) ? 1 : 0;
     b->last_in_chain = 1;
+    b->sync = (b->last_buf || b->in_file) ? 0 : 1;
 
     b->file->fd = of.fd;
     b->file->name = path;
