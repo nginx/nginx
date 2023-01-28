@@ -1600,8 +1600,8 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->file_pos = c->body_start;
     b->file_last = c->length;
 
-    b->in_file = (c->length - c->body_start) ? 1: 0;
-    b->last_buf = (r == r->main) ? 1: 0;
+    b->in_file = (c->length - c->body_start) ? 1 : 0;
+    b->last_buf = (r == r->main) ? 1 : 0;
     b->last_in_chain = 1;
 
     b->file->fd = c->file.fd;
