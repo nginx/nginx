@@ -160,13 +160,11 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 {
     u_char                 *p, *end;
     size_t                  client_params_len;
-    ngx_buf_t               buf;
-    ngx_chain_t            *out, cl;
+    ngx_chain_t            *out;
     const uint8_t          *client_params;
     ngx_quic_tp_t           ctp;
     ngx_quic_frame_t       *frame;
     ngx_connection_t       *c;
-    ngx_quic_buffer_t       qb;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 #if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
@@ -243,27 +241,10 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     ctx = ngx_quic_get_send_ctx(qc, level);
 
-    ngx_memzero(&buf, sizeof(ngx_buf_t));
-
-    buf.pos = (u_char *) data;
-    buf.last = buf.pos + len;
-    buf.temporary = 1;
-
-    cl.buf = &buf;
-    cl.next = NULL;
-
-    ngx_memzero(&qb, sizeof(ngx_quic_buffer_t));
-
-    if (ngx_quic_write_buffer(c, &qb, &cl, len, 0) == NGX_CHAIN_ERROR) {
-        return 0;
-    }
-
-    out = ngx_quic_read_buffer(c, &qb, len);
+    out = ngx_quic_copy_buffer(c, (u_char *) data, len);
     if (out == NGX_CHAIN_ERROR) {
         return 0;
     }
-
-    ngx_quic_free_buffer(c, &qb);
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {

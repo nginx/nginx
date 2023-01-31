@@ -387,6 +387,39 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 
 
 ngx_chain_t *
+ngx_quic_copy_buffer(ngx_connection_t *c, u_char *data, size_t len)
+{
+    ngx_buf_t          buf;
+    ngx_chain_t        cl, *out;
+    ngx_quic_buffer_t  qb;
+
+    ngx_memzero(&buf, sizeof(ngx_buf_t));
+
+    buf.pos = data;
+    buf.last = buf.pos + len;
+    buf.temporary = 1;
+
+    cl.buf = &buf;
+    cl.next = NULL;
+
+    ngx_memzero(&qb, sizeof(ngx_quic_buffer_t));
+
+    if (ngx_quic_write_buffer(c, &qb, &cl, len, 0) == NGX_CHAIN_ERROR) {
+        return NGX_CHAIN_ERROR;
+    }
+
+    out = ngx_quic_read_buffer(c, &qb, len);
+    if (out == NGX_CHAIN_ERROR) {
+        return NGX_CHAIN_ERROR;
+    }
+
+    ngx_quic_free_buffer(c, &qb);
+
+    return out;
+}
+
+
+ngx_chain_t *
 ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
 {
     uint64_t      n;
