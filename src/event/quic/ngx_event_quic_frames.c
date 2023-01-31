@@ -858,6 +858,20 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
     case NGX_QUIC_FT_NEW_TOKEN:
         p = ngx_slprintf(p, last, "NEW_TOKEN");
+
+#ifdef NGX_QUIC_DEBUG_FRAMES
+        {
+            ngx_chain_t  *cl;
+
+            p = ngx_slprintf(p, last, " token:");
+
+            for (cl = f->data; cl; cl = cl->next) {
+                p = ngx_slprintf(p, last, "%*xs",
+                                 cl->buf->last - cl->buf->pos, cl->buf->pos);
+            }
+        }
+#endif
+
         break;
 
     case NGX_QUIC_FT_HANDSHAKE_DONE:

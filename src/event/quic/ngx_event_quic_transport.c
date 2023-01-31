@@ -109,7 +109,7 @@ static size_t ngx_quic_create_crypto(u_char *p,
     ngx_quic_crypto_frame_t *crypto, ngx_chain_t *data);
 static size_t ngx_quic_create_hs_done(u_char *p);
 static size_t ngx_quic_create_new_token(u_char *p,
-    ngx_quic_new_token_frame_t *token);
+    ngx_quic_new_token_frame_t *token, ngx_chain_t *data);
 static size_t ngx_quic_create_stream(u_char *p, ngx_quic_stream_frame_t *sf,
     ngx_chain_t *data);
 static size_t ngx_quic_create_max_streams(u_char *p,
@@ -1301,7 +1301,7 @@ ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f)
         return ngx_quic_create_hs_done(p);
 
     case NGX_QUIC_FT_NEW_TOKEN:
-        return ngx_quic_create_new_token(p, &f->u.token);
+        return ngx_quic_create_new_token(p, &f->u.token, f->data);
 
     case NGX_QUIC_FT_STREAM:
         return ngx_quic_create_stream(p, &f->u.stream, f->data);
@@ -1491,10 +1491,12 @@ ngx_quic_create_hs_done(u_char *p)
 
 
 static size_t
-ngx_quic_create_new_token(u_char *p, ngx_quic_new_token_frame_t *token)
+ngx_quic_create_new_token(u_char *p, ngx_quic_new_token_frame_t *token,
+    ngx_chain_t *data)
 {
-    size_t   len;
-    u_char  *start;
+    size_t      len;
+    u_char     *start;
+    ngx_buf_t  *b;
 
     if (p == NULL) {
         len = ngx_quic_varint_len(NGX_QUIC_FT_NEW_TOKEN);
@@ -1508,7 +1510,12 @@ ngx_quic_create_new_token(u_char *p, ngx_quic_new_token_frame_t *token)
 
     ngx_quic_build_int(&p, NGX_QUIC_FT_NEW_TOKEN);
     ngx_quic_build_int(&p, token->length);
-    p = ngx_cpymem(p, token->data, token->length);
+
+    while (data) {
+        b = data->buf;
+        p = ngx_cpymem(p, b->pos, b->last - b->pos);
+        data = data->next;
+    }
 
     return p - start;
 }

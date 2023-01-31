@@ -1076,6 +1076,7 @@ ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     time_t                  expires;
     ngx_str_t               token;
+    ngx_chain_t            *out;
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
 
@@ -1095,6 +1096,11 @@ ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path)
         return NGX_ERROR;
     }
 
+    out = ngx_quic_copy_buffer(c, token.data, token.len);
+    if (out == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
+    }
+
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
         return NGX_ERROR;
@@ -1102,8 +1108,8 @@ ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path)
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_NEW_TOKEN;
+    frame->data = out;
     frame->u.token.length = token.len;
-    frame->u.token.data = token.data;
 
     ngx_quic_queue_frame(qc, frame);
 

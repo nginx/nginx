@@ -167,7 +167,6 @@ typedef struct {
 
 typedef struct {
     uint64_t                                    length;
-    u_char                                     *data;
 } ngx_quic_new_token_frame_t;
 
 /*
