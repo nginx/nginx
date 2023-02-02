@@ -2753,7 +2753,8 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
         || (clcf->lingering_close == NGX_HTTP_LINGERING_ON
             && (r->lingering_close
                 || r->header_in->pos < r->header_in->last
-                || r->connection->read->ready)))
+                || r->connection->read->ready
+                || r->connection->pipeline)))
     {
         ngx_http_set_lingering_close(r->connection);
         return;
@@ -3123,6 +3124,7 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 
         c->sent = 0;
         c->destroyed = 0;
+        c->pipeline = 1;
 
         if (rev->timer_set) {
             ngx_del_timer(rev);
