@@ -51,7 +51,16 @@ Experimental QUIC support for nginx
     + Lost packets are detected and retransmitted properly
     + Clients may migrate to new address
 
-2. Installing
+2. Building from sources
+
+    The build is configured using the configure command.
+    Refer to http://nginx.org/en/docs/configure.html for details.
+
+    When configuring nginx, it's possible to enable QUIC and HTTP/3
+    using the following new configuration options:
+
+        --with-http_v3_module     - enable QUIC and HTTP/3
+        --with-stream_quic_module - enable QUIC in Stream
 
     A library that provides QUIC support is required to build nginx, there
     are several of those available on the market:
@@ -84,12 +93,6 @@ Experimental QUIC support for nginx
     $ ./auto/configure --with-debug --with-http_v3_module          \
                        --with-cc-opt="-I../libressl/build/include" \
                        --with-ld-opt="-L../libressl/build/lib"
-
-    When configuring nginx, it's possible to enable QUIC and HTTP/3
-    using the following new configuration options:
-
-        --with-http_v3_module     - enable QUIC and HTTP/3
-        --with-stream_quic_module - enable QUIC in Stream
 
 3. Configuration
 
@@ -174,7 +177,129 @@ Example configuration:
         }
     }
 
-4. Clients
+4. Directives
+
+    Syntax: quic_bpf on | off;
+    Default: quic_bpf off;
+    Context: main
+
+    Enables routing of QUIC packets using eBPF.
+    When enabled, this allows to support QUIC connection migration.
+    The directive is only supported on Linux 5.7+.
+
+
+    Syntax: quic_retry on | off;
+    Default: quic_retry off;
+    Context: http | stream, server
+
+    Enables the QUIC Address Validation feature.  This includes:
+    - sending a new token in a Retry packet or a NEW_TOKEN frame
+    - validating a token received in the Initial packet
+
+
+    Syntax: quic_gso on | off;
+    Default: quic_gso off;
+    Context: http | stream, server
+
+    Enables sending in optimized batch mode using segmentation offloading.
+    Optimized sending is only supported on Linux featuring UDP_SEGMENT.
+
+
+    Syntax: quic_mtu size;
+    Default: quic_mtu 65527;
+    Context: http | stream, server
+
+    Sets the QUIC max_udp_payload_size transport parameter value.
+    This is the maximum UDP payload that we are willing to receive.
+
+
+    Syntax: quic_host_key file;
+    Default: -
+    Context: http | stream, server
+
+    Specifies a file with the secret key used to encrypt stateless reset and
+    address validation tokens.  By default, a randomly generated key is used.
+
+
+    Syntax: quic_active_connection_id_limit number;
+    Default: quic_active_connection_id_limit 2;
+    Context: http | stream, server
+
+    Sets the QUIC active_connection_id_limit transport parameter value.
+    This is the maximum number of connection IDs we are willing to store.
+
+
+    Syntax: quic_timeout time;
+    Default: quic_timeout 60s;
+    Context: stream, server
+
+    Defines a timeout used to negotiate the QUIC idle timeout.
+    In the http module, it is taken from the keepalive_timeout directive.
+
+
+    Syntax: quic_stream_buffer_size size;
+    Default: quic_stream_buffer_size 64k;
+    Context: stream, server
+
+    Syntax: http3_stream_buffer_size size;
+    Default: http3_stream_buffer_size 64k;
+    Context: http, server
+
+    Sets buffer size for reading and writing of the QUIC STREAM payload.
+    The buffer size is used to calculate initial flow control limits
+    in the following QUIC transport parameters:
+    - initial_max_data
+    - initial_max_stream_data_bidi_local
+    - initial_max_stream_data_bidi_remote
+    - initial_max_stream_data_uni
+
+
+    Syntax: http3_max_concurrent_pushes number;
+    Default: http3_max_concurrent_pushes 10;
+    Context: http, server
+
+    Limits the maximum number of concurrent push requests in a connection.
+
+
+    Syntax: http3_max_concurrent_streams number;
+    Default: http3_max_concurrent_streams 128;
+    Context: http, server
+
+    Sets the maximum number of concurrent HTTP/3 streams in a connection.
+
+
+    Syntax: http3_push uri | off;
+    Default: http3_push off;
+    Context: http, server, location
+
+    Pre-emptively sends (pushes) a request to the specified uri along with
+    the response to the original request.  Only relative URIs with absolute
+    path will be processed, for example:
+
+    http3_push /static/css/main.css;
+
+    The uri value can contain variables.
+
+    Several http3_push directives can be specified on the same configuration
+    level.  The off parameter cancels the effect of the http3_push directives
+    inherited from the previous configuration level.
+
+
+    Syntax: http3_push_preload on | off;
+    Default: http3_push_preload off;
+    Context: http, server, location
+
+    Enables automatic conversion of preload links specified in the “Link”
+    response header fields into push requests.
+
+
+    Syntax: http3_hq on | off;
+    Default: http3_hq off;
+    Context: http, server
+
+    Enables HTTP/0.9 protocol negotiation used in QUIC interoperability tests.
+
+5. Clients
 
     * Browsers
 
@@ -201,7 +326,7 @@ Example configuration:
                                          "nghttp3/ngtcp2 client" "quic"
 
 
-5. Troubleshooting
+6. Troubleshooting
 
     Here are some tips that may help to identify problems:
 
@@ -231,12 +356,12 @@ Example configuration:
         #define NGX_QUIC_DEBUG_ALLOC
         #define NGX_QUIC_DEBUG_CRYPTO
 
-6. Contributing
+7. Contributing
 
     Please refer to
     http://nginx.org/en/docs/contributing_changes.html
 
-7. Links
+8. Links
 
     [1] https://datatracker.ietf.org/doc/html/rfc9000
     [2] https://datatracker.ietf.org/doc/html/rfc9114
