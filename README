@@ -2,12 +2,13 @@ Experimental QUIC support for nginx
 -----------------------------------
 
 1. Introduction
-2. Installing
+2. Building from sources
 3. Configuration
-4. Clients
-5. Troubleshooting
-6. Contributing
-7. Links
+4. Directives
+5. Clients
+6. Troubleshooting
+7. Contributing
+8. Links
 
 1. Introduction
 
@@ -365,7 +366,7 @@ Example configuration:
 
     [1] https://datatracker.ietf.org/doc/html/rfc9000
     [2] https://datatracker.ietf.org/doc/html/rfc9114
-    [3] https://mailman.nginx.org/mailman3/lists/nginx-devel.nginx.org/
+    [3] https://mailman.nginx.org/mailman/listinfo/nginx-devel
     [4] https://boringssl.googlesource.com/boringssl/
     [5] https://www.libressl.org/
     [6] https://github.com/quictls/openssl
