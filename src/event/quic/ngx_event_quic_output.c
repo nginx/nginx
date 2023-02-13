@@ -644,7 +644,7 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     if (len < min_payload) {
         ngx_memset(p, NGX_QUIC_FT_PADDING, min_payload - len);
         len = min_payload;
-     }
+    }
 
     pkt.payload.data = src;
     pkt.payload.len = len;
@@ -1254,7 +1254,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     if (len < (ssize_t) min_payload) {
         ngx_memset(src + len, NGX_QUIC_FT_PADDING, min_payload - len);
         len = min_payload;
-     }
+    }
 
     pkt.payload.data = src;
     pkt.payload.len = len;

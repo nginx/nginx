@@ -1162,7 +1162,7 @@ ngx_quic_can_shutdown(ngx_connection_t *c)
                 return NGX_DECLINED;
             }
         }
-     }
+    }
 
     return NGX_OK;
 }
