@@ -25,6 +25,9 @@ typedef struct ngx_quic_socket_s      ngx_quic_socket_t;
 typedef struct ngx_quic_path_s        ngx_quic_path_t;
 typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+#include <ngx_event_quic_openssl_compat.h>
+#endif
 #include <ngx_event_quic_transport.h>
 #include <ngx_event_quic_protection.h>
 #include <ngx_event_quic_frames.h>
@@ -234,6 +237,10 @@ struct ngx_quic_connection_s {
 #ifdef NGX_QUIC_DEBUG_ALLOC
     ngx_uint_t                        nbufs;
     ngx_uint_t                        nshadowbufs;
+#endif
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+    ngx_quic_compat_t                *compat;
 #endif
 
     ngx_quic_streams_t                streams;

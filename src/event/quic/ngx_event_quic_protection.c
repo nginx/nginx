@@ -23,37 +23,6 @@
 #endif
 
 
-#ifdef OPENSSL_IS_BORINGSSL
-#define ngx_quic_cipher_t             EVP_AEAD
-#else
-#define ngx_quic_cipher_t             EVP_CIPHER
-#endif
-
-
-typedef struct {
-    const ngx_quic_cipher_t  *c;
-    const EVP_CIPHER         *hp;
-    const EVP_MD             *d;
-} ngx_quic_ciphers_t;
-
-
-typedef struct {
-    size_t                    out_len;
-    u_char                   *out;
-
-    size_t                    prk_len;
-    const uint8_t            *prk;
-
-    size_t                    label_len;
-    const u_char             *label;
-} ngx_quic_hkdf_t;
-
-#define ngx_quic_hkdf_set(seq, _label, _out, _prk)                            \
-    (seq)->out_len = (_out)->len; (seq)->out = (_out)->data;                  \
-    (seq)->prk_len = (_prk)->len, (seq)->prk = (_prk)->data,                  \
-    (seq)->label_len = (sizeof(_label) - 1); (seq)->label = (u_char *)(_label);
-
-
 static ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
     const EVP_MD *digest, const u_char *prk, size_t prk_len,
     const u_char *info, size_t info_len);
@@ -63,20 +32,12 @@ static ngx_int_t ngx_hkdf_extract(u_char *out_key, size_t *out_len,
 
 static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn);
-static void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
-static ngx_int_t ngx_quic_ciphers(ngx_uint_t id,
-    ngx_quic_ciphers_t *ciphers, enum ssl_encryption_level_t level);
 
 static ngx_int_t ngx_quic_tls_open(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad, ngx_log_t *log);
-static ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
-    ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
-    ngx_str_t *ad, ngx_log_t *log);
 static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
-static ngx_int_t ngx_quic_hkdf_expand(ngx_quic_hkdf_t *hkdf,
-    const EVP_MD *digest, ngx_log_t *log);
 
 static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
@@ -84,7 +45,7 @@ static ngx_int_t ngx_quic_create_retry_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
     enum ssl_encryption_level_t level)
 {
@@ -221,7 +182,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_hkdf_expand(ngx_quic_hkdf_t *h, const EVP_MD *digest, ngx_log_t *log)
 {
     size_t    info_len;
@@ -480,7 +441,7 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
@@ -961,7 +922,7 @@ ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
 }
 
 
-static void
+void
 ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn)
 {
     nonce[len - 8] ^= (pn >> 56) & 0x3f;

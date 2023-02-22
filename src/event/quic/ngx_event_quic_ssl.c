@@ -10,6 +10,13 @@
 #include <ngx_event_quic_connection.h>
 
 
+#if defined OPENSSL_IS_BORINGSSL                                              \
+    || defined LIBRESSL_VERSION_NUMBER                                        \
+    || NGX_QUIC_OPENSSL_COMPAT
+#define NGX_QUIC_BORINGSSL_API   1
+#endif
+
+
 /*
  * RFC 9000, 7.5.  Cryptographic Message Buffering
  *
@@ -18,7 +25,7 @@
 #define NGX_QUIC_MAX_BUFFERED    65535
 
 
-#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
+#if (NGX_QUIC_BORINGSSL_API)
 static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
@@ -39,7 +46,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data);
 
 
-#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
+#if (NGX_QUIC_BORINGSSL_API)
 
 static int
 ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
@@ -523,7 +530,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     ssl_conn = c->ssl->connection;
 
     if (!quic_method.send_alert) {
-#if defined OPENSSL_IS_BORINGSSL || defined LIBRESSL_VERSION_NUMBER
+#if (NGX_QUIC_BORINGSSL_API)
         quic_method.set_read_secret = ngx_quic_set_read_secret;
         quic_method.set_write_secret = ngx_quic_set_write_secret;
 #else

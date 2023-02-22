@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+#include <ngx_event_quic_openssl_compat.h>
+#endif
+
 
 typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
@@ -1217,6 +1221,12 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
         }
 
         scf = listen[i].ctx->srv_conf[ngx_stream_ssl_module.ctx_index];
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+        if (ngx_quic_compat_init(cf, scf->ssl.ctx) != NGX_OK) {
+            return NGX_ERROR;
+        }
+#endif
 
         if (scf->certificates && !(scf->protocols & NGX_SSL_TLSv1_3)) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,

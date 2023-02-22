@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+#include <ngx_event_quic_openssl_compat.h>
+#endif
+
 
 typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
@@ -1317,15 +1321,21 @@ ngx_http_ssl_init(ngx_conf_t *cf)
                 continue;
             }
 
+            cscf = addr[a].default_server;
+            sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+
             if (addr[a].opt.http3) {
                 name = "http3";
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+                if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+#endif
 
             } else {
                 name = "ssl";
             }
-
-            cscf = addr[a].default_server;
-            sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
             if (sscf->certificates) {
 

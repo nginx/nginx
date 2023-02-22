@@ -63,11 +63,16 @@ Experimental QUIC support for nginx
         --with-http_v3_module     - enable QUIC and HTTP/3
         --with-stream_quic_module - enable QUIC in Stream
 
-    A library that provides QUIC support is required to build nginx, there
+    A library that provides QUIC support is recommended to build nginx, there
     are several of those available on the market:
     + BoringSSL [4]
     + LibreSSL [5]
     + QuicTLS [6]
+
+    Alternatively, nginx can be configured with OpenSSL compatibility
+    layer, which emulates BoringSSL QUIC API for OpenSSL.  This mode is
+    enabled by default if native QUIC support is not detected.
+    0-RTT is not supported in OpenSSL compatibility mode.
 
     Clone the NGINX QUIC repository
 
