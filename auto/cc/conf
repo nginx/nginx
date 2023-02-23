@@ -117,7 +117,7 @@ else
             . auto/cc/acc
         ;;
 
-        msvc*)
+        msvc)
             # MSVC++ 6.0 SP2, MSVC++ Toolkit 2003
 
             . auto/cc/msvc
