@@ -967,10 +967,29 @@ ngx_directio_off(ngx_fd_t fd)
 size_t
 ngx_fs_bsize(u_char *name)
 {
-    u_long  sc, bs, nfree, ncl;
+    u_long    sc, bs, nfree, ncl;
+    size_t    len;
+    u_short  *u;
+    u_short   utf16[NGX_UTF16_BUFLEN];
 
-    if (GetDiskFreeSpace((const char *) name, &sc, &bs, &nfree, &ncl) == 0) {
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
         return 512;
+    }
+
+    if (GetDiskFreeSpaceW(u, &sc, &bs, &nfree, &ncl) == 0) {
+
+        if (u != utf16) {
+            ngx_free(u);
+        }
+
+        return 512;
+    }
+
+    if (u != utf16) {
+        ngx_free(u);
     }
 
     return sc * bs;
@@ -980,10 +999,29 @@ ngx_fs_bsize(u_char *name)
 off_t
 ngx_fs_available(u_char *name)
 {
-    ULARGE_INTEGER  navail;
+    size_t           len;
+    u_short         *u;
+    ULARGE_INTEGER   navail;
+    u_short          utf16[NGX_UTF16_BUFLEN];
 
-    if (GetDiskFreeSpaceEx((const char *) name, &navail, NULL, NULL) == 0) {
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
         return NGX_MAX_OFF_T_VALUE;
+    }
+
+    if (GetDiskFreeSpaceExW(u, &navail, NULL, NULL) == 0) {
+
+        if (u != utf16) {
+            ngx_free(u);
+        }
+
+        return NGX_MAX_OFF_T_VALUE;
+    }
+
+    if (u != utf16) {
+        ngx_free(u);
     }
 
     return (off_t) navail.QuadPart;
