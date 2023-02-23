@@ -63,6 +63,41 @@ failed:
 }
 
 
+ngx_fd_t
+ngx_open_tempfile(u_char *name, ngx_uint_t persistent, ngx_uint_t access)
+{
+    size_t      len;
+    u_short    *u;
+    ngx_fd_t    fd;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
+
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
+        return INVALID_HANDLE_VALUE;
+    }
+
+    fd = CreateFileW(u,
+                     GENERIC_READ|GENERIC_WRITE,
+                     FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+                     NULL,
+                     CREATE_NEW,
+                     persistent ? 0:
+                         FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,
+                     NULL);
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
+    }
+
+    return fd;
+}
+
+
 ssize_t
 ngx_read_file(ngx_file_t *file, u_char *buf, size_t size, off_t offset)
 {

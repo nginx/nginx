@@ -90,16 +90,8 @@ ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 #define NGX_FILE_OWNER_ACCESS       0
 
 
-#define ngx_open_tempfile(name, persistent, access)                          \
-    CreateFile((const char *) name,                                          \
-               GENERIC_READ|GENERIC_WRITE,                                   \
-               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
-               NULL,                                                         \
-               CREATE_NEW,                                                   \
-               persistent ? 0:                                               \
-                   FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,       \
-               NULL);
-
+ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent,
+    ngx_uint_t access);
 #define ngx_open_tempfile_n         "CreateFile()"
 
 
