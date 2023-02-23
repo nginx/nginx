@@ -30,7 +30,11 @@ typedef struct {
 
 typedef struct {
     HANDLE                          dir;
-    WIN32_FIND_DATA                 finddata;
+    WIN32_FIND_DATAW                finddata;
+
+    u_char                         *name;
+    size_t                          namelen;
+    size_t                          allocated;
 
     unsigned                        valid_info:1;
     unsigned                        type:1;
@@ -205,8 +209,8 @@ ngx_int_t ngx_close_dir(ngx_dir_t *dir);
 #define ngx_dir_access(a)           (a)
 
 
-#define ngx_de_name(dir)            ((u_char *) (dir)->finddata.cFileName)
-#define ngx_de_namelen(dir)         ngx_strlen((dir)->finddata.cFileName)
+#define ngx_de_name(dir)            (dir)->name
+#define ngx_de_namelen(dir)         (dir)->namelen
 
 ngx_int_t ngx_de_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_info_n               "dummy()"
