@@ -206,7 +206,7 @@ ngx_int_t ngx_create_dir(u_char *name, ngx_uint_t access);
 #define ngx_create_dir_n            "CreateDirectory()"
 
 
-#define ngx_delete_dir(name)        RemoveDirectory((const char *) name)
+ngx_int_t ngx_delete_dir(u_char *name);
 #define ngx_delete_dir_n            "RemoveDirectory()"
 
 

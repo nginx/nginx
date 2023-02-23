@@ -614,6 +614,42 @@ failed:
 
 
 ngx_int_t
+ngx_delete_dir(u_char *name)
+{
+    long        rc;
+    size_t      len;
+    u_short    *u;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
+
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
+        return NGX_FILE_ERROR;
+    }
+
+    rc = NGX_FILE_ERROR;
+
+    if (ngx_win32_check_filename(u, len, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    rc = RemoveDirectoryW(u);
+
+failed:
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
+    }
+
+    return rc;
+}
+
+
+ngx_int_t
 ngx_open_glob(ngx_glob_t *gl)
 {
     u_char     *p;
