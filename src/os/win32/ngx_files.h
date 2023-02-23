@@ -127,7 +127,7 @@ ngx_int_t ngx_delete_file(u_char *name);
 #define ngx_delete_file_n           "DeleteFile()"
 
 
-#define ngx_rename_file(o, n)       MoveFile((const char *) o, (const char *) n)
+ngx_int_t ngx_rename_file(u_char *from, u_char *to);
 #define ngx_rename_file_n           "MoveFile()"
 ngx_err_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log);
 

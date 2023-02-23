@@ -243,6 +243,61 @@ failed:
 }
 
 
+ngx_int_t
+ngx_rename_file(u_char *from, u_char *to)
+{
+    long        rc;
+    size_t      len;
+    u_short    *fu, *tu;
+    ngx_err_t   err;
+    u_short     utf16f[NGX_UTF16_BUFLEN];
+    u_short     utf16t[NGX_UTF16_BUFLEN];
+
+    len = NGX_UTF16_BUFLEN;
+    fu = ngx_utf8_to_utf16(utf16f, from, &len, 0);
+
+    if (fu == NULL) {
+        return NGX_FILE_ERROR;
+    }
+
+    rc = NGX_FILE_ERROR;
+    tu = NULL;
+
+    if (ngx_win32_check_filename(fu, len, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    len = NGX_UTF16_BUFLEN;
+    tu = ngx_utf8_to_utf16(utf16t, to, &len, 0);
+
+    if (tu == NULL) {
+        goto failed;
+    }
+
+    if (ngx_win32_check_filename(tu, len, 1) != NGX_OK) {
+        goto failed;
+    }
+
+    rc = MoveFileW(fu, tu);
+
+failed:
+
+    if (fu != utf16f) {
+        err = ngx_errno;
+        ngx_free(fu);
+        ngx_set_errno(err);
+    }
+
+    if (tu && tu != utf16t) {
+        err = ngx_errno;
+        ngx_free(tu);
+        ngx_set_errno(err);
+    }
+
+    return rc;
+}
+
+
 ngx_err_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {
