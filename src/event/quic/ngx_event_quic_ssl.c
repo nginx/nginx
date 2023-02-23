@@ -423,6 +423,14 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
                        sslerr);
 
         if (sslerr != SSL_ERROR_WANT_READ) {
+
+            if (c->ssl->handshake_rejected) {
+                ngx_connection_error(c, 0, "handshake rejected");
+                ERR_clear_error();
+
+                return NGX_ERROR;
+            }
+
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
             return NGX_ERROR;
         }
