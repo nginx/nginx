@@ -22,6 +22,21 @@ have=NGX_COMPILER value="\"cl $NGX_MSVC_VER\"" . auto/define
 ngx_msvc_ver=`echo $NGX_MSVC_VER | sed -e 's/^\([0-9]*\).*/\1/'`
 
 
+# detect x64 builds
+
+case "$NGX_MSVC_VER" in
+
+    *x64)
+        NGX_MACHINE=amd64
+    ;;
+
+    *)
+        NGX_MACHINE=i386
+    ;;
+
+esac
+
+
 # optimizations
 
 # maximize speed, equivalent to -Og -Oi -Ot -Oy -Ob2 -Gs -GF -Gy

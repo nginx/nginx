@@ -7,11 +7,24 @@ case "$CC" in
 
     cl)
 
+        case "$NGX_MACHINE" in
+
+            amd64)
+                OPENSSL_TARGET=VC-WIN64A
+            ;;
+
+            *)
+                OPENSSL_TARGET=VC-WIN32
+            ;;
+
+        esac
+
         cat << END                                            >> $NGX_MAKEFILE
 
 $OPENSSL/openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
 	\$(MAKE) -f auto/lib/openssl/makefile.msvc			\
-		OPENSSL="$OPENSSL" OPENSSL_OPT="$OPENSSL_OPT"
+		OPENSSL="$OPENSSL" OPENSSL_OPT="$OPENSSL_OPT"		\
+		OPENSSL_TARGET="$OPENSSL_TARGET"
 
 END
 
