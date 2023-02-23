@@ -202,7 +202,7 @@ ngx_int_t ngx_close_dir(ngx_dir_t *dir);
 #define ngx_close_dir_n             "FindClose()"
 
 
-#define ngx_create_dir(name, access) CreateDirectory((const char *) name, NULL)
+ngx_int_t ngx_create_dir(u_char *name, ngx_uint_t access);
 #define ngx_create_dir_n            "CreateDirectory()"
 
 

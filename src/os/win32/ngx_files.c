@@ -12,8 +12,8 @@
 #define NGX_UTF16_BUFLEN  256
 #define NGX_UTF8_BUFLEN   512
 
-static ngx_int_t ngx_win32_check_filename(u_char *name, u_short *u,
-    size_t len);
+static ngx_int_t ngx_win32_check_filename(u_short *u, size_t len,
+    ngx_uint_t dirname);
 static u_short *ngx_utf8_to_utf16(u_short *utf16, u_char *utf8, size_t *len,
     size_t reserved);
 static u_char *ngx_utf16_to_utf8(u_char *utf8, u_short *utf16, size_t *len,
@@ -42,7 +42,7 @@ ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
     fd = INVALID_HANDLE_VALUE;
 
     if (create == NGX_FILE_OPEN
-        && ngx_win32_check_filename(name, u, len) != NGX_OK)
+        && ngx_win32_check_filename(u, len, 0) != NGX_OK)
     {
         goto failed;
     }
@@ -282,7 +282,7 @@ ngx_file_info(u_char *file, ngx_file_info_t *sb)
 
     rc = NGX_FILE_ERROR;
 
-    if (ngx_win32_check_filename(file, u, len) != NGX_OK) {
+    if (ngx_win32_check_filename(u, len, 0) != NGX_OK) {
         goto failed;
     }
 
@@ -478,7 +478,7 @@ ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
         return NGX_ERROR;
     }
 
-    if (ngx_win32_check_filename(name->data, u, len) != NGX_OK) {
+    if (ngx_win32_check_filename(u, len, 0) != NGX_OK) {
         goto failed;
     }
 
@@ -574,6 +574,42 @@ ngx_close_dir(ngx_dir_t *dir)
     }
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_create_dir(u_char *name, ngx_uint_t access)
+{
+    long        rc;
+    size_t      len;
+    u_short    *u;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
+
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
+        return NGX_FILE_ERROR;
+    }
+
+    rc = NGX_FILE_ERROR;
+
+    if (ngx_win32_check_filename(u, len, 1) != NGX_OK) {
+        goto failed;
+    }
+
+    rc = CreateDirectoryW(u, NULL);
+
+failed:
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
+    }
+
+    return rc;
 }
 
 
@@ -791,11 +827,10 @@ ngx_fs_available(u_char *name)
 
 
 static ngx_int_t
-ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
+ngx_win32_check_filename(u_short *u, size_t len, ngx_uint_t dirname)
 {
-    u_char     *p, ch;
     u_long      n;
-    u_short    *lu;
+    u_short    *lu, *p, *slash, ch;
     ngx_err_t   err;
     enum {
         sw_start = 0,
@@ -808,9 +843,14 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
     /* check for NTFS streams (":"), trailing dots and spaces */
 
     lu = NULL;
+    slash = NULL;
     state = sw_start;
 
-    for (p = name; *p; p++) {
+#if (NGX_SUPPRESS_WARN)
+    ch = 0;
+#endif
+
+    for (p = u; *p; p++) {
         ch = *p;
 
         switch (state) {
@@ -824,6 +864,7 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
 
             if (ch == '/' || ch == '\\') {
                 state = sw_after_slash;
+                slash = p;
             }
 
             break;
@@ -842,6 +883,7 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
 
             if (ch == '/' || ch == '\\') {
                 state = sw_after_slash;
+                slash = p;
                 break;
             }
 
@@ -869,6 +911,7 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
 
             if (ch == '/' || ch == '\\') {
                 state = sw_after_slash;
+                slash = p;
                 break;
             }
 
@@ -897,6 +940,12 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
         goto invalid;
     }
 
+    if (dirname && slash) {
+        ch = *slash;
+        *slash = '\0';
+        len = slash - u + 1;
+    }
+
     /* check if long name match */
 
     lu = malloc(len * 2);
@@ -907,11 +956,20 @@ ngx_win32_check_filename(u_char *name, u_short *u, size_t len)
     n = GetLongPathNameW(u, lu, len);
 
     if (n == 0) {
+
+        if (dirname && slash && ngx_errno == NGX_ENOENT) {
+            ngx_set_errno(NGX_ENOPATH);
+        }
+
         goto failed;
     }
 
     if (n != len - 1 || _wcsicmp(u, lu) != 0) {
         goto invalid;
+    }
+
+    if (dirname && slash) {
+        *slash = ch;
     }
 
     ngx_free(lu);
@@ -923,6 +981,10 @@ invalid:
     ngx_set_errno(NGX_ENOENT);
 
 failed:
+
+    if (dirname && slash) {
+        *slash = ch;
+    }
 
     if (lu) {
         err = ngx_errno;
