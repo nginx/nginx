@@ -236,10 +236,16 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
             break;
         }
 
-        collision = 1;
+        err = ngx_errno;
 
-        ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
+        if (err == NGX_EEXIST || err == NGX_EEXIST_FILE) {
+            collision = 1;
+            continue;
+        }
+
+        ngx_log_error(NGX_LOG_CRIT, log, err,
                       "MoveFile() \"%s\" to \"%s\" failed", to->data, name);
+        goto failed;
     }
 
     if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
@@ -253,6 +259,8 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
         ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
                       "DeleteFile() \"%s\" failed", name);
     }
+
+failed:
 
     /* mutex_unlock() */
 
