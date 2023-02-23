@@ -178,8 +178,12 @@ void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 
 u_char *ngx_realpath(u_char *path, u_char *resolved);
 #define ngx_realpath_n              ""
-#define ngx_getcwd(buf, size)       GetCurrentDirectory(size, (char *) buf)
+
+
+size_t ngx_getcwd(u_char *buf, size_t size);
 #define ngx_getcwd_n                "GetCurrentDirectory()"
+
+
 #define ngx_path_separator(c)       ((c) == '/' || (c) == '\\')
 
 #define NGX_HAVE_MAX_PATH           1

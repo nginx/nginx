@@ -429,6 +429,40 @@ ngx_realpath(u_char *path, u_char *resolved)
 }
 
 
+size_t
+ngx_getcwd(u_char *buf, size_t size)
+{
+    u_char   *p;
+    size_t    n;
+    u_short   utf16[NGX_MAX_PATH];
+
+    n = GetCurrentDirectoryW(NGX_MAX_PATH, utf16);
+
+    if (n == 0) {
+        return 0;
+    }
+
+    if (n > NGX_MAX_PATH) {
+        ngx_set_errno(ERROR_INSUFFICIENT_BUFFER);
+        return 0;
+    }
+
+    p = ngx_utf16_to_utf8(buf, utf16, &size, NULL);
+
+    if (p == NULL) {
+        return 0;
+    }
+
+    if (p != buf) {
+        ngx_free(p);
+        ngx_set_errno(ERROR_INSUFFICIENT_BUFFER);
+        return 0;
+    }
+
+    return size - 1;
+}
+
+
 ngx_int_t
 ngx_open_dir(ngx_str_t *name, ngx_dir_t *dir)
 {
