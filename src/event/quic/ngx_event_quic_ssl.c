@@ -301,6 +301,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
     }
 
     qc->error = NGX_QUIC_ERR_CRYPTO(alert);
+    qc->error_reason = "handshake failed";
 
     return 1;
 }
@@ -423,7 +424,6 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
 
         if (sslerr != SSL_ERROR_WANT_READ) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
-            qc->error_reason = "handshake failed";
             return NGX_ERROR;
         }
     }
