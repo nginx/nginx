@@ -232,7 +232,7 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 
         ngx_sprintf(name + to->len, ".%0muA.DELETE%Z", num);
 
-        if (MoveFile((const char *) to->data, (const char *) name) != 0) {
+        if (ngx_rename_file(to->data, name) != NGX_FILE_ERROR) {
             break;
         }
 
@@ -248,14 +248,14 @@ ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
         goto failed;
     }
 
-    if (MoveFile((const char *) from->data, (const char *) to->data) == 0) {
+    if (ngx_rename_file(from->data, to->data) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
     } else {
         err = 0;
     }
 
-    if (DeleteFile((const char *) name) == 0) {
+    if (ngx_delete_file(name) == NGX_FILE_ERROR) {
         ngx_log_error(NGX_LOG_CRIT, log, ngx_errno,
                       "DeleteFile() \"%s\" failed", name);
     }
