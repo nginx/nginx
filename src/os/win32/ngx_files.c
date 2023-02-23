@@ -967,13 +967,7 @@ ngx_directio_off(ngx_fd_t fd)
 size_t
 ngx_fs_bsize(u_char *name)
 {
-    u_char  root[4];
     u_long  sc, bs, nfree, ncl;
-
-    if (name[2] == ':') {
-        ngx_cpystrn(root, name, 4);
-        name = root;
-    }
 
     if (GetDiskFreeSpace((const char *) name, &sc, &bs, &nfree, &ncl) == 0) {
         return 512;
