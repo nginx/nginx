@@ -10,6 +10,7 @@
 
 
 #define NGX_UTF16_BUFLEN  256
+#define NGX_UTF8_BUFLEN   512
 
 static ngx_int_t ngx_win32_check_filename(u_char *name, u_short *u,
     size_t len);
@@ -547,13 +548,26 @@ ngx_open_glob(ngx_glob_t *gl)
 {
     u_char     *p;
     size_t      len;
+    u_short    *u;
     ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
 
-    gl->dir = FindFirstFile((const char *) gl->pattern, &gl->finddata);
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, gl->pattern, &len, 0);
+
+    if (u == NULL) {
+        return NGX_ERROR;
+    }
+
+    gl->dir = FindFirstFileW(u, &gl->finddata);
 
     if (gl->dir == INVALID_HANDLE_VALUE) {
 
         err = ngx_errno;
+
+        if (u != utf16) {
+            ngx_free(u);
+        }
 
         if ((err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND)
              && gl->test)
@@ -561,6 +575,8 @@ ngx_open_glob(ngx_glob_t *gl)
             gl->no_match = 1;
             return NGX_OK;
         }
+
+        ngx_set_errno(err);
 
         return NGX_ERROR;
     }
@@ -571,17 +587,9 @@ ngx_open_glob(ngx_glob_t *gl)
         }
     }
 
-    len = ngx_strlen(gl->finddata.cFileName);
-    gl->name.len = gl->last + len;
-
-    gl->name.data = ngx_alloc(gl->name.len + 1, gl->log);
-    if (gl->name.data == NULL) {
-        return NGX_ERROR;
+    if (u != utf16) {
+        ngx_free(u);
     }
-
-    ngx_memcpy(gl->name.data, gl->pattern, gl->last);
-    ngx_cpystrn(gl->name.data + gl->last, (u_char *) gl->finddata.cFileName,
-                len + 1);
 
     gl->ready = 1;
 
@@ -592,40 +600,25 @@ ngx_open_glob(ngx_glob_t *gl)
 ngx_int_t
 ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 {
-    size_t     len;
-    ngx_err_t  err;
+    u_char     *p;
+    size_t      len;
+    ngx_err_t   err;
+    u_char      utf8[NGX_UTF8_BUFLEN];
 
     if (gl->no_match) {
         return NGX_DONE;
     }
 
     if (gl->ready) {
-        *name = gl->name;
-
         gl->ready = 0;
-        return NGX_OK;
+        goto convert;
     }
 
     ngx_free(gl->name.data);
     gl->name.data = NULL;
 
-    if (FindNextFile(gl->dir, &gl->finddata) != 0) {
-
-        len = ngx_strlen(gl->finddata.cFileName);
-        gl->name.len = gl->last + len;
-
-        gl->name.data = ngx_alloc(gl->name.len + 1, gl->log);
-        if (gl->name.data == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(gl->name.data, gl->pattern, gl->last);
-        ngx_cpystrn(gl->name.data + gl->last, (u_char *) gl->finddata.cFileName,
-                    len + 1);
-
-        *name = gl->name;
-
-        return NGX_OK;
+    if (FindNextFileW(gl->dir, &gl->finddata) != 0) {
+        goto convert;
     }
 
     err = ngx_errno;
@@ -636,6 +629,43 @@ ngx_read_glob(ngx_glob_t *gl, ngx_str_t *name)
 
     ngx_log_error(NGX_LOG_ALERT, gl->log, err,
                   "FindNextFile(%s) failed", gl->pattern);
+
+    return NGX_ERROR;
+
+convert:
+
+    len = NGX_UTF8_BUFLEN;
+    p = ngx_utf16_to_utf8(utf8, gl->finddata.cFileName, &len, NULL);
+
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    gl->name.len = gl->last + len - 1;
+
+    gl->name.data = ngx_alloc(gl->name.len + 1, gl->log);
+    if (gl->name.data == NULL) {
+        goto failed;
+    }
+
+    ngx_memcpy(gl->name.data, gl->pattern, gl->last);
+    ngx_cpystrn(gl->name.data + gl->last, p, len);
+
+    if (p != utf8) {
+        ngx_free(p);
+    }
+
+    *name = gl->name;
+
+    return NGX_OK;
+
+failed:
+
+    if (p != utf8) {
+        err = ngx_errno;
+        ngx_free(p);
+        ngx_set_errno(err);
+    }
 
     return NGX_ERROR;
 }

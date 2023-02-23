@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
     HANDLE                          dir;
-    WIN32_FIND_DATA                 finddata;
+    WIN32_FIND_DATAW                finddata;
 
     unsigned                        ready:1;
     unsigned                        test:1;
