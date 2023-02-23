@@ -440,11 +440,9 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
         return NGX_OK;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ssl cipher:%s", SSL_get_cipher(ssl_conn));
-
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic handshake completed successfully");
+#if (NGX_DEBUG)
+    ngx_ssl_handshake_log(c);
+#endif
 
     c->ssl->handshaked = 1;
 
