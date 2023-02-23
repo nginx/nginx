@@ -207,6 +207,42 @@ ngx_write_console(ngx_fd_t fd, void *buf, size_t size)
 }
 
 
+ngx_int_t
+ngx_delete_file(u_char *name)
+{
+    long        rc;
+    size_t      len;
+    u_short    *u;
+    ngx_err_t   err;
+    u_short     utf16[NGX_UTF16_BUFLEN];
+
+    len = NGX_UTF16_BUFLEN;
+    u = ngx_utf8_to_utf16(utf16, name, &len, 0);
+
+    if (u == NULL) {
+        return NGX_FILE_ERROR;
+    }
+
+    rc = NGX_FILE_ERROR;
+
+    if (ngx_win32_check_filename(u, len, 0) != NGX_OK) {
+        goto failed;
+    }
+
+    rc = DeleteFileW(u);
+
+failed:
+
+    if (u != utf16) {
+        err = ngx_errno;
+        ngx_free(u);
+        ngx_set_errno(err);
+    }
+
+    return rc;
+}
+
+
 ngx_err_t
 ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log)
 {

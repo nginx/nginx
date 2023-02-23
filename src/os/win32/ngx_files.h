@@ -123,7 +123,7 @@ ssize_t ngx_write_console(ngx_fd_t fd, void *buf, size_t size);
 #define NGX_LINEFEED                CRLF
 
 
-#define ngx_delete_file(name)       DeleteFile((const char *) name)
+ngx_int_t ngx_delete_file(u_char *name);
 #define ngx_delete_file_n           "DeleteFile()"
 
 
