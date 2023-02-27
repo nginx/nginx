@@ -110,7 +110,10 @@ ngx_http_v3_init_stream(ngx_connection_t *c)
 ngx_int_t
 ngx_http_v3_init(ngx_connection_t *c)
 {
+    unsigned int               len;
+    const unsigned char       *data;
     ngx_http_v3_session_t     *h3c;
+    ngx_http_v3_srv_conf_t    *h3scf;
     ngx_http_core_loc_conf_t  *clcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init");
@@ -119,11 +122,23 @@ ngx_http_v3_init(ngx_connection_t *c)
     clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);
     ngx_add_timer(&h3c->keepalive, clcf->keepalive_timeout);
 
-#if (NGX_HTTP_V3_HQ)
-    if (h3c->hq) {
-        return NGX_OK;
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+
+    if (h3scf->enable_hq) {
+        if (!h3scf->enable) {
+            h3c->hq = 1;
+            return NGX_OK;
+        }
+
+        SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
+
+        if (len == sizeof(NGX_HTTP_V3_HQ_PROTO) - 1
+            && ngx_strncmp(data, NGX_HTTP_V3_HQ_PROTO, len) == 0)
+        {
+            h3c->hq = 1;
+            return NGX_OK;
+        }
     }
-#endif
 
     return ngx_http_v3_send_settings(c);
 }
@@ -147,10 +162,7 @@ ngx_http_v3_shutdown(ngx_connection_t *c)
     if (!h3c->goaway) {
         h3c->goaway = 1;
 
-#if (NGX_HTTP_V3_HQ)
-        if (!h3c->hq)
-#endif
-        {
+        if (!h3c->hq) {
             (void) ngx_http_v3_send_goaway(c, h3c->next_request_id);
         }
 
@@ -205,10 +217,7 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
     {
         h3c->goaway = 1;
 
-#if (NGX_HTTP_V3_HQ)
-        if (!h3c->hq)
-#endif
-        {
+        if (!h3c->hq) {
             if (ngx_http_v3_send_goaway(c, h3c->next_request_id) != NGX_OK) {
                 ngx_http_close_connection(c);
                 return;
@@ -236,10 +245,7 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
 
     rev = c->read;
 
-#if (NGX_HTTP_V3_HQ)
-    if (!h3c->hq)
-#endif
-    {
+    if (!h3c->hq) {
         rev->handler = ngx_http_v3_wait_request_handler;
         c->write->handler = ngx_http_empty_handler;
     }
@@ -398,14 +404,14 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 void
 ngx_http_v3_reset_stream(ngx_connection_t *c)
 {
+    ngx_http_v3_session_t   *h3c;
     ngx_http_v3_srv_conf_t  *h3scf;
 
     h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
-    if (h3scf->max_table_capacity > 0 && !c->read->eof
-#if (NGX_HTTP_V3_HQ)
-        && !h3scf->hq
-#endif
+    h3c = ngx_http_v3_get_session(c);
+
+    if (h3scf->max_table_capacity > 0 && !c->read->eof && !h3c->hq
         && (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
     {
         (void) ngx_http_v3_send_cancel_stream(c, c->quic->id);
@@ -993,14 +999,29 @@ failed:
 static ngx_int_t
 ngx_http_v3_process_request_header(ngx_http_request_t *r)
 {
-    ssize_t            n;
-    ngx_buf_t         *b;
-    ngx_connection_t  *c;
+    ssize_t                  n;
+    ngx_buf_t               *b;
+    ngx_connection_t        *c;
+    ngx_http_v3_session_t   *h3c;
+    ngx_http_v3_srv_conf_t  *h3scf;
 
     c = r->connection;
 
     if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
         return NGX_ERROR;
+    }
+
+    h3c = ngx_http_v3_get_session(c);
+    h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
+
+    if (!r->http_connection->addr_conf->http3) {
+        if ((h3c->hq && !h3scf->enable_hq) || (!h3c->hq && !h3scf->enable)) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client attempted to request the server name "
+                          "for which the negotiated protocol is disabled");
+            ngx_http_finalize_request(r, NGX_HTTP_MISDIRECTED_REQUEST);
+            return NGX_ERROR;
+        }
     }
 
     if (ngx_http_v3_construct_cookie_header(r) != NGX_OK) {

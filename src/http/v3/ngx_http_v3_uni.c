@@ -37,12 +37,9 @@ void
 ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 {
     uint64_t                   n;
-#if (NGX_HTTP_V3_HQ)
     ngx_http_v3_session_t     *h3c;
-#endif
     ngx_http_v3_uni_stream_t  *us;
 
-#if (NGX_HTTP_V3_HQ)
     h3c = ngx_http_v3_get_session(c);
     if (h3c->hq) {
         ngx_http_v3_finalize_connection(c,
@@ -52,7 +49,6 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
         ngx_http_v3_close_uni_stream(c);
         return;
     }
-#endif
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init uni stream");
 

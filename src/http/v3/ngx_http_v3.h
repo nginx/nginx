@@ -21,6 +21,7 @@
 
 #define NGX_HTTP_V3_ALPN_PROTO                     "\x02h3"
 #define NGX_HTTP_V3_HQ_ALPN_PROTO                  "\x0Ahq-interop"
+#define NGX_HTTP_V3_HQ_PROTO                       "hq-interop"
 
 #define NGX_HTTP_V3_VARLEN_INT_LEN                 4
 #define NGX_HTTP_V3_PREFIX_INT_LEN                 11
@@ -101,13 +102,12 @@
 
 
 typedef struct {
+    ngx_flag_t                    enable;
+    ngx_flag_t                    enable_hq;
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
     ngx_uint_t                    max_concurrent_pushes;
     ngx_uint_t                    max_concurrent_streams;
-#if (NGX_HTTP_V3_HQ)
-    ngx_flag_t                    hq;
-#endif
     ngx_quic_conf_t               quic;
 } ngx_http_v3_srv_conf_t;
 
@@ -147,9 +147,7 @@ struct ngx_http_v3_session_s {
     off_t                         payload_bytes;
 
     unsigned                      goaway:1;
-#if (NGX_HTTP_V3_HQ)
     unsigned                      hq:1;
-#endif
 
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
 };

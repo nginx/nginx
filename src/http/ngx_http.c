@@ -1242,6 +1242,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 #if (NGX_HTTP_V3)
     ngx_uint_t             http3;
+    ngx_uint_t             quic;
 #endif
 
     /*
@@ -1280,6 +1281,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 #if (NGX_HTTP_V3)
         http3 = lsopt->http3 || addr[i].opt.http3;
+        quic = lsopt->quic || addr[i].opt.quic;
 #endif
 
         if (lsopt->set) {
@@ -1319,6 +1321,7 @@ ngx_http_add_addresses(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 #endif
 #if (NGX_HTTP_V3)
         addr[i].opt.http3 = http3;
+        addr[i].opt.quic = quic;
 #endif
 
         return NGX_OK;
@@ -1823,7 +1826,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
 #if (NGX_HTTP_V3)
 
-    ls->quic = addr->opt.http3;
+    ls->quic = addr->opt.quic;
 
     if (ls->quic) {
         ngx_rbtree_init(&ls->rbtree, &ls->sentinel,
@@ -1866,6 +1869,7 @@ ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 #endif
 #if (NGX_HTTP_V3)
         addrs[i].conf.http3 = addr[i].opt.http3;
+        addrs[i].conf.quic = addr[i].opt.quic;
 #endif
         addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 
@@ -1934,6 +1938,7 @@ ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
 #endif
 #if (NGX_HTTP_V3)
         addrs6[i].conf.http3 = addr[i].opt.http3;
+        addrs6[i].conf.quic = addr[i].opt.quic;
 #endif
         addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
 

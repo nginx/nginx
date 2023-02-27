@@ -32,6 +32,20 @@ static ngx_conf_post_t  ngx_http_quic_mtu_post =
 
 static ngx_command_t  ngx_http_v3_commands[] = {
 
+    { ngx_string("http3"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, enable),
+      NULL },
+
+    { ngx_string("http3_hq"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, enable_hq),
+      NULL },
+
     { ngx_string("http3_max_concurrent_pushes"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -45,15 +59,6 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, max_concurrent_streams),
       NULL },
-
-#if (NGX_HTTP_V3_HQ)
-    { ngx_string("http3_hq"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v3_srv_conf_t, hq),
-      NULL },
-#endif
 
     { ngx_string("http3_push"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -160,14 +165,12 @@ static ngx_int_t
 ngx_http_v3_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    ngx_http_v3_session_t  *h3c;
+
     if (r->connection->quic) {
-#if (NGX_HTTP_V3_HQ)
+        h3c = ngx_http_v3_get_session(r->connection);
 
-        ngx_http_v3_srv_conf_t  *h3scf;
-
-        h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
-
-        if (h3scf->hq) {
+        if (h3c->hq) {
             v->len = sizeof("hq") - 1;
             v->valid = 1;
             v->no_cacheable = 0;
@@ -176,8 +179,6 @@ ngx_http_v3_variable(ngx_http_request_t *r,
 
             return NGX_OK;
         }
-
-#endif
 
         v->len = sizeof("h3") - 1;
         v->valid = 1;
@@ -232,12 +233,12 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
      *     h3scf->quic.timeout = 0;
      *     h3scf->max_blocked_streams = 0;
      */
+
+    h3scf->enable = NGX_CONF_UNSET;
+    h3scf->enable_hq = NGX_CONF_UNSET;
     h3scf->max_table_capacity = NGX_HTTP_V3_MAX_TABLE_CAPACITY;
     h3scf->max_concurrent_pushes = NGX_CONF_UNSET_UINT;
     h3scf->max_concurrent_streams = NGX_CONF_UNSET_UINT;
-#if (NGX_HTTP_V3_HQ)
-    h3scf->hq = NGX_CONF_UNSET;
-#endif
 
     h3scf->quic.mtu = NGX_CONF_UNSET_SIZE;
     h3scf->quic.stream_buffer_size = NGX_CONF_UNSET_SIZE;
@@ -264,6 +265,10 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_http_ssl_srv_conf_t  *sscf;
 
+    ngx_conf_merge_value(conf->enable, prev->enable, 1);
+
+    ngx_conf_merge_value(conf->enable_hq, prev->enable_hq, 0);
+
     ngx_conf_merge_uint_value(conf->max_concurrent_pushes,
                               prev->max_concurrent_pushes, 10);
 
@@ -271,11 +276,6 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->max_concurrent_streams, 128);
 
     conf->max_blocked_streams = conf->max_concurrent_streams;
-
-#if (NGX_HTTP_V3_HQ)
-    ngx_conf_merge_value(conf->hq, prev->hq, 0);
-#endif
-
 
     ngx_conf_merge_size_value(conf->quic.mtu, prev->quic.mtu,
                               NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
