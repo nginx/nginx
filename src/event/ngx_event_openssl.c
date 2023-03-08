@@ -3389,7 +3389,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 
     } else if (sslerr == SSL_ERROR_SSL) {
 
-        n = ERR_GET_REASON(ERR_peek_error());
+        n = ERR_GET_REASON(ERR_peek_last_error());
 
             /* handshake failures */
         if (n == SSL_R_BAD_CHANGE_CIPHER_SPEC                        /*  103 */
