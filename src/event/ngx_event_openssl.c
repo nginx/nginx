@@ -3406,6 +3406,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_MISSING_SIGALGS_EXTENSION
             || n == SSL_R_MISSING_SIGALGS_EXTENSION                  /*  112 */
 #endif
+            || n == SSL_R_BAD_PACKET_LENGTH                          /*  115 */
 #ifdef SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM
             || n == SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM            /*  118 */
 #endif
@@ -3453,6 +3454,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_CALLBACK_FAILED
             || n == SSL_R_CALLBACK_FAILED                            /*  234 */
 #endif
+#ifdef SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG
+            || n == SSL_R_TLS_RSA_ENCRYPTED_VALUE_LENGTH_IS_WRONG    /*  234 */
+#endif
 #ifdef SSL_R_NO_APPLICATION_PROTOCOL
             || n == SSL_R_NO_APPLICATION_PROTOCOL                    /*  235 */
 #endif
@@ -3484,6 +3488,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_RECORD_TOO_SMALL
             || n == SSL_R_RECORD_TOO_SMALL                           /*  298 */
+#endif
+#ifdef SSL_R_SSL3_SESSION_ID_TOO_LONG
+            || n == SSL_R_SSL3_SESSION_ID_TOO_LONG                   /*  300 */
 #endif
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
