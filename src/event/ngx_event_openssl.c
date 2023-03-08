@@ -3396,6 +3396,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_NO_SUITABLE_KEY_SHARE
             || n == SSL_R_NO_SUITABLE_KEY_SHARE                      /*  101 */
 #endif
+#ifdef SSL_R_BAD_ALERT
+            || n == SSL_R_BAD_ALERT                                  /*  102 */
+#endif
 #ifdef SSL_R_BAD_KEY_SHARE
             || n == SSL_R_BAD_KEY_SHARE                              /*  108 */
 #endif
@@ -3415,6 +3418,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
             || n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                  /*  129 */
             || n == SSL_R_CCS_RECEIVED_EARLY                         /*  133 */
+#ifdef SSL_R_DECODE_ERROR
+            || n == SSL_R_DECODE_ERROR                               /*  137 */
+#endif
 #ifdef SSL_R_DATA_BETWEEN_CCS_AND_FINISHED
             || n == SSL_R_DATA_BETWEEN_CCS_AND_FINISHED              /*  145 */
 #endif
@@ -3432,6 +3438,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_LENGTH_TOO_SHORT
             || n == SSL_R_LENGTH_TOO_SHORT                           /*  160 */
 #endif
+#ifdef SSL_R_NO_RENEGOTIATION
+            || n == SSL_R_NO_RENEGOTIATION                           /*  182 */
+#endif
 #ifdef SSL_R_NO_CIPHERS_PASSED
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
 #endif
@@ -3445,6 +3454,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_PACKET_LENGTH_TOO_LONG                     /*  198 */
 #endif
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
+#ifdef SSL_R_TOO_MANY_WARNING_ALERTS
+            || n == SSL_R_TOO_MANY_WARNING_ALERTS                    /*  220 */
+#endif
 #ifdef SSL_R_CLIENTHELLO_TLSEXT
             || n == SSL_R_CLIENTHELLO_TLSEXT                         /*  226 */
 #endif
@@ -3467,11 +3479,20 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS
             || n == SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS             /*  253 */
 #endif
+#ifdef SSL_R_INVALID_COMPRESSION_LIST
+            || n == SSL_R_INVALID_COMPRESSION_LIST                   /*  256 */
+#endif
+#ifdef SSL_R_MISSING_KEY_SHARE
+            || n == SSL_R_MISSING_KEY_SHARE                          /*  258 */
+#endif
             || n == SSL_R_UNSUPPORTED_PROTOCOL                       /*  258 */
 #ifdef SSL_R_NO_SHARED_GROUP
             || n == SSL_R_NO_SHARED_GROUP                            /*  266 */
 #endif
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
+#ifdef SSL_R_TOO_MUCH_SKIPPED_EARLY_DATA
+            || n == SSL_R_TOO_MUCH_SKIPPED_EARLY_DATA                /*  270 */
+#endif
             || n == SSL_R_BAD_LENGTH                                 /*  271 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
 #ifdef SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY
