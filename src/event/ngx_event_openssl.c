@@ -3402,16 +3402,35 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_BAD_EXTENSION
             || n == SSL_R_BAD_EXTENSION                              /*  110 */
 #endif
+            || n == SSL_R_BAD_DIGEST_LENGTH                          /*  111 */
+#ifdef SSL_R_MISSING_SIGALGS_EXTENSION
+            || n == SSL_R_MISSING_SIGALGS_EXTENSION                  /*  112 */
+#endif
 #ifdef SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM
             || n == SSL_R_NO_SUITABLE_SIGNATURE_ALGORITHM            /*  118 */
 #endif
+#ifdef SSL_R_BAD_KEY_UPDATE
+            || n == SSL_R_BAD_KEY_UPDATE                             /*  122 */
+#endif
             || n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                  /*  129 */
+            || n == SSL_R_CCS_RECEIVED_EARLY                         /*  133 */
+#ifdef SSL_R_DATA_BETWEEN_CCS_AND_FINISHED
+            || n == SSL_R_DATA_BETWEEN_CCS_AND_FINISHED              /*  145 */
+#endif
+            || n == SSL_R_DATA_LENGTH_TOO_LONG                       /*  146 */
             || n == SSL_R_DIGEST_CHECK_FAILED                        /*  149 */
+            || n == SSL_R_ENCRYPTED_LENGTH_TOO_LONG                  /*  150 */
             || n == SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST              /*  151 */
             || n == SSL_R_EXCESSIVE_MESSAGE_SIZE                     /*  152 */
+#ifdef SSL_R_GOT_A_FIN_BEFORE_A_CCS
+            || n == SSL_R_GOT_A_FIN_BEFORE_A_CCS                     /*  154 */
+#endif
             || n == SSL_R_HTTPS_PROXY_REQUEST                        /*  155 */
             || n == SSL_R_HTTP_REQUEST                               /*  156 */
             || n == SSL_R_LENGTH_MISMATCH                            /*  159 */
+#ifdef SSL_R_LENGTH_TOO_SHORT
+            || n == SSL_R_LENGTH_TOO_SHORT                           /*  160 */
+#endif
 #ifdef SSL_R_NO_CIPHERS_PASSED
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
 #endif
@@ -3421,6 +3440,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
             || n == SSL_R_NO_COMPRESSION_SPECIFIED                   /*  187 */
             || n == SSL_R_NO_SHARED_CIPHER                           /*  193 */
+#ifdef SSL_R_PACKET_LENGTH_TOO_LONG
+            || n == SSL_R_PACKET_LENGTH_TOO_LONG                     /*  198 */
+#endif
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
 #ifdef SSL_R_CLIENTHELLO_TLSEXT
             || n == SSL_R_CLIENTHELLO_TLSEXT                         /*  226 */
@@ -3446,12 +3468,22 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_NO_SHARED_GROUP                            /*  266 */
 #endif
             || n == SSL_R_WRONG_VERSION_NUMBER                       /*  267 */
+            || n == SSL_R_BAD_LENGTH                                 /*  271 */
             || n == SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC        /*  281 */
 #ifdef SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY
             || n == SSL_R_APPLICATION_DATA_AFTER_CLOSE_NOTIFY        /*  291 */
 #endif
 #ifdef SSL_R_APPLICATION_DATA_ON_SHUTDOWN
             || n == SSL_R_APPLICATION_DATA_ON_SHUTDOWN               /*  291 */
+#endif
+#ifdef SSL_R_BAD_LEGACY_VERSION
+            || n == SSL_R_BAD_LEGACY_VERSION                         /*  292 */
+#endif
+#ifdef SSL_R_MIXED_HANDSHAKE_AND_NON_HANDSHAKE_DATA
+            || n == SSL_R_MIXED_HANDSHAKE_AND_NON_HANDSHAKE_DATA     /*  293 */
+#endif
+#ifdef SSL_R_RECORD_TOO_SMALL
+            || n == SSL_R_RECORD_TOO_SMALL                           /*  298 */
 #endif
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
@@ -3470,11 +3502,20 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_INAPPROPRIATE_FALLBACK
             || n == SSL_R_INAPPROPRIATE_FALLBACK                     /*  373 */
 #endif
+#ifdef SSL_R_NO_SHARED_SIGNATURE_ALGORITHMS
+            || n == SSL_R_NO_SHARED_SIGNATURE_ALGORITHMS             /*  376 */
+#endif
+#ifdef SSL_R_NO_SHARED_SIGATURE_ALGORITHMS
+            || n == SSL_R_NO_SHARED_SIGATURE_ALGORITHMS              /*  376 */
+#endif
 #ifdef SSL_R_CERT_CB_ERROR
             || n == SSL_R_CERT_CB_ERROR                              /*  377 */
 #endif
 #ifdef SSL_R_VERSION_TOO_LOW
             || n == SSL_R_VERSION_TOO_LOW                            /*  396 */
+#endif
+#ifdef SSL_R_TOO_MANY_WARN_ALERTS
+            || n == SSL_R_TOO_MANY_WARN_ALERTS                       /*  409 */
 #endif
 #ifdef SSL_R_BAD_RECORD_TYPE
             || n == SSL_R_BAD_RECORD_TYPE                            /*  443 */
