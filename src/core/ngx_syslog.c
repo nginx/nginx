@@ -66,6 +66,9 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
         ngx_str_set(&peer->tag, "nginx");
     }
 
+    peer->hostname = &cf->cycle->hostname;
+    peer->log = &cf->cycle->new_log;
+
     peer->conn.fd = (ngx_socket_t) -1;
 
     peer->conn.read = &ngx_syslog_dummy_event;
@@ -243,7 +246,7 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
     }
 
     return ngx_sprintf(buf, "<%ui>%V %V %V: ", pri, &ngx_cached_syslog_time,
-                       &ngx_cycle->hostname, &peer->tag);
+                       peer->hostname, &peer->tag);
 }
 
 
@@ -292,9 +295,6 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
         }
     }
 
-    /* log syslog socket events with valid log */
-    peer->conn.log = ngx_cycle->log;
-
     if (ngx_send) {
         n = ngx_send(&peer->conn, buf, len);
 
@@ -306,7 +306,7 @@ ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
     if (n == NGX_ERROR) {
 
         if (ngx_close_socket(peer->conn.fd) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+            ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                           ngx_close_socket_n " failed");
         }
 
@@ -324,24 +324,25 @@ ngx_syslog_init_peer(ngx_syslog_peer_t *peer)
 
     fd = ngx_socket(peer->server.sockaddr->sa_family, SOCK_DGRAM, 0);
     if (fd == (ngx_socket_t) -1) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                       ngx_socket_n " failed");
         return NGX_ERROR;
     }
 
     if (ngx_nonblocking(fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                       ngx_nonblocking_n " failed");
         goto failed;
     }
 
     if (connect(fd, peer->server.sockaddr, peer->server.socklen) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                       "connect() failed");
         goto failed;
     }
 
     peer->conn.fd = fd;
+    peer->conn.log = peer->log;
 
     /* UDP sockets are always ready to write */
     peer->conn.write->ready = 1;
@@ -351,7 +352,7 @@ ngx_syslog_init_peer(ngx_syslog_peer_t *peer)
 failed:
 
     if (ngx_close_socket(fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
     }
 
@@ -372,7 +373,7 @@ ngx_syslog_cleanup(void *data)
     }
 
     if (ngx_close_socket(peer->conn.fd) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, ngx_socket_errno,
+        ngx_log_error(NGX_LOG_ALERT, peer->log, ngx_socket_errno,
                       ngx_close_socket_n " failed");
     }
 }
