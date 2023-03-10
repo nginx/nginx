@@ -18,7 +18,8 @@ typedef struct {
     ngx_addr_t         server;
     ngx_connection_t   conn;
 
-    ngx_log_t         *log;
+    ngx_log_t          log;
+    ngx_log_t         *logp;
 
     unsigned           busy:1;
     unsigned           nohostname:1;
