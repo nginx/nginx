@@ -1794,14 +1794,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     /* TODO Optimization: validate headers while parsing. */
     if (ngx_http_v2_validate_header(r, header) != NGX_OK) {
-        if (ngx_http_v2_terminate_stream(h2c, h2c->state.stream,
-                                         NGX_HTTP_V2_PROTOCOL_ERROR)
-            == NGX_ERROR)
-        {
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_INTERNAL_ERROR);
-        }
-
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto error;
     }
 
