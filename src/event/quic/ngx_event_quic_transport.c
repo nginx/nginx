@@ -576,7 +576,7 @@ ngx_quic_payload_size(ngx_quic_header_t *pkt, size_t pkt_len)
 {
     size_t  len;
 
-    if ngx_quic_short_pkt(pkt->flags) {
+    if (ngx_quic_short_pkt(pkt->flags)) {
 
         len = 1 + pkt->dcid.len + pkt->num_len + EVP_GCM_TLS_TAG_LEN;
         if (len > pkt_len) {
