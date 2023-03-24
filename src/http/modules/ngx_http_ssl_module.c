@@ -56,6 +56,10 @@ static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
     void *data);
 
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
+#if (NGX_QUIC_OPENSSL_COMPAT)
+static ngx_int_t ngx_http_ssl_quic_compat_init(ngx_conf_t *cf,
+    ngx_http_conf_addr_t *addr);
+#endif
 
 
 static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
@@ -1328,14 +1332,11 @@ ngx_http_ssl_init(ngx_conf_t *cf)
                 continue;
             }
 
-            cscf = addr[a].default_server;
-            sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
-
             if (addr[a].opt.quic) {
                 name = "quic";
 
 #if (NGX_QUIC_OPENSSL_COMPAT)
-                if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
+                if (ngx_http_ssl_quic_compat_init(cf, &addr[a]) != NGX_OK) {
                     return NGX_ERROR;
                 }
 #endif
@@ -1343,6 +1344,9 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             } else {
                 name = "ssl";
             }
+
+            cscf = addr[a].default_server;
+            sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
             if (sscf->certificates) {
 
@@ -1391,3 +1395,31 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
     return NGX_OK;
 }
+
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+
+static ngx_int_t
+ngx_http_ssl_quic_compat_init(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
+{
+    ngx_uint_t                  s;
+    ngx_http_ssl_srv_conf_t    *sscf;
+    ngx_http_core_srv_conf_t  **cscfp, *cscf;
+
+    cscfp = addr->servers.elts;
+    for (s = 0; s < addr->servers.nelts; s++) {
+
+        cscf = cscfp[s];
+        sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+
+        if (sscf->certificates || sscf->reject_handshake) {
+            if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+#endif
