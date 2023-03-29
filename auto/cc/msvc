@@ -11,8 +11,8 @@
 # MSVC 2015 (14.0)                        cl 19.00
 
 
-NGX_MSVC_VER=`$NGX_WINE $CC 2>&1 | grep 'Compiler Version' 2>&1 \
-                                 | sed -e 's/^.* Version \(.*\)/\1/'`
+NGX_MSVC_VER=`$NGX_WINE $CC 2>&1 | grep 'C/C++.* [0-9][0-9]*\.[0-9]' 2>&1 \
+                                 | sed -e 's/^.* \([0-9][0-9]*\.[0-9].*\)/\1/'`
 
 echo " + cl version: $NGX_MSVC_VER"
 
@@ -20,6 +20,21 @@ have=NGX_COMPILER value="\"cl $NGX_MSVC_VER\"" . auto/define
 
 
 ngx_msvc_ver=`echo $NGX_MSVC_VER | sed -e 's/^\([0-9]*\).*/\1/'`
+
+
+# detect x64 builds
+
+case "$NGX_MSVC_VER" in
+
+    *x64)
+        NGX_MACHINE=amd64
+    ;;
+
+    *)
+        NGX_MACHINE=i386
+    ;;
+
+esac
 
 
 # optimizations

@@ -238,10 +238,6 @@ ngx_http_static_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (r != r->main && of.size == 0) {
-        return ngx_http_send_header(r);
-    }
-
     r->allow_ranges = 1;
 
     /* we need to allocate all before the header would be sent */
@@ -265,9 +261,10 @@ ngx_http_static_handler(ngx_http_request_t *r)
     b->file_pos = 0;
     b->file_last = of.size;
 
-    b->in_file = b->file_last ? 1: 0;
-    b->last_buf = (r == r->main) ? 1: 0;
+    b->in_file = b->file_last ? 1 : 0;
+    b->last_buf = (r == r->main) ? 1 : 0;
     b->last_in_chain = 1;
+    b->sync = (b->last_buf || b->in_file) ? 0 : 1;
 
     b->file->fd = of.fd;
     b->file->name = path;

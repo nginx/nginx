@@ -5,6 +5,163 @@
 <change_log title="nginx">
 
 
+<changes ver="1.23.4" date="2023-03-28">
+
+<change type="change">
+<para lang="ru">
+теперь протокол TLSv1.3 разрешён по умолчанию.
+</para>
+<para lang="en">
+now TLSv1.3 protocol is enabled by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx выдаёт предупреждение
+при переопределении параметров listen-сокета, задающих используемые протоколы.
+</para>
+<para lang="en">
+now nginx issues a warning
+if protocol parameters of a listening socket are redefined.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь, если клиент использует pipelining,
+nginx закрывает соединения с ожиданием дополнительных данных (lingering close).
+</para>
+<para lang="en">
+now nginx closes connections with lingering
+if pipelining was used by the client.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка byte ranges для ответов модуля ngx_http_gzip_static_module.
+</para>
+<para lang="en">
+byte ranges support in the ngx_http_gzip_static_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+диапазоны портов в директиве listen не работали;
+ошибка появилась в 1.23.3.<br/>
+Спасибо Валентину Бартеневу.
+</para>
+<para lang="en">
+port ranges in the "listen" directive did not work;
+the bug had appeared in 1.23.3.<br/>
+Thanks to Valentin Bartenev.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+для обработки запроса мог быть выбран неверный location,
+если в конфигурации использовался
+префиксный location длиннее 255 символов.
+</para>
+<para lang="en">
+incorrect location might be chosen to process a request
+if a prefix location longer than 255 characters
+was used in the configuration.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+не-ASCII символы в именах файлов на Windows
+не поддерживались модулями ngx_http_autoindex_module и
+ngx_http_dav_module, а также директивой include.
+</para>
+<para lang="en">
+non-ASCII characters in file names on Windows were not supported
+by the ngx_http_autoindex_module, the ngx_http_dav_module,
+and the "include" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибок SSL
+"data length too long", "length too short", "bad legacy version",
+"no shared signature algorithms", "bad digest length",
+"missing sigalgs extension", "encrypted length too long",
+"bad length", "bad key update", "mixed handshake and non handshake data",
+"ccs received early", "data between ccs and finished",
+"packet length too long", "too many warn alerts", "record too small",
+и "got a fin before a ccs"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the
+"data length too long", "length too short", "bad legacy version",
+"no shared signature algorithms", "bad digest length",
+"missing sigalgs extension", "encrypted length too long",
+"bad length", "bad key update", "mixed handshake and non handshake data",
+"ccs received early", "data between ccs and finished",
+"packet length too long", "too many warn alerts", "record too small",
+and "got a fin before a ccs" SSL errors
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директивы error_page
+для перенаправления ошибок с кодом 400
+могла происходить утечка сокетов.
+</para>
+<para lang="en">
+a socket leak might occur
+when using HTTP/2 and the "error_page" directive
+to redirect errors with code 400.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сообщения об ошибках записи в syslog
+не содержали информации о том, что
+ошибки происходили в процессе записи в syslog.<br/>
+Спасибо Safar Safarly.
+</para>
+<para lang="en">
+messages about logging to syslog errors
+did not contain information
+that the errors happened while logging to syslog.<br/>
+Thanks to Safar Safarly.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании zlib-ng
+в логах появлялись сообщения "gzip filter failed to use preallocated memory".
+</para>
+<para lang="en">
+"gzip filter failed to use preallocated memory" alerts appeared in logs
+when using zlib-ng.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+in the mail proxy server.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.23.3" date="2022-12-13">
 
 <change type="bugfix">

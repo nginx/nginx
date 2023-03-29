@@ -1364,7 +1364,12 @@ ngx_utf8_decode(u_char **p, size_t n)
 
     u = **p;
 
-    if (u >= 0xf0) {
+    if (u >= 0xf8) {
+
+        (*p)++;
+        return 0xffffffff;
+
+    } else if (u >= 0xf0) {
 
         u &= 0x07;
         valid = 0xffff;

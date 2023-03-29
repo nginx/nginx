@@ -1730,6 +1730,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     size_t                      len;
     ngx_int_t                   rc;
     ngx_table_elt_t            *h;
+    ngx_connection_t           *fc;
     ngx_http_header_t          *hh;
     ngx_http_request_t         *r;
     ngx_http_v2_header_t       *header;
@@ -1789,17 +1790,11 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     r = h2c->state.stream->request;
+    fc = r->connection;
 
     /* TODO Optimization: validate headers while parsing. */
     if (ngx_http_v2_validate_header(r, header) != NGX_OK) {
-        if (ngx_http_v2_terminate_stream(h2c, h2c->state.stream,
-                                         NGX_HTTP_V2_PROTOCOL_ERROR)
-            == NGX_ERROR)
-        {
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_INTERNAL_ERROR);
-        }
-
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto error;
     }
 
@@ -1885,6 +1880,8 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 error:
 
     h2c->state.stream = NULL;
+
+    ngx_http_run_posted_requests(fc);
 
     return ngx_http_v2_state_header_complete(h2c, pos, end);
 }

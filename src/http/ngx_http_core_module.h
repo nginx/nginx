@@ -280,6 +280,10 @@ typedef struct {
 typedef struct {
     ngx_http_listen_opt_t      opt;
 
+    unsigned                   protocols:3;
+    unsigned                   protocols_set:1;
+    unsigned                   protocols_changed:1;
+
     ngx_hash_t                 hash;
     ngx_hash_wildcard_t       *wc_head;
     ngx_hash_wildcard_t       *wc_tail;
@@ -469,8 +473,8 @@ struct ngx_http_location_tree_node_s {
     ngx_http_core_loc_conf_t        *exact;
     ngx_http_core_loc_conf_t        *inclusive;
 
+    u_short                          len;
     u_char                           auto_redirect;
-    u_char                           len;
     u_char                           name[1];
 };
 

@@ -327,7 +327,9 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
 
-        if (s->buffer->pos < s->buffer->last) {
+        if (s->buffer->pos < s->buffer->last
+            || s->connection->read->ready)
+        {
             ngx_post_event(c->write, &ngx_posted_events);
         }
 
@@ -486,7 +488,9 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
 
-        if (s->buffer->pos < s->buffer->last) {
+        if (s->buffer->pos < s->buffer->last
+            || s->connection->read->ready)
+        {
             ngx_post_event(c->write, &ngx_posted_events);
         }
 
@@ -821,7 +825,9 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         c->log->action = NULL;
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "client logged in");
 
-        if (s->buffer->pos < s->buffer->last) {
+        if (s->buffer->pos < s->buffer->last
+            || s->connection->read->ready)
+        {
             ngx_post_event(c->write, &ngx_posted_events);
         }
 

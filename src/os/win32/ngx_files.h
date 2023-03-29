@@ -30,7 +30,11 @@ typedef struct {
 
 typedef struct {
     HANDLE                          dir;
-    WIN32_FIND_DATA                 finddata;
+    WIN32_FIND_DATAW                finddata;
+
+    u_char                         *name;
+    size_t                          namelen;
+    size_t                          allocated;
 
     unsigned                        valid_info:1;
     unsigned                        type:1;
@@ -40,7 +44,7 @@ typedef struct {
 
 typedef struct {
     HANDLE                          dir;
-    WIN32_FIND_DATA                 finddata;
+    WIN32_FIND_DATAW                finddata;
 
     unsigned                        ready:1;
     unsigned                        test:1;
@@ -86,16 +90,8 @@ ngx_fd_t ngx_open_file(u_char *name, u_long mode, u_long create, u_long access);
 #define NGX_FILE_OWNER_ACCESS       0
 
 
-#define ngx_open_tempfile(name, persistent, access)                          \
-    CreateFile((const char *) name,                                          \
-               GENERIC_READ|GENERIC_WRITE,                                   \
-               FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,           \
-               NULL,                                                         \
-               CREATE_NEW,                                                   \
-               persistent ? 0:                                               \
-                   FILE_ATTRIBUTE_TEMPORARY|FILE_FLAG_DELETE_ON_CLOSE,       \
-               NULL);
-
+ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent,
+    ngx_uint_t access);
 #define ngx_open_tempfile_n         "CreateFile()"
 
 
@@ -119,11 +115,11 @@ ssize_t ngx_write_console(ngx_fd_t fd, void *buf, size_t size);
 #define NGX_LINEFEED                CRLF
 
 
-#define ngx_delete_file(name)       DeleteFile((const char *) name)
+ngx_int_t ngx_delete_file(u_char *name);
 #define ngx_delete_file_n           "DeleteFile()"
 
 
-#define ngx_rename_file(o, n)       MoveFile((const char *) o, (const char *) n)
+ngx_int_t ngx_rename_file(u_char *from, u_char *to);
 #define ngx_rename_file_n           "MoveFile()"
 ngx_err_t ngx_win32_rename_file(ngx_str_t *from, ngx_str_t *to, ngx_log_t *log);
 
@@ -174,8 +170,12 @@ void ngx_close_file_mapping(ngx_file_mapping_t *fm);
 
 u_char *ngx_realpath(u_char *path, u_char *resolved);
 #define ngx_realpath_n              ""
-#define ngx_getcwd(buf, size)       GetCurrentDirectory(size, (char *) buf)
+
+
+size_t ngx_getcwd(u_char *buf, size_t size);
 #define ngx_getcwd_n                "GetCurrentDirectory()"
+
+
 #define ngx_path_separator(c)       ((c) == '/' || (c) == '\\')
 
 #define NGX_HAVE_MAX_PATH           1
@@ -194,19 +194,19 @@ ngx_int_t ngx_close_dir(ngx_dir_t *dir);
 #define ngx_close_dir_n             "FindClose()"
 
 
-#define ngx_create_dir(name, access) CreateDirectory((const char *) name, NULL)
+ngx_int_t ngx_create_dir(u_char *name, ngx_uint_t access);
 #define ngx_create_dir_n            "CreateDirectory()"
 
 
-#define ngx_delete_dir(name)        RemoveDirectory((const char *) name)
+ngx_int_t ngx_delete_dir(u_char *name);
 #define ngx_delete_dir_n            "RemoveDirectory()"
 
 
 #define ngx_dir_access(a)           (a)
 
 
-#define ngx_de_name(dir)            ((u_char *) (dir)->finddata.cFileName)
-#define ngx_de_namelen(dir)         ngx_strlen((dir)->finddata.cFileName)
+#define ngx_de_name(dir)            (dir)->name
+#define ngx_de_namelen(dir)         (dir)->namelen
 
 ngx_int_t ngx_de_info(u_char *name, ngx_dir_t *dir);
 #define ngx_de_info_n               "dummy()"

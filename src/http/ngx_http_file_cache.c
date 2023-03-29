@@ -1575,10 +1575,6 @@ ngx_http_cache_send(ngx_http_request_t *r)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache send: %s", c->file.name.data);
 
-    if (r != r->main && c->length - c->body_start == 0) {
-        return ngx_http_send_header(r);
-    }
-
     /* we need to allocate all before the header would be sent */
 
     b = ngx_calloc_buf(r->pool);
@@ -1600,9 +1596,10 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->file_pos = c->body_start;
     b->file_last = c->length;
 
-    b->in_file = (c->length - c->body_start) ? 1: 0;
-    b->last_buf = (r == r->main) ? 1: 0;
+    b->in_file = (c->length - c->body_start) ? 1 : 0;
+    b->last_buf = (r == r->main) ? 1 : 0;
     b->last_in_chain = 1;
+    b->sync = (b->last_buf || b->in_file) ? 0 : 1;
 
     b->file->fd = c->file.fd;
     b->file->name = c->file.name;
