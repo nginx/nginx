@@ -472,6 +472,17 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
 
         if (qc->streams.initialized) {
             ngx_post_event(rev, &ngx_posted_events);
+
+            if (qc->push.posted) {
+                /*
+                 * The posted stream can produce output immediately.
+                 * By postponing the push event, we coalesce the stream
+                 * output with queued frames in one UDP datagram.
+                 */
+
+                ngx_delete_posted_event(&qc->push);
+                ngx_post_event(&qc->push, &ngx_posted_events);
+            }
         }
     }
 
