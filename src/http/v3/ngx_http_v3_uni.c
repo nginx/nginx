@@ -747,7 +747,7 @@ ngx_http_v3_cancel_push(ngx_connection_t *c, uint64_t push_id)
 
     for (q = ngx_queue_head(&h3c->pushing);
          q != ngx_queue_sentinel(&h3c->pushing);
-         q = ngx_queue_next(&h3c->pushing))
+         q = ngx_queue_next(q))
     {
         push = (ngx_http_v3_push_t *) q;
 
