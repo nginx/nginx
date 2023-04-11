@@ -119,10 +119,6 @@ Experimental QUIC support for nginx
 
         ssl_early_data on;
 
-    Make sure that TLS 1.3 is configured which is required for QUIC:
-
-        ssl_protocols TLSv1.3;
-
     To enable GSO (Generic Segmentation Offloading):
 
         quic_gso on;
@@ -135,6 +131,8 @@ Experimental QUIC support for nginx
 
         quic_host_key <filename>;
 
+    QUIC requires TLSv1.3 protocol, which is enabled by the default
+    by "ssl_protocols" directive.
 
     By default, GSO Linux-specific optimization [10] is disabled.
     Enable it in case a corresponding network interface is configured to
@@ -175,7 +173,6 @@ Example configuration:
 
             ssl_certificate     certs/example.com.crt;
             ssl_certificate_key certs/example.com.key;
-            ssl_protocols       TLSv1.3;
 
             location / {
                 # required for browsers to direct them into quic port
