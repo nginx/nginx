@@ -75,6 +75,8 @@ win32:
 		--with-http_slice_module				\
 		--with-mail						\
 		--with-stream						\
+		--with-stream_realip_module				\
+		--with-stream_ssl_preread_module			\
 		--with-openssl=$(OBJS)/lib/$(OPENSSL)			\
 		--with-openssl-opt="no-asm no-tests -D_WIN32_WINNT=0x0501" \
 		--with-http_ssl_module					\
