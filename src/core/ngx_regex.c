@@ -732,13 +732,13 @@ ngx_regex_create_conf(ngx_cycle_t *cycle)
         return NULL;
     }
 
-    cln->handler = ngx_regex_cleanup;
-    cln->data = rcf;
-
     rcf->studies = ngx_list_create(cycle->pool, 8, sizeof(ngx_regex_elt_t));
     if (rcf->studies == NULL) {
         return NULL;
     }
+
+    cln->handler = ngx_regex_cleanup;
+    cln->data = rcf;
 
     ngx_regex_studies = rcf->studies;
 
