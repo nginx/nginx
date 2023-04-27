@@ -387,16 +387,13 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
 static void
 ngx_quic_set_connection_path(ngx_connection_t *c, ngx_quic_path_t *path)
 {
-    size_t  len;
-
     ngx_memcpy(c->sockaddr, path->sockaddr, path->socklen);
     c->socklen = path->socklen;
 
     if (c->addr_text.data) {
-        len = ngx_min(c->addr_text.len, path->addr_text.len);
-
-        ngx_memcpy(c->addr_text.data, path->addr_text.data, len);
-        c->addr_text.len = len;
+        c->addr_text.len = ngx_sock_ntop(c->sockaddr, c->socklen,
+                                         c->addr_text.data,
+                                         c->listening->addr_text_max_len, 0);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
