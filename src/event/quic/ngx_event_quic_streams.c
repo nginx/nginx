@@ -711,6 +711,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     sc->pool = pool;
     sc->ssl = c->ssl;
     sc->sockaddr = c->sockaddr;
+    sc->socklen = c->socklen;
     sc->listening = c->listening;
     sc->addr_text = c->addr_text;
     sc->local_sockaddr = c->local_sockaddr;
