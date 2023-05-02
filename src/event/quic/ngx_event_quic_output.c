@@ -882,7 +882,7 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
 ngx_int_t
 ngx_quic_send_cc(ngx_connection_t *c)
 {
-    ngx_quic_frame_t       *frame;
+    ngx_quic_frame_t        frame;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -898,27 +898,22 @@ ngx_quic_send_cc(ngx_connection_t *c)
         return NGX_OK;
     }
 
-    frame = ngx_quic_alloc_frame(c);
-    if (frame == NULL) {
-        return NGX_ERROR;
-    }
+    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
 
-    frame->level = qc->error_level;
-    frame->type = qc->error_app ? NGX_QUIC_FT_CONNECTION_CLOSE_APP
-                                : NGX_QUIC_FT_CONNECTION_CLOSE;
-    frame->u.close.error_code = qc->error;
-    frame->u.close.frame_type = qc->error_ftype;
+    frame.level = qc->error_level;
+    frame.type = qc->error_app ? NGX_QUIC_FT_CONNECTION_CLOSE_APP
+                               : NGX_QUIC_FT_CONNECTION_CLOSE;
+    frame.u.close.error_code = qc->error;
+    frame.u.close.frame_type = qc->error_ftype;
 
     if (qc->error_reason) {
-        frame->u.close.reason.len = ngx_strlen(qc->error_reason);
-        frame->u.close.reason.data = (u_char *) qc->error_reason;
+        frame.u.close.reason.len = ngx_strlen(qc->error_reason);
+        frame.u.close.reason.data = (u_char *) qc->error_reason;
     }
-
-    ngx_quic_queue_frame(qc, frame);
 
     qc->last_cc = ngx_current_msec;
 
-    return ngx_quic_output(c);
+    return ngx_quic_frame_sendto(c, &frame, 0, qc->path);
 }
 
 
