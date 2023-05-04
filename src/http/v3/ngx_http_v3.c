@@ -59,9 +59,6 @@ ngx_http_v3_init_session(ngx_connection_t *c)
 failed:
 
     ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to create http3 session");
-
-    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_INTERNAL_ERROR,
-                                    "failed to create http3 session");
     return NGX_ERROR;
 }
 
