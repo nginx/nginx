@@ -319,6 +319,7 @@ ngx_int_t
 ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
 {
     size_t                     shrink;
+    ngx_chain_t               *out;
     ngx_quic_frame_t          *nf;
     ngx_quic_buffer_t          qb;
     ngx_quic_ordered_frame_t  *of, *onf;
@@ -359,10 +360,12 @@ ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f, size_t len)
     ngx_memzero(&qb, sizeof(ngx_quic_buffer_t));
     qb.chain = f->data;
 
-    f->data = ngx_quic_read_buffer(c, &qb, of->length);
-    if (f->data == NGX_CHAIN_ERROR) {
+    out = ngx_quic_read_buffer(c, &qb, of->length);
+    if (out == NGX_CHAIN_ERROR) {
         return NGX_ERROR;
     }
+
+    f->data = out;
 
     nf = ngx_quic_alloc_frame(c);
     if (nf == NULL) {
