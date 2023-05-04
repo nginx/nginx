@@ -1223,7 +1223,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     static u_char           dst[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     qc = ngx_quic_get_connection(c);
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+    ctx = ngx_quic_get_send_ctx(qc, frame->level);
 
     ngx_quic_init_packet(c, ctx, &pkt, path);
 
