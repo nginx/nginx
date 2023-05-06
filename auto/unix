@@ -448,6 +448,54 @@ ngx_feature_test="setsockopt(0, IPPROTO_IPV6, IPV6_RECVPKTINFO, NULL, 0)"
 . auto/feature
 
 
+# IP packet fragmentation
+
+ngx_feature="IP_MTU_DISCOVER"
+ngx_feature_name="NGX_HAVE_IP_MTU_DISCOVER"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="(void) IP_PMTUDISC_DO;
+                  setsockopt(0, IPPROTO_IP, IP_MTU_DISCOVER, NULL, 0)"
+. auto/feature
+
+
+ngx_feature="IPV6_MTU_DISCOVER"
+ngx_feature_name="NGX_HAVE_IPV6_MTU_DISCOVER"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="(void) IPV6_PMTUDISC_DO;
+                  setsockopt(0, IPPROTO_IPV6, IPV6_MTU_DISCOVER, NULL, 0)"
+. auto/feature
+
+
+ngx_feature="IP_DONTFRAG"
+ngx_feature_name="NGX_HAVE_IP_DONTFRAG"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_DONTFRAG, NULL, 0)"
+. auto/feature
+
+
+ngx_feature="IPV6_DONTFRAG"
+ngx_feature_name="NGX_HAVE_IPV6_DONTFRAG"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>
+                  #include <netinet/in.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, IPPROTO_IP, IPV6_DONTFRAG, NULL, 0)"
+. auto/feature
+
+
 ngx_feature="TCP_DEFER_ACCEPT"
 ngx_feature_name="NGX_HAVE_DEFERRED_ACCEPT"
 ngx_feature_run=no
