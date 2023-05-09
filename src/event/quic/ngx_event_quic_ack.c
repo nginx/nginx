@@ -736,7 +736,8 @@ ngx_quic_set_lost_timer(ngx_connection_t *c)
 
         q = ngx_queue_last(&ctx->sent);
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        w = (ngx_msec_int_t) (f->last + ngx_quic_pto(c, ctx) - now);
+        w = (ngx_msec_int_t) (f->last + (ngx_quic_pto(c, ctx) << qc->pto_count)
+                              - now);
 
         if (w < 0) {
             w = 0;
@@ -785,10 +786,9 @@ ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     duration = qc->avg_rtt;
     duration += ngx_max(4 * qc->rttvar, NGX_QUIC_TIME_GRANULARITY);
-    duration <<= qc->pto_count;
 
     if (ctx->level == ssl_encryption_application && c->ssl->handshaked) {
-        duration += qc->ctp.max_ack_delay << qc->pto_count;
+        duration += qc->ctp.max_ack_delay;
     }
 
     return duration;
@@ -846,7 +846,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
             continue;
         }
 
-        if ((ngx_msec_int_t) (f->last + ngx_quic_pto(c, ctx) - now) > 0) {
+        if ((ngx_msec_int_t) (f->last + (ngx_quic_pto(c, ctx) << qc->pto_count)
+                              - now) > 0)
+        {
             continue;
         }
 

@@ -496,6 +496,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
                    "quic initiated validation of path seq:%uL", path->seqnum);
 
     path->validating = 1;
+    path->tries = 0;
 
     if (RAND_bytes(path->challenge1, 8) != 1) {
         return NGX_ERROR;
@@ -513,7 +514,6 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
     pto = ngx_quic_pto(c, ctx);
 
     path->expires = ngx_current_msec + pto;
-    path->tries = NGX_QUIC_PATH_RETRIES;
 
     if (!qc->path_validation.timer_set) {
         ngx_add_timer(&qc->path_validation, pto);
@@ -578,7 +578,6 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
     qc = ngx_quic_get_connection(c);
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
-    pto = ngx_quic_pto(c, ctx);
 
     next = -1;
     now = ngx_current_msec;
@@ -605,7 +604,9 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
             continue;
         }
 
-        if (--path->tries) {
+        if (++path->tries < NGX_QUIC_PATH_RETRIES) {
+            pto = ngx_quic_pto(c, ctx) << path->tries;
+
             path->expires = ngx_current_msec + pto;
 
             if (next == -1 || pto < next) {
