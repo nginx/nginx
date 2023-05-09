@@ -16,6 +16,7 @@ static ngx_int_t ngx_quic_validate_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_send_path_challenge(ngx_connection_t *c,
     ngx_quic_path_t *path);
+static void ngx_quic_set_path_timer(ngx_connection_t *c);
 static ngx_quic_path_t *ngx_quic_get_path(ngx_connection_t *c, ngx_uint_t tag);
 
 
@@ -168,6 +169,8 @@ valid:
     path->validated = 1;
     path->validating = 0;
     path->limited = 0;
+
+    ngx_quic_set_path_timer(c);
 
     return NGX_OK;
 }
@@ -515,9 +518,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 
     path->expires = ngx_current_msec + pto;
 
-    if (!qc->path_validation.timer_set) {
-        ngx_add_timer(&qc->path_validation, pto);
-    }
+    ngx_quic_set_path_timer(c);
 
     return NGX_OK;
 }
@@ -560,6 +561,47 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_quic_set_path_timer(ngx_connection_t *c)
+{
+    ngx_msec_t              now;
+    ngx_queue_t            *q;
+    ngx_msec_int_t          left, next;
+    ngx_quic_path_t        *path;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    now = ngx_current_msec;
+    next = -1;
+
+    for (q = ngx_queue_head(&qc->paths);
+         q != ngx_queue_sentinel(&qc->paths);
+         q = ngx_queue_next(q))
+    {
+        path = ngx_queue_data(q, ngx_quic_path_t, queue);
+
+        if (!path->validating) {
+            continue;
+        }
+
+        left = path->expires - now;
+        left = ngx_max(left, 1);
+
+        if (next == -1 || left < next) {
+            next = left;
+        }
+    }
+
+    if (next != -1) {
+        ngx_add_timer(&qc->path_validation, next);
+
+    } else if (qc->path_validation.timer_set) {
+        ngx_del_timer(&qc->path_validation);
+    }
 }
 
 
