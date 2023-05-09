@@ -511,7 +511,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
     }
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
-    pto = ngx_quic_pto(c, ctx);
+    pto = ngx_max(ngx_quic_pto(c, ctx), 1000);
 
     path->expires = ngx_current_msec + pto;
 
@@ -605,7 +605,7 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
         }
 
         if (++path->tries < NGX_QUIC_PATH_RETRIES) {
-            pto = ngx_quic_pto(c, ctx) << path->tries;
+            pto = ngx_max(ngx_quic_pto(c, ctx), 1000) << path->tries;
 
             path->expires = ngx_current_msec + pto;
 
