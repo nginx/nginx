@@ -782,14 +782,10 @@ ngx_quic_pto(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     qc = ngx_quic_get_connection(c);
 
     /* RFC 9002, Appendix A.8.  Setting the Loss Detection Timer */
-    duration = qc->avg_rtt;
 
+    duration = qc->avg_rtt;
     duration += ngx_max(4 * qc->rttvar, NGX_QUIC_TIME_GRANULARITY);
     duration <<= qc->pto_count;
-
-    if (qc->congestion.in_flight == 0) { /* no in-flight packets */
-        return duration;
-    }
 
     if (ctx->level == ssl_encryption_application && c->ssl->handshaked) {
         duration += qc->ctp.max_ack_delay << qc->pto_count;
