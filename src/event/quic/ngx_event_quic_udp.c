@@ -34,7 +34,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
     ngx_event_conf_t   *ecf;
     ngx_connection_t   *c, *lc;
     ngx_quic_socket_t  *qsock;
-    static u_char       buffer[65535];
+    static u_char       buffer[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
     u_char             msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
