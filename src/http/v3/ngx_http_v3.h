@@ -85,11 +85,11 @@
 #define ngx_http_v3_get_session(c)  ngx_http_quic_get_connection(c)->v3_session
 
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
-    ngx_http_get_module_loc_conf(ngx_http_quic_get_connection(c)->conf_ctx,     \
+    ngx_http_get_module_loc_conf(ngx_http_quic_get_connection(c)->conf_ctx,   \
                                  module)
 
 #define ngx_http_v3_get_module_srv_conf(c, module)                            \
-    ngx_http_get_module_srv_conf(ngx_http_quic_get_connection(c)->conf_ctx,     \
+    ngx_http_get_module_srv_conf(ngx_http_quic_get_connection(c)->conf_ctx,   \
                                  module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \

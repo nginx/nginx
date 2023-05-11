@@ -868,7 +868,8 @@ ngx_http_v3_parse_field_l(ngx_connection_t *c,
 
         case sw_start:
 
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse field l");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 parse field l");
 
             if (b->pos == b->last) {
                 return NGX_AGAIN;
