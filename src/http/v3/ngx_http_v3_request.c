@@ -1014,14 +1014,12 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
     h3c = ngx_http_v3_get_session(c);
     h3scf = ngx_http_get_module_srv_conf(r, ngx_http_v3_module);
 
-    if (!r->http_connection->addr_conf->http3) {
-        if ((h3c->hq && !h3scf->enable_hq) || (!h3c->hq && !h3scf->enable)) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client attempted to request the server name "
-                          "for which the negotiated protocol is disabled");
-            ngx_http_finalize_request(r, NGX_HTTP_MISDIRECTED_REQUEST);
-            return NGX_ERROR;
-        }
+    if ((h3c->hq && !h3scf->enable_hq) || (!h3c->hq && !h3scf->enable)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client attempted to request the server name "
+                      "for which the negotiated protocol is disabled");
+        ngx_http_finalize_request(r, NGX_HTTP_MISDIRECTED_REQUEST);
+        return NGX_ERROR;
     }
 
     if (ngx_http_v3_construct_cookie_header(r) != NGX_OK) {

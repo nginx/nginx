@@ -477,7 +477,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
             srv = (unsigned char *) NGX_HTTP_V3_HQ_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_HQ_ALPN_PROTO) - 1;
 
-        } else if (h3scf->enable || hc->addr_conf->http3) {
+        } else if (h3scf->enable) {
             srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
             srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
 
