@@ -16,12 +16,9 @@ static ngx_int_t ngx_stream_quic_add_variables(ngx_conf_t *cf);
 static void *ngx_stream_quic_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static char *ngx_stream_quic_mtu(ngx_conf_t *cf, void *post, void *data);
 static char *ngx_stream_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-static ngx_conf_post_t  ngx_stream_quic_mtu_post =
-    { ngx_stream_quic_mtu };
 
 static ngx_command_t  ngx_stream_quic_commands[] = {
 
@@ -31,13 +28,6 @@ static ngx_command_t  ngx_stream_quic_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_quic_conf_t, timeout),
       NULL },
-
-    { ngx_string("quic_mtu"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_quic_conf_t, mtu),
-      &ngx_stream_quic_mtu_post },
 
     { ngx_string("quic_stream_buffer_size"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
@@ -175,7 +165,6 @@ ngx_stream_quic_create_srv_conf(ngx_conf_t *cf)
      */
 
     conf->timeout = NGX_CONF_UNSET_MSEC;
-    conf->mtu = NGX_CONF_UNSET_SIZE;
     conf->stream_buffer_size = NGX_CONF_UNSET_SIZE;
     conf->max_concurrent_streams_bidi = NGX_CONF_UNSET_UINT;
     conf->max_concurrent_streams_uni = NGX_CONF_UNSET_UINT;
@@ -198,9 +187,6 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_stream_ssl_conf_t  *scf;
 
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 60000);
-
-    ngx_conf_merge_size_value(conf->mtu, prev->mtu,
-                              NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
     ngx_conf_merge_size_value(conf->stream_buffer_size,
                               prev->stream_buffer_size,
@@ -254,26 +240,6 @@ ngx_stream_quic_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     scf = ngx_stream_conf_get_module_srv_conf(cf, ngx_stream_ssl_module);
     conf->ssl = &scf->ssl;
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_stream_quic_mtu(ngx_conf_t *cf, void *post, void *data)
-{
-    size_t *sp = data;
-
-    if (*sp < NGX_QUIC_MIN_INITIAL_SIZE
-        || *sp > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_mtu\" must be between %d and %d",
-                           NGX_QUIC_MIN_INITIAL_SIZE,
-                           NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
-
-        return NGX_CONF_ERROR;
-    }
 
     return NGX_CONF_OK;
 }

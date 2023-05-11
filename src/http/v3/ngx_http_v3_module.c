@@ -16,18 +16,12 @@ static ngx_int_t ngx_http_v3_add_variables(ngx_conf_t *cf);
 static void *ngx_http_v3_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
-static char *ngx_http_quic_mtu(ngx_conf_t *cf, void *post,
-    void *data);
 static char *ngx_http_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_v3_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_http_v3_merge_loc_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_http_v3_push(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
-
-static ngx_conf_post_t  ngx_http_quic_mtu_post =
-    { ngx_http_quic_mtu };
 
 
 static ngx_command_t  ngx_http_v3_commands[] = {
@@ -94,13 +88,6 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.gso_enabled),
       NULL },
-
-    { ngx_string("quic_mtu"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_v3_srv_conf_t, quic.mtu),
-      &ngx_http_quic_mtu_post },
 
     { ngx_string("quic_host_key"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -240,7 +227,6 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->max_concurrent_pushes = NGX_CONF_UNSET_UINT;
     h3scf->max_concurrent_streams = NGX_CONF_UNSET_UINT;
 
-    h3scf->quic.mtu = NGX_CONF_UNSET_SIZE;
     h3scf->quic.stream_buffer_size = NGX_CONF_UNSET_SIZE;
     h3scf->quic.max_concurrent_streams_bidi = NGX_CONF_UNSET_UINT;
     h3scf->quic.max_concurrent_streams_uni = NGX_HTTP_V3_MAX_UNI_STREAMS;
@@ -276,9 +262,6 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->max_concurrent_streams, 128);
 
     conf->max_blocked_streams = conf->max_concurrent_streams;
-
-    ngx_conf_merge_size_value(conf->quic.mtu, prev->quic.mtu,
-                              NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
 
     ngx_conf_merge_size_value(conf->quic.stream_buffer_size,
                               prev->quic.stream_buffer_size,
@@ -329,26 +312,6 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     conf->quic.ssl = &sscf->ssl;
-
-    return NGX_CONF_OK;
-}
-
-
-static char *
-ngx_http_quic_mtu(ngx_conf_t *cf, void *post, void *data)
-{
-    size_t *sp = data;
-
-    if (*sp < NGX_QUIC_MIN_INITIAL_SIZE
-        || *sp > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "\"quic_mtu\" must be between %d and %d",
-                           NGX_QUIC_MIN_INITIAL_SIZE,
-                           NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
-
-        return NGX_CONF_ERROR;
-    }
 
     return NGX_CONF_OK;
 }

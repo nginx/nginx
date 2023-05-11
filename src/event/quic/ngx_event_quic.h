@@ -69,7 +69,6 @@ typedef struct {
     ngx_flag_t                     disable_active_migration;
     ngx_msec_t                     timeout;
     ngx_str_t                      host_key;
-    size_t                         mtu;
     size_t                         stream_buffer_size;
     ngx_uint_t                     max_concurrent_streams_bidi;
     ngx_uint_t                     max_concurrent_streams_uni;

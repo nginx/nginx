@@ -123,10 +123,6 @@ Experimental QUIC support for nginx
 
         quic_gso on;
 
-    To limit maximum UDP payload size on receive path:
-
-        quic_mtu <size>;
-
     To set host key for various tokens:
 
         quic_host_key <filename>;
@@ -207,14 +203,6 @@ Example configuration:
 
     Enables sending in optimized batch mode using segmentation offloading.
     Optimized sending is only supported on Linux featuring UDP_SEGMENT.
-
-
-    Syntax: quic_mtu size;
-    Default: quic_mtu 65527;
-    Context: http | stream, server
-
-    Sets the QUIC max_udp_payload_size transport parameter value.
-    This is the maximum UDP payload that we are willing to receive.
 
 
     Syntax: quic_host_key file;
