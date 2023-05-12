@@ -30,11 +30,7 @@ ngx_http_v3_init_session(ngx_connection_t *c)
         goto failed;
     }
 
-    h3c->max_push_id = (uint64_t) -1;
-    h3c->goaway_push_id = (uint64_t) -1;
-
     ngx_queue_init(&h3c->blocked);
-    ngx_queue_init(&h3c->pushing);
 
     h3c->keepalive.log = c->log;
     h3c->keepalive.data = c;

@@ -135,10 +135,7 @@ Experimental QUIC support for nginx
         http3
         http3_hq
         http3_stream_buffer_size
-        http3_max_concurrent_pushes
         http3_max_concurrent_streams
-        http3_push
-        http3_push_preload
 
     In http, an additional variable is available: $http3.
     The value of $http3 is "h3" for HTTP/3 connections,
@@ -226,43 +223,11 @@ Example configuration:
     - initial_max_stream_data_uni
 
 
-    Syntax: http3_max_concurrent_pushes number;
-    Default: http3_max_concurrent_pushes 10;
-    Context: http, server
-
-    Limits the maximum number of concurrent push requests in a connection.
-
-
     Syntax: http3_max_concurrent_streams number;
     Default: http3_max_concurrent_streams 128;
     Context: http, server
 
     Sets the maximum number of concurrent HTTP/3 streams in a connection.
-
-
-    Syntax: http3_push uri | off;
-    Default: http3_push off;
-    Context: http, server, location
-
-    Pre-emptively sends (pushes) a request to the specified uri along with
-    the response to the original request.  Only relative URIs with absolute
-    path will be processed, for example:
-
-    http3_push /static/css/main.css;
-
-    The uri value can contain variables.
-
-    Several http3_push directives can be specified on the same configuration
-    level.  The off parameter cancels the effect of the http3_push directives
-    inherited from the previous configuration level.
-
-
-    Syntax: http3_push_preload on | off;
-    Default: http3_push_preload off;
-    Context: http, server, location
-
-    Enables automatic conversion of preload links specified in the “Link”
-    response header fields into push requests.
 
 
     Syntax: http3 on | off;

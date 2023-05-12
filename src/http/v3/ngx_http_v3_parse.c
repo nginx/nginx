@@ -1159,10 +1159,7 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
         sw_first_type,
         sw_type,
         sw_length,
-        sw_cancel_push,
         sw_settings,
-        sw_max_push_id,
-        sw_goaway,
         sw_skip
     };
 
@@ -1212,6 +1209,10 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
                 return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
             }
 
+            if (st->type == NGX_HTTP_V3_FRAME_CANCEL_PUSH) {
+                return NGX_HTTP_V3_ERR_ID_ERROR;
+            }
+
             st->state = sw_length;
             break;
 
@@ -1233,20 +1234,8 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
 
             switch (st->type) {
 
-            case NGX_HTTP_V3_FRAME_CANCEL_PUSH:
-                st->state = sw_cancel_push;
-                break;
-
             case NGX_HTTP_V3_FRAME_SETTINGS:
                 st->state = sw_settings;
-                break;
-
-            case NGX_HTTP_V3_FRAME_MAX_PUSH_ID:
-                st->state = sw_max_push_id;
-                break;
-
-            case NGX_HTTP_V3_FRAME_GOAWAY:
-                st->state = sw_goaway;
                 break;
 
             default:
@@ -1255,30 +1244,6 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
                 st->state = sw_skip;
             }
 
-            break;
-
-        case sw_cancel_push:
-
-            ngx_http_v3_parse_start_local(b, &loc, st->length);
-
-            rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, &loc);
-
-            ngx_http_v3_parse_end_local(b, &loc, &st->length);
-
-            if (st->length == 0 && rc == NGX_AGAIN) {
-                return NGX_HTTP_V3_ERR_FRAME_ERROR;
-            }
-
-            if (rc != NGX_DONE) {
-                return rc;
-            }
-
-            rc = ngx_http_v3_cancel_push(c, st->vlint.value);
-            if (rc != NGX_OK) {
-                return rc;
-            }
-
-            st->state = sw_type;
             break;
 
         case sw_settings:
@@ -1301,54 +1266,6 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
                 st->state = sw_type;
             }
 
-            break;
-
-        case sw_max_push_id:
-
-            ngx_http_v3_parse_start_local(b, &loc, st->length);
-
-            rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, &loc);
-
-            ngx_http_v3_parse_end_local(b, &loc, &st->length);
-
-            if (st->length == 0 && rc == NGX_AGAIN) {
-                return NGX_HTTP_V3_ERR_FRAME_ERROR;
-            }
-
-            if (rc != NGX_DONE) {
-                return rc;
-            }
-
-            rc = ngx_http_v3_set_max_push_id(c, st->vlint.value);
-            if (rc != NGX_OK) {
-                return rc;
-            }
-
-            st->state = sw_type;
-            break;
-
-        case sw_goaway:
-
-            ngx_http_v3_parse_start_local(b, &loc, st->length);
-
-            rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, &loc);
-
-            ngx_http_v3_parse_end_local(b, &loc, &st->length);
-
-            if (st->length == 0 && rc == NGX_AGAIN) {
-                return NGX_HTTP_V3_ERR_FRAME_ERROR;
-            }
-
-            if (rc != NGX_DONE) {
-                return rc;
-            }
-
-            rc = ngx_http_v3_goaway(c, st->vlint.value);
-            if (rc != NGX_OK) {
-                return rc;
-            }
-
-            st->state = sw_type;
             break;
 
         case sw_skip:
