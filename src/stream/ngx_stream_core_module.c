@@ -760,29 +760,6 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
-        if (ngx_strcmp(value[i].data, "quic") == 0) {
-#if (NGX_STREAM_QUIC)
-            ngx_stream_ssl_conf_t  *sslcf;
-
-            sslcf = ngx_stream_conf_get_module_srv_conf(cf,
-                                                        ngx_stream_ssl_module);
-
-            sslcf->listen = 1;
-            sslcf->file = cf->conf_file->file.name.data;
-            sslcf->line = cf->conf_file->line;
-
-            ls->quic = 1;
-            ls->type = SOCK_DGRAM;
-
-            continue;
-#else
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "the \"quic\" parameter requires "
-                               "ngx_stream_quic_module");
-            return NGX_CONF_ERROR;
-#endif
-        }
-
         if (ngx_strncmp(value[i].data, "so_keepalive=", 13) == 0) {
 
             if (ngx_strcmp(&value[i].data[13], "on") == 0) {
@@ -891,12 +868,6 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_STREAM_SSL)
         if (ls->ssl) {
             return "\"ssl\" parameter is incompatible with \"udp\"";
-        }
-#endif
-
-#if (NGX_STREAM_SSL && NGX_STREAM_QUIC)
-        if (ls->ssl && ls->quic) {
-            return "\"ssl\" parameter is incompatible with \"quic\"";
         }
 #endif
 
