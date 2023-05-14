@@ -518,11 +518,6 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             ls->reuseport = addr[i].opt.reuseport;
 #endif
 
-#if !(NGX_WIN32)
-            ngx_rbtree_init(&ls->rbtree, &ls->sentinel,
-                            ngx_udp_rbtree_insert_value);
-#endif
-
             stport = ngx_palloc(cf->pool, sizeof(ngx_stream_port_t));
             if (stport == NULL) {
                 return NGX_CONF_ERROR;

@@ -179,6 +179,7 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
     qsock->udp.connection = c;
     qsock->udp.node.key = ngx_crc32_long(id.data, id.len);
+    qsock->udp.key = id;
 
     ngx_rbtree_insert(&c->listening->rbtree, &qsock->udp.node);
 

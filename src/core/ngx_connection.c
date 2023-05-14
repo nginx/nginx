@@ -72,6 +72,10 @@ ngx_create_listening(ngx_conf_t *cf, struct sockaddr *sockaddr,
 
     ngx_memcpy(ls->addr_text.data, text, len);
 
+#if !(NGX_WIN32)
+    ngx_rbtree_init(&ls->rbtree, &ls->sentinel, ngx_udp_rbtree_insert_value);
+#endif
+
     ls->fd = (ngx_socket_t) -1;
     ls->type = SOCK_STREAM;
 

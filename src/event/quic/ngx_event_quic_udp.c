@@ -365,59 +365,6 @@ ngx_quic_close_accepted_connection(ngx_connection_t *c)
 }
 
 
-void
-ngx_quic_rbtree_insert_value(ngx_rbtree_node_t *temp,
-    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
-{
-    ngx_int_t            rc;
-    ngx_connection_t    *c, *ct;
-    ngx_rbtree_node_t  **p;
-    ngx_quic_socket_t   *qsock, *qsockt;
-
-    for ( ;; ) {
-
-        if (node->key < temp->key) {
-
-            p = &temp->left;
-
-        } else if (node->key > temp->key) {
-
-            p = &temp->right;
-
-        } else { /* node->key == temp->key */
-
-            qsock = (ngx_quic_socket_t *) node;
-            c = qsock->udp.connection;
-
-            qsockt = (ngx_quic_socket_t *) temp;
-            ct = qsockt->udp.connection;
-
-            rc = ngx_memn2cmp(qsock->sid.id, qsockt->sid.id,
-                              qsock->sid.len, qsockt->sid.len);
-
-            if (rc == 0 && c->listening->wildcard) {
-                rc = ngx_cmp_sockaddr(c->local_sockaddr, c->local_socklen,
-                                      ct->local_sockaddr, ct->local_socklen, 1);
-            }
-
-            p = (rc < 0) ? &temp->left : &temp->right;
-        }
-
-        if (*p == sentinel) {
-            break;
-        }
-
-        temp = *p;
-    }
-
-    *p = node;
-    node->parent = temp;
-    node->left = sentinel;
-    node->right = sentinel;
-    ngx_rbt_red(node);
-}
-
-
 static ngx_connection_t *
 ngx_quic_lookup_connection(ngx_listening_t *ls, ngx_str_t *key,
     struct sockaddr *local_sockaddr, socklen_t local_socklen)
