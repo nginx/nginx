@@ -63,8 +63,6 @@ static void ngx_http_v2_handle_connection(ngx_http_v2_connection_t *h2c);
 static void ngx_http_v2_lingering_close(ngx_connection_t *c);
 static void ngx_http_v2_lingering_close_handler(ngx_event_t *rev);
 
-static u_char *ngx_http_v2_state_proxy_protocol(ngx_http_v2_connection_t *h2c,
-    u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_preface(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_preface_end(ngx_http_v2_connection_t *h2c,
@@ -232,6 +230,7 @@ static ngx_http_v2_parse_header_t  ngx_http_v2_parse_headers[] = {
 void
 ngx_http_v2_init(ngx_event_t *rev)
 {
+    u_char                    *p, *end;
     ngx_connection_t          *c;
     ngx_pool_cleanup_t        *cln;
     ngx_http_connection_t     *hc;
@@ -314,8 +313,7 @@ ngx_http_v2_init(ngx_event_t *rev)
         return;
     }
 
-    h2c->state.handler = hc->proxy_protocol ? ngx_http_v2_state_proxy_protocol
-                                            : ngx_http_v2_state_preface;
+    h2c->state.handler = ngx_http_v2_state_preface;
 
     ngx_queue_init(&h2c->waiting);
     ngx_queue_init(&h2c->dependencies);
@@ -334,6 +332,23 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     c->idle = 1;
     ngx_reusable_connection(c, 0);
+
+    if (c->buffer) {
+        p = c->buffer->pos;
+        end = c->buffer->last;
+
+        do {
+            p = h2c->state.handler(h2c, p, end);
+
+            if (p == NULL) {
+                return;
+            }
+
+        } while (p != end);
+
+        h2c->total_bytes += p - c->buffer->pos;
+        c->buffer->pos = p;
+    }
 
     ngx_http_v2_read_handler(rev);
 }
@@ -847,31 +862,10 @@ ngx_http_v2_lingering_close_handler(ngx_event_t *rev)
 
 
 static u_char *
-ngx_http_v2_state_proxy_protocol(ngx_http_v2_connection_t *h2c, u_char *pos,
-    u_char *end)
-{
-    ngx_log_t  *log;
-
-    log = h2c->connection->log;
-    log->action = "reading PROXY protocol";
-
-    pos = ngx_proxy_protocol_read(h2c->connection, pos, end);
-
-    log->action = "processing HTTP/2 connection";
-
-    if (pos == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
-    return ngx_http_v2_state_preface(h2c, pos, end);
-}
-
-
-static u_char *
 ngx_http_v2_state_preface(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    static const u_char preface[] = "PRI * HTTP/2.0\r\n";
+    static const u_char preface[] = NGX_HTTP_V2_PREFACE_START;
 
     if ((size_t) (end - pos) < sizeof(preface) - 1) {
         return ngx_http_v2_state_save(h2c, pos, end, ngx_http_v2_state_preface);
@@ -892,7 +886,7 @@ static u_char *
 ngx_http_v2_state_preface_end(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    static const u_char preface[] = "\r\nSM\r\n\r\n";
+    static const u_char preface[] = NGX_HTTP_V2_PREFACE_END;
 
     if ((size_t) (end - pos) < sizeof(preface) - 1) {
         return ngx_http_v2_state_save(h2c, pos, end,
@@ -3943,9 +3937,21 @@ static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
     ngx_connection_t          *fc;
+    ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
 
     fc = r->connection;
+
+    h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
+
+    if (!h2scf->enable && !r->http_connection->addr_conf->http2) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client attempted to request the server name "
+                      "for which the negotiated protocol is disabled");
+
+        ngx_http_finalize_request(r, NGX_HTTP_MISDIRECTED_REQUEST);
+        goto failed;
+    }
 
     if (ngx_http_v2_construct_request_line(r) != NGX_OK) {
         goto failed;

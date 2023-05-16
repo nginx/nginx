@@ -435,6 +435,9 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
     ngx_http_connection_t   *hc;
 #endif
+#if (NGX_HTTP_V2)
+    ngx_http_v2_srv_conf_t  *h2scf;
+#endif
 #if (NGX_HTTP_V3)
     ngx_http_v3_srv_conf_t  *h3scf;
 #endif
@@ -456,12 +459,6 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     hc = c->data;
 #endif
 
-#if (NGX_HTTP_V2)
-    if (hc->addr_conf->http2) {
-        srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
-        srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
-    } else
-#endif
 #if (NGX_HTTP_V3)
     if (hc->addr_conf->quic) {
 
@@ -488,8 +485,19 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     } else
 #endif
     {
-        srv = (unsigned char *) NGX_HTTP_ALPN_PROTOS;
-        srvlen = sizeof(NGX_HTTP_ALPN_PROTOS) - 1;
+#if (NGX_HTTP_V2)
+        h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+
+        if (h2scf->enable || hc->addr_conf->http2) {
+            srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
+            srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
+
+        } else
+#endif
+        {
+            srv = (unsigned char *) NGX_HTTP_ALPN_PROTOS;
+            srvlen = sizeof(NGX_HTTP_ALPN_PROTOS) - 1;
+        }
     }
 
     if (SSL_select_next_proto((unsigned char **) out, outlen, srv, srvlen,

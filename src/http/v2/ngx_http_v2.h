@@ -64,6 +64,16 @@ typedef u_char *(*ngx_http_v2_handler_pt) (ngx_http_v2_connection_t *h2c,
 
 
 typedef struct {
+    ngx_flag_t                       enable;
+    size_t                           pool_size;
+    ngx_uint_t                       concurrent_streams;
+    ngx_uint_t                       concurrent_pushes;
+    size_t                           preread_size;
+    ngx_uint_t                       streams_index_mask;
+} ngx_http_v2_srv_conf_t;
+
+
+typedef struct {
     ngx_str_t                        name;
     ngx_str_t                        value;
 } ngx_http_v2_header_t;
@@ -408,9 +418,17 @@ ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
 #define NGX_HTTP_V2_USER_AGENT_INDEX      58
 #define NGX_HTTP_V2_VARY_INDEX            59
 
+#define NGX_HTTP_V2_PREFACE_START         "PRI * HTTP/2.0\r\n"
+#define NGX_HTTP_V2_PREFACE_END           "\r\nSM\r\n\r\n"
+#define NGX_HTTP_V2_PREFACE               NGX_HTTP_V2_PREFACE_START           \
+                                          NGX_HTTP_V2_PREFACE_END
+
 
 u_char *ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len,
     u_char *tmp, ngx_uint_t lower);
+
+
+extern ngx_module_t  ngx_http_v2_module;
 
 
 #endif /* _NGX_HTTP_V2_H_INCLUDED_ */
