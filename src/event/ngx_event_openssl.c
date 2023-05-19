@@ -33,9 +33,6 @@ static int ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn,
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
 static ngx_int_t ngx_ssl_try_early_data(ngx_connection_t *c);
 #endif
-#if (NGX_DEBUG)
-static void ngx_ssl_handshake_log(ngx_connection_t *c);
-#endif
 static void ngx_ssl_handshake_handler(ngx_event_t *ev);
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
 static ssize_t ngx_ssl_recv_early(ngx_connection_t *c, u_char *buf,
@@ -2052,7 +2049,7 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
 
 #if (NGX_DEBUG)
 
-static void
+void
 ngx_ssl_handshake_log(ngx_connection_t *c)
 {
     char         buf[129], *s, *d;
@@ -3201,6 +3198,13 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     ngx_int_t   rc;
     ngx_err_t   err;
     ngx_uint_t  tries;
+
+#if (NGX_QUIC)
+    if (c->quic) {
+        /* QUIC streams inherit SSL object */
+        return NGX_OK;
+    }
+#endif
 
     rc = NGX_OK;
 

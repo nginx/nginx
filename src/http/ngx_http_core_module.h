@@ -75,6 +75,7 @@ typedef struct {
     unsigned                   wildcard:1;
     unsigned                   ssl:1;
     unsigned                   http2:1;
+    unsigned                   quic:1;
 #if (NGX_HAVE_INET6)
     unsigned                   ipv6only:1;
 #endif
@@ -86,6 +87,7 @@ typedef struct {
     int                        backlog;
     int                        rcvbuf;
     int                        sndbuf;
+    int                        type;
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
 #endif
@@ -237,6 +239,7 @@ struct ngx_http_addr_conf_s {
 
     unsigned                   ssl:1;
     unsigned                   http2:1;
+    unsigned                   quic:1;
     unsigned                   proxy_protocol:1;
 };
 
@@ -266,6 +269,7 @@ typedef struct {
 
 typedef struct {
     ngx_int_t                  family;
+    ngx_int_t                  type;
     in_port_t                  port;
     ngx_array_t                addrs;     /* array of ngx_http_conf_addr_t */
 } ngx_http_conf_port_t;

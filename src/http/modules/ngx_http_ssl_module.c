@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+#include <ngx_event_quic_openssl_compat.h>
+#endif
+
 
 typedef ngx_int_t (*ngx_ssl_variable_handler_pt)(ngx_connection_t *c,
     ngx_pool_t *pool, ngx_str_t *s);
@@ -52,6 +56,10 @@ static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
     void *data);
 
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
+#if (NGX_QUIC_OPENSSL_COMPAT)
+static ngx_int_t ngx_http_ssl_quic_compat_init(ngx_conf_t *cf,
+    ngx_http_conf_addr_t *addr);
+#endif
 
 
 static ngx_conf_bitmask_t  ngx_http_ssl_protocols[] = {
@@ -419,16 +427,19 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     unsigned char *outlen, const unsigned char *in, unsigned int inlen,
     void *arg)
 {
-    unsigned int            srvlen;
-    unsigned char          *srv;
+    unsigned int             srvlen;
+    unsigned char           *srv;
 #if (NGX_DEBUG)
-    unsigned int            i;
+    unsigned int             i;
 #endif
-#if (NGX_HTTP_V2)
-    ngx_http_connection_t  *hc;
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+    ngx_http_connection_t   *hc;
 #endif
-#if (NGX_HTTP_V2 || NGX_DEBUG)
-    ngx_connection_t       *c;
+#if (NGX_HTTP_V3)
+    ngx_http_v3_srv_conf_t  *h3scf;
+#endif
+#if (NGX_HTTP_V2 || NGX_HTTP_V3 || NGX_DEBUG)
+    ngx_connection_t        *c;
 
     c = ngx_ssl_get_connection(ssl_conn);
 #endif
@@ -441,12 +452,39 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     }
 #endif
 
-#if (NGX_HTTP_V2)
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
     hc = c->data;
+#endif
 
+#if (NGX_HTTP_V2)
     if (hc->addr_conf->http2) {
         srv = (unsigned char *) NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS;
         srvlen = sizeof(NGX_HTTP_V2_ALPN_PROTO NGX_HTTP_ALPN_PROTOS) - 1;
+    } else
+#endif
+#if (NGX_HTTP_V3)
+    if (hc->addr_conf->quic) {
+
+        h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+
+        if (h3scf->enable && h3scf->enable_hq) {
+            srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO
+                                    NGX_HTTP_V3_HQ_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO NGX_HTTP_V3_HQ_ALPN_PROTO)
+                     - 1;
+
+        } else if (h3scf->enable_hq) {
+            srv = (unsigned char *) NGX_HTTP_V3_HQ_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_V3_HQ_ALPN_PROTO) - 1;
+
+        } else if (h3scf->enable) {
+            srv = (unsigned char *) NGX_HTTP_V3_ALPN_PROTO;
+            srvlen = sizeof(NGX_HTTP_V3_ALPN_PROTO) - 1;
+
+        } else {
+            return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
+
     } else
 #endif
     {
@@ -1241,6 +1279,7 @@ static ngx_int_t
 ngx_http_ssl_init(ngx_conf_t *cf)
 {
     ngx_uint_t                   a, p, s;
+    const char                  *name;
     ngx_http_conf_addr_t        *addr;
     ngx_http_conf_port_t        *port;
     ngx_http_ssl_srv_conf_t     *sscf;
@@ -1290,22 +1329,44 @@ ngx_http_ssl_init(ngx_conf_t *cf)
         addr = port[p].addrs.elts;
         for (a = 0; a < port[p].addrs.nelts; a++) {
 
-            if (!addr[a].opt.ssl) {
+            if (!addr[a].opt.ssl && !addr[a].opt.quic) {
                 continue;
+            }
+
+            if (addr[a].opt.quic) {
+                name = "quic";
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+                if (ngx_http_ssl_quic_compat_init(cf, &addr[a]) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+#endif
+
+            } else {
+                name = "ssl";
             }
 
             cscf = addr[a].default_server;
             sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
             if (sscf->certificates) {
+
+                if (addr[a].opt.quic && !(sscf->protocols & NGX_SSL_TLSv1_3)) {
+                    ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                                  "\"ssl_protocols\" must enable TLSv1.3 for "
+                                  "the \"listen ... %s\" directive in %s:%ui",
+                                  name, cscf->file_name, cscf->line);
+                    return NGX_ERROR;
+                }
+
                 continue;
             }
 
             if (!sscf->reject_handshake) {
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
-                              "the \"listen ... ssl\" directive in %s:%ui",
-                              cscf->file_name, cscf->line);
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
 
@@ -1326,8 +1387,8 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
-                              "the \"listen ... ssl\" directive in %s:%ui",
-                              cscf->file_name, cscf->line);
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
                 return NGX_ERROR;
             }
         }
@@ -1335,3 +1396,31 @@ ngx_http_ssl_init(ngx_conf_t *cf)
 
     return NGX_OK;
 }
+
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+
+static ngx_int_t
+ngx_http_ssl_quic_compat_init(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
+{
+    ngx_uint_t                  s;
+    ngx_http_ssl_srv_conf_t    *sscf;
+    ngx_http_core_srv_conf_t  **cscfp, *cscf;
+
+    cscfp = addr->servers.elts;
+    for (s = 0; s < addr->servers.nelts; s++) {
+
+        cscf = cscfp[s];
+        sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
+
+        if (sscf->certificates || sscf->reject_handshake) {
+            if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+#endif

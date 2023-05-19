@@ -13,6 +13,8 @@
 
 
 #define NGX_WRITE_SHUTDOWN SHUT_WR
+#define NGX_READ_SHUTDOWN  SHUT_RD
+#define NGX_RDWR_SHUTDOWN  SHUT_RDWR
 
 typedef int  ngx_socket_t;
 

@@ -12,13 +12,6 @@
 
 #if !(NGX_WIN32)
 
-struct ngx_udp_connection_s {
-    ngx_rbtree_node_t   node;
-    ngx_connection_t   *connection;
-    ngx_buf_t          *buffer;
-};
-
-
 static void ngx_close_accepted_udp_connection(ngx_connection_t *c);
 static ssize_t ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
@@ -424,8 +417,8 @@ ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
             udpt = (ngx_udp_connection_t *) temp;
             ct = udpt->connection;
 
-            rc = ngx_cmp_sockaddr(c->sockaddr, c->socklen,
-                                  ct->sockaddr, ct->socklen, 1);
+            rc = ngx_memn2cmp(udp->key.data, udpt->key.data,
+                              udp->key.len, udpt->key.len);
 
             if (rc == 0 && c->listening->wildcard) {
                 rc = ngx_cmp_sockaddr(c->local_sockaddr, c->local_socklen,
@@ -478,6 +471,8 @@ ngx_insert_udp_connection(ngx_connection_t *c)
     ngx_crc32_final(hash);
 
     udp->node.key = hash;
+    udp->key.data = (u_char *) c->sockaddr;
+    udp->key.len = c->socklen;
 
     cln = ngx_pool_cleanup_add(c->pool, 0);
     if (cln == NULL) {

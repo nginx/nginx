@@ -24,6 +24,7 @@
 #define NGX_HTTP_VERSION_10                1000
 #define NGX_HTTP_VERSION_11                1001
 #define NGX_HTTP_VERSION_20                2000
+#define NGX_HTTP_VERSION_30                3000
 
 #define NGX_HTTP_UNKNOWN                   0x00000001
 #define NGX_HTTP_GET                       0x00000002
@@ -323,6 +324,10 @@ typedef struct {
 #endif
 #endif
 
+#if (NGX_HTTP_V3 || NGX_COMPAT)
+    ngx_http_v3_session_t            *v3_session;
+#endif
+
     ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 
@@ -451,6 +456,7 @@ struct ngx_http_request_s {
 
     ngx_http_connection_t            *http_connection;
     ngx_http_v2_stream_t             *stream;
+    ngx_http_v3_parse_t              *v3_parse;
 
     ngx_http_log_handler_pt           log_handler;
 
@@ -543,6 +549,7 @@ struct ngx_http_request_s {
     unsigned                          request_complete:1;
     unsigned                          request_output:1;
     unsigned                          header_sent:1;
+    unsigned                          response_sent:1;
     unsigned                          expect_tested:1;
     unsigned                          root_tested:1;
     unsigned                          done:1;

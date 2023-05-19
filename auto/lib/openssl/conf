@@ -5,12 +5,17 @@
 
 if [ $OPENSSL != NONE ]; then
 
+    have=NGX_OPENSSL . auto/have
+    have=NGX_SSL . auto/have
+
+    if [ $USE_OPENSSL_QUIC = YES ]; then
+        have=NGX_QUIC . auto/have
+        have=NGX_QUIC_OPENSSL_COMPAT . auto/have
+    fi
+
     case "$CC" in
 
         cl | bcc32)
-            have=NGX_OPENSSL . auto/have
-            have=NGX_SSL . auto/have
-
             CFLAGS="$CFLAGS -DNO_SYS_TYPES_H"
 
             CORE_INCS="$CORE_INCS $OPENSSL/openssl/include"
@@ -33,9 +38,6 @@ if [ $OPENSSL != NONE ]; then
         ;;
 
         *)
-            have=NGX_OPENSSL . auto/have
-            have=NGX_SSL . auto/have
-
             CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
             CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
             CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
@@ -123,6 +125,35 @@ else
             CORE_INCS="$CORE_INCS $ngx_feature_path"
             CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
             OPENSSL=YES
+
+            if [ $USE_OPENSSL_QUIC = YES ]; then
+
+                ngx_feature="OpenSSL QUIC support"
+                ngx_feature_name="NGX_QUIC"
+                ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
+                . auto/feature
+
+                if [ $ngx_found = no ]; then
+                    have=NGX_QUIC_OPENSSL_COMPAT . auto/have
+
+                    ngx_feature="OpenSSL QUIC compatibility"
+                    ngx_feature_test="SSL_CTX_add_custom_ext(NULL, 0, 0,
+                                                 NULL, NULL, NULL, NULL, NULL)"
+                    . auto/feature
+                fi
+
+                if [ $ngx_found = no ]; then
+cat << END
+
+$0: error: certain modules require OpenSSL QUIC support.
+You can either do not enable the modules, or install the OpenSSL library with
+QUIC support into the system, or build the OpenSSL library with QUIC support
+statically from the source with nginx by using --with-openssl=<path> option.
+
+END
+                        exit 1
+                fi
+            fi
         fi
     fi
 

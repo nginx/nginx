@@ -102,7 +102,7 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_V2 = YES ]; then
+    if [ $HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
         HTTP_SRCS="$HTTP_SRCS $HTTP_HUFF_SRCS"
     fi
 
@@ -124,6 +124,7 @@ if [ $HTTP = YES ]; then
     #     ngx_http_header_filter
     #     ngx_http_chunked_filter
     #     ngx_http_v2_filter
+    #     ngx_http_v3_filter
     #     ngx_http_range_header_filter
     #     ngx_http_gzip_filter
     #     ngx_http_postpone_filter
@@ -156,6 +157,7 @@ if [ $HTTP = YES ]; then
                       ngx_http_header_filter_module \
                       ngx_http_chunked_filter_module \
                       ngx_http_v2_filter_module \
+                      ngx_http_v3_filter_module \
                       ngx_http_range_header_filter_module \
                       ngx_http_gzip_filter_module \
                       ngx_http_postpone_filter_module \
@@ -213,6 +215,17 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/v2/ngx_http_v2_filter_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_V2
+
+        . auto/module
+    fi
+
+    if [ $HTTP_V3 = YES ]; then
+        ngx_module_name=ngx_http_v3_filter_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/v3/ngx_http_v3_filter_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_V3
 
         . auto/module
     fi
@@ -422,6 +435,33 @@ if [ $HTTP = YES ]; then
                          src/http/v2/ngx_http_v2_module.c"
         ngx_module_libs=
         ngx_module_link=$HTTP_V2
+
+        . auto/module
+    fi
+
+    if [ $HTTP_V3 = YES ]; then
+        USE_OPENSSL_QUIC=YES
+        HTTP_SSL=YES
+
+        have=NGX_HTTP_V3 . auto/have
+        have=NGX_HTTP_HEADERS . auto/have
+
+        ngx_module_name=ngx_http_v3_module
+        ngx_module_incs=src/http/v3
+        ngx_module_deps="src/http/v3/ngx_http_v3.h \
+                         src/http/v3/ngx_http_v3_encode.h \
+                         src/http/v3/ngx_http_v3_parse.h \
+                         src/http/v3/ngx_http_v3_table.h \
+                         src/http/v3/ngx_http_v3_uni.h"
+        ngx_module_srcs="src/http/v3/ngx_http_v3.c \
+                         src/http/v3/ngx_http_v3_encode.c \
+                         src/http/v3/ngx_http_v3_parse.c \
+                         src/http/v3/ngx_http_v3_table.c \
+                         src/http/v3/ngx_http_v3_uni.c \
+                         src/http/v3/ngx_http_v3_request.c \
+                         src/http/v3/ngx_http_v3_module.c"
+        ngx_module_libs=
+        ngx_module_link=$HTTP_V3
 
         . auto/module
     fi
@@ -1269,6 +1309,63 @@ if [ $USE_OPENSSL = YES ]; then
     ngx_module_order=
 
     . auto/module
+fi
+
+
+if [ $USE_OPENSSL_QUIC = YES ]; then
+    ngx_module_type=CORE
+    ngx_module_name=ngx_quic_module
+    ngx_module_incs=
+    ngx_module_deps="src/event/quic/ngx_event_quic.h \
+                     src/event/quic/ngx_event_quic_transport.h \
+                     src/event/quic/ngx_event_quic_protection.h \
+                     src/event/quic/ngx_event_quic_connection.h \
+                     src/event/quic/ngx_event_quic_frames.h \
+                     src/event/quic/ngx_event_quic_connid.h \
+                     src/event/quic/ngx_event_quic_migration.h \
+                     src/event/quic/ngx_event_quic_streams.h \
+                     src/event/quic/ngx_event_quic_ssl.h \
+                     src/event/quic/ngx_event_quic_tokens.h \
+                     src/event/quic/ngx_event_quic_ack.h \
+                     src/event/quic/ngx_event_quic_output.h \
+                     src/event/quic/ngx_event_quic_socket.h \
+                     src/event/quic/ngx_event_quic_openssl_compat.h"
+    ngx_module_srcs="src/event/quic/ngx_event_quic.c \
+                     src/event/quic/ngx_event_quic_udp.c \
+                     src/event/quic/ngx_event_quic_transport.c \
+                     src/event/quic/ngx_event_quic_protection.c \
+                     src/event/quic/ngx_event_quic_frames.c \
+                     src/event/quic/ngx_event_quic_connid.c \
+                     src/event/quic/ngx_event_quic_migration.c \
+                     src/event/quic/ngx_event_quic_streams.c \
+                     src/event/quic/ngx_event_quic_ssl.c \
+                     src/event/quic/ngx_event_quic_tokens.c \
+                     src/event/quic/ngx_event_quic_ack.c \
+                     src/event/quic/ngx_event_quic_output.c \
+                     src/event/quic/ngx_event_quic_socket.c \
+                     src/event/quic/ngx_event_quic_openssl_compat.c"
+
+    ngx_module_libs=
+    ngx_module_link=YES
+    ngx_module_order=
+
+    . auto/module
+
+    if [ $QUIC_BPF = YES -a $SO_COOKIE_FOUND = YES ]; then
+        ngx_module_type=CORE
+        ngx_module_name=ngx_quic_bpf_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs="src/event/quic/ngx_event_quic_bpf.c \
+                         src/event/quic/ngx_event_quic_bpf_code.c"
+        ngx_module_libs=
+        ngx_module_link=YES
+        ngx_module_order=
+
+        . auto/module
+
+        have=NGX_QUIC_BPF . auto/have
+    fi
 fi
 
 
