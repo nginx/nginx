@@ -183,7 +183,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
 
             qsock = ngx_quic_get_socket(c);
 
-            ngx_memcpy(&qsock->sockaddr.sockaddr, sockaddr, socklen);
+            ngx_memcpy(&qsock->sockaddr, sockaddr, socklen);
             qsock->socklen = socklen;
 
             c->udp->buffer = &buf;
