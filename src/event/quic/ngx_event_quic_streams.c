@@ -1084,7 +1084,8 @@ ngx_quic_stream_cleanup_handler(void *data)
 {
     ngx_connection_t *c = data;
 
-    ngx_quic_stream_t  *qs;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
 
     qs = c->quic;
 
@@ -1092,16 +1093,23 @@ ngx_quic_stream_cleanup_handler(void *data)
                    "quic stream id:0x%xL cleanup", qs->id);
 
     if (ngx_quic_shutdown_stream(c, NGX_RDWR_SHUTDOWN) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
-        return;
+        goto failed;
     }
 
     qs->connection = NULL;
 
     if (ngx_quic_close_stream(qs) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
-        return;
+        goto failed;
     }
+
+    return;
+
+failed:
+
+    qc = ngx_quic_get_connection(qs->parent);
+    qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+
+    ngx_post_event(&qc->close, &ngx_posted_events);
 }
 
 

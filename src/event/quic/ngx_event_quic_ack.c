@@ -806,6 +806,7 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
 
     if (ngx_quic_detect_lost(c, NULL) != NGX_OK) {
         ngx_quic_close_connection(c, NGX_ERROR);
+        return;
     }
 
     ngx_quic_connstate_dbg(c);

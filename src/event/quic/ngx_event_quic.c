@@ -844,7 +844,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                               "quic stateless reset packet detected");
 
                 qc->draining = 1;
-                ngx_quic_close_connection(c, NGX_OK);
+                ngx_post_event(&qc->close, &ngx_posted_events);
 
                 return NGX_OK;
             }
@@ -1390,7 +1390,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (do_close) {
         qc->draining = 1;
-        ngx_quic_close_connection(c, NGX_OK);
+        ngx_post_event(&qc->close, &ngx_posted_events);
     }
 
     if (pkt->path != qc->path && nonprobing) {
