@@ -1,0 +1,10 @@
+name: CodeSonar
+on:
+jobs:
+  container-test-job:
+    runs-on: self-hosted
+    container:
+      image: canuckmh/nginx-cso-builder:7.3p1
+    steps:
+      - name: See if it works
+        run: uname -a && pwd && ls
