@@ -39,6 +39,8 @@ jobs:
         uses: actions/checkout@v3
       - name: Create Hub Credentials
         run: echo "$CSONAR_HUB_PASS" > "$CSONAR_HUB_PWFILE"
+      - name : configure
+        run: auto/configure --with-http_ssl_module
       - name: Compile and Analyze
         run: >
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
