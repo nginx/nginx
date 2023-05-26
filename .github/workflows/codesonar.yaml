@@ -4,7 +4,7 @@ on:
   pull_request:
   
 jobs:
-  CodeSonar Analyze:
+  CodeSonar_Analyze:
     runs-on: self-hosted
     container:
       image: canuckmh/nginx-cso-builder:7.3p1
