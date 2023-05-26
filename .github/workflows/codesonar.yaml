@@ -1,8 +1,10 @@
 name: CodeSonar
 on:
   push:
+  pull_request:
+  
 jobs:
-  container-test-job:
+  CodeSonar_Analyze:
     runs-on: self-hosted
     container:
       image: canuckmh/nginx-cso-builder:7.3p1
