@@ -1,0 +1,101 @@
+name: CodeSonar
+on:
+  push:
+jobs:
+  container-test-job:
+    runs-on: self-hosted
+    container:
+      image: canuckmh/nginx-cso-builder:7.3p1
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    env:
+      GITHUB_CAFILE: ".github/github.cert.pem" 
+      GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      GITHUB_API_URL: https://api.github.com
+      PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
+      ROOT_TREE: "Mark" 
+      RELEASE_PROJECT_NAME: "nginx"
+      PROJECT_NAME: "Will be set in the first step"
+      PARALLEL: "12"
+      CSONAR_HUB_URL: "https://partnerdemo.codesonar.com" 
+      CSONAR_HUB_USER: "${{ secrets.CSONAR_HUB_USER }}"
+      CSONAR_HUB_PASS: "${{ secrets.CSONAR_HUB_PASS }}"
+      CSONAR_HUB_PWFILE: "codesonar.hub.pwfile"
+      BRANCH: ${{ github.head_ref || github.ref_name }} 
+      CODESONAR: /opt/codesonar/codesonar/bin/codesonar
+      CSPYTHON: /opt/codesonar/codesonar/bin/cspython
+      CSO_GITHUB: /opt/codesonar-github
+    steps:
+      - name: Construct project name
+        run: |
+          if [ ${{ github.event.pull_request }} ]
+          then
+            echo "PROJECT_NAME=${ROOT_TREE}/${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
+          else
+            echo "PROJECT_NAME=${ROOT_TREE}/Branches/${BRANCH}-${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
+          fi
+      - name: Checkout 
+        uses: actions/checkout@v3
+      - name: Safe directory
+        run: git config --global --add safe.directory `pwd`
+      - name: Create Hub Credentials
+        run: echo "$CSONAR_HUB_PASS" > "$CSONAR_HUB_PWFILE"
+      - name : configure
+        run: auto/configure --with-http_ssl_module
+      - name: Compile and Analyze
+        run: >
+            COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
+            NAME="$RELEASE_PROJECT_NAME-$BRANCH-$(date "+%Y.%m.%d-%H.%M")";
+            "$CODESONAR" analyze -clean $RELEASE_PROJECT_NAME
+            -remote-archive "/saas/*" -foreground
+            -auth password
+            -hubuser "$CSONAR_HUB_USER"
+            -hubpwfile "$CSONAR_HUB_PWFILE"
+            -project "$PROJECT_NAME"
+            -property branch "$BRANCH"
+            -name $NAME
+            -property commitID "$COMMIT_ID"
+            "$CSONAR_HUB_URL"
+            make -j "$PARALLEL"
+      - name: Pull Analysis Results from CodeSonar Hub
+        run: >
+            "$CODESONAR" dump_warnings.py
+            -o warnings.sarif
+            --hub "$CSONAR_HUB_URL"
+            -auth password
+            -hubuser "$CSONAR_HUB_USER"
+            -hubpwfile "$CSONAR_HUB_PWFILE"
+            --project-name "$PROJECT_NAME"
+            --sarif
+            --src-root "$GITHUB_WORKSPACE"
+            --visible-warnings "active not clustered"
+            -t 7200
+#      - name: Upload SARIF to GitHub #Use this if you do not have GitHub Enterprise
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: SARIF file
+#          path: warnings.rel.sarif
+      - name: Cleanup Credential File
+        run: shred -u "$CSONAR_HUB_PWFILE"
+  #      - name: Push Analysis Results to GitHub #Use this with Github Enterprise
+  #        uses: github/codeql-action/upload-sarif@v2
+  #        with:
+  #            sarif_file: "${{ env.BRANCH }}/warnings.sarif"
+  #            category: CodeSonar
+      - name: Push Summary Report
+        if: ${{ github.event.pull_request }}
+        run: >
+            "$CSPYTHON" "$CSO_GITHUB/sarif_summary.py"
+            warnings.sarif
+            "$CSONAR_HUB_URL"
+            $BRANCH-$PROJECT_WORK_DIR
+            | "$CSPYTHON" "$CSO_GITHUB/push_github_pr_comment.py"
+            --api-url $GITHUB_API_URL --cafile "$GITHUB_CAFILE"
+            ${{ github.repository }}
+            $PULL_REQUEST_ID
+            GITHUB_TOKEN
+
+
+
+        
