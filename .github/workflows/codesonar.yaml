@@ -1,5 +1,6 @@
 name: CodeSonar
 on:
+  push:
 jobs:
   container-test-job:
     runs-on: self-hosted
