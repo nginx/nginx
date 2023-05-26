@@ -37,6 +37,8 @@ jobs:
           fi
       - name: Checkout 
         uses: actions/checkout@v3
+      - name: Safe directory
+        run: git config --global --add safe.directory `pwd`
       - name: Create Hub Credentials
         run: echo "$CSONAR_HUB_PASS" > "$CSONAR_HUB_PWFILE"
       - name : configure
