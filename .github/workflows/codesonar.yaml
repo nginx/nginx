@@ -33,7 +33,7 @@ jobs:
           then
             echo "PROJECT_NAME=${ROOT_TREE}/${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
           else
-            echo "PROJECT_NAME=${ROOT_TREE}/Branches/${BRANCH}" >> $GITHUB_ENV
+            echo "PROJECT_NAME=${ROOT_TREE}/Branches/${BRANCH}-${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
           fi
       - name: Checkout 
         uses: actions/checkout@v3
@@ -71,7 +71,7 @@ jobs:
             --src-root "$GITHUB_WORKSPACE"
             --visible-warnings "active not clustered"
             -t 7200
-#      - name: Upload SARIF to CodeSonar Hub #Use this if you do not have GitHub Enterprise
+#      - name: Upload SARIF to GitHub #Use this if you do not have GitHub Enterprise
 #        uses: actions/upload-artifact@v3
 #        with:
 #          name: SARIF file
@@ -83,18 +83,18 @@ jobs:
   #        with:
   #            sarif_file: "${{ env.BRANCH }}/warnings.sarif"
   #            category: CodeSonar
-#      - name: Push Summary Report
-#        if: ${{ github.event.pull_request }}
-#        run: >
-#            "$CSPYTHON" "$CSO_GITHUB/sarif_summary.py"
-#            warnings.sarif
-#            "$CSONAR_HUB_URL"
-#            $BRANCH-$PROJECT_WORK_DIR
-#            | "$CSPYTHON" "$CSO_GITHUB/push_github_pr_comment.py"
-#            --api-url $GITHUB_API_URL --cafile "$GITHUB_CAFILE"
-#            ${{ github.repository }}
-#            $PULL_REQUEST_ID
-#            GITHUB_TOKEN
+      - name: Push Summary Report
+        if: ${{ github.event.pull_request }}
+        run: >
+            "$CSPYTHON" "$CSO_GITHUB/sarif_summary.py"
+            warnings.sarif
+            "$CSONAR_HUB_URL"
+            $BRANCH-$PROJECT_WORK_DIR
+            | "$CSPYTHON" "$CSO_GITHUB/push_github_pr_comment.py"
+            --api-url $GITHUB_API_URL --cafile "$GITHUB_CAFILE"
+            ${{ github.repository }}
+            $PULL_REQUEST_ID
+            GITHUB_TOKEN
 
 
 
