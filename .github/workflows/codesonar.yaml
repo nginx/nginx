@@ -92,7 +92,7 @@ jobs:
             "$CSPYTHON" "$CSO_GITHUB/sarif_summary.py"
             warnings.sarif
             "$CSONAR_HUB_URL"
-            $BRANCH-$PROJECT_WORK_DIR
+            $NAME
             | "$CSPYTHON" "$CSO_GITHUB/push_github_pr_comment.py"
             --api-url $GITHUB_API_URL --cafile "$GITHUB_CAFILE"
             ${{ github.repository }}
