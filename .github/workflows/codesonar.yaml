@@ -57,6 +57,7 @@ jobs:
             -project "$PROJECT_NAME"
             -property branch "$BRANCH"
             -name $NAME
+            -conf-file conf/codesonar-release.conf
             -property commitID "$COMMIT_ID"
             "$CSONAR_HUB_URL"
             make -j "$PARALLEL"
