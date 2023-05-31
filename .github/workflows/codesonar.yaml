@@ -5,6 +5,7 @@ on:
   
 jobs:
   CodeSonar_Analyze:
+    permissions: write-all
     runs-on: self-hosted
     container:
       image: canuckmh/nginx-cso-builder:7.3p1
