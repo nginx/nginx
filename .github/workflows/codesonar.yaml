@@ -73,7 +73,7 @@ jobs:
             --project-name "$PROJECT_NAME"
             --sarif
             --src-root "$GITHUB_WORKSPACE"
-            --visible-warnings "active not clustered"
+            --visible-warnings "active"
             -t 7200
 #      - name: Upload SARIF to GitHub #Use this if you do not have GitHub Enterprise
 #        uses: actions/upload-artifact@v3
