@@ -1,6 +1,12 @@
 name: CodeSonar
 on:
+  push:
+    - F-*               # Feature Branches
+    - MellowNinja       # Current Release
+    - SereneSamurai     # Next Release
+    - PeacefulPirate    # Next Year's Release
   pull_request:
+    - F-*
   
 jobs:
   CodeSonar_Analyze:
@@ -16,27 +22,26 @@ jobs:
       GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       GITHUB_API_URL: https://api.github.com
       PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
-      ROOT_TREE: "Mark" 
-      RELEASE_PROJECT_NAME: "nginx"
-      PROJECT_NAME: "Will be set in the first step"
-      PARALLEL: "12"
+      ROOT_TREE: "Mark/NGINX" 
+      ROOT_PROJECT_NAME: "nginx"
       CSONAR_HUB_URL: "https://partnerdemo.codesonar.com" 
       CSONAR_HUB_USER: "${{ secrets.CSONAR_HUB_USER }}"
       CSONAR_HUB_PASS: "${{ secrets.CSONAR_HUB_PASS }}"
       CSONAR_HUB_PWFILE: "codesonar.hub.pwfile"
-      BRANCH: ${{ github.head_ref || github.ref_name }} 
       CODESONAR: /opt/codesonar/codesonar/bin/codesonar
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github
     steps:
-      - name: Construct project name
+      name: Construct project name
         run: |
-          if [ ${{ github.event.pull_request }} ]
-          then
-            echo "PROJECT_NAME=${ROOT_TREE}/${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
-          else
-            echo "PROJECT_NAME=${ROOT_TREE}/Branches/${BRANCH}-${RELEASE_PROJECT_NAME}" >> $GITHUB_ENV
-          fi
+            if [[ $${{github.head_ref}} == "F-"* ]]
+            then
+                # Feature branch
+                echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.head_ref }}" >> $GITHUB_ENV
+            else
+                # These are the release branches
+                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.head_ref }" >> $GITHUB_ENV
+            fi
       - name: Checkout 
         uses: actions/checkout@v3
       - name: Safe directory
@@ -48,14 +53,13 @@ jobs:
       - name: Compile and Analyze
         run: >
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
-            NAME="$RELEASE_PROJECT_NAME-$BRANCH-$(date "+%Y.%m.%d-%H.%M")";
+            NAME="${{ github.head_ref }}-$(date "+%Y.%m.%d-%H.%M")";
             "$CODESONAR" analyze -clean $RELEASE_PROJECT_NAME
             -remote-archive "/saas/*" -foreground
             -auth password
             -hubuser "$CSONAR_HUB_USER"
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
-            -property branch "$BRANCH"
             -property commit ${{ github.sha }}
             -property target ${{ github.base_ref }}
             -property head ${{ github.head_ref }}
@@ -63,7 +67,7 @@ jobs:
             -conf-file conf/codesonar-release.conf
             -property commitID "$COMMIT_ID"
             "$CSONAR_HUB_URL"
-            make -j "$PARALLEL"
+            make -j 'nproc'
       - name: Pull Analysis Results from CodeSonar Hub
         run: >
             "$CODESONAR" dump_warnings.py
