@@ -1,12 +1,14 @@
 name: CodeSonar
 on:
   push:
-    - F-*               # Feature Branches
-    - MellowNinja       # Current Release
-    - SereneSamurai     # Next Release
-    - PeacefulPirate    # Next Year's Release
+    branches:
+      - F-*               # Feature Branches
+      - MellowNinja       # Current Release
+      - SereneSamurai     # Next Release
+      - PeacefulPirate    # Next Year's Release
   pull_request:
-    - F-*
+    branches:
+      - F-*
   
 jobs:
   CodeSonar_Analyze:
@@ -104,7 +106,4 @@ jobs:
             ${{ github.repository }}
             $PULL_REQUEST_ID
             GITHUB_TOKEN
-
-
-
-        
+            
