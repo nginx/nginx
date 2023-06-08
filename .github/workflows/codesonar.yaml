@@ -47,6 +47,7 @@ jobs:
       - name: Pull Request or Not?
         run: |
              if [[ ${{ github.event.pull_request }} ]]
+             then
                echo "TARGET=$github.head_ref" >> $GITHUB_ENV
              else
                echo "TARGET=none" >> $GITHUB_ENV
