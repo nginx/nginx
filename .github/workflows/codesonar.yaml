@@ -44,6 +44,13 @@ jobs:
                 # These are the release branches
                 echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
             fi
+      - name: Pull Request or Not?
+        run: |
+             if [[ ${{ github.event.pull_request }} ]]
+               echo "TARGET=$github.head_ref" >> $GITHUB_ENV
+             else
+               echo "TARGET=none" >> $GITHUB_ENV
+             fi 
       - name: Checkout 
         uses: actions/checkout@v3
       - name: Safe directory
@@ -65,6 +72,7 @@ jobs:
             -property commit $COMMIT_ID
             -property target ${{ github.base_ref }}
             -property head ${{ github.ref_name }}
+            -property target $TARGET
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
