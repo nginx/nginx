@@ -68,7 +68,7 @@ jobs:
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
-            make -j 'nproc'
+            make -j 6
       - name: Pull Analysis Results from CodeSonar Hub
         run: >
             "$CODESONAR" dump_warnings.py
