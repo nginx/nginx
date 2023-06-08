@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Construct project name
         run: |
-            if [[ ${{ github.ref_name }} == "F-"* ]]
+            if [[ ${{ github.ref_name }} == *"F-"* ]]
             then
                 # Feature branch
                 echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
@@ -63,7 +63,7 @@ jobs:
       - name: Compile and Analyze
         run: >
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
-            NAME="${{ github.head_ref }}-$(date "+%Y.%m.%d-%H.%M")";
+            NAME="${{ github.ref_name }}-$(date "+%Y.%m.%d-%H.%M")";
             "$CODESONAR" analyze -clean $ROOT_PROJECT_NAME
             -remote-archive "/saas/*" -foreground
             -auth password
@@ -71,7 +71,7 @@ jobs:
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
             -property commit $COMMIT_ID
-            -property head ${{ github.ref_name }}
+            -property branch ${{ github.ref_name }}
             -property target $TARGET
             -name $NAME
             -conf-file conf/codesonar-release.conf
