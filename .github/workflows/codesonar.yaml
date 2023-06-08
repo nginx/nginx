@@ -36,13 +36,13 @@ jobs:
     steps:
       - name: Construct project name
         run: |
-            if [[ $${{github.head_ref}} == "F-"* ]]
+            if [[ $${{ github.head_ref }} == "F-"* ]]
             then
                 # Feature branch
                 echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.head_ref }}" >> $GITHUB_ENV
             else
                 # These are the release branches
-                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.head_ref }" >> $GITHUB_ENV
+                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.head_ref }}" >> $GITHUB_ENV
             fi
       - name: Checkout 
         uses: actions/checkout@v3
