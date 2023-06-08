@@ -34,16 +34,12 @@ jobs:
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github
     steps:
-      - name: Construct project name
-        run: |
-            if [[ "${{ github.ref_name }}" =~ "F-" ]]
-            then
-                # Feature branch
-                echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
-            else
-                # These are the release branches
-                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
-            fi
+      - name: Feature Branch
+        if:  ${{ contains(github.ref_name, "F-") }}
+        run: echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Release Branch
+        if:  ${{ !containscontains(github.ref_name, "F-") }}
+        run: echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
       - name: Pull Request or Not?
         run: |
              if [[ ${{ github.event.pull_request }} ]]
@@ -70,6 +66,7 @@ jobs:
             -hubuser "$CSONAR_HUB_USER"
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
+            -property ${{ github.repositoryUrl }}
             -property commit $COMMIT_ID
             -property branch ${{ github.ref_name }}
             -property target $TARGET
