@@ -64,7 +64,7 @@ jobs:
         run: >
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
             NAME="${{ github.head_ref }}-$(date "+%Y.%m.%d-%H.%M")";
-            "$CODESONAR" analyze -clean $RELEASE_PROJECT_NAME
+            "$CODESONAR" analyze -clean $ROOT_PROJECT_NAME
             -remote-archive "/saas/*" -foreground
             -auth password
             -hubuser "$CSONAR_HUB_USER"
