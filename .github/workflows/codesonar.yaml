@@ -68,10 +68,10 @@ jobs:
             -hubuser "$CSONAR_HUB_USER"
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
-            -property ${{ github.repositoryUrl }}
-            -property commit $COMMIT_ID
-            -property branch ${{ github.ref_name }}
-            -property target $TARGET
+            -property repo.url ${{ github.repositoryUrl }}
+            -property commit.sha $COMMIT_ID
+            -property branch.name ${{ github.ref_name }}
+            -property target.branch $TARGET
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
