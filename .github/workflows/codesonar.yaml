@@ -36,13 +36,13 @@ jobs:
     steps:
       - name: Construct project name
         run: |
-            if [[ $${{ github.head_ref }} == "F-"* ]]
+            if [[ $${{ github.ref_name }} == "F-"* ]]
             then
                 # Feature branch
-                echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.head_ref }}" >> $GITHUB_ENV
+                echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
             else
                 # These are the release branches
-                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.head_ref }}" >> $GITHUB_ENV
+                echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
             fi
       - name: Checkout 
         uses: actions/checkout@v3
@@ -64,7 +64,7 @@ jobs:
             -project "$PROJECT_NAME"
             -property commit $COMMIT_ID
             -property target ${{ github.base_ref }}
-            -property head ${{ github.head_ref }}
+            -property head ${{ github.ref_name }}
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
