@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Set project path
         run: |
-          if [ ${{github.ref_name}} == "F-"* ]
+          if echo ${{github.ref_name}} | grep -q "F-"
           then
             echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
           else
