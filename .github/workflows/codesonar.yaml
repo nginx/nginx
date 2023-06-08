@@ -33,6 +33,7 @@ jobs:
       CODESONAR: /opt/codesonar/codesonar/bin/codesonar
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github
+      TARGET: none
     steps:
       - name: Set project path
         run: |
@@ -43,13 +44,8 @@ jobs:
             echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
           fi
       - name: Pull Request or Not?
-        run: |
-             if [ ${{ github.event.pull_request }} ]
-             then
-               echo "TARGET=${{ github.head_ref }}" >> $GITHUB_ENV
-             else
-               echo "TARGET=none" >> $GITHUB_ENV
-             fi 
+        if: ${{ github.event.pull_request }}
+        run:  echo "TARGET=${{ github.head_ref }}" >> $GITHUB_ENV
       - name: Checkout 
         uses: actions/checkout@v3
       - name: Safe directory
