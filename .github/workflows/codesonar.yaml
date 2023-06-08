@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Construct project name
         run: |
-            if [[ ${{ github.ref_name }} == *"F-"* ]]
+            if [[ "${{ github.ref_name }}" == "F-"* ]]
             then
                 # Feature branch
                 echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
