@@ -33,7 +33,7 @@ jobs:
       CSO_GITHUB: /opt/codesonar-github
     steps:
       name: Construct project name
-        run: |
+      run: |
             if [[ $${{github.head_ref}} == "F-"* ]]
             then
                 # Feature branch
