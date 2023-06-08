@@ -48,7 +48,7 @@ jobs:
         run: |
              if [[ ${{ github.event.pull_request }} ]]
              then
-               echo "TARGET=$github.head_ref" >> $GITHUB_ENV
+               echo "TARGET=${{ github.head_ref }}" >> $GITHUB_ENV
              else
                echo "TARGET=none" >> $GITHUB_ENV
              fi 
@@ -71,7 +71,6 @@ jobs:
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
             -property commit $COMMIT_ID
-            -property target ${{ github.base_ref }}
             -property head ${{ github.ref_name }}
             -property target $TARGET
             -name $NAME
