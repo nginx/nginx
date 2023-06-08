@@ -32,8 +32,8 @@ jobs:
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github
     steps:
-      name: Construct project name
-      run: |
+      - name: Construct project name
+        run: |
             if [[ $${{github.head_ref}} == "F-"* ]]
             then
                 # Feature branch
