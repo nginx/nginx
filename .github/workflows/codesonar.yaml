@@ -1,6 +1,5 @@
 name: CodeSonar
 on:
-  push:
   pull_request:
   
 jobs:
@@ -57,6 +56,9 @@ jobs:
             -hubpwfile "$CSONAR_HUB_PWFILE"
             -project "$PROJECT_NAME"
             -property branch "$BRANCH"
+            -property commit ${{ github.sha }}
+            -property target ${{ github.base_ref }}
+            -property head ${{ github.head_ref }}
             -name $NAME
             -conf-file conf/codesonar-release.conf
             -property commitID "$COMMIT_ID"
