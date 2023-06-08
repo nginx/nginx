@@ -22,11 +22,6 @@ typedef struct {
 
 typedef struct {
     size_t                          chunk_size;
-
-    ngx_flag_t                      push_preload;
-
-    ngx_flag_t                      push;
-    ngx_array_t                    *pushes;
 } ngx_http_v2_loc_conf_t;
 
 

@@ -423,7 +423,6 @@ if [ $HTTP = YES ]; then
 
     if [ $HTTP_V2 = YES ]; then
         have=NGX_HTTP_V2 . auto/have
-        have=NGX_HTTP_HEADERS . auto/have
 
         ngx_module_name=ngx_http_v2_module
         ngx_module_incs=src/http/v2
@@ -444,7 +443,6 @@ if [ $HTTP = YES ]; then
         HTTP_SSL=YES
 
         have=NGX_HTTP_V3 . auto/have
-        have=NGX_HTTP_HEADERS . auto/have
 
         ngx_module_name=ngx_http_v3_module
         ngx_module_incs=src/http/v3
