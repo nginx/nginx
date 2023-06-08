@@ -69,11 +69,10 @@ ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
 
     len = p - in;
 
-    cipher = EVP_aes_256_cbc();
-    iv_len = NGX_QUIC_AES_256_CBC_IV_LEN;
+    cipher = EVP_aes_256_gcm();
+    iv_len = NGX_QUIC_AES_256_GCM_IV_LEN;
 
-    if ((size_t) (iv_len + len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE) > token->len)
-    {
+    if ((size_t) (iv_len + len + NGX_QUIC_AES_256_GCM_TAG_LEN) > token->len) {
         ngx_log_error(NGX_LOG_ALERT, log, 0, "quic token buffer is too small");
         return NGX_ERROR;
     }
@@ -107,6 +106,17 @@ ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
     }
 
     token->len += len;
+
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                            NGX_QUIC_AES_256_GCM_TAG_LEN,
+                            token->data + token->len)
+        == 0)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        return NGX_ERROR;
+    }
+
+    token->len += NGX_QUIC_AES_256_GCM_TAG_LEN;
 
     EVP_CIPHER_CTX_free(ctx);
 
@@ -184,17 +194,19 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     /* Retry token or NEW_TOKEN in a previous connection */
 
-    cipher = EVP_aes_256_cbc();
+    cipher = EVP_aes_256_gcm();
     iv = pkt->token.data;
-    iv_len = NGX_QUIC_AES_256_CBC_IV_LEN;
+    iv_len = NGX_QUIC_AES_256_GCM_IV_LEN;
 
     /* sanity checks */
 
-    if (pkt->token.len < (size_t) iv_len + NGX_QUIC_AES_256_CBC_BLOCK_SIZE) {
+    if (pkt->token.len < (size_t) iv_len + NGX_QUIC_AES_256_GCM_TAG_LEN) {
         goto garbage;
     }
 
-    if (pkt->token.len > (size_t) iv_len + NGX_QUIC_MAX_TOKEN_SIZE) {
+    if (pkt->token.len > (size_t) iv_len + NGX_QUIC_MAX_TOKEN_SIZE
+                         + NGX_QUIC_AES_256_GCM_TAG_LEN)
+    {
         goto garbage;
     }
 
@@ -209,15 +221,23 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
     }
 
     p = pkt->token.data + iv_len;
-    len = pkt->token.len - iv_len;
+    len = pkt->token.len - iv_len - NGX_QUIC_AES_256_GCM_TAG_LEN;
 
-    if (EVP_DecryptUpdate(ctx, tdec, &len, p, len) != 1) {
+    if (EVP_DecryptUpdate(ctx, tdec, &tlen, p, len) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         goto garbage;
     }
-    total = len;
+    total = tlen;
 
-    if (EVP_DecryptFinal_ex(ctx, tdec + len, &tlen) <= 0) {
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                            NGX_QUIC_AES_256_GCM_TAG_LEN, p + len)
+        == 0)
+    {
+        EVP_CIPHER_CTX_free(ctx);
+        goto garbage;
+    }
+
+    if (EVP_DecryptFinal_ex(ctx, tdec + tlen, &tlen) <= 0) {
         EVP_CIPHER_CTX_free(ctx);
         goto garbage;
     }

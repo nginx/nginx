@@ -15,13 +15,12 @@
 #define NGX_QUIC_MAX_TOKEN_SIZE              64
     /* SHA-1(addr)=20 + sizeof(time_t) + retry(1) + odcid.len(1) + odcid */
 
-/* RFC 3602, 2.1 and 2.4 for AES-CBC block size and IV length */
-#define NGX_QUIC_AES_256_CBC_IV_LEN          16
-#define NGX_QUIC_AES_256_CBC_BLOCK_SIZE      16
+#define NGX_QUIC_AES_256_GCM_IV_LEN          12
+#define NGX_QUIC_AES_256_GCM_TAG_LEN         16
 
-#define NGX_QUIC_TOKEN_BUF_SIZE             (NGX_QUIC_AES_256_CBC_IV_LEN      \
+#define NGX_QUIC_TOKEN_BUF_SIZE             (NGX_QUIC_AES_256_GCM_IV_LEN      \
                                              + NGX_QUIC_MAX_TOKEN_SIZE        \
-                                             + NGX_QUIC_AES_256_CBC_BLOCK_SIZE)
+                                             + NGX_QUIC_AES_256_GCM_TAG_LEN)
 
 
 ngx_int_t ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid,
