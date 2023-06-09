@@ -54,7 +54,7 @@ jobs:
         id: compare-aid
         run: |
           GETURL=$(urlencode {\"limit\":1,\"orderBy\":[{\"analysisId\":\"DESCENDING\"}],\"columns\":[\"analysisId\"]})
-          GETURL2=$(urlencode query=\"branch.name\"=\"$TARGET\"\+state=\"Finished\")
+          GETURL2=$(urlencode query=\"branch.name\"=\"$TARGET\" state=\"Finished\")
           "$CODESONAR" get \
           -auth password \
           -hubuser "$CSONAR_HUB_USER" \
