@@ -53,13 +53,13 @@ jobs:
         if: ${{ github.event.pull_request }}
         id: compare-aid
         run: |
-          GETURL=$(urlencode {\"limit\":1,\"orderBy\":[{\"analysisId\":\"DESCENDING\"}],\"columns\":[\"analysisId\"]}\&query=\"branch.name\"=\"$TARGET\"\+state=\"Finished\")
-          echo $GETURL
+          GETURL=$(urlencode {\"limit\":1,\"orderBy\":[{\"analysisId\":\"DESCENDING\"}],\"columns\":[\"analysisId\"]})
+          GETURL2=$(urlencode query=\"branch.name\"=\"$TARGET\"\+state=\"Finished\")
           "$CODESONAR" get \
           -auth password \
           -hubuser "$CSONAR_HUB_USER" \
           -hubpwfile "$CSONAR_HUB_PWFILE" \
-          $CSONAR_HUB_URL/analysis_search.csv?sanlgrid_json=$GETURL -o - | tail -1 > result  
+          $CSONAR_HUB_URL/analysis_search.csv?sanlgrid_json=$GETURL&$GETURL2 -o - | tail -1 > result  
           echo "TARGET_PROJECT_AID=`cat result`" >> $GITHUB_ENV
       - name: Compile and Analyze
         run: >
@@ -89,7 +89,7 @@ jobs:
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: |
-          GETURL=$(urlencode filter=1&query="DIFFERENCE" aid:$CURRENT_PROJECT_AID\&scope=aid:$TARGET_PROJECT_AID\&swarnings=BJAW)
+          GETURL=$(urlencode filter=1\&query=\"DIFFERENCE\" aid:$CURRENT_PROJECT_AID\&scope=aid:$TARGET_PROJECT_AID\&swarnings=BJAW)
           echo $GETURL
           "$CODESONAR" get \
           -auth password \
