@@ -1,8 +1,8 @@
 name: CodeSonar
 on:
-  push:
-    branches:
-      - F-*               # Feature Branches
+#  push:                  # Only run onces the Pull request is created
+#    branches:
+#      - F-*               # Feature Branches
   pull_request:
     branches:
       - MellowNinja       # Current Release
@@ -112,7 +112,7 @@ jobs:
             "$CSPYTHON" "$CSO_GITHUB/sarif_summary.py"
             warnings.sarif
             "$CSONAR_HUB_URL"
-            "$RELEASE_PROJECT_NAME"
+            "$ROOT_PROJECT_NAME"
             | "$CSPYTHON" "$CSO_GITHUB/push_github_pr_comment.py"
             --api-url $GITHUB_API_URL --cafile "$GITHUB_CAFILE"
             ${{ github.repository }}
