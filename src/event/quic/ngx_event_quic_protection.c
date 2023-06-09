@@ -384,12 +384,12 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
         return NGX_ERROR;
     }
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, s->iv.len, NULL)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, s->iv.len, NULL)
         == 0)
     {
         EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_IVLEN) failed");
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_SET_IVLEN) failed");
         return NGX_ERROR;
     }
 
@@ -417,12 +417,12 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     out->len = len;
     tag = in->data + in->len - NGX_QUIC_TAG_LEN;
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, NGX_QUIC_TAG_LEN, tag)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, NGX_QUIC_TAG_LEN, tag)
         == 0)
     {
         EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_TAG) failed");
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_SET_TAG) failed");
         return NGX_ERROR;
     }
 
@@ -482,12 +482,12 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
         return NGX_ERROR;
     }
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, s->iv.len, NULL)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, s->iv.len, NULL)
         == 0)
     {
         EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_SET_IVLEN) failed");
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_SET_IVLEN) failed");
         return NGX_ERROR;
     }
 
@@ -519,13 +519,13 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
     out->len += len;
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, NGX_QUIC_TAG_LEN,
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, NGX_QUIC_TAG_LEN,
                             out->data + in->len)
         == 0)
     {
         EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_GCM_GET_TAG) failed");
+                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_GET_TAG) failed");
         return NGX_ERROR;
     }
 
