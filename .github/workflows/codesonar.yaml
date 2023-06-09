@@ -32,11 +32,10 @@ jobs:
       CSONAR_HUB_PWFILE: "codesonar.hub.pwfile"
       CODESONAR: /opt/codesonar/codesonar/bin/codesonar
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
-      CSO_GITHUB: /opt/codesonar-github
-
+      CSO_GITHUB: /opt/codesonar-github 
       TARGET: none
     steps:
-      - name: Set project path and parallelism
+      - name: Set parallelism
         run: echo "PARALLEL=`nproc`" >> $GITHUB_ENV
       - name: Pull Request or Not?
         if: ${{ github.event.pull_request }}
