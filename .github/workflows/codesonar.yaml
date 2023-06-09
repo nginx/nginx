@@ -82,7 +82,7 @@ jobs:
           -hubuser "$CSONAR_HUB_USER" 
           -hubpwfile "$CSONAR_HUB_PWFILE"
           "$CSONAR_HUB_URL"/'analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
-          "columns":["analysisId"]}&query=branch.name="$TARGET"' -o | tail -1 ) ; 
+          "columns":["analysisId"]}&query=branch.name="$TARGET"' -o - | tail -1 ) ; 
           echo "::set-output name=output::$result"
       - name: Get id of the current analysis
         if: ${{ github.event.pull_request }}
