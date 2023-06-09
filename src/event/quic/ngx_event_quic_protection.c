@@ -406,7 +406,7 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     }
 
     if (EVP_DecryptUpdate(ctx, out->data, &len, in->data,
-                          in->len - EVP_GCM_TLS_TAG_LEN)
+                          in->len - NGX_QUIC_TAG_LEN)
         != 1)
     {
         EVP_CIPHER_CTX_free(ctx);
@@ -415,9 +415,9 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     }
 
     out->len = len;
-    tag = in->data + in->len - EVP_GCM_TLS_TAG_LEN;
+    tag = in->data + in->len - NGX_QUIC_TAG_LEN;
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, EVP_GCM_TLS_TAG_LEN, tag)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, NGX_QUIC_TAG_LEN, tag)
         == 0)
     {
         EVP_CIPHER_CTX_free(ctx);
@@ -519,7 +519,7 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
     out->len += len;
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, EVP_GCM_TLS_TAG_LEN,
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, NGX_QUIC_TAG_LEN,
                             out->data + in->len)
         == 0)
     {
@@ -531,7 +531,7 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
     EVP_CIPHER_CTX_free(ctx);
 
-    out->len += EVP_GCM_TLS_TAG_LEN;
+    out->len += NGX_QUIC_TAG_LEN;
 #endif
     return NGX_OK;
 }
@@ -738,7 +738,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ad.data = res->data;
     ad.len = ngx_quic_create_header(pkt, ad.data, &pnp);
 
-    out.len = pkt->payload.len + EVP_GCM_TLS_TAG_LEN;
+    out.len = pkt->payload.len + NGX_QUIC_TAG_LEN;
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
@@ -802,7 +802,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ad.len = ngx_quic_create_retry_itag(pkt, ad.data, &start);
 
     itag.data = ad.data + ad.len;
-    itag.len = EVP_GCM_TLS_TAG_LEN;
+    itag.len = NGX_QUIC_TAG_LEN;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
@@ -979,7 +979,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
      * AES and ChaCha20 algorithms sample 16 bytes
      */
 
-    if (len < EVP_GCM_TLS_TAG_LEN + 4) {
+    if (len < NGX_QUIC_TAG_LEN + 4) {
         return NGX_DECLINED;
     }
 
@@ -1039,7 +1039,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
                    "quic ad len:%uz %xV", ad.len, &ad);
 #endif
 
-    pkt->payload.len = in.len - EVP_GCM_TLS_TAG_LEN;
+    pkt->payload.len = in.len - NGX_QUIC_TAG_LEN;
     pkt->payload.data = pkt->plaintext + ad.len;
 
     rc = ngx_quic_tls_open(ciphers.c, secret, &pkt->payload,

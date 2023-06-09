@@ -445,7 +445,7 @@ SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
     u_char                     in[NGX_QUIC_COMPAT_RECORD_SIZE + 1];
     u_char                     out[NGX_QUIC_COMPAT_RECORD_SIZE + 1
                                    + SSL3_RT_HEADER_LENGTH
-                                   + EVP_GCM_TLS_TAG_LEN];
+                                   + NGX_QUIC_TAG_LEN];
 
     c = ngx_ssl_get_connection(ssl);
 
@@ -528,7 +528,7 @@ ngx_quic_compat_create_header(ngx_quic_compat_record_t *rec, u_char *out,
 
     } else {
         type = SSL3_RT_APPLICATION_DATA;
-        len += EVP_GCM_TLS_TAG_LEN;
+        len += NGX_QUIC_TAG_LEN;
     }
 
     out[0] = type;
@@ -552,7 +552,7 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
     ad.data = res->data;
     ad.len = ngx_quic_compat_create_header(rec, ad.data, 0);
 
-    out.len = rec->payload.len + EVP_GCM_TLS_TAG_LEN;
+    out.len = rec->payload.len + NGX_QUIC_TAG_LEN;
     out.data = res->data + ad.len;
 
 #ifdef NGX_QUIC_DEBUG_CRYPTO
