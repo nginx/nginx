@@ -24,6 +24,8 @@ jobs:
       PULL_REQUEST_ID: ${{ github.event.pull_request.number }}
       ROOT_TREE: "Mark/NGINX" 
       ROOT_PROJECT_NAME: "nginx"
+      BRANCH: ${{ github.head_ref || github.ref_name }} 
+      PROJECT_NAME: ${ROOT_TREE}/$BRANCH
       CSONAR_HUB_URL: "https://partnerdemo.codesonar.com" 
       CSONAR_HUB_USER: "${{ secrets.CSONAR_HUB_USER }}"
       CSONAR_HUB_PASS: "${{ secrets.CSONAR_HUB_PASS }}"
@@ -31,17 +33,10 @@ jobs:
       CODESONAR: /opt/codesonar/codesonar/bin/codesonar
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github
-      BRANCH: ${{ github.head_ref || github.ref_name }} 
+      
       TARGET: none
     steps:
-      - name: Set project path and parallelism
-        run: |
-          if echo $BRANCH | grep -q "F-"
-          then
-            echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-$BRANCH" >> $GITHUB_ENV
-          else
-            echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-$BRANCH" >> $GITHUB_ENV
-          fi
+      - name: Set parallelism
           echo "PARALLEL=`nproc`" >> $GITHUB_ENV
       - name: Pull Request or Not?
         if: ${{ github.event.pull_request }}
