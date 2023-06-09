@@ -71,7 +71,7 @@ jobs:
         if: ${{ github.event.pull_request }}
         id: compare-aid
         run: |
-          GETURL=$(urlencode analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
+          GETURL=$(urlencode analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],\\
           "columns":["analysisId"]}&query=branch.name="$TARGET")
           echo $GETURL
           "$CODESONAR" get \
@@ -89,7 +89,7 @@ jobs:
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: |
-          GETURL=$(urlencode warning_detail_search.sarif?filter=1&query="DIFFERENCE" aid:$CURRENT_PROJECT_AID
+          GETURL=$(urlencode warning_detail_search.sarif?filter=1&query="DIFFERENCE" aid:$CURRENT_PROJECT_AID\\
           &scope=aid:$TARGET_PROJECT_AID&swarnings=BJAW)
           echo $GETURL
           "$CODESONAR" get \
