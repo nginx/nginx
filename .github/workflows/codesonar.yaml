@@ -85,7 +85,8 @@ jobs:
       - name: Get id of the current analysis
         if: ${{ github.event.pull_request }}
         id: current-aid
-        run: > "$CSONAR_HUB_URL" analysis_id.py $ROOT_PROJECT_NAME >> $GITHUB_OUTPUT
+        run: > 
+          "$CSONAR_HUB_URL" analysis_id.py $ROOT_PROJECT_NAME >> $GITHUB_OUTPUT
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: >
