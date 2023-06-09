@@ -25,7 +25,6 @@ jobs:
       ROOT_TREE: "Mark/NGINX" 
       ROOT_PROJECT_NAME: "nginx"
       BRANCH: ${{ github.head_ref || github.ref_name }} 
-      PROJECT_NAME: ${ROOT_TREE}/$BRANCH
       CSONAR_HUB_URL: "https://partnerdemo.codesonar.com" 
       CSONAR_HUB_USER: "${{ secrets.CSONAR_HUB_USER }}"
       CSONAR_HUB_PASS: "${{ secrets.CSONAR_HUB_PASS }}"
@@ -35,8 +34,10 @@ jobs:
       CSO_GITHUB: /opt/codesonar-github 
       TARGET: none
     steps:
-      - name: Set parallelism
-        run: echo "PARALLEL=`nproc`" >> $GITHUB_ENV
+      - name: Set parallelism and project name
+        run: |
+          echo "PARALLEL=`nproc`" >> $GITHUB_ENV
+          echo "PROJECT_NAME=${ROOT_TREE}/$BRANCH" >> $GITHUB_ENV
       - name: Pull Request or Not?
         if: ${{ github.event.pull_request }}
         run:  echo "TARGET=${{ github.base_ref }}" >> $GITHUB_ENV
