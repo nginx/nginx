@@ -77,13 +77,13 @@ jobs:
           -hubpwfile "$CSONAR_HUB_PWFILE"
           "$CSONAR_HUB_URL"/'analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
           "columns":["analysisId"]}&query=branch.name="$TARGET"' -o - | tail -1 > result  ; 
-          echo "TARGET_PROJECT_AID=output::`cat result`" >> GITHUB_ENV
+          echo "TARGET_PROJECT_AID=output::`cat result`" >> $GITHUB_ENV
       - name: Get id of the current analysis
         if: ${{ github.event.pull_request }}
         id: current-aid
         run: > 
           "$CODESONAR" analysis_id.py $ROOT_PROJECT_NAME > result;
-          echo "CURRENT_PROJECT_AID=`cat result`" >> GITHUB_ENV
+          echo "CURRENT_PROJECT_AID=`cat result`" >> $GITHUB_ENV
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: >
