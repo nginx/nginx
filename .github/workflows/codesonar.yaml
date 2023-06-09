@@ -5,7 +5,7 @@ on:
 #      - F-*               # Feature Branches
   pull_request:
     branches:
-      - 'releases/**'       
+      - 'release/**'       
     
   
 jobs:
