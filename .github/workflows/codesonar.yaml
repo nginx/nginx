@@ -83,20 +83,20 @@ jobs:
           -hubpwfile "$CSONAR_HUB_PWFILE"
           "$CSONAR_HUB_URL"/'analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
           "columns":["analysisId"]}&query=branch.name="$TARGET"' -o - | tail -1 > result  ; 
-          echo "::set-output name=output::`cat result`"
+          echo "name=output::`cat result`" > GITHUB_OUTPUT
       - name: Get id of the current analysis
         if: ${{ github.event.pull_request }}
         id: current-aid
         run: > 
           "$CODESONAR" analysis_id.py $ROOT_PROJECT_NAME > result;
-          echo "::set-output name=output::`cat result`"
+          echo "name=output::`cat result`" >> GITHUB_OUTPUT
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: >
           "$CODESONAR" get 
           -auth password 
           -hubuser "$CSONAR_HUB_USER" 
-          -hubpwdile "$CSONAR_HUB_PWFILE"
+          -hubpwfile "$CSONAR_HUB_PWFILE"
           "$CSONAR_HUB_URL"/warning_detail_search.sarif?filter=1&query=%22DIFFERENCE%22%20aid%3A${{ steps.current-aid.outputs.output }}
           &scope=aid%3A${{ steps.compare-aid.outputs.output }}&swarnings=BJAW > warnings.sarif
       - name: Cleanup Credential File
