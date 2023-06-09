@@ -6,7 +6,6 @@ on:
   pull_request:
     branches:
       - 'release/**'       
-    
   
 jobs:
   CodeSonar_Analyze:
