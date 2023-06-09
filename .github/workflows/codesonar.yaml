@@ -35,14 +35,15 @@ jobs:
       BRANCH: ${{ github.head_ref || github.ref_name }} 
       TARGET: none
     steps:
-      - name: Set project path
+      - name: Set project path and parallelism
         run: |
-          if echo ${{github.ref_name}} | grep -q "F-"
+          if echo $BRANCH | grep -q "F-"
           then
             echo "PROJECT_NAME=${ROOT_TREE}/Feature-Branches/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
           else
             echo "PROJECT_NAME=${ROOT_TREE}/${ROOT_PROJECT_NAME}-${{ github.ref_name }}" >> $GITHUB_ENV
           fi
+          echo "PARALLEL=`nproc`" >> $GITHUB_ENV
       - name: Pull Request or Not?
         if: ${{ github.event.pull_request }}
         run:  echo "TARGET=${{ github.base_ref }}" >> $GITHUB_ENV
@@ -71,7 +72,7 @@ jobs:
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
-            make -j 6
+            make -j $PARALLEL
       - name: Get id of latest analysis on the same branch
         if: ${{ github.event.pull_request }}
         id: compare-aid
