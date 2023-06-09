@@ -103,7 +103,7 @@ jobs:
             -property commit.sha $COMMIT_ID
             -property branch.name $BRANCH
             -property target.branch $TARGET
-            -property target.diff_link $CSONAR_HUB_URL/warning_detail_search.html?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW
+            -property target.diff_link $CSONAR_HUB_URL/search.html?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
