@@ -4,6 +4,7 @@ on:
     branches:
       - F-*               # Feature Branches
   pull_request:
+    branches:
       - MellowNinja       # Current Release
       - SereneSamurai     # Next Release
       - PeacefulPirate    # Next Year's Release
