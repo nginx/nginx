@@ -37,7 +37,7 @@ jobs:
       TARGET: none
     steps:
       - name: Set parallelism
-          echo "PARALLEL=`nproc`" >> $GITHUB_ENV
+        run: echo "PARALLEL=`nproc`" >> $GITHUB_ENV
       - name: Pull Request or Not?
         if: ${{ github.event.pull_request }}
         run:  echo "TARGET=${{ github.base_ref }}" >> $GITHUB_ENV
