@@ -77,7 +77,7 @@ jobs:
         if: ${{ github.event.pull_request }}
         id: compare-aid
         run: >
-          $("$CODESONAR" get 
+          "$CODESONAR" get 
           -auth password 
           -hubuser "$CSONAR_HUB_USER" 
           -hubpwfile "$CSONAR_HUB_PWFILE"
