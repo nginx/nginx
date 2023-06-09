@@ -3,12 +3,10 @@ on:
   push:
     branches:
       - F-*               # Feature Branches
+  pull_request:
       - MellowNinja       # Current Release
       - SereneSamurai     # Next Release
       - PeacefulPirate    # Next Year's Release
-  pull_request:
-    branches:
-      - F-*
   
 jobs:
   CodeSonar_Analyze:
