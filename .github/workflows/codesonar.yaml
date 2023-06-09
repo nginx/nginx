@@ -71,14 +71,14 @@ jobs:
         if: ${{ github.event.pull_request }}
         id: compare-aid
         run: |
-          GETURL=$(urlencode $CSONAR_HUB_URL/analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
+          GETURL=$(urlencode analysis_search.csv?sanlgrid_json={"limit":1,"orderBy":[{"analysisId":"DESCENDING"}],
           "columns":["analysisId"]}&query=branch.name="$TARGET")
           echo $GETURL
           "$CODESONAR" get \
           -auth password \
           -hubuser "$CSONAR_HUB_USER" \
           -hubpwfile "$CSONAR_HUB_PWFILE" \
-          $GETURL -o - | tail -1 > result  
+          $CSONAR_HUB_URL/$GETURL -o - | tail -1 > result  
           echo "TARGET_PROJECT_AID=`cat result`" >> $GITHUB_ENV
       - name: Get id of the current analysis
         if: ${{ github.event.pull_request }}
@@ -89,14 +89,14 @@ jobs:
       - name: Diff results with the target branch
         if: ${{ github.event.pull_request }}
         run: |
-          GETURL=$($CSONAR_HUB_URL/warning_detail_search.sarif?filter=1&query="DIFFERENCE" aid:$CURRENT_PROJECT_AID
+          GETURL=$(urlencode warning_detail_search.sarif?filter=1&query="DIFFERENCE" aid:$CURRENT_PROJECT_AID
           &scope=aid:$TARGET_PROJECT_AID&swarnings=BJAW)
           echo $GETURL
           "$CODESONAR" get \
           -auth password \
           -hubuser "$CSONAR_HUB_USER" \
           -hubpwfile "$CSONAR_HUB_PWFILE" \
-          $GETURL > warnings.sarif
+          $CSONAR_HUB_URL/$GETURL > warnings.sarif
       - name: Cleanup Credential File
         run: shred -u "$CSONAR_HUB_PWFILE"
   #      - name: Push Analysis Results to GitHub #Use this with Github Enterprise
