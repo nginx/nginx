@@ -94,7 +94,7 @@ jobs:
             GETURL=$(urlencode aid:$CURRENT_PROJECT_AID DIFFERENCE aid:$TARGET_PROJECT_AID);
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
             NAME="$BRANCH-$(date "+%Y.%m.%d-%H.%M")";
-            "$CODESONAR" analyze -clean $ROOT_PROJECT_NAME
+            "$CODESONAR" analyze $ROOT_PROJECT_NAME
             -remote-archive "/saas/*" -foreground
             -auth password
             -hubuser "$CSONAR_HUB_USER"
