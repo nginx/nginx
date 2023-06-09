@@ -59,7 +59,7 @@ jobs:
           -auth password \
           -hubuser "$CSONAR_HUB_USER" \
           -hubpwfile "$CSONAR_HUB_PWFILE" \
-          $CSONAR_HUB_URL/analysis_search.csv?sanlgrid_json=$GETURL&$GETURL2 -o - | tail -1 > result  
+          $CSONAR_HUB_URL/analysis_search.csv?sanlgrid_json=$GETURL\&$GETURL2 -o - | tail -1 > result  
           echo "TARGET_PROJECT_AID=`cat result`" >> $GITHUB_ENV
       - name: Compile and Analyze
         run: >
