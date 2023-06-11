@@ -116,6 +116,11 @@ jobs:
           -hubuser "$CSONAR_HUB_USER" \
           -hubpwfile "$CSONAR_HUB_PWFILE" \
           $CSONAR_HUB_URL/warning_detail_search.sarif?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW -o - > warnings.sarif
+      - name: Upload SARIF to GitHub #Use this if you do not have GitHub Enterprise
+        uses: actions/upload-artifact@v3
+        with:
+          name: SARIF file
+          path: warnings.sarif
       - name: Cleanup Credential File
         run: shred -u "$CSONAR_HUB_PWFILE"
       - name: Push Summary Report
