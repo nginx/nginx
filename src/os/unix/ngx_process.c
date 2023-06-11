@@ -91,6 +91,8 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     ngx_pid_t  pid;
     ngx_int_t  s;
 
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "#-> %s ====================================", __func__);
+
     if (respawn >= 0) {
         s = respawn;
 
@@ -253,6 +255,9 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     if (s == ngx_last_process) {
         ngx_last_process++;
     }
+
+
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "<-# %s ====================================", __func__);
 
     return pid;
 }

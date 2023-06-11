@@ -299,6 +299,8 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "#-> %s ====================================", __func__);
+    
     if (ngx_test_config) {
         if (!ngx_quiet_mode) {
             ngx_log_stderr(0, "configuration file %s test is successful",
@@ -382,6 +384,8 @@ main(int argc, char *const *argv)
     } else {
         ngx_master_process_cycle(cycle);
     }
+    
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "<-# %s ====================================", __func__);
 
     return 0;
 }

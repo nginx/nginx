@@ -73,6 +73,9 @@ static ngx_open_file_t  ngx_exit_log_file;
 void
 ngx_master_process_cycle(ngx_cycle_t *cycle)
 {
+
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "#-> %s ====================================", __func__);
+    
     char              *title;
     u_char            *p;
     size_t             size;

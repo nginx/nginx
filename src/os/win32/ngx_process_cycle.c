@@ -70,6 +70,8 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_uint_t  live;
     HANDLE      events[MAXIMUM_WAIT_OBJECTS];
 
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "#-> %s ====================================", __func__);
+
     ngx_sprintf((u_char *) ngx_master_process_event_name,
                 "ngx_master_%s%Z", ngx_unique);
 
@@ -246,6 +248,8 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
             "WaitForMultipleObjects() returned unexpected value %ul", ev);
     }
+
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "<-# %s ====================================", __func__);
 }
 
 
