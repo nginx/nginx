@@ -90,6 +90,7 @@ jobs:
                     echo "TARGET_PROJECT_AID=`cat result`" >> $GITHUB_ENV
                     # second get the ID of the current analysis
                     echo "CURRENT_PROJECT_AID=`cat $ROOT_PROJECT_NAME.prj_files/aid.txt`" >> $GITHUB_ENV
+                    CURRENT_PROJECT_AID=$(cat $ROOT_PROJECT_NAME.prj_files/aid.txt`)
                     GETURL=$(urlencode aid:$CURRENT_PROJECT_AID DIFFERENCE aid:$TARGET_PROJECT_AID);
                     echo "DIFFLINK=$CSONAR_HUB_URL/search.html?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW" >> $GITHUB_ENV
       - name: Analyze
