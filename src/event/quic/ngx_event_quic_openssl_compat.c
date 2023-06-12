@@ -463,6 +463,7 @@ SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
         rec.log = c->log;
         rec.number = com->read_record++;
         rec.keys = &com->keys;
+        rec.level = level;
 
         if (level == ssl_encryption_initial) {
             n = ngx_min(len, 65535);

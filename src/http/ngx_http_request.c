@@ -318,12 +318,6 @@ ngx_http_init_connection(ngx_connection_t *c)
     rev->handler = ngx_http_wait_request_handler;
     c->write->handler = ngx_http_empty_handler;
 
-#if (NGX_HTTP_V2)
-    if (hc->addr_conf->http2) {
-        rev->handler = ngx_http_v2_init;
-    }
-#endif
-
 #if (NGX_HTTP_V3)
     if (hc->addr_conf->quic) {
         ngx_http_v3_init_stream(c);
@@ -332,16 +326,10 @@ ngx_http_init_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_HTTP_SSL)
-    {
-    ngx_http_ssl_srv_conf_t  *sscf;
-
-    sscf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_ssl_module);
-
-    if (sscf->enable || hc->addr_conf->ssl) {
+    if (hc->addr_conf->ssl) {
         hc->ssl = 1;
         c->log->action = "SSL handshaking";
         rev->handler = ngx_http_ssl_handshake;
-    }
     }
 #endif
 
@@ -383,6 +371,9 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     ngx_buf_t                 *b;
     ngx_connection_t          *c;
     ngx_http_connection_t     *hc;
+#if (NGX_HTTP_V2)
+    ngx_http_v2_srv_conf_t    *h2scf;
+#endif
     ngx_http_core_srv_conf_t  *cscf;
 
     c = rev->data;
@@ -429,6 +420,8 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
         b->end = b->last + size;
     }
 
+    size = b->end - b->last;
+
     n = c->recv(c, b->last, size);
 
     if (n == NGX_AGAIN) {
@@ -443,12 +436,16 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             return;
         }
 
-        /*
-         * We are trying to not hold c->buffer's memory for an idle connection.
-         */
+        if (b->pos == b->last) {
 
-        if (ngx_pfree(c->pool, b->start) == NGX_OK) {
-            b->start = NULL;
+            /*
+             * We are trying to not hold c->buffer's memory for an
+             * idle connection.
+             */
+
+            if (ngx_pfree(c->pool, b->start) == NGX_OK) {
+                b->start = NULL;
+            }
         }
 
         return;
@@ -488,6 +485,29 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             return;
         }
     }
+
+#if (NGX_HTTP_V2)
+
+    h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+
+    if (!hc->ssl && (h2scf->enable || hc->addr_conf->http2)) {
+
+        size = ngx_min(sizeof(NGX_HTTP_V2_PREFACE) - 1,
+                       (size_t) (b->last - b->pos));
+
+        if (ngx_memcmp(b->pos, NGX_HTTP_V2_PREFACE, size) == 0) {
+
+            if (size == sizeof(NGX_HTTP_V2_PREFACE) - 1) {
+                ngx_http_v2_init(rev);
+                return;
+            }
+
+            ngx_post_event(rev, &ngx_posted_events);
+            return;
+        }
+    }
+
+#endif
 
     c->log->action = "reading client request line";
 
@@ -808,13 +828,16 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 #if (NGX_HTTP_V2                                                              \
      && defined TLSEXT_TYPE_application_layer_protocol_negotiation)
         {
-        unsigned int            len;
-        const unsigned char    *data;
-        ngx_http_connection_t  *hc;
+        unsigned int             len;
+        const unsigned char     *data;
+        ngx_http_connection_t   *hc;
+        ngx_http_v2_srv_conf_t  *h2scf;
 
         hc = c->data;
 
-        if (hc->addr_conf->http2) {
+        h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+
+        if (h2scf->enable || hc->addr_conf->http2) {
 
             SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
 
