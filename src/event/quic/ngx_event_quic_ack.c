@@ -207,9 +207,9 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
             adjusted_rtt -= ack_delay;
         }
 
-        qc->avg_rtt += (adjusted_rtt >> 3) - (qc->avg_rtt >> 3);
         rttvar_sample = ngx_abs((ngx_msec_int_t) (qc->avg_rtt - adjusted_rtt));
         qc->rttvar += (rttvar_sample >> 2) - (qc->rttvar >> 2);
+        qc->avg_rtt += (adjusted_rtt >> 3) - (qc->avg_rtt >> 3);
     }
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
