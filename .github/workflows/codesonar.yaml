@@ -31,7 +31,9 @@ jobs:
       CODESONAR: /opt/codesonar/codesonar/bin/codesonar
       CSPYTHON: /opt/codesonar/codesonar/bin/cspython
       CSO_GITHUB: /opt/codesonar-github 
+      GITHUB_REPO_URL: "http://github.com/markhermeling/nginx"    # the github.repositoryUrl is not an http-link.
       TARGET: none
+      DIFFLINK: none
     steps:
       - name: Set parallelism and project name
         run: |
@@ -88,9 +90,11 @@ jobs:
                     echo "TARGET_PROJECT_AID=`cat result`" >> $GITHUB_ENV
                     # second get the ID of the current analysis
                     echo "CURRENT_PROJECT_AID=`cat $ROOT_PROJECT_NAME.prj_files/aid.txt`" >> $GITHUB_ENV
+                    CURRENT_PROJECT_AID=$(cat $ROOT_PROJECT_NAME.prj_files/aid.txt)
+                    GETURL=$(urlencode aid:$CURRENT_PROJECT_AID DIFFERENCE aid:$TARGET_PROJECT_AID);
+                    echo "DIFFLINK=$CSONAR_HUB_URL/search.html?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW" >> $GITHUB_ENV
       - name: Analyze
         run: >
-            GETURL=$(urlencode aid:$CURRENT_PROJECT_AID DIFFERENCE aid:$TARGET_PROJECT_AID);
             COMMIT_ID=$(git rev-parse --short ${{ github.sha }});
             NAME="$BRANCH-$(date "+%Y.%m.%d-%H.%M")";
             "$CODESONAR" analyze $ROOT_PROJECT_NAME
@@ -101,9 +105,11 @@ jobs:
             -project "$PROJECT_NAME"
             -property repo.url ${{ github.repositoryUrl }}
             -property commit.sha $COMMIT_ID
+            -property commit.link "$GITHUB_REPO_URL/commit/$COMMIT_ID"
+            -property PR.link "$GITHUB_REPO_URL/pull/$PULL_REQUEST_ID"
             -property branch.name $BRANCH
             -property target.branch $TARGET
-            -property target.diff_link $CSONAR_HUB_URL/search.html?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW
+            -property target.diff_link $DIFFLINK
             -name $NAME
             -conf-file conf/codesonar-release.conf
             "$CSONAR_HUB_URL"
@@ -117,6 +123,7 @@ jobs:
           -hubpwfile "$CSONAR_HUB_PWFILE" \
           $CSONAR_HUB_URL/warning_detail_search.sarif?query=$GETURL\&scope=aid%3A$CURRENT_PROJECT_AID\&swarnings=BJAW -o - > warnings.sarif
       - name: Upload SARIF to GitHub #Use this if you do not have GitHub Enterprise
+        if: ${{ github.event.pull_request }}
         uses: actions/upload-artifact@v3
         with:
           name: SARIF file
