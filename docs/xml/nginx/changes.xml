@@ -5,6 +5,49 @@
 <change_log title="nginx">
 
 
+<changes ver="1.25.1" date="2023-06-13">
+
+<change type="feature">
+<para lang="ru">
+директива http2, позволяющая включать HTTP/2 в отдельных блоках server;
+параметр http2 директивы listen объявлен устаревшим.
+</para>
+<para lang="en">
+the "http2" directive, which enables HTTP/2 on a per-server basis;
+the "http2" parameter of the "listen" directive is now deprecated.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+поддержка HTTP/2 server push упразднена.
+</para>
+<para lang="en">
+HTTP/2 server push support has been removed.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+устаревшая директива ssl больше не поддерживается.
+</para>
+<para lang="en">
+the deprecated "ssl" directive is not supported anymore.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в HTTP/3 при использовании OpenSSL.
+</para>
+<para lang="en">
+in HTTP/3 when using OpenSSL.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.25.0" date="2023-05-23">
 
 <change type="feature">
