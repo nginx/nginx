@@ -15,13 +15,6 @@
 
 #define NGX_QUIC_AES_128_KEY_LEN      16
 
-#ifndef TLS1_3_CK_AES_128_GCM_SHA256
-#define TLS1_3_CK_AES_128_GCM_SHA256  0x03001301
-#define TLS1_3_CK_AES_256_GCM_SHA384  0x03001302
-#define TLS1_3_CK_CHACHA20_POLY1305_SHA256                                   \
-                                      0x03001303
-#endif
-
 
 static ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
     const EVP_MD *digest, const u_char *prk, size_t prk_len,
