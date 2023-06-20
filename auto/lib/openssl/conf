@@ -8,6 +8,8 @@ if [ $OPENSSL != NONE ]; then
     have=NGX_OPENSSL . auto/have
     have=NGX_SSL . auto/have
 
+    have=NGX_OPENSSL_NO_CONFIG . auto/have
+
     if [ $USE_OPENSSL_QUIC = YES ]; then
         have=NGX_QUIC . auto/have
         have=NGX_QUIC_OPENSSL_COMPAT . auto/have

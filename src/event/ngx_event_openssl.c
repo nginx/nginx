@@ -142,7 +142,18 @@ ngx_ssl_init(ngx_log_t *log)
 {
 #if (OPENSSL_INIT_LOAD_CONFIG && !defined LIBRESSL_VERSION_NUMBER)
 
+    uint64_t                opts;
     OPENSSL_INIT_SETTINGS  *init;
+
+    opts = OPENSSL_INIT_LOAD_CONFIG;
+
+#if (NGX_OPENSSL_NO_CONFIG)
+
+    if (getenv("OPENSSL_CONF") == NULL) {
+        opts = OPENSSL_INIT_NO_LOAD_CONFIG;
+    }
+
+#endif
 
     init = OPENSSL_INIT_new();
     if (init == NULL) {
@@ -158,7 +169,7 @@ ngx_ssl_init(ngx_log_t *log)
     }
 #endif
 
-    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, init) == 0) {
+    if (OPENSSL_init_ssl(opts, init) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
         return NGX_ERROR;
     }
@@ -173,6 +184,14 @@ ngx_ssl_init(ngx_log_t *log)
     ERR_clear_error();
 
 #else
+
+#if (NGX_OPENSSL_NO_CONFIG)
+
+    if (getenv("OPENSSL_CONF") == NULL) {
+        OPENSSL_no_config();
+    }
+
+#endif
 
     OPENSSL_config("nginx");
 
