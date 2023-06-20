@@ -16,7 +16,7 @@
 
 #define NGX_QUIC_ENCRYPTION_LAST  ((ssl_encryption_application) + 1)
 
-/* RFC 5116, 5.1 and RFC 8439, 2.3/2.5 for all supported ciphers */
+/* RFC 5116, 5.1/5.3 and RFC 8439, 2.3/2.5 for all supported ciphers */
 #define NGX_QUIC_IV_LEN               12
 #define NGX_QUIC_TAG_LEN              16
 
