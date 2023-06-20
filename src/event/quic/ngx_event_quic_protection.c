@@ -352,8 +352,7 @@ failed:
 
 static ngx_int_t
 ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
-    ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad,
-    ngx_log_t *log)
+    ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
 
 #ifdef OPENSSL_IS_BORINGSSL
@@ -563,10 +562,11 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
         return NGX_ERROR;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
-
     out->len += NGX_QUIC_TAG_LEN;
+
+    EVP_CIPHER_CTX_free(ctx);
 #endif
+
     return NGX_OK;
 }
 
