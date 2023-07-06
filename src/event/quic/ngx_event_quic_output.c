@@ -525,7 +525,7 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ssize_t                 flen;
     ngx_str_t               res;
     ngx_int_t               rc;
-    ngx_uint_t              nframes, expand;
+    ngx_uint_t              nframes;
     ngx_msec_t              now;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
@@ -560,40 +560,12 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     nframes = 0;
     p = src;
     len = 0;
-    expand = 0;
 
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
          q = ngx_queue_next(q))
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-        if (!expand && (f->type == NGX_QUIC_FT_PATH_RESPONSE
-                        || f->type == NGX_QUIC_FT_PATH_CHALLENGE))
-        {
-            /*
-             * RFC 9000, 8.2.1.  Initiating Path Validation
-             *
-             * An endpoint MUST expand datagrams that contain a
-             * PATH_CHALLENGE frame to at least the smallest allowed
-             * maximum datagram size of 1200 bytes...
-             *
-             * (same applies to PATH_RESPONSE frames)
-             */
-
-            if (max < 1200) {
-                /* expanded packet will not fit */
-                break;
-            }
-
-            if (min < 1200) {
-                min = 1200;
-
-                min_payload = ngx_quic_payload_size(&pkt, min);
-            }
-
-            expand = 1;
-        }
 
         if (len >= max_payload) {
             break;
