@@ -168,7 +168,6 @@ valid:
 
     path->validated = 1;
     path->validating = 0;
-    path->limited = 0;
 
     ngx_quic_set_path_timer(c);
 
@@ -207,8 +206,6 @@ ngx_quic_new_path(ngx_connection_t *c,
 
     path->cid = cid;
     cid->used = 1;
-
-    path->limited = 1;
 
     path->seqnum = qc->path_seqnum++;
 
@@ -665,7 +662,6 @@ ngx_quic_path_validation_handler(ngx_event_t *ev)
 
         path->validated = 0;
         path->validating = 0;
-        path->limited = 1;
 
 
         /* RFC 9000, 9.3.2.  On-Path Address Spoofing

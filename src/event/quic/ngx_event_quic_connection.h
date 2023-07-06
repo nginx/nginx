@@ -101,7 +101,6 @@ struct ngx_quic_path_s {
     u_char                            text[NGX_SOCKADDR_STRLEN];
     unsigned                          validated:1;
     unsigned                          validating:1;
-    unsigned                          limited:1;
 };
 
 

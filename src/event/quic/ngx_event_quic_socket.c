@@ -82,7 +82,6 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
     if (pkt->validated) {
         qc->path->validated = 1;
-        qc->path->limited = 0;
     }
 
     ngx_quic_path_dbg(c, "set active", qc->path);

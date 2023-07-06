@@ -18,11 +18,10 @@
 #define NGX_QUIC_PATH_BACKUP    2
 
 #define ngx_quic_path_dbg(c, msg, path)                                       \
-    ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,                            \
-                   "quic path seq:%uL %s sent:%O recvd:%O state:%s%s%s",      \
+    ngx_log_debug6(NGX_LOG_DEBUG_EVENT, c->log, 0,                            \
+                   "quic path seq:%uL %s sent:%O recvd:%O state:%s%s",        \
                    path->seqnum, msg, path->sent, path->received,             \
-                   path->limited ? "L" : "", path->validated ? "V": "N",      \
-                   path->validating ? "R": "");
+                   path->validated ? "V": "N", path->validating ? "R": "");
 
 ngx_int_t ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f);

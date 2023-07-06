@@ -1013,7 +1013,6 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
         if (!qc->path->validated) {
             qc->path->validated = 1;
-            qc->path->limited = 0;
             ngx_quic_path_dbg(c, "in handshake", qc->path);
             ngx_post_event(&qc->push, &ngx_posted_events);
         }

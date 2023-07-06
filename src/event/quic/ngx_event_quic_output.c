@@ -281,7 +281,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
         return 0;
     }
 
-    if (qc->path->limited) {
+    if (!qc->path->validated) {
         /* don't even try to be faster on non-validated paths */
         return 0;
     }
@@ -1275,7 +1275,7 @@ ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path, size_t size)
 {
     off_t  max;
 
-    if (path->limited) {
+    if (!path->validated) {
         max = path->received * 3;
         max = (path->sent >= max) ? 0 : max - path->sent;
 
