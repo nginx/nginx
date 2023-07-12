@@ -581,6 +581,7 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     for (cl = out; cl; cl = cl->next) {
         h3c->total_bytes += cl->buf->last - cl->buf->pos;
+        r->header_size += cl->buf->last - cl->buf->pos;
     }
 
     return ngx_http_write_filter(r, out);
