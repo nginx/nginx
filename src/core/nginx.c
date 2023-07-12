@@ -202,6 +202,10 @@ main(int argc, char *const *argv)
     ngx_conf_dump_t  *cd;
     ngx_core_conf_t  *ccf;
 
+    int *x;
+    x=NULL;
+    *x=5;
+
     ngx_debug_init();
 
     if (ngx_strerror_init() != NGX_OK) {
