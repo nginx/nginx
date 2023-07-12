@@ -542,6 +542,8 @@ ngx_stream_upstream_zone_preresolve(ngx_stream_upstream_rr_peer_t *resolve,
 
                 peer->host = template->host;
 
+                template->host->valid = host->valid;
+
                 server = template->host->service.len ? &opeer->server
                                                      : &template->server;
 
@@ -623,6 +625,8 @@ ngx_stream_upstream_zone_remove_peer_locked(
 static ngx_int_t
 ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle)
 {
+    time_t                            now;
+    ngx_msec_t                        timer;
     ngx_uint_t                        i;
     ngx_event_t                      *event;
     ngx_stream_upstream_rr_peer_t    *peer;
@@ -636,6 +640,7 @@ ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle)
         return NGX_OK;
     }
 
+    now = ngx_time();
     umcf = ngx_stream_cycle_get_module_main_conf(cycle,
                                                  ngx_stream_upstream_module);
 
@@ -672,7 +677,10 @@ ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle)
                 event->log = cycle->log;
                 event->cancelable = 1;
 
-                ngx_add_timer(event, 1);
+                timer = (peer->host->valid > now)
+                        ? (ngx_msec_t) 1000 * (peer->host->valid - now) : 1;
+
+                ngx_add_timer(event, timer);
             }
 
             ngx_stream_upstream_rr_peers_unlock(peers);
@@ -980,6 +988,8 @@ again:
     }
 
 done:
+
+    host->valid = ctx->valid;
 
     ngx_stream_upstream_rr_peers_unlock(peers);
 
