@@ -65,12 +65,12 @@ syn match ngxListenComment '#.*$'
     \ contained
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn keyword ngxListenOptions contained
-    \ default_server ssl http2 proxy_protocol
+    \ default_server ssl quic proxy_protocol
     \ setfib fastopen backlog rcvbuf sndbuf accept_filter deferred bind
     \ ipv6only reuseport so_keepalive
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn keyword ngxListenOptionsDeprecated contained
-    \ spdy
+    \ http2
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn cluster ngxListenParams
     \ contains=ngxListenParam,ngxListenString,ngxListenComment
@@ -90,7 +90,6 @@ syn keyword ngxDirectiveBlock contained if
 syn keyword ngxDirectiveBlock contained geo
 syn keyword ngxDirectiveBlock contained map
 syn keyword ngxDirectiveBlock contained split_clients
-syn keyword ngxDirectiveBlock contained match
 
 syn keyword ngxDirectiveImportant contained include
 syn keyword ngxDirectiveImportant contained root
@@ -113,7 +112,6 @@ syn keyword ngxDirectiveError contained post_action
 
 syn keyword ngxDirectiveDeprecated contained proxy_downstream_buffer
 syn keyword ngxDirectiveDeprecated contained proxy_upstream_buffer
-syn keyword ngxDirectiveDeprecated contained ssl
 syn keyword ngxDirectiveDeprecated contained http2_idle_timeout
 syn keyword ngxDirectiveDeprecated contained http2_max_field_size
 syn keyword ngxDirectiveDeprecated contained http2_max_header_size
@@ -136,7 +134,6 @@ syn keyword ngxDirective contained alias
 syn keyword ngxDirective contained allow
 syn keyword ngxDirective contained ancient_browser
 syn keyword ngxDirective contained ancient_browser_value
-syn keyword ngxDirective contained api
 syn keyword ngxDirective contained auth_basic
 syn keyword ngxDirective contained auth_basic_user_file
 syn keyword ngxDirective contained auth_delay
@@ -144,15 +141,6 @@ syn keyword ngxDirective contained auth_http
 syn keyword ngxDirective contained auth_http_header
 syn keyword ngxDirective contained auth_http_pass_client_cert
 syn keyword ngxDirective contained auth_http_timeout
-syn keyword ngxDirective contained auth_jwt
-syn keyword ngxDirective contained auth_jwt_claim_set
-syn keyword ngxDirective contained auth_jwt_header_set
-syn keyword ngxDirective contained auth_jwt_key_cache
-syn keyword ngxDirective contained auth_jwt_key_file
-syn keyword ngxDirective contained auth_jwt_key_request
-syn keyword ngxDirective contained auth_jwt_leeway
-syn keyword ngxDirective contained auth_jwt_require
-syn keyword ngxDirective contained auth_jwt_type
 syn keyword ngxDirective contained auth_request
 syn keyword ngxDirective contained auth_request_set
 syn keyword ngxDirective contained autoindex
@@ -193,8 +181,6 @@ syn keyword ngxDirective contained error_log
 syn keyword ngxDirective contained etag
 syn keyword ngxDirective contained eventport_events
 syn keyword ngxDirective contained expires
-syn keyword ngxDirective contained f4f
-syn keyword ngxDirective contained f4f_buffer_size
 syn keyword ngxDirective contained fastcgi_bind
 syn keyword ngxDirective contained fastcgi_buffer_size
 syn keyword ngxDirective contained fastcgi_buffering
@@ -211,7 +197,6 @@ syn keyword ngxDirective contained fastcgi_cache_max_range_offset
 syn keyword ngxDirective contained fastcgi_cache_methods
 syn keyword ngxDirective contained fastcgi_cache_min_uses
 syn keyword ngxDirective contained fastcgi_cache_path
-syn keyword ngxDirective contained fastcgi_cache_purge
 syn keyword ngxDirective contained fastcgi_cache_revalidate
 syn keyword ngxDirective contained fastcgi_cache_use_stale
 syn keyword ngxDirective contained fastcgi_cache_valid
@@ -295,14 +280,7 @@ syn keyword ngxDirective contained gzip_types
 syn keyword ngxDirective contained gzip_vary
 syn keyword ngxDirective contained gzip_window
 syn keyword ngxDirective contained hash
-syn keyword ngxDirective contained health_check
-syn keyword ngxDirective contained health_check_timeout
-syn keyword ngxDirective contained hls
-syn keyword ngxDirective contained hls_buffers
-syn keyword ngxDirective contained hls_forward_args
-syn keyword ngxDirective contained hls_fragment
-syn keyword ngxDirective contained hls_mp4_buffer_size
-syn keyword ngxDirective contained hls_mp4_max_buffer_size
+syn keyword ngxDirective contained http2
 syn keyword ngxDirective contained http2_body_preread_size
 syn keyword ngxDirective contained http2_chunk_size
 syn keyword ngxDirective contained http2_max_concurrent_pushes
@@ -312,6 +290,10 @@ syn keyword ngxDirective contained http2_push
 syn keyword ngxDirective contained http2_push_preload
 syn keyword ngxDirective contained http2_recv_buffer_size
 syn keyword ngxDirective contained http2_streams_index_size
+syn keyword ngxDirective contained http3
+syn keyword ngxDirective contained http3_hq
+syn keyword ngxDirective contained http3_max_concurrent_streams
+syn keyword ngxDirective contained http3_stream_buffer_size
 syn keyword ngxDirective contained if_modified_since
 syn keyword ngxDirective contained ignore_invalid_headers
 syn keyword ngxDirective contained image_filter
@@ -342,21 +324,20 @@ syn keyword ngxDirective contained js_filter
 syn keyword ngxDirective contained js_header_filter
 syn keyword ngxDirective contained js_import
 syn keyword ngxDirective contained js_path
+syn keyword ngxDirective contained js_preload_object
 syn keyword ngxDirective contained js_preread
 syn keyword ngxDirective contained js_set
+syn keyword ngxDirective contained js_shared_dict_zone
 syn keyword ngxDirective contained js_var
 syn keyword ngxDirective contained keepalive
 syn keyword ngxDirective contained keepalive_disable
 syn keyword ngxDirective contained keepalive_requests
 syn keyword ngxDirective contained keepalive_time
 syn keyword ngxDirective contained keepalive_timeout
-syn keyword ngxDirective contained keyval
-syn keyword ngxDirective contained keyval_zone
 syn keyword ngxDirective contained kqueue_changes
 syn keyword ngxDirective contained kqueue_events
 syn keyword ngxDirective contained large_client_header_buffers
 syn keyword ngxDirective contained least_conn
-syn keyword ngxDirective contained least_time
 syn keyword ngxDirective contained limit_conn
 syn keyword ngxDirective contained limit_conn_dry_run
 syn keyword ngxDirective contained limit_conn_log_level
@@ -400,14 +381,11 @@ syn keyword ngxDirective contained modern_browser
 syn keyword ngxDirective contained modern_browser_value
 syn keyword ngxDirective contained mp4
 syn keyword ngxDirective contained mp4_buffer_size
-syn keyword ngxDirective contained mp4_limit_rate
-syn keyword ngxDirective contained mp4_limit_rate_after
 syn keyword ngxDirective contained mp4_max_buffer_size
 syn keyword ngxDirective contained mp4_start_key_frame
 syn keyword ngxDirective contained msie_padding
 syn keyword ngxDirective contained msie_refresh
 syn keyword ngxDirective contained multi_accept
-syn keyword ngxDirective contained ntlm
 syn keyword ngxDirective contained open_file_cache
 syn keyword ngxDirective contained open_file_cache_errors
 syn keyword ngxDirective contained open_file_cache_events
@@ -450,7 +428,6 @@ syn keyword ngxDirective contained proxy_cache_max_range_offset
 syn keyword ngxDirective contained proxy_cache_methods
 syn keyword ngxDirective contained proxy_cache_min_uses
 syn keyword ngxDirective contained proxy_cache_path
-syn keyword ngxDirective contained proxy_cache_purge
 syn keyword ngxDirective contained proxy_cache_revalidate
 syn keyword ngxDirective contained proxy_cache_use_stale
 syn keyword ngxDirective contained proxy_cache_valid
@@ -488,7 +465,6 @@ syn keyword ngxDirective contained proxy_requests
 syn keyword ngxDirective contained proxy_responses
 syn keyword ngxDirective contained proxy_send_lowat
 syn keyword ngxDirective contained proxy_send_timeout
-syn keyword ngxDirective contained proxy_session_drop
 syn keyword ngxDirective contained proxy_set_body
 syn keyword ngxDirective contained proxy_set_header
 syn keyword ngxDirective contained proxy_smtp_auth
@@ -513,7 +489,11 @@ syn keyword ngxDirective contained proxy_temp_file_write_size
 syn keyword ngxDirective contained proxy_temp_path
 syn keyword ngxDirective contained proxy_timeout
 syn keyword ngxDirective contained proxy_upload_rate
-syn keyword ngxDirective contained queue
+syn keyword ngxDirective contained quic_active_connection_id_limit
+syn keyword ngxDirective contained quic_bpf
+syn keyword ngxDirective contained quic_gso
+syn keyword ngxDirective contained quic_host_key
+syn keyword ngxDirective contained quic_retry
 syn keyword ngxDirective contained random
 syn keyword ngxDirective contained random_index
 syn keyword ngxDirective contained read_ahead
@@ -544,7 +524,6 @@ syn keyword ngxDirective contained scgi_cache_max_range_offset
 syn keyword ngxDirective contained scgi_cache_methods
 syn keyword ngxDirective contained scgi_cache_min_uses
 syn keyword ngxDirective contained scgi_cache_path
-syn keyword ngxDirective contained scgi_cache_purge
 syn keyword ngxDirective contained scgi_cache_revalidate
 syn keyword ngxDirective contained scgi_cache_use_stale
 syn keyword ngxDirective contained scgi_cache_valid
@@ -583,9 +562,6 @@ syn keyword ngxDirective contained server_name_in_redirect
 syn keyword ngxDirective contained server_names_hash_bucket_size
 syn keyword ngxDirective contained server_names_hash_max_size
 syn keyword ngxDirective contained server_tokens
-syn keyword ngxDirective contained session_log
-syn keyword ngxDirective contained session_log_format
-syn keyword ngxDirective contained session_log_zone
 syn keyword ngxDirective contained set_real_ip_from
 syn keyword ngxDirective contained slice
 syn keyword ngxDirective contained smtp_auth
@@ -633,11 +609,6 @@ syn keyword ngxDirective contained ssl_trusted_certificate
 syn keyword ngxDirective contained ssl_verify_client
 syn keyword ngxDirective contained ssl_verify_depth
 syn keyword ngxDirective contained starttls
-syn keyword ngxDirective contained state
-syn keyword ngxDirective contained status
-syn keyword ngxDirective contained status_format
-syn keyword ngxDirective contained status_zone
-syn keyword ngxDirective contained sticky
 syn keyword ngxDirective contained stub_status
 syn keyword ngxDirective contained sub_filter
 syn keyword ngxDirective contained sub_filter_last_modified
@@ -680,7 +651,6 @@ syn keyword ngxDirective contained uwsgi_cache_max_range_offset
 syn keyword ngxDirective contained uwsgi_cache_methods
 syn keyword ngxDirective contained uwsgi_cache_min_uses
 syn keyword ngxDirective contained uwsgi_cache_path
-syn keyword ngxDirective contained uwsgi_cache_purge
 syn keyword ngxDirective contained uwsgi_cache_revalidate
 syn keyword ngxDirective contained uwsgi_cache_use_stale
 syn keyword ngxDirective contained uwsgi_cache_valid
@@ -744,6 +714,62 @@ syn keyword ngxDirective contained xslt_string_param
 syn keyword ngxDirective contained xslt_stylesheet
 syn keyword ngxDirective contained xslt_types
 syn keyword ngxDirective contained zone
+
+" nginx-plus commercial extensions directives
+
+syn keyword ngxDirectiveBlock contained match
+syn keyword ngxDirectiveBlock contained otel_exporter
+
+syn keyword ngxDirective contained api
+syn keyword ngxDirective contained auth_jwt
+syn keyword ngxDirective contained auth_jwt_claim_set
+syn keyword ngxDirective contained auth_jwt_header_set
+syn keyword ngxDirective contained auth_jwt_key_cache
+syn keyword ngxDirective contained auth_jwt_key_file
+syn keyword ngxDirective contained auth_jwt_key_request
+syn keyword ngxDirective contained auth_jwt_leeway
+syn keyword ngxDirective contained auth_jwt_require
+syn keyword ngxDirective contained auth_jwt_type
+syn keyword ngxDirective contained f4f
+syn keyword ngxDirective contained f4f_buffer_size
+syn keyword ngxDirective contained fastcgi_cache_purge
+syn keyword ngxDirective contained health_check
+syn keyword ngxDirective contained health_check_timeout
+syn keyword ngxDirective contained hls
+syn keyword ngxDirective contained hls_buffers
+syn keyword ngxDirective contained hls_forward_args
+syn keyword ngxDirective contained hls_fragment
+syn keyword ngxDirective contained hls_mp4_buffer_size
+syn keyword ngxDirective contained hls_mp4_max_buffer_size
+syn keyword ngxDirective contained internal_redirect
+syn keyword ngxDirective contained keyval
+syn keyword ngxDirective contained keyval_zone
+syn keyword ngxDirective contained least_time
+syn keyword ngxDirective contained mp4_limit_rate
+syn keyword ngxDirective contained mp4_limit_rate_after
+syn keyword ngxDirective contained mqtt
+syn keyword ngxDirective contained mqtt_preread
+syn keyword ngxDirective contained mqtt_rewrite_buffer_size
+syn keyword ngxDirective contained mqtt_set_connect
+syn keyword ngxDirective contained ntlm
+syn keyword ngxDirective contained otel_service_name
+syn keyword ngxDirective contained otel_span_attr
+syn keyword ngxDirective contained otel_span_name
+syn keyword ngxDirective contained otel_trace
+syn keyword ngxDirective contained otel_trace_context
+syn keyword ngxDirective contained proxy_cache_purge
+syn keyword ngxDirective contained proxy_session_drop
+syn keyword ngxDirective contained queue
+syn keyword ngxDirective contained scgi_cache_purge
+syn keyword ngxDirective contained session_log
+syn keyword ngxDirective contained session_log_format
+syn keyword ngxDirective contained session_log_zone
+syn keyword ngxDirective contained state
+syn keyword ngxDirective contained status
+syn keyword ngxDirective contained status_format
+syn keyword ngxDirective contained status_zone
+syn keyword ngxDirective contained sticky
+syn keyword ngxDirective contained uwsgi_cache_purge
 syn keyword ngxDirective contained zone_sync
 syn keyword ngxDirective contained zone_sync_buffers
 syn keyword ngxDirective contained zone_sync_connect_retry_interval
@@ -765,7 +791,6 @@ syn keyword ngxDirective contained zone_sync_ssl_trusted_certificate
 syn keyword ngxDirective contained zone_sync_ssl_verify
 syn keyword ngxDirective contained zone_sync_ssl_verify_depth
 syn keyword ngxDirective contained zone_sync_timeout
-
 
 " 3rd party modules list taken from
 " https://github.com/freebsd/freebsd-ports/blob/main/www/nginx-devel/Makefile.extmod
@@ -837,52 +862,6 @@ syn keyword ngxDirectiveThirdParty contained brotli_window
 " https://github.com/torden/ngx_cache_purge
 syn keyword ngxDirectiveThirdParty contained cache_purge_response_type
 
-" https://github.com/nginx-clojure/nginx-clojure
-syn keyword ngxDirectiveThirdParty contained access_handler_code
-syn keyword ngxDirectiveThirdParty contained access_handler_name
-syn keyword ngxDirectiveThirdParty contained access_handler_property
-syn keyword ngxDirectiveThirdParty contained access_handler_type
-syn keyword ngxDirectiveThirdParty contained always_read_body
-syn keyword ngxDirectiveThirdParty contained auto_upgrade_ws
-syn keyword ngxDirectiveThirdParty contained body_filter_code
-syn keyword ngxDirectiveThirdParty contained body_filter_name
-syn keyword ngxDirectiveThirdParty contained body_filter_property
-syn keyword ngxDirectiveThirdParty contained body_filter_type
-syn keyword ngxDirectiveThirdParty contained content_handler_code
-syn keyword ngxDirectiveThirdParty contained content_handler_name
-syn keyword ngxDirectiveThirdParty contained content_handler_property
-syn keyword ngxDirectiveThirdParty contained content_handler_type
-syn keyword ngxDirectiveThirdParty contained handler_code
-syn keyword ngxDirectiveThirdParty contained handler_name
-syn keyword ngxDirectiveThirdParty contained handler_type
-syn keyword ngxDirectiveThirdParty contained handlers_lazy_init
-syn keyword ngxDirectiveThirdParty contained header_filter_code
-syn keyword ngxDirectiveThirdParty contained header_filter_name
-syn keyword ngxDirectiveThirdParty contained header_filter_property
-syn keyword ngxDirectiveThirdParty contained header_filter_type
-syn keyword ngxDirectiveThirdParty contained jvm_classpath
-syn keyword ngxDirectiveThirdParty contained jvm_classpath_check
-syn keyword ngxDirectiveThirdParty contained jvm_exit_handler_code
-syn keyword ngxDirectiveThirdParty contained jvm_exit_handler_name
-syn keyword ngxDirectiveThirdParty contained jvm_handler_type
-syn keyword ngxDirectiveThirdParty contained jvm_init_handler_code
-syn keyword ngxDirectiveThirdParty contained jvm_init_handler_name
-syn keyword ngxDirectiveThirdParty contained jvm_options
-syn keyword ngxDirectiveThirdParty contained jvm_path
-syn keyword ngxDirectiveThirdParty contained jvm_var
-syn keyword ngxDirectiveThirdParty contained jvm_workers
-syn keyword ngxDirectiveThirdParty contained log_handler_code
-syn keyword ngxDirectiveThirdParty contained log_handler_name
-syn keyword ngxDirectiveThirdParty contained log_handler_property
-syn keyword ngxDirectiveThirdParty contained log_handler_type
-syn keyword ngxDirectiveThirdParty contained max_balanced_tcp_connections
-syn keyword ngxDirectiveThirdParty contained rewrite_handler_code
-syn keyword ngxDirectiveThirdParty contained rewrite_handler_name
-syn keyword ngxDirectiveThirdParty contained rewrite_handler_property
-syn keyword ngxDirectiveThirdParty contained rewrite_handler_type
-syn keyword ngxDirectiveThirdParty contained shared_map
-syn keyword ngxDirectiveThirdParty contained write_page_size
-
 " https://github.com/AirisX/nginx_cookie_flag_module
 syn keyword ngxDirectiveThirdParty contained set_cookie_flag
 
@@ -931,29 +910,6 @@ syn keyword ngxDirectiveThirdParty contained dns_ipv6
 syn keyword ngxDirectiveThirdParty contained dns_update
 syn keyword ngxDirectiveThirdParty contained dynamic_state_file
 syn keyword ngxDirectiveThirdParty contained dynamic_upstream
-
-" https://github.com/ZigzagAK/ngx_dynamic_healthcheck
-syn keyword ngxDirectiveThirdParty contained check
-syn keyword ngxDirectiveThirdParty contained check_disable_host
-syn keyword ngxDirectiveThirdParty contained check_exclude_host
-syn keyword ngxDirectiveThirdParty contained check_persistent
-syn keyword ngxDirectiveThirdParty contained check_request_body
-syn keyword ngxDirectiveThirdParty contained check_request_headers
-syn keyword ngxDirectiveThirdParty contained check_request_uri
-syn keyword ngxDirectiveThirdParty contained check_response_body
-syn keyword ngxDirectiveThirdParty contained check_response_codes
-syn keyword ngxDirectiveThirdParty contained healthcheck
-syn keyword ngxDirectiveThirdParty contained healthcheck_buffer_size
-syn keyword ngxDirectiveThirdParty contained healthcheck_disable_host
-syn keyword ngxDirectiveThirdParty contained healthcheck_get
-syn keyword ngxDirectiveThirdParty contained healthcheck_persistent
-syn keyword ngxDirectiveThirdParty contained healthcheck_request_body
-syn keyword ngxDirectiveThirdParty contained healthcheck_request_headers
-syn keyword ngxDirectiveThirdParty contained healthcheck_request_uri
-syn keyword ngxDirectiveThirdParty contained healthcheck_response_body
-syn keyword ngxDirectiveThirdParty contained healthcheck_response_codes
-syn keyword ngxDirectiveThirdParty contained healthcheck_status
-syn keyword ngxDirectiveThirdParty contained healthcheck_update
 
 " https://github.com/openresty/encrypted-session-nginx-module
 syn keyword ngxDirectiveThirdParty contained encrypted_session_expires
@@ -1004,6 +960,7 @@ syn keyword ngxDirectiveThirdParty contained auth_gss_map_to_local
 syn keyword ngxDirectiveThirdParty contained auth_gss_realm
 syn keyword ngxDirectiveThirdParty contained auth_gss_service_ccache
 syn keyword ngxDirectiveThirdParty contained auth_gss_service_name
+syn keyword ngxDirectiveThirdParty contained auth_gss_zone_name
 
 " https://github.com/kvspb/nginx-auth-ldap
 syn keyword ngxDirectiveThirdParty contained auth_ldap
@@ -1033,6 +990,7 @@ syn keyword ngxDirectiveThirdParty contained eval_subrequest_in_memory
 
 " https://github.com/aperezdc/ngx-fancyindex
 syn keyword ngxDirectiveThirdParty contained fancyindex
+syn keyword ngxDirectiveThirdParty contained fancyindex_case_sensitive
 syn keyword ngxDirectiveThirdParty contained fancyindex_css_href
 syn keyword ngxDirectiveThirdParty contained fancyindex_default_sort
 syn keyword ngxDirectiveThirdParty contained fancyindex_directories_first
@@ -1121,6 +1079,7 @@ syn keyword ngxDirectiveThirdParty contained nchan_publisher_upstream_request
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub_channel_id
 syn keyword ngxDirectiveThirdParty contained nchan_pubsub_location
+syn keyword ngxDirectiveThirdParty contained nchan_redis_accurate_subscriber_count
 syn keyword ngxDirectiveThirdParty contained nchan_redis_cluster_check_interval
 syn keyword ngxDirectiveThirdParty contained nchan_redis_cluster_check_interval_backoff
 syn keyword ngxDirectiveThirdParty contained nchan_redis_cluster_check_interval_jitter
@@ -1138,6 +1097,11 @@ syn keyword ngxDirectiveThirdParty contained nchan_redis_connect_timeout
 syn keyword ngxDirectiveThirdParty contained nchan_redis_discovered_ip_range_blacklist
 syn keyword ngxDirectiveThirdParty contained nchan_redis_fakesub_timer_interval
 syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_cache_timeout
+syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_keepalive_backoff
+syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_keepalive_jitter
+syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_keepalive_max
+syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_keepalive_min
+syn keyword ngxDirectiveThirdParty contained nchan_redis_idle_channel_keepalive_safety_margin
 syn keyword ngxDirectiveThirdParty contained nchan_redis_load_scripts_unconditionally
 syn keyword ngxDirectiveThirdParty contained nchan_redis_namespace
 syn keyword ngxDirectiveThirdParty contained nchan_redis_node_connect_timeout
@@ -1173,6 +1137,9 @@ syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_server_name
 syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_trusted_certificate
 syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_trusted_certificate_path
 syn keyword ngxDirectiveThirdParty contained nchan_redis_tls_verify_certificate
+syn keyword ngxDirectiveThirdParty contained nchan_redis_upstream_stats
+syn keyword ngxDirectiveThirdParty contained nchan_redis_upstream_stats_disconnected_timeout
+syn keyword ngxDirectiveThirdParty contained nchan_redis_upstream_stats_enabled
 syn keyword ngxDirectiveThirdParty contained nchan_redis_url
 syn keyword ngxDirectiveThirdParty contained nchan_redis_username
 syn keyword ngxDirectiveThirdParty contained nchan_redis_wait_after_connecting
@@ -1323,6 +1290,7 @@ syn keyword ngxDirectiveThirdParty contained upload_progress_jsonp_parameter
 syn keyword ngxDirectiveThirdParty contained upload_progress_template
 
 " https://github.com/yaoweibin/nginx_upstream_check_module
+syn keyword ngxDirectiveThirdParty contained check
 syn keyword ngxDirectiveThirdParty contained check_fastcgi_param
 syn keyword ngxDirectiveThirdParty contained check_http_expect_alive
 syn keyword ngxDirectiveThirdParty contained check_http_send
@@ -1335,6 +1303,7 @@ syn keyword ngxDirectiveThirdParty contained fair
 syn keyword ngxDirectiveThirdParty contained upstream_fair_shm_size
 
 " https://github.com/ayty-adrianomartins/nginx-sticky-module-ng
+syn keyword ngxDirectiveThirdParty contained sticky_hide_cookie
 syn keyword ngxDirectiveThirdParty contained sticky_no_fallback
 
 " https://github.com/Novetta/nginx-video-thumbextractor-module
@@ -1421,6 +1390,8 @@ syn keyword ngxDirectiveThirdParty contained lua_socket_pool_size
 syn keyword ngxDirectiveThirdParty contained lua_socket_read_timeout
 syn keyword ngxDirectiveThirdParty contained lua_socket_send_lowat
 syn keyword ngxDirectiveThirdParty contained lua_socket_send_timeout
+syn keyword ngxDirectiveThirdParty contained lua_ssl_certificate
+syn keyword ngxDirectiveThirdParty contained lua_ssl_certificate_key
 syn keyword ngxDirectiveThirdParty contained lua_ssl_ciphers
 syn keyword ngxDirectiveThirdParty contained lua_ssl_conf_command
 syn keyword ngxDirectiveThirdParty contained lua_ssl_crl
@@ -1834,16 +1805,6 @@ syn keyword ngxDirectiveThirdParty contained slowfs_cache_purge
 syn keyword ngxDirectiveThirdParty contained slowfs_cache_valid
 syn keyword ngxDirectiveThirdParty contained slowfs_temp_path
 
-" https://github.com/kawakibi/ngx_small_light
-syn keyword ngxDirectiveThirdParty contained small_light
-syn keyword ngxDirectiveThirdParty contained small_light_buffer
-syn keyword ngxDirectiveThirdParty contained small_light_getparam_mode
-syn keyword ngxDirectiveThirdParty contained small_light_imlib2_temp_dir
-syn keyword ngxDirectiveThirdParty contained small_light_material_dir
-syn keyword ngxDirectiveThirdParty contained small_light_pattern_define
-syn keyword ngxDirectiveThirdParty contained small_light_radius_max
-syn keyword ngxDirectiveThirdParty contained small_light_sigma_max
-
 " https://github.com/openresty/srcache-nginx-module
 syn keyword ngxDirectiveThirdParty contained srcache_buffer
 syn keyword ngxDirectiveThirdParty contained srcache_default_expire
@@ -1979,6 +1940,14 @@ syn keyword ngxDirectiveThirdParty contained websockify_connect_timeout
 syn keyword ngxDirectiveThirdParty contained websockify_pass
 syn keyword ngxDirectiveThirdParty contained websockify_read_timeout
 syn keyword ngxDirectiveThirdParty contained websockify_send_timeout
+
+" https://github.com/vozlt/nginx-module-sts
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_average_method
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_display
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_display_format
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_display_jsonp
+syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_zone
 
 " highlight
 
