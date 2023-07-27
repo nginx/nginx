@@ -1171,7 +1171,8 @@ ngx_quic_generate_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         delay = ngx_current_msec - ctx->ack_delay_start;
         qc = ngx_quic_get_connection(c);
 
-        if (ctx->send_ack < NGX_QUIC_MAX_ACK_GAP
+        if (ngx_queue_empty(&ctx->frames)
+            && ctx->send_ack < NGX_QUIC_MAX_ACK_GAP
             && delay < qc->tp.max_ack_delay)
         {
             if (!qc->push.timer_set && !qc->closing) {
