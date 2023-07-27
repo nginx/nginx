@@ -358,7 +358,7 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
         len = ngx_min(segsize, (size_t) (end - p));
 
-        if (len && cg->in_flight < cg->window) {
+        if (len && cg->in_flight + (p - dst) < cg->window) {
 
             n = ngx_quic_output_packet(c, ctx, p, len, len);
             if (n == NGX_ERROR) {
