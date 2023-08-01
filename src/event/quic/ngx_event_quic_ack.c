@@ -840,7 +840,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
             continue;
         }
 
-        q = ngx_queue_head(&ctx->sent);
+        q = ngx_queue_last(&ctx->sent);
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
         if (f->pnum <= ctx->largest_ack
