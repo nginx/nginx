@@ -548,6 +548,7 @@ ngx_quic_persistent_congestion(ngx_connection_t *c)
 void
 ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
+    uint64_t                pnum;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f, *start;
     ngx_quic_stream_t      *qs;
@@ -556,6 +557,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     qc = ngx_quic_get_connection(c);
     q = ngx_queue_head(&ctx->sent);
     start = ngx_queue_data(q, ngx_quic_frame_t, queue);
+    pnum = start->pnum;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic resend packet pnum:%uL", start->pnum);
@@ -565,7 +567,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     do {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (f->pnum != start->pnum) {
+        if (f->pnum != pnum) {
             break;
         }
 
