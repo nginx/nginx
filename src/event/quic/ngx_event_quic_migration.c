@@ -46,7 +46,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
      * An endpoint MUST expand datagrams that contain a PATH_RESPONSE frame
      * to at least the smallest allowed maximum datagram size of 1200 bytes.
      */
-    if (ngx_quic_frame_sendto(c, &frame, 1200, pkt->path) != NGX_OK) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, pkt->path) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -544,13 +544,13 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
      */
 
      /* same applies to PATH_RESPONSE frames */
-    if (ngx_quic_frame_sendto(c, &frame, 1200, path) != NGX_OK) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, path) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
     ngx_memcpy(frame.u.path_challenge.data, path->challenge2, 8);
 
-    if (ngx_quic_frame_sendto(c, &frame, 1200, path) != NGX_OK) {
+    if (ngx_quic_frame_sendto(c, &frame, 1200, path) == NGX_ERROR) {
         return NGX_ERROR;
     }
 

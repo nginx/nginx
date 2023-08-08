@@ -1233,7 +1233,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     sent = ngx_quic_send(c, res.data, res.len, path->sockaddr, path->socklen);
     if (sent < 0) {
-        return NGX_ERROR;
+        return sent;
     }
 
     path->sent += sent;
