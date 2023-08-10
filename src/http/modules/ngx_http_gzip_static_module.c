@@ -242,9 +242,12 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
     }
 
     h->hash = 1;
+    h->next = NULL;
     ngx_str_set(&h->key, "Content-Encoding");
     ngx_str_set(&h->value, "gzip");
     r->headers_out.content_encoding = h;
+
+    r->allow_ranges = 1;
 
     /* we need to allocate all before the header would be sent */
 
@@ -270,6 +273,7 @@ ngx_http_gzip_static_handler(ngx_http_request_t *r)
     b->in_file = b->file_last ? 1 : 0;
     b->last_buf = (r == r->main) ? 1 : 0;
     b->last_in_chain = 1;
+    b->sync = (b->last_buf || b->in_file) ? 0 : 1;
 
     b->file->fd = of.fd;
     b->file->name = path;

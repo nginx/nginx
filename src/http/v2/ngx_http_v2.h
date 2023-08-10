@@ -13,8 +13,7 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_V2_ALPN_ADVERTISE       "\x02h2"
-#define NGX_HTTP_V2_NPN_ADVERTISE        NGX_HTTP_V2_ALPN_ADVERTISE
+#define NGX_HTTP_V2_ALPN_PROTO           "\x02h2"
 
 #define NGX_HTTP_V2_STATE_BUFFER_SIZE    16
 
@@ -154,12 +153,12 @@ struct ngx_http_v2_connection_s {
     ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
+    ngx_uint_t                       closed_nodes;
     ngx_uint_t                       last_sid;
     ngx_uint_t                       last_push;
 
     time_t                           lingering_time;
 
-    unsigned                         closed_nodes:8;
     unsigned                         settings_ack:1;
     unsigned                         table_update:1;
     unsigned                         blocked:1;
@@ -310,12 +309,6 @@ ngx_int_t ngx_http_v2_get_indexed_header(ngx_http_v2_connection_t *h2c,
 ngx_int_t ngx_http_v2_add_header(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_header_t *header);
 ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
-
-
-ngx_int_t ngx_http_v2_huff_decode(u_char *state, u_char *src, size_t len,
-    u_char **dst, ngx_uint_t last, ngx_log_t *log);
-size_t ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst,
-    ngx_uint_t lower);
 
 
 #define ngx_http_v2_prefix(bits)  ((1 << (bits)) - 1)

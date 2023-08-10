@@ -495,6 +495,8 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 return NGX_ERROR;
             }
 
+            if (ls[i].type != SOCK_DGRAM || !ngx_test_config) {
+
             if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR,
                            (const void *) &reuseaddr, sizeof(int))
                 == -1)
@@ -510,6 +512,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 }
 
                 return NGX_ERROR;
+                }
             }
 
 #if (NGX_HAVE_REUSEPORT)
@@ -657,7 +660,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                 /*
                  * on OpenVZ after suspend/resume EADDRINUSE
                  * may be returned by listen() instead of bind(), see
-                 * https://bugzilla.openvz.org/show_bug.cgi?id=2470
+                 * https://bugs.openvz.org/browse/OVZ-5587
                  */
 
                 if (err != NGX_EADDRINUSE || !ngx_test_config) {

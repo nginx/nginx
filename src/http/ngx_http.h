@@ -104,10 +104,10 @@ ngx_int_t ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args, ngx_uint_t *flags);
 ngx_int_t ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_uint_t allow_underscores);
-ngx_int_t ngx_http_parse_multi_header_lines(ngx_array_t *headers,
-    ngx_str_t *name, ngx_str_t *value);
-ngx_int_t ngx_http_parse_set_cookie_lines(ngx_array_t *headers,
-    ngx_str_t *name, ngx_str_t *value);
+ngx_table_elt_t *ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value);
+ngx_table_elt_t *ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value);
 ngx_int_t ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len,
     ngx_str_t *value);
 void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
@@ -165,6 +165,14 @@ ngx_int_t ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 
 #if (NGX_HTTP_DEGRADATION)
 ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
+#endif
+
+
+#if (NGX_HTTP_V2)
+ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
+    u_char **dst, ngx_uint_t last, ngx_log_t *log);
+size_t ngx_http_huff_encode(u_char *src, size_t len, u_char *dst,
+    ngx_uint_t lower);
 #endif
 
 

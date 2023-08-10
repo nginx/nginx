@@ -240,16 +240,16 @@ static u_long
 ngx_http_geoip_addr(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
 {
     ngx_addr_t           addr;
-    ngx_array_t         *xfwd;
+    ngx_table_elt_t     *xfwd;
     struct sockaddr_in  *sin;
 
     addr.sockaddr = r->connection->sockaddr;
     addr.socklen = r->connection->socklen;
     /* addr.name = r->connection->addr_text; */
 
-    xfwd = &r->headers_in.x_forwarded_for;
+    xfwd = r->headers_in.x_forwarded_for;
 
-    if (xfwd->nelts > 0 && gcf->proxies != NULL) {
+    if (xfwd != NULL && gcf->proxies != NULL) {
         (void) ngx_http_get_forwarded_addr(r, &addr, xfwd, NULL,
                                            gcf->proxies, gcf->proxy_recursive);
     }
@@ -292,7 +292,7 @@ static geoipv6_t
 ngx_http_geoip_addr_v6(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
 {
     ngx_addr_t            addr;
-    ngx_array_t          *xfwd;
+    ngx_table_elt_t      *xfwd;
     in_addr_t             addr4;
     struct in6_addr       addr6;
     struct sockaddr_in   *sin;
@@ -302,9 +302,9 @@ ngx_http_geoip_addr_v6(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
     addr.socklen = r->connection->socklen;
     /* addr.name = r->connection->addr_text; */
 
-    xfwd = &r->headers_in.x_forwarded_for;
+    xfwd = r->headers_in.x_forwarded_for;
 
-    if (xfwd->nelts > 0 && gcf->proxies != NULL) {
+    if (xfwd != NULL && gcf->proxies != NULL) {
         (void) ngx_http_get_forwarded_addr(r, &addr, xfwd, NULL,
                                            gcf->proxies, gcf->proxy_recursive);
     }

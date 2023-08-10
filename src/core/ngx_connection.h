@@ -172,6 +172,7 @@ struct ngx_connection_s {
     unsigned            timedout:1;
     unsigned            error:1;
     unsigned            destroyed:1;
+    unsigned            pipeline:1;
 
     unsigned            idle:1;
     unsigned            reusable:1;
@@ -184,8 +185,9 @@ struct ngx_connection_s {
     unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
 
     unsigned            need_last_buf:1;
+    unsigned            need_flush_buf:1;
 
-#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
+#if (NGX_HAVE_SENDFILE_NODISKIO || NGX_COMPAT)
     unsigned            busy_count:2;
 #endif
 

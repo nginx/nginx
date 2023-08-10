@@ -101,7 +101,7 @@ ngx_module_t  ngx_http_auth_request_module = {
 static ngx_int_t
 ngx_http_auth_request_handler(ngx_http_request_t *r)
 {
-    ngx_table_elt_t               *h, *ho;
+    ngx_table_elt_t               *h, *ho, **ph;
     ngx_http_request_t            *sr;
     ngx_http_post_subrequest_t    *ps;
     ngx_http_auth_request_ctx_t   *ctx;
@@ -147,15 +147,21 @@ ngx_http_auth_request_handler(ngx_http_request_t *r)
                 h = sr->upstream->headers_in.www_authenticate;
             }
 
-            if (h) {
+            ph = &r->headers_out.www_authenticate;
+
+            while (h) {
                 ho = ngx_list_push(&r->headers_out.headers);
                 if (ho == NULL) {
                     return NGX_ERROR;
                 }
 
                 *ho = *h;
+                ho->next = NULL;
 
-                r->headers_out.www_authenticate = ho;
+                *ph = ho;
+                ph = &ho->next;
+
+                h = h->next;
             }
 
             return ctx->status;

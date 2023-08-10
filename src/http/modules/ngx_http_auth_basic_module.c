@@ -16,7 +16,7 @@
 
 typedef struct {
     ngx_http_complex_value_t  *realm;
-    ngx_http_complex_value_t   user_file;
+    ngx_http_complex_value_t  *user_file;
 } ngx_http_auth_basic_loc_conf_t;
 
 
@@ -107,7 +107,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_basic_module);
 
-    if (alcf->realm == NULL || alcf->user_file.value.data == NULL) {
+    if (alcf->realm == NULL || alcf->user_file == NULL) {
         return NGX_DECLINED;
     }
 
@@ -133,7 +133,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_http_complex_value(r, &alcf->user_file, &user_file) != NGX_OK) {
+    if (ngx_http_complex_value(r, alcf->user_file, &user_file) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -339,6 +339,7 @@ ngx_http_auth_basic_set_realm(ngx_http_request_t *r, ngx_str_t *realm)
     *p = '"';
 
     r->headers_out.www_authenticate->hash = 1;
+    r->headers_out.www_authenticate->next = NULL;
     ngx_str_set(&r->headers_out.www_authenticate->key, "WWW-Authenticate");
     r->headers_out.www_authenticate->value.data = basic;
     r->headers_out.www_authenticate->value.len = len;
@@ -357,6 +358,9 @@ ngx_http_auth_basic_create_loc_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+    conf->realm = NGX_CONF_UNSET_PTR;
+    conf->user_file = NGX_CONF_UNSET_PTR;
+
     return conf;
 }
 
@@ -367,13 +371,8 @@ ngx_http_auth_basic_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_auth_basic_loc_conf_t  *prev = parent;
     ngx_http_auth_basic_loc_conf_t  *conf = child;
 
-    if (conf->realm == NULL) {
-        conf->realm = prev->realm;
-    }
-
-    if (conf->user_file.value.data == NULL) {
-        conf->user_file = prev->user_file;
-    }
+    ngx_conf_merge_ptr_value(conf->realm, prev->realm, NULL);
+    ngx_conf_merge_ptr_value(conf->user_file, prev->user_file, NULL);
 
     return NGX_CONF_OK;
 }
@@ -406,8 +405,13 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                         *value;
     ngx_http_compile_complex_value_t   ccv;
 
-    if (alcf->user_file.value.data) {
+    if (alcf->user_file != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
+    }
+
+    alcf->user_file = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+    if (alcf->user_file == NULL) {
+        return NGX_CONF_ERROR;
     }
 
     value = cf->args->elts;
@@ -416,7 +420,7 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ccv.cf = cf;
     ccv.value = &value[1];
-    ccv.complex_value = &alcf->user_file;
+    ccv.complex_value = alcf->user_file;
     ccv.zero = 1;
     ccv.conf_prefix = 1;
 

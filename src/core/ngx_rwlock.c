@@ -89,22 +89,10 @@ ngx_rwlock_rlock(ngx_atomic_t *lock)
 void
 ngx_rwlock_unlock(ngx_atomic_t *lock)
 {
-    ngx_atomic_uint_t  readers;
-
-    readers = *lock;
-
-    if (readers == NGX_RWLOCK_WLOCK) {
+    if (*lock == NGX_RWLOCK_WLOCK) {
         (void) ngx_atomic_cmp_set(lock, NGX_RWLOCK_WLOCK, 0);
-        return;
-    }
-
-    for ( ;; ) {
-
-        if (ngx_atomic_cmp_set(lock, readers, readers - 1)) {
-            return;
-        }
-
-        readers = *lock;
+    } else {
+        (void) ngx_atomic_fetch_add(lock, -1);
     }
 }
 

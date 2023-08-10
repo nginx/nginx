@@ -147,10 +147,6 @@ struct ngx_event_aio_s {
 
     ngx_fd_t                   fd;
 
-#if (NGX_HAVE_AIO_SENDFILE || NGX_COMPAT)
-    ssize_t                  (*preload_handler)(ngx_buf_t *file);
-#endif
-
 #if (NGX_HAVE_EVENTFD)
     int64_t                    res;
 #endif
@@ -466,6 +462,7 @@ extern ngx_uint_t             ngx_accept_events;
 extern ngx_uint_t             ngx_accept_mutex_held;
 extern ngx_msec_t             ngx_accept_mutex_delay;
 extern ngx_int_t              ngx_accept_disabled;
+extern ngx_uint_t             ngx_use_exclusive_accept;
 
 
 #if (NGX_STAT_STUB)
@@ -497,12 +494,6 @@ extern ngx_module_t           ngx_event_core_module;
 
 
 void ngx_event_accept(ngx_event_t *ev);
-#if !(NGX_WIN32)
-void ngx_event_recvmsg(ngx_event_t *ev);
-void ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
-    ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
-#endif
-void ngx_delete_udp_connection(void *data);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
 u_char *ngx_accept_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -532,6 +523,7 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
+#include <ngx_event_udp.h>
 
 #if (NGX_WIN32)
 #include <ngx_iocp_module.h>

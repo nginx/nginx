@@ -329,7 +329,7 @@ static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 static ngx_int_t
 ngx_http_ssi_header_filter(ngx_http_request_t *r)
 {
-    ngx_http_ssi_ctx_t       *ctx;
+    ngx_http_ssi_ctx_t       *ctx, *mctx;
     ngx_http_ssi_loc_conf_t  *slcf;
 
     slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
@@ -340,6 +340,8 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     {
         return ngx_http_next_header_filter(r);
     }
+
+    mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
     if (ctx == NULL) {
@@ -367,6 +369,26 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
     r->filter_need_in_memory = 1;
 
     if (r == r->main) {
+
+        if (mctx) {
+
+            /*
+             * if there was a shared context previously used as main,
+             * copy variables and blocks
+             */
+
+            ctx->variables = mctx->variables;
+            ctx->blocks = mctx->blocks;
+
+#if (NGX_PCRE)
+            ctx->ncaptures = mctx->ncaptures;
+            ctx->captures = mctx->captures;
+            ctx->captures_data = mctx->captures_data;
+#endif
+
+            mctx->shared = 0;
+        }
+
         ngx_http_clear_content_length(r);
         ngx_http_clear_accept_ranges(r);
 
@@ -379,6 +401,10 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
         } else {
             ngx_http_weak_etag(r);
         }
+
+    } else if (mctx == NULL) {
+        ngx_http_set_ctx(r->main, ctx, ngx_http_ssi_filter_module);
+        ctx->shared = 1;
     }
 
     return ngx_http_next_header_filter(r);
@@ -405,6 +431,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 
     if (ctx == NULL
+        || (ctx->shared && r == r->main)
         || (in == NULL
             && ctx->buf == NULL
             && ctx->in == NULL

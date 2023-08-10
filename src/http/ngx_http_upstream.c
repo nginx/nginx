@@ -102,6 +102,9 @@ static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_upstream_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t
+    ngx_http_upstream_process_multi_header_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_content_length(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_last_modified(ngx_http_request_t *r,
@@ -148,11 +151,6 @@ static ngx_int_t ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
-#if (NGX_HTTP_GZIP)
-static ngx_int_t ngx_http_upstream_copy_content_encoding(ngx_http_request_t *r,
-    ngx_table_elt_t *h, ngx_uint_t offset);
-#endif
-
 static ngx_int_t ngx_http_upstream_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_upstream_addr_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -187,6 +185,8 @@ static void ngx_http_upstream_ssl_handshake(ngx_http_request_t *,
     ngx_http_upstream_t *u, ngx_connection_t *c);
 static void ngx_http_upstream_ssl_save_session(ngx_connection_t *c);
 static ngx_int_t ngx_http_upstream_ssl_name(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_connection_t *c);
+static ngx_int_t ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_connection_t *c);
 #endif
 
@@ -230,7 +230,7 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  offsetof(ngx_http_headers_out_t, server), 0 },
 
     { ngx_string("WWW-Authenticate"),
-                 ngx_http_upstream_process_header_line,
+                 ngx_http_upstream_process_multi_header_lines,
                  offsetof(ngx_http_upstream_headers_in_t, www_authenticate),
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
@@ -240,12 +240,13 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_rewrite_location, 0, 0 },
 
     { ngx_string("Refresh"),
-                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_process_header_line,
+                 offsetof(ngx_http_upstream_headers_in_t, refresh),
                  ngx_http_upstream_rewrite_refresh, 0, 0 },
 
     { ngx_string("Set-Cookie"),
                  ngx_http_upstream_process_set_cookie,
-                 offsetof(ngx_http_upstream_headers_in_t, cookies),
+                 offsetof(ngx_http_upstream_headers_in_t, set_cookie),
                  ngx_http_upstream_rewrite_set_cookie, 0, 1 },
 
     { ngx_string("Content-Disposition"),
@@ -263,8 +264,7 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  offsetof(ngx_http_headers_out_t, expires), 1 },
 
     { ngx_string("Accept-Ranges"),
-                 ngx_http_upstream_process_header_line,
-                 offsetof(ngx_http_upstream_headers_in_t, accept_ranges),
+                 ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_allow_ranges,
                  offsetof(ngx_http_headers_out_t, accept_ranges), 1 },
 
@@ -315,12 +315,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_process_transfer_encoding, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
 
-#if (NGX_HTTP_GZIP)
     { ngx_string("Content-Encoding"),
-                 ngx_http_upstream_process_header_line,
-                 offsetof(ngx_http_upstream_headers_in_t, content_encoding),
-                 ngx_http_upstream_copy_content_encoding, 0, 0 },
-#endif
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, content_encoding), 0 },
 
     { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
@@ -1515,6 +1513,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t          rc;
     ngx_connection_t  *c;
+    ngx_http_core_loc_conf_t  *clcf;
 
     r->connection->log->action = "connecting to upstream";
 
@@ -1601,10 +1600,12 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
     u->writer.out = NULL;
     u->writer.last = &u->writer.out;
     u->writer.connection = c;
-    u->writer.limit = 0;
+    u->writer.limit = clcf->sendfile_max_chunk;
 
     if (u->request_sent) {
         if (ngx_http_upstream_reinit(r, u) != NGX_OK) {
@@ -1685,12 +1686,23 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         return;
     }
 
-    c->sendfile = 0;
-    u->output.sendfile = 0;
+
     ngx_http_upstream_rr_peer_data_t *rrp = (ngx_http_upstream_rr_peer_data_t *)(u->peer.data);
 
     if (u->conf->ssl_server_name || u->conf->ssl_verify) {
         if (ngx_http_upstream_ssl_name(r, u, c) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
+    if (u->conf->ssl_certificate
+        && u->conf->ssl_certificate->value.len
+        && (u->conf->ssl_certificate->lengths
+            || u->conf->ssl_certificate_key->lengths))
+    {
+        if (ngx_http_upstream_ssl_certificate(r, u, c) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
             return;
@@ -1782,6 +1794,11 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
                               &u->ssl_name);
                 goto failed;
             }
+        }
+
+        if (!c->ssl->sendfile) {
+            c->sendfile = 0;
+            u->output.sendfile = 0;
         }
 
         c->write->handler = ngx_http_upstream_handler;
@@ -1913,6 +1930,45 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
 done:
 
     u->ssl_name = name;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_connection_t *c)
+{
+    ngx_str_t  cert, key;
+
+    if (ngx_http_complex_value(r, u->conf->ssl_certificate, &cert)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream ssl cert: \"%s\"", cert.data);
+
+    if (*cert.data == '\0') {
+        return NGX_OK;
+    }
+
+    if (ngx_http_complex_value(r, u->conf->ssl_certificate_key, &key)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream ssl key: \"%s\"", key.data);
+
+    if (ngx_ssl_connection_certificate(c, r->pool, &cert, &key,
+                                       u->conf->ssl_passwords)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
 
     return NGX_OK;
 }
@@ -2065,6 +2121,10 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
             }
 
             c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
+        }
+
+        if (c->read->ready) {
+            ngx_post_event(c->read, &ngx_posted_events);
         }
 
         return;
@@ -2596,7 +2656,7 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
 {
     ngx_int_t                  status;
     ngx_uint_t                 i;
-    ngx_table_elt_t           *h;
+    ngx_table_elt_t           *h, *ho, **ph;
     ngx_http_err_page_t       *err_page;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -2625,22 +2685,35 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
             if (status == NGX_HTTP_UNAUTHORIZED
                 && u->headers_in.www_authenticate)
             {
-                h = ngx_list_push(&r->headers_out.headers);
+                h = u->headers_in.www_authenticate;
+                ph = &r->headers_out.www_authenticate;
 
-                if (h == NULL) {
+                while (h) {
+                    ho = ngx_list_push(&r->headers_out.headers);
+
+                    if (ho == NULL) {
                     ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
                     return NGX_OK;
                 }
 
-                *h = *u->headers_in.www_authenticate;
+                    *ho = *h;
+                    ho->next = NULL;
 
-                r->headers_out.www_authenticate = h;
+                    *ph = ho;
+                    ph = &ho->next;
+
+                    h = h->next;
+                }
             }
 
 #if (NGX_HTTP_CACHE)
 
             if (r->cache) {
+
+                if (u->headers_in.no_cache || u->headers_in.expired) {
+                    u->cacheable = 0;
+                }
 
                 if (u->cacheable) {
                     time_t  valid;
@@ -2736,6 +2809,10 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
+    if (u->headers_in.no_cache || u->headers_in.expired) {
+        u->cacheable = 0;
+    }
+
     if (u->headers_in.x_accel_redirect
         && !(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT))
     {
@@ -2754,6 +2831,10 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
                 part = part->next;
                 h = part->elts;
                 i = 0;
+            }
+
+            if (h[i].hash == 0) {
+                continue;
             }
 
             hh = ngx_hash_find(&umcf->headers_in_hash, h[i].hash,
@@ -2807,6 +2888,10 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
             part = part->next;
             h = part->elts;
             i = 0;
+        }
+
+        if (h[i].hash == 0) {
+            continue;
         }
 
         if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
@@ -3792,12 +3877,34 @@ ngx_http_upstream_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
 {
     ngx_str_t                  name;
     ngx_event_pipe_t          *p;
+    ngx_connection_t          *c;
     ngx_thread_pool_t         *tp;
     ngx_http_request_t        *r;
     ngx_http_core_loc_conf_t  *clcf;
 
     r = file->thread_ctx;
     p = r->upstream->pipe;
+
+    if (r->aio) {
+        /*
+         * tolerate sendfile() calls if another operation is already
+         * running; this can happen due to subrequests, multiple calls
+         * of the next body filter from a filter, or in HTTP/2 due to
+         * a write event on the main connection
+         */
+
+        c = r->connection;
+
+#if (NGX_HTTP_V2)
+        if (r->stream) {
+            c = r->stream->connection->connection;
+        }
+#endif
+
+        if (task == c->sendfile_task) {
+            return NGX_OK;
+        }
+    }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     tp = clcf->thread_pool;
@@ -3849,6 +3956,20 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
 
     r->main->blocked--;
     r->aio = 0;
+
+#if (NGX_HTTP_V2)
+
+    if (r->stream) {
+        /*
+         * for HTTP/2, update write event to make sure processing will
+         * reach the main connection to handle sendfile() in threads
+         */
+
+        c->write->ready = 1;
+        c->write->active = 0;
+    }
+
+#endif
 
     if (r->done) {
         /*
@@ -4531,9 +4652,35 @@ ngx_http_upstream_process_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     ph = (ngx_table_elt_t **) ((char *) &r->upstream->headers_in + offset);
 
-    if (*ph == NULL) {
-        *ph = h;
+    if (*ph) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &(*ph)->key, &(*ph)->value);
+        h->hash = 0;
+        return NGX_OK;
     }
+
+        *ph = h;
+    h->next = NULL;
+
+    return NGX_OK;
+    }
+
+
+static ngx_int_t
+ngx_http_upstream_process_multi_header_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+    ngx_table_elt_t  **ph;
+
+    ph = (ngx_table_elt_t **) ((char *) &r->upstream->headers_in + offset);
+
+    while (*ph) { ph = &(*ph)->next; }
+
+    *ph = h;
+    h->next = NULL;
 
     return NGX_OK;
 }
@@ -4555,8 +4702,33 @@ ngx_http_upstream_process_content_length(ngx_http_request_t *r,
 
     u = r->upstream;
 
+    if (u->headers_in.content_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\"",
+                      &h->key, &h->value,
+                      &u->headers_in.content_length->key,
+                      &u->headers_in.content_length->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    if (u->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent \"Content-Length\" and "
+                      "\"Transfer-Encoding\" headers at the same time");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    h->next = NULL;
     u->headers_in.content_length = h;
     u->headers_in.content_length_n = ngx_atoof(h->value.data, h->value.len);
+
+    if (u->headers_in.content_length_n == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent invalid \"Content-Length\" header: "
+                      "\"%V: %V\"", &h->key, &h->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
 
     return NGX_OK;
 }
@@ -4570,6 +4742,18 @@ ngx_http_upstream_process_last_modified(ngx_http_request_t *r,
 
     u = r->upstream;
 
+    if (u->headers_in.last_modified) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &u->headers_in.last_modified->key,
+                      &u->headers_in.last_modified->value);
+        h->hash = 0;
+        return NGX_OK;
+    }
+
+    h->next = NULL;
     u->headers_in.last_modified = h;
     u->headers_in.last_modified_time = ngx_parse_http_time(h->value.data,
                                                            h->value.len);
@@ -4582,26 +4766,16 @@ static ngx_int_t
 ngx_http_upstream_process_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ngx_array_t           *pa;
     ngx_table_elt_t      **ph;
     ngx_http_upstream_t   *u;
 
     u = r->upstream;
-    pa = &u->headers_in.cookies;
+    ph = &u->headers_in.set_cookie;
 
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 1, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
-
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     if (!(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_SET_COOKIE)) {
@@ -4617,26 +4791,16 @@ static ngx_int_t
 ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    ngx_array_t          *pa;
     ngx_table_elt_t     **ph;
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
-    pa = &u->headers_in.cache_control;
+    ph = &u->headers_in.cache_control;
 
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
-
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -4651,18 +4815,18 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
-        return NGX_OK;
-    }
-
     start = h->value.data;
     last = start + h->value.len;
+
+    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
+        goto extensions;
+    }
 
     if (ngx_strlcasestrn(start, last, (u_char *) "no-cache", 8 - 1) != NULL
         || ngx_strlcasestrn(start, last, (u_char *) "no-store", 8 - 1) != NULL
         || ngx_strlcasestrn(start, last, (u_char *) "private", 7 - 1) != NULL)
     {
-        u->cacheable = 0;
+        u->headers_in.no_cache = 1;
         return NGX_OK;
     }
 
@@ -4692,12 +4856,15 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         }
 
         if (n == 0) {
-            u->cacheable = 0;
+            u->headers_in.no_cache = 1;
             return NGX_OK;
         }
 
         r->cache->valid_sec = ngx_time() + n;
+        u->headers_in.expired = 0;
     }
+
+extensions:
 
     p = ngx_strlcasestrn(start, last, (u_char *) "stale-while-revalidate=",
                          23 - 1);
@@ -4758,7 +4925,20 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
+
+    if (u->headers_in.expires) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &u->headers_in.expires->key,
+                      &u->headers_in.expires->value);
+        h->hash = 0;
+        return NGX_OK;
+    }
+
     u->headers_in.expires = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -4779,7 +4959,7 @@ ngx_http_upstream_process_expires(ngx_http_request_t *r, ngx_table_elt_t *h,
     expires = ngx_parse_http_time(h->value.data, h->value.len);
 
     if (expires == NGX_ERROR || expires < ngx_time()) {
-        u->cacheable = 0;
+        u->headers_in.expired = 1;
         return NGX_OK;
     }
 
@@ -4798,7 +4978,20 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
+
+    if (u->headers_in.x_accel_expires) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &u->headers_in.x_accel_expires->key,
+                      &u->headers_in.x_accel_expires->value);
+        h->hash = 0;
+        return NGX_OK;
+    }
+
     u->headers_in.x_accel_expires = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
     {
@@ -4830,6 +5023,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
 
         default:
             r->cache->valid_sec = ngx_time() + n;
+            u->headers_in.no_cache = 0;
+            u->headers_in.expired = 0;
             return NGX_OK;
         }
     }
@@ -4841,6 +5036,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
 
     if (n != NGX_ERROR) {
         r->cache->valid_sec = n;
+        u->headers_in.no_cache = 0;
+        u->headers_in.expired = 0;
     }
     }
 #endif
@@ -4857,7 +5054,20 @@ ngx_http_upstream_process_limit_rate(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
+
+    if (u->headers_in.x_accel_limit_rate) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &u->headers_in.x_accel_limit_rate->key,
+                      &u->headers_in.x_accel_limit_rate->value);
+        h->hash = 0;
+        return NGX_OK;
+    }
+
     u->headers_in.x_accel_limit_rate = h;
+    h->next = NULL;
 
     if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_LIMIT_RATE) {
         return NGX_OK;
@@ -4916,7 +5126,11 @@ static ngx_int_t
 ngx_http_upstream_process_charset(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    if (r->upstream->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_CHARSET) {
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_XA_CHARSET) {
         return NGX_OK;
     }
 
@@ -4930,13 +5144,22 @@ static ngx_int_t
 ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    r->upstream->headers_in.connection = h;
+    ngx_table_elt_t      **ph;
+    ngx_http_upstream_t   *u;
+
+    u = r->upstream;
+    ph = &u->headers_in.connection;
+
+    while (*ph) { ph = &(*ph)->next; }
+
+    *ph = h;
+    h->next = NULL;
 
     if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
                          (u_char *) "close", 5 - 1)
         != NULL)
     {
-        r->upstream->headers_in.connection_close = 1;
+        u->headers_in.connection_close = 1;
     }
 
     return NGX_OK;
@@ -4947,13 +5170,40 @@ static ngx_int_t
 ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    r->upstream->headers_in.transfer_encoding = h;
+    ngx_http_upstream_t  *u;
 
-    if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
-                         (u_char *) "chunked", 7 - 1)
-        != NULL)
+    u = r->upstream;
+
+    if (u->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\"",
+                      &h->key, &h->value,
+                      &u->headers_in.transfer_encoding->key,
+                      &u->headers_in.transfer_encoding->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    if (u->headers_in.content_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent \"Content-Length\" and "
+                      "\"Transfer-Encoding\" headers at the same time");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    u->headers_in.transfer_encoding = h;
+    h->next = NULL;
+
+    if (h->value.len == 7
+        && ngx_strncasecmp(h->value.data, (u_char *) "chunked", 7) == 0)
     {
-        r->upstream->headers_in.chunked = 1;
+        u->headers_in.chunked = 1;
+
+    } else {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent unknown \"Transfer-Encoding\": \"%V\"",
+                      &h->value);
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
     return NGX_OK;
@@ -4964,29 +5214,74 @@ static ngx_int_t
 ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
+    ngx_table_elt_t      **ph;
     ngx_http_upstream_t  *u;
 
     u = r->upstream;
-    u->headers_in.vary = h;
+    ph = &u->headers_in.vary;
+
+    while (*ph) { ph = &(*ph)->next; }
+
+    *ph = h;
+    h->next = NULL;
 
 #if (NGX_HTTP_CACHE)
+    {
+    u_char     *p;
+    size_t      len;
+    ngx_str_t   vary;
 
     if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_VARY) {
         return NGX_OK;
     }
 
-    if (r->cache == NULL) {
+    if (r->cache == NULL || !u->cacheable) {
         return NGX_OK;
     }
 
-    if (h->value.len > NGX_HTTP_CACHE_VARY_LEN
-        || (h->value.len == 1 && h->value.data[0] == '*'))
-    {
+    if (h->value.len == 1 && h->value.data[0] == '*') {
+        u->cacheable = 0;
+        return NGX_OK;
+    }
+
+    if (u->headers_in.vary->next) {
+
+        len = 0;
+
+        for (h = u->headers_in.vary; h; h = h->next) {
+            len += h->value.len + 2;
+        }
+
+        len -= 2;
+
+        p = ngx_pnalloc(r->pool, len);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        vary.len = len;
+        vary.data = p;
+
+        for (h = u->headers_in.vary; h; h = h->next) {
+            p = ngx_copy(p, h->value.data, h->value.len);
+
+            if (h->next == NULL) {
+                break;
+            }
+
+            *p++ = ','; *p++ = ' ';
+    }
+
+    } else {
+        vary = h->value;
+    }
+
+    if (vary.len > NGX_HTTP_CACHE_VARY_LEN) {
         u->cacheable = 0;
     }
 
-    r->cache->vary = h->value;
-
+    r->cache->vary = vary;
+    }
 #endif
 
     return NGX_OK;
@@ -5009,6 +5304,7 @@ ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     if (offset) {
         ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
         *ph = ho;
+        ho->next = NULL;
     }
 
     return NGX_OK;
@@ -5019,17 +5315,7 @@ static ngx_int_t
 ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-    ngx_array_t      *pa;
     ngx_table_elt_t  *ho, **ph;
-
-    pa = (ngx_array_t *) ((char *) &r->headers_out + offset);
-
-    if (pa->elts == NULL) {
-        if (ngx_array_init(pa, r->pool, 2, sizeof(ngx_table_elt_t *)) != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
-    }
 
     ho = ngx_list_push(&r->headers_out.headers);
     if (ho == NULL) {
@@ -5038,12 +5324,12 @@ ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
 
     *ho = *h;
 
-    ph = ngx_array_push(pa);
-    if (ph == NULL) {
-        return NGX_ERROR;
-    }
+    ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
+
+    while (*ph) { ph = &(*ph)->next; }
 
     *ph = ho;
+    ho->next = NULL;
 
     return NGX_OK;
 }
@@ -5113,6 +5399,7 @@ ngx_http_upstream_copy_last_modified(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     r->headers_out.last_modified = ho;
     r->headers_out.last_modified_time =
@@ -5135,6 +5422,7 @@ ngx_http_upstream_rewrite_location(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_redirect) {
         rc = r->upstream->rewrite_redirect(r, ho, 0);
@@ -5180,6 +5468,7 @@ ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_redirect) {
 
@@ -5225,6 +5514,7 @@ ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     if (r->upstream->rewrite_cookie) {
         rc = r->upstream->rewrite_cookie(r, ho);
@@ -5278,34 +5568,12 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     }
 
     *ho = *h;
+    ho->next = NULL;
 
     r->headers_out.accept_ranges = ho;
 
     return NGX_OK;
 }
-
-
-#if (NGX_HTTP_GZIP)
-
-static ngx_int_t
-ngx_http_upstream_copy_content_encoding(ngx_http_request_t *r,
-    ngx_table_elt_t *h, ngx_uint_t offset)
-{
-    ngx_table_elt_t  *ho;
-
-    ho = ngx_list_push(&r->headers_out.headers);
-    if (ho == NULL) {
-        return NGX_ERROR;
-    }
-
-    *ho = *h;
-
-    r->headers_out.content_encoding = ho;
-
-    return NGX_OK;
-}
-
-#endif
 
 
 static ngx_int_t
@@ -5619,7 +5887,7 @@ ngx_http_upstream_header_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                          &r->upstream->headers_in.headers.part,
                                          sizeof("upstream_http_") - 1);
 }
@@ -5634,7 +5902,7 @@ ngx_http_upstream_trailer_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    return ngx_http_variable_unknown_header(v, (ngx_str_t *) data,
+    return ngx_http_variable_unknown_header(r, v, (ngx_str_t *) data,
                                         &r->upstream->headers_in.trailers.part,
                                         sizeof("upstream_trailer_") - 1);
 }
@@ -5656,9 +5924,9 @@ ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
     s.len = name->len - (sizeof("upstream_cookie_") - 1);
     s.data = name->data + sizeof("upstream_cookie_") - 1;
 
-    if (ngx_http_parse_set_cookie_lines(&r->upstream->headers_in.cookies,
+    if (ngx_http_parse_set_cookie_lines(r, r->upstream->headers_in.set_cookie,
                                         &s, &cookie)
-        == NGX_DECLINED)
+        == NULL)
     {
         v->not_found = 1;
         return NGX_OK;

@@ -25,22 +25,23 @@
 #define NGX_HTTP_VERSION_11                1001
 #define NGX_HTTP_VERSION_20                2000
 
-#define NGX_HTTP_UNKNOWN                   0x0001
-#define NGX_HTTP_GET                       0x0002
-#define NGX_HTTP_HEAD                      0x0004
-#define NGX_HTTP_POST                      0x0008
-#define NGX_HTTP_PUT                       0x0010
-#define NGX_HTTP_DELETE                    0x0020
-#define NGX_HTTP_MKCOL                     0x0040
-#define NGX_HTTP_COPY                      0x0080
-#define NGX_HTTP_MOVE                      0x0100
-#define NGX_HTTP_OPTIONS                   0x0200
-#define NGX_HTTP_PROPFIND                  0x0400
-#define NGX_HTTP_PROPPATCH                 0x0800
-#define NGX_HTTP_LOCK                      0x1000
-#define NGX_HTTP_UNLOCK                    0x2000
-#define NGX_HTTP_PATCH                     0x4000
-#define NGX_HTTP_TRACE                     0x8000
+#define NGX_HTTP_UNKNOWN                   0x00000001
+#define NGX_HTTP_GET                       0x00000002
+#define NGX_HTTP_HEAD                      0x00000004
+#define NGX_HTTP_POST                      0x00000008
+#define NGX_HTTP_PUT                       0x00000010
+#define NGX_HTTP_DELETE                    0x00000020
+#define NGX_HTTP_MKCOL                     0x00000040
+#define NGX_HTTP_COPY                      0x00000080
+#define NGX_HTTP_MOVE                      0x00000100
+#define NGX_HTTP_OPTIONS                   0x00000200
+#define NGX_HTTP_PROPFIND                  0x00000400
+#define NGX_HTTP_PROPPATCH                 0x00000800
+#define NGX_HTTP_LOCK                      0x00001000
+#define NGX_HTTP_UNLOCK                    0x00002000
+#define NGX_HTTP_PATCH                     0x00004000
+#define NGX_HTTP_TRACE                     0x00008000
+#define NGX_HTTP_CONNECT                   0x00010000
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2
@@ -211,7 +212,7 @@ typedef struct {
     ngx_table_elt_t                  *keep_alive;
 
 #if (NGX_HTTP_X_FORWARDED_FOR)
-    ngx_array_t                       x_forwarded_for;
+    ngx_table_elt_t                  *x_forwarded_for;
 #endif
 
 #if (NGX_HTTP_REALIP)
@@ -230,10 +231,10 @@ typedef struct {
     ngx_table_elt_t                  *date;
 #endif
 
+    ngx_table_elt_t                  *cookie;
+
     ngx_str_t                         user;
     ngx_str_t                         passwd;
-
-    ngx_array_t                       cookies;
 
     ngx_str_t                         server;
     off_t                             content_length_n;
@@ -241,6 +242,8 @@ typedef struct {
 
     unsigned                          connection_type:2;
     unsigned                          chunked:1;
+    unsigned                          multi:1;
+    unsigned                          multi_linked:1;
     unsigned                          msie:1;
     unsigned                          msie6:1;
     unsigned                          opera:1;
@@ -271,6 +274,9 @@ typedef struct {
     ngx_table_elt_t                  *expires;
     ngx_table_elt_t                  *etag;
 
+    ngx_table_elt_t                  *cache_control;
+    ngx_table_elt_t                  *link;
+
     ngx_str_t                        *override_charset;
 
     size_t                            content_type_len;
@@ -278,9 +284,6 @@ typedef struct {
     ngx_str_t                         charset;
     u_char                           *content_type_lowcase;
     ngx_uint_t                        content_type_hash;
-
-    ngx_array_t                       cache_control;
-    ngx_array_t                       link;
 
     off_t                             content_length_n;
     off_t                             content_offset;
@@ -301,6 +304,9 @@ typedef struct {
     ngx_chain_t                      *busy;
     ngx_http_chunked_t               *chunked;
     ngx_http_client_body_handler_pt   post_handler;
+    unsigned                          filter_need_buffering:1;
+    unsigned                          last_sent:1;
+    unsigned                          last_saved:1;
 } ngx_http_request_body_t;
 
 
@@ -466,9 +472,6 @@ struct ngx_http_request_s {
 
     /* URI with "+" */
     unsigned                          plus_in_uri:1;
-
-    /* URI with " " */
-    unsigned                          space_in_uri:1;
 
     /* URI with empty path */
     unsigned                          empty_path_in_uri:1;

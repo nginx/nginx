@@ -71,6 +71,7 @@ typedef struct {
     u_char                   *captures_data;
 #endif
 
+    unsigned                  shared:1;
     unsigned                  conditional:2;
     unsigned                  encoding:2;
     unsigned                  block:1;

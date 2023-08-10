@@ -14,10 +14,10 @@
 typedef struct {
     uint32_t  code;
     uint32_t  len;
-} ngx_http_v2_huff_encode_code_t;
+} ngx_http_huff_encode_code_t;
 
 
-static ngx_http_v2_huff_encode_code_t  ngx_http_v2_huff_encode_table[256] =
+static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table[256] =
 {
     {0x00001ff8, 13}, {0x007fffd8, 23}, {0x0fffffe2, 28}, {0x0fffffe3, 28},
     {0x0fffffe4, 28}, {0x0fffffe5, 28}, {0x0fffffe6, 28}, {0x0fffffe7, 28},
@@ -87,7 +87,7 @@ static ngx_http_v2_huff_encode_code_t  ngx_http_v2_huff_encode_table[256] =
 
 
 /* same as above, but embeds lowercase transformation */
-static ngx_http_v2_huff_encode_code_t  ngx_http_v2_huff_encode_table_lc[256] =
+static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table_lc[256] =
 {
     {0x00001ff8, 13}, {0x007fffd8, 23}, {0x0fffffe2, 28}, {0x0fffffe3, 28},
     {0x0fffffe4, 28}, {0x0fffffe5, 28}, {0x0fffffe6, 28}, {0x0fffffe7, 28},
@@ -161,10 +161,10 @@ static ngx_http_v2_huff_encode_code_t  ngx_http_v2_huff_encode_table_lc[256] =
 #if (NGX_HAVE_LITTLE_ENDIAN)
 
 #if (NGX_HAVE_GCC_BSWAP64)
-#define ngx_http_v2_huff_encode_buf(dst, buf)                                 \
+#define ngx_http_huff_encode_buf(dst, buf)                                    \
     (*(uint64_t *) (dst) = __builtin_bswap64(buf))
 #else
-#define ngx_http_v2_huff_encode_buf(dst, buf)                                 \
+#define ngx_http_huff_encode_buf(dst, buf)                                    \
     ((dst)[0] = (u_char) ((buf) >> 56),                                       \
      (dst)[1] = (u_char) ((buf) >> 48),                                       \
      (dst)[2] = (u_char) ((buf) >> 40),                                       \
@@ -176,28 +176,28 @@ static ngx_http_v2_huff_encode_code_t  ngx_http_v2_huff_encode_table_lc[256] =
 #endif
 
 #else /* !NGX_HAVE_LITTLE_ENDIAN */
-#define ngx_http_v2_huff_encode_buf(dst, buf)                                 \
+#define ngx_http_huff_encode_buf(dst, buf)                                    \
     (*(uint64_t *) (dst) = (buf))
 #endif
 
 #else /* NGX_PTR_SIZE == 4 */
 
-#define ngx_http_v2_huff_encode_buf(dst, buf)                                 \
+#define ngx_http_huff_encode_buf(dst, buf)                                    \
     (*(uint32_t *) (dst) = htonl(buf))
 
 #endif
 
 
 size_t
-ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
+ngx_http_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
 {
-    u_char                          *end;
-    size_t                           hlen;
-    ngx_uint_t                       buf, pending, code;
-    ngx_http_v2_huff_encode_code_t  *table, *next;
+    u_char                       *end;
+    size_t                        hlen;
+    ngx_uint_t                    buf, pending, code;
+    ngx_http_huff_encode_code_t  *table, *next;
 
-    table = lower ? ngx_http_v2_huff_encode_table_lc
-                  : ngx_http_v2_huff_encode_table;
+    table = lower ? ngx_http_huff_encode_table_lc
+                  : ngx_http_huff_encode_table;
     hlen = 0;
     buf = 0;
     pending = 0;
@@ -224,7 +224,7 @@ ngx_http_v2_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
 
         buf |= code >> pending;
 
-        ngx_http_v2_huff_encode_buf(&dst[hlen], buf);
+        ngx_http_huff_encode_buf(&dst[hlen], buf);
 
         hlen += sizeof(buf);
 
