@@ -1174,8 +1174,9 @@ ngx_quic_send_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
     frame->u.ack.delay = ack_delay;
     frame->u.ack.range_count = ctx->nranges;
     frame->u.ack.first_range = ctx->first_range;
+    frame->len = ngx_quic_create_frame(NULL, frame);
 
-    ngx_quic_queue_frame(qc, frame);
+    ngx_queue_insert_head(&ctx->frames, &frame->queue);
 
     return NGX_OK;
 }
