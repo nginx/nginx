@@ -149,11 +149,6 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic maximum packet size is invalid");
         return NGX_ERROR;
-
-    } else if (ctp->max_udp_payload_size > ngx_quic_max_udp_payload(c)) {
-        ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
-        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic client maximum packet size truncated");
     }
 
     if (ctp->active_connection_id_limit < 2) {
@@ -286,7 +281,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc->path_validation.log = c->log;
     qc->path_validation.data = c;
-    qc->path_validation.handler = ngx_quic_path_validation_handler;
+    qc->path_validation.handler = ngx_quic_path_handler;
 
     qc->conf = conf;
 
@@ -297,7 +292,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ctp = &qc->ctp;
 
     /* defaults to be used before actual client parameters are received */
-    ctp->max_udp_payload_size = ngx_quic_max_udp_payload(c);
+    ctp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_SIZE;
     ctp->ack_delay_exponent = NGX_QUIC_DEFAULT_ACK_DELAY_EXPONENT;
     ctp->max_ack_delay = NGX_QUIC_DEFAULT_MAX_ACK_DELAY;
     ctp->active_connection_id_limit = 2;

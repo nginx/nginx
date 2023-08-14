@@ -229,6 +229,12 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     qc = ngx_quic_get_connection(c);
 
+    if (ctx->level == ssl_encryption_application) {
+        if (ngx_quic_handle_path_mtu(c, qc->path, min, max) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
     st->max_pn = NGX_TIMER_INFINITE;
     found = 0;
 

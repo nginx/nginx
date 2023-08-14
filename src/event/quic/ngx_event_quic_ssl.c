@@ -494,6 +494,8 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
      */
     ngx_quic_discard_ctx(c, ssl_encryption_handshake);
 
+    ngx_quic_discover_path_mtu(c, qc->path);
+
     /* start accepting clients on negotiated number of server ids */
     if (ngx_quic_create_sockets(c) != NGX_OK) {
         return NGX_ERROR;

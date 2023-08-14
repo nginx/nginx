@@ -12,8 +12,6 @@
 #include <ngx_core.h>
 
 
-size_t ngx_quic_max_udp_payload(ngx_connection_t *c);
-
 ngx_int_t ngx_quic_output(ngx_connection_t *c);
 
 ngx_int_t ngx_quic_negotiate_version(ngx_connection_t *c,

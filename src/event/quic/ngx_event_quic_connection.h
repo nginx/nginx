@@ -66,6 +66,14 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 #define ngx_quic_get_socket(c)               ((ngx_quic_socket_t *)((c)->udp))
 
 
+typedef enum {
+    NGX_QUIC_PATH_IDLE = 0,
+    NGX_QUIC_PATH_VALIDATING,
+    NGX_QUIC_PATH_WAITING,
+    NGX_QUIC_PATH_MTUD
+} ngx_quic_path_state_e;
+
+
 struct ngx_quic_client_id_s {
     ngx_queue_t                       queue;
     uint64_t                          seqnum;
@@ -89,18 +97,22 @@ struct ngx_quic_path_s {
     ngx_sockaddr_t                    sa;
     socklen_t                         socklen;
     ngx_quic_client_id_t             *cid;
+    ngx_quic_path_state_e             state;
     ngx_msec_t                        expires;
     ngx_uint_t                        tries;
     ngx_uint_t                        tag;
+    size_t                            mtu;
+    size_t                            mtud;
+    size_t                            max_mtu;
     off_t                             sent;
     off_t                             received;
     u_char                            challenge1[8];
     u_char                            challenge2[8];
     uint64_t                          seqnum;
+    uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
-    unsigned                          validated:1;
-    unsigned                          validating:1;
+    ngx_uint_t                        validated; /* unsigned validated:1; */
 };
 
 

@@ -10,9 +10,6 @@
 #include <ngx_event_quic_connection.h>
 
 
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT   1252
-#define NGX_QUIC_MAX_UDP_PAYLOAD_OUT6  1232
-
 #define NGX_QUIC_MAX_UDP_SEGMENT_BUF  65487 /* 65K - IPv6 header */
 #define NGX_QUIC_MAX_SEGMENTS            64 /* UDP_MAX_SEGMENTS */
 
@@ -59,21 +56,6 @@ static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
 static size_t ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path,
     size_t size);
-
-
-size_t
-ngx_quic_max_udp_payload(ngx_connection_t *c)
-{
-    /* TODO: path MTU discovery */
-
-#if (NGX_HAVE_INET6)
-    if (c->sockaddr->sa_family == AF_INET6) {
-        return NGX_QUIC_MAX_UDP_PAYLOAD_OUT6;
-    }
-#endif
-
-    return NGX_QUIC_MAX_UDP_PAYLOAD_OUT;
-}
 
 
 ngx_int_t
@@ -142,10 +124,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
 
         p = dst;
 
-        len = ngx_min(qc->ctp.max_udp_payload_size,
-                      NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
-
-        len = ngx_quic_path_limit(c, path, len);
+        len = ngx_quic_path_limit(c, path, path->mtu);
 
         pad = ngx_quic_get_padding_level(c);
 
@@ -299,9 +278,7 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
 
     bytes = 0;
-
-    len = ngx_min(qc->ctp.max_udp_payload_size,
-                  NGX_QUIC_MAX_UDP_SEGMENT_BUF);
+    len = ngx_min(qc->path->mtu, NGX_QUIC_MAX_UDP_SEGMENT_BUF);
 
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
@@ -345,8 +322,7 @@ ngx_quic_create_segments(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    segsize = ngx_min(qc->ctp.max_udp_payload_size,
-                      NGX_QUIC_MAX_UDP_SEGMENT_BUF);
+    segsize = ngx_min(path->mtu, NGX_QUIC_MAX_UDP_SEGMENT_BUF);
     p = dst;
     end = dst + sizeof(dst);
 
