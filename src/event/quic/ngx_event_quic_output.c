@@ -631,10 +631,6 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         f->plen = 0;
 
         nframes++;
-
-        if (f->flush) {
-            break;
-        }
     }
 
     if (nframes == 0) {

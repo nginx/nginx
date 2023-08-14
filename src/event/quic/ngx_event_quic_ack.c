@@ -820,9 +820,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 {
     ngx_uint_t              i;
     ngx_msec_t              now;
-    ngx_queue_t            *q, *next;
+    ngx_queue_t            *q;
     ngx_connection_t       *c;
-    ngx_quic_frame_t       *f;
+    ngx_quic_frame_t       *f, frame;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -859,62 +859,22 @@ ngx_quic_pto_handler(ngx_event_t *ev)
                        "quic pto %s pto_count:%ui",
                        ngx_quic_level_name(ctx->level), qc->pto_count);
 
-        for (q = ngx_queue_head(&ctx->frames);
-             q != ngx_queue_sentinel(&ctx->frames);
-             /* void */)
+        ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+
+        frame.level = ctx->level;
+        frame.type = NGX_QUIC_FT_PING;
+
+        if (ngx_quic_frame_sendto(c, &frame, 0, qc->path) != NGX_OK
+            || ngx_quic_frame_sendto(c, &frame, 0, qc->path) != NGX_OK)
         {
-            next = ngx_queue_next(q);
-            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-            if (f->type == NGX_QUIC_FT_PING) {
-                ngx_queue_remove(q);
-                ngx_quic_free_frame(c, f);
-            }
-
-            q = next;
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
         }
-
-        for (q = ngx_queue_head(&ctx->sent);
-             q != ngx_queue_sentinel(&ctx->sent);
-             /* void */)
-        {
-            next = ngx_queue_next(q);
-            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-
-            if (f->type == NGX_QUIC_FT_PING) {
-                ngx_quic_congestion_lost(c, f);
-                ngx_queue_remove(q);
-                ngx_quic_free_frame(c, f);
-            }
-
-            q = next;
-        }
-
-        /* enforce 2 udp datagrams */
-
-        f = ngx_quic_alloc_frame(c);
-        if (f == NULL) {
-            break;
-        }
-
-        f->level = ctx->level;
-        f->type = NGX_QUIC_FT_PING;
-        f->flush = 1;
-
-        ngx_quic_queue_frame(qc, f);
-
-        f = ngx_quic_alloc_frame(c);
-        if (f == NULL) {
-            break;
-        }
-
-        f->level = ctx->level;
-        f->type = NGX_QUIC_FT_PING;
-
-        ngx_quic_queue_frame(qc, f);
     }
 
     qc->pto_count++;
+
+    ngx_quic_set_lost_timer(c);
 
     ngx_quic_connstate_dbg(c);
 }
