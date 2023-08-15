@@ -5,6 +5,71 @@
 <change_log title="nginx">
 
 
+<changes ver="1.25.2" date="2023-08-15">
+
+<change type="feature">
+<para lang="ru">
+path MTU discovery при использовании HTTP/3.
+</para>
+<para lang="en">
+path MTU discovery when using HTTP/3.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка шифра TLS_AES_128_CCM_SHA256 при использовании HTTP/3.
+</para>
+<para lang="en">
+TLS_AES_128_CCM_SHA256 cipher suite support when using HTTP/3.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь при загрузке конфигурации OpenSSL
+nginx использует appname "nginx".
+</para>
+<para lang="en">
+now nginx uses appname "nginx"
+when loading OpenSSL configuration.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx не пытается загружать конфигурацию OpenSSL,
+если для сборки OpenSSL использовался параметр --with-openssl
+и переменная окружения OPENSSL_CONF не установлена.
+</para>
+<para lang="en">
+now nginx does not try to load OpenSSL configuration
+if the --with-openssl option was used to built OpenSSL
+and the OPENSSL_CONF environment variable is not set.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменной $body_bytes_sent при использовании HTTP/3.
+</para>
+<para lang="en">
+in the $body_bytes_sent variable when using HTTP/3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в HTTP/3.
+</para>
+<para lang="en">
+in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.25.1" date="2023-06-13">
 
 <change type="feature">
