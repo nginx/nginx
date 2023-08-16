@@ -18,6 +18,9 @@ ngx_hash_find(ngx_hash_t *hash, ngx_uint_t key, u_char *name, size_t len)
 #if 0
     ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0, "hf:\"%*s\"", len, name);
 #endif
+    if (hash->size == 0) {
+        return NULL;
+    }
 
     elt = hash->buckets[key % hash->size];
 
