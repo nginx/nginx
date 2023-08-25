@@ -230,6 +230,8 @@ struct ngx_quic_connection_s {
     ngx_event_t                       pto;
     ngx_event_t                       close;
     ngx_event_t                       path_validation;
+    ngx_event_t                       key_update;
+
     ngx_msec_t                        last_cc;
 
     ngx_msec_t                        first_rtt;

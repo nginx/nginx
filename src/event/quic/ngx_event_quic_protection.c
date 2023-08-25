@@ -700,23 +700,32 @@ ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys)
 }
 
 
-ngx_int_t
-ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
+void
+ngx_quic_keys_update(ngx_event_t *ev)
 {
-    ngx_uint_t           i;
-    ngx_quic_hkdf_t      seq[6];
-    ngx_quic_ciphers_t   ciphers;
-    ngx_quic_secrets_t  *current, *next;
+    ngx_uint_t              i;
+    ngx_quic_hkdf_t         seq[6];
+    ngx_quic_keys_t        *keys;
+    ngx_connection_t       *c;
+    ngx_quic_ciphers_t      ciphers;
+    ngx_quic_secrets_t     *current, *next;
+    ngx_quic_connection_t  *qc;
+
+    c = ev->data;
+    qc = ngx_quic_get_connection(c);
+    keys = qc->keys;
 
     current = &keys->secrets[ssl_encryption_application];
     next = &keys->next_key;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic key update");
 
+    c->log->action = "updating keys";
+
     if (ngx_quic_ciphers(keys->cipher, &ciphers, ssl_encryption_application)
         == NGX_ERROR)
     {
-        return NGX_ERROR;
+        goto failed;
     }
 
     next->client.secret.len = current->client.secret.len;
@@ -744,11 +753,15 @@ ngx_quic_keys_update(ngx_connection_t *c, ngx_quic_keys_t *keys)
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
         if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->log) != NGX_OK) {
-            return NGX_ERROR;
+            goto failed;
         }
     }
 
-    return NGX_OK;
+    return;
+
+failed:
+
+    ngx_quic_close_connection(c, NGX_ERROR);
 }
 
 

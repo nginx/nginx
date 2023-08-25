@@ -482,9 +482,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data)
      * Generating next keys before a key update is received.
      */
 
-    if (ngx_quic_keys_update(c, qc->keys) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    ngx_post_event(&qc->key_update, &ngx_posted_events);
 
     /*
      * RFC 9001, 4.9.2.  Discarding Handshake Keys

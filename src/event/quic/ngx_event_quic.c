@@ -283,6 +283,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->path_validation.data = c;
     qc->path_validation.handler = ngx_quic_path_handler;
 
+    qc->key_update.log = c->log;
+    qc->key_update.data = c;
+    qc->key_update.handler = ngx_quic_keys_update;
+
     qc->conf = conf;
 
     if (ngx_quic_init_transport_params(&qc->tp, conf) != NGX_OK) {
@@ -560,6 +564,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
     if (qc->push.posted) {
         ngx_delete_posted_event(&qc->push);
+    }
+
+    if (qc->key_update.posted) {
+        ngx_delete_posted_event(&qc->key_update);
     }
 
     if (qc->close.timer_set) {
@@ -1055,7 +1063,9 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return rc;
     }
 
-    return ngx_quic_keys_update(c, qc->keys);
+    ngx_post_event(&qc->key_update, &ngx_posted_events);
+
+    return NGX_OK;
 }
 
 
