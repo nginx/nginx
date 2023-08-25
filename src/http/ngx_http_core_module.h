@@ -403,8 +403,9 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    server_tokens;           /* server_tokens */
     ngx_flag_t    chunked_transfer_encoding; /* chunked_transfer_encoding */
     ngx_flag_t    etag;                    /* etag */
+// Zimbra customizations start here (Jira Tickets: )	
     ngx_flag_t    exact_version_check;     /* added by zimbra for version check */
-
+// Zimbra customizations end here
 #if (NGX_HTTP_GZIP)
     ngx_flag_t    gzip_vary;               /* gzip_vary */
 

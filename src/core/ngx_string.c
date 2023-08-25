@@ -85,7 +85,7 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
 
     return dst;
 }
-
+// Zimbra customizations start here (Jira Tickets: )
 ngx_str_t *
 ngx_pstrcpy(ngx_pool_t *pool, ngx_str_t *src) {
     ngx_str_t * dst;
@@ -104,7 +104,7 @@ ngx_pstrcpy(ngx_pool_t *pool, ngx_str_t *src) {
     dst->len = src->len;
     return dst;
 }
-
+// Zimbra customizations end here
 /*
  * supported formats:
  *    %[0][width][x][X]O        off_t

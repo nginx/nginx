@@ -994,7 +994,7 @@ ngx_http_request_body_length_filter(ngx_http_request_t *r, ngx_chain_t *in)
             tl = ngx_chain_get_free_buf(r->pool, &rb->free);
             if (tl == NULL) {
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+            }
 
             b = tl->buf;
 
@@ -1268,6 +1268,7 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
     }
 
     for (cl = in; cl; cl = cl->next) {
+
         ngx_log_debug7(NGX_LOG_DEBUG_EVENT, r->connection->log, 0,
                        "http body new buf t:%d f:%d %p, pos %p, size: %z "
                        "file: %O, size: %O",
@@ -1292,8 +1293,8 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
         tl = ngx_alloc_chain_link(r->pool);
         if (tl == NULL) {
             *ll = NULL;
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
 
         tl->buf = cl->buf;
         *ll = tl;

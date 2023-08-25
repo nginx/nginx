@@ -99,7 +99,9 @@ typedef struct {
     ngx_uint_t                       max_conns;
     ngx_uint_t                       max_fails;
     time_t                           fail_timeout;
+// Zimbra customizations start here (Jira Tickets: )	
     ngx_str_t                        version;
+// Zimbra customizations end here	
     ngx_msec_t                       slow_start;
     ngx_uint_t                       down;
 
@@ -116,7 +118,9 @@ typedef struct {
 #define NGX_HTTP_UPSTREAM_FAIL_TIMEOUT  0x0008
 #define NGX_HTTP_UPSTREAM_DOWN          0x0010
 #define NGX_HTTP_UPSTREAM_BACKUP        0x0020
+// Zimbra customizations start here (Jira Tickets: )
 #define NGX_HTTP_UPSTREAM_VERSION       0x0040
+// Zimbra customizations end here
 #define NGX_HTTP_UPSTREAM_MAX_CONNS     0x0100
 
 
@@ -133,9 +137,9 @@ struct ngx_http_upstream_srv_conf_s {
     in_port_t                        port;
     ngx_uint_t                       no_port;  /* unsigned no_port:1 */
 
-    // added by zimbra to support async upstream peer init
+// Zimbra customizations start here (Jira Tickets: )    // added by zimbra to support async upstream peer init
     void (* connect)(ngx_http_request_t *r, ngx_http_upstream_t *u);
-
+// Zimbra customizations end here
 #if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_shm_zone_t                  *shm_zone;
 #endif

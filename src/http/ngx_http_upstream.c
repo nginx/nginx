@@ -8,8 +8,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+// Zimbra customizations start here (Jira Tickets: )
 #include <ngx_zm_lookup.h>
-
+// Zimbra customizations end here
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_upstream_cache(ngx_http_request_t *r,
@@ -547,7 +548,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 {
     ngx_str_t                      *host;
     ngx_uint_t                      i;
+// Zimbra customizations start here (Jira Tickets: )	
     ngx_int_t                      rc;
+// Zimbra customizations end here	
     ngx_resolver_ctx_t             *ctx, temp;
     ngx_http_cleanup_t             *cln;
     ngx_http_upstream_t            *u;
@@ -796,10 +799,11 @@ found:
 #if (NGX_HTTP_SSL)
     u->ssl_name = uscf->host;
 #endif
-
+// Zimbra customizations start here (Jira Tickets: )
     rc = uscf->peer.init(r, uscf);
     if (rc != NGX_OK) {
         if (rc == NGX_AGAIN) return; /* added by zimbra to support async peer init */
+// Zimbra customizations start here (Jira Tickets: )		
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -1556,7 +1560,9 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (rc == NGX_DECLINED) {
+// Zimbra customizations start here (Jira Tickets: )		
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_HTTP_403);
+// Zimbra customizations end here		
         return;
     }
 
@@ -1686,9 +1692,9 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         return;
     }
 
-
+// Zimbra customizations start here (Jira Tickets: )
     ngx_http_upstream_rr_peer_data_t *rrp = (ngx_http_upstream_rr_peer_data_t *)(u->peer.data);
-
+// Zimbra customizations end here
     if (u->conf->ssl_server_name || u->conf->ssl_verify) {
         if (ngx_http_upstream_ssl_name(r, u, c) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
@@ -1708,8 +1714,9 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
             return;
         }
     }
-
+// Zimbra customizations start here (Jira Tickets: )
     if (u->conf->ssl_session_reuse && rrp->current != NGX_INVALID_ARRAY_INDEX) {
+// Zimbra customizations end here		
         c->ssl->save_session = ngx_http_upstream_ssl_save_session;
 
         if (u->peer.set_session(&u->peer, u->peer.data) != NGX_OK) {
@@ -4309,8 +4316,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 {
     ngx_msec_t  timeout;
     ngx_uint_t  status, state;
+// Zimbra customizations start here (Jira Tickets: )	
     ngx_zm_lookup_conf_t  *zlcf;
-
+// Zimbra customizations end here
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
 
@@ -4394,17 +4402,19 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     {
         ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
     }
-
+// Zimbra customizations start here (Jira Tickets: )
     zlcf = (ngx_zm_lookup_conf_t *)
             ngx_get_conf (ngx_cycle->conf_ctx, ngx_zm_lookup_module);
-
+// Zimbra customizations end here
     if (u->peer.tries == 0
         || ((u->conf->next_upstream & ft_type) != ft_type)
         || (u->request_sent && r->request_body_no_buffering)
+// Zimbra customizations start here (Jira Tickets: )	
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout)
         || (r->method == NGX_HTTP_POST && !((r->uri.len == 1 &&
                         r->uri.data[r->uri.len - 1] == '/') ||
                         (ngx_strncasecmp(r->uri.data, zlcf->url.data, zlcf->url.len) == 0))))
+// Zimbra customizations end here					
     {
 #if (NGX_HTTP_CACHE)
 
@@ -6049,7 +6059,9 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
                                          |NGX_HTTP_UPSTREAM_FAIL_TIMEOUT
                                          |NGX_HTTP_UPSTREAM_DOWN
                                          |NGX_HTTP_UPSTREAM_BACKUP
+// Zimbra customizations start here (Jira Tickets: )
                                          |NGX_HTTP_UPSTREAM_VERSION);
+// Zimbra customizations end here
     if (uscf == NULL) {
         return NGX_CONF_ERROR;
     }
@@ -6135,9 +6147,9 @@ ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return NGX_CONF_ERROR;
     }
 
-    /* added by zimbra to support async upstream peer choose */
+// Zimbra customizations start here (Jira Tickets: )    /* added by zimbra to support async upstream peer choose */
     uscf->connect = ngx_http_upstream_connect;
-
+// Zimbra customizations end here
     return rv;
 }
 
@@ -6148,7 +6160,9 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_upstream_srv_conf_t  *uscf = conf;
 
     time_t                       fail_timeout;
+// Zimbra customizations start here (Jira Tickets: )	
     ngx_str_t                   *value, s, version;
+// Zimbra customizations end here	
     ngx_url_t                    u;
     ngx_int_t                    weight, max_conns, max_fails;
     ngx_uint_t                   i;
@@ -6167,9 +6181,10 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     max_conns = 0;
     max_fails = 1;
     fail_timeout = 10;
+// Zimbra customizations start here (Jira Tickets: )	
     version.len = 0;
     version.data = NULL;
-
+// Zimbra customizations end here
     for (i = 2; i < cf->args->nelts; i++) {
 
         if (ngx_strncmp(value[i].data, "weight=", 7) == 0) {
@@ -6256,7 +6271,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             continue;
         }
-
+// Zimbra customizations start here (Jira Tickets: )
         if (ngx_strncmp(value[i].data, "version=", 8) == 0) {
 
             if (!(uscf->flags & NGX_HTTP_UPSTREAM_VERSION)) {
@@ -6270,7 +6285,7 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
             continue;
         }
-
+// Zimbra customizations end here
         goto invalid;
     }
 
@@ -6295,8 +6310,9 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     us->max_conns = max_conns;
     us->max_fails = max_fails;
     us->fail_timeout = fail_timeout;
+// Zimbra customizations start here (Jira Tickets: )	
     us->version = version;
-
+// Zimbra customizations start here (Jira Tickets: )
     return NGX_CONF_OK;
 
 invalid:

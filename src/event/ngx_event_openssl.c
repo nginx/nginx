@@ -3202,7 +3202,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
     ngx_uint_t  tries;
 
     rc = NGX_OK;
-
+// Zimbra customizations start here (Jira Tickets: )	
+//	ngx_ssl_ocsp_cleanup(c);
+// Zimbra customizations end here
     if (SSL_in_init(c->ssl->connection)) {
         /*
          * OpenSSL 1.0.2f complains if SSL_shutdown() is called during
@@ -3212,9 +3214,9 @@ ngx_ssl_shutdown(ngx_connection_t *c)
 
         goto done;
     }
-    
+// Zimbra customizations start here (Jira Tickets: )
     ngx_ssl_ocsp_cleanup(c);
-
+// Zimbra customizations end here
     if (c->timedout || c->error || c->buffered) {
         mode = SSL_RECEIVED_SHUTDOWN|SSL_SENT_SHUTDOWN;
         SSL_set_quiet_shutdown(c->ssl->connection, 1);

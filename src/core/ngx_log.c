@@ -86,7 +86,7 @@ static ngx_str_t err_levels[] = {
 
 static const char *debug_levels[] = {
     "debug_core", "debug_alloc", "debug_mutex", "debug_event",
-    "debug_http", "debug_mail", "debug_stream", "debug_zimbra"
+    "debug_http", "debug_mail", "debug_stream", "debug_zimbra" // Zimbra customizations added debug_zimbra for logging (Jira Tickets: Part of first commit:https://github.com/Zimbra/packages/commit/2b59af7543b67542dfdb0ea21844f0caf73b0cd0)
 };
 
 

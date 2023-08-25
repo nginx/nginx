@@ -30,15 +30,18 @@
 #define NGX_LOG_DEBUG_HTTP        0x100
 #define NGX_LOG_DEBUG_MAIL        0x200
 #define NGX_LOG_DEBUG_STREAM      0x400
+// Zimbra customizations start here (Jira Tickets: )
 #define NGX_LOG_DEBUG_ZIMBRA      0x800
-
+// Zimbra customizations end here
 /*
  * do not forget to update debug_levels[] in src/core/ngx_log.c
  * after the adding a new debug level
  */
 
 #define NGX_LOG_DEBUG_FIRST       NGX_LOG_DEBUG_CORE
+// Zimbra customizations start here: instead of NGX_LOG_DEBUG_STREAM as last debug logs we have mentioned ZIMBRA logs as last one (Jira Tickets:Part of first commit:https://github.com/Zimbra/packages/commit/2b59af7543b67542dfdb0ea21844f0caf73b0cd0 )
 #define NGX_LOG_DEBUG_LAST        NGX_LOG_DEBUG_ZIMBRA
+// Zimbra customizations end here
 #define NGX_LOG_DEBUG_CONNECTION  0x80000000
 #define NGX_LOG_DEBUG_ALL         0x7ffffff0
 
