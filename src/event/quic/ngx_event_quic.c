@@ -1110,7 +1110,7 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
     }
 
     if (level == ssl_encryption_initial) {
-        /* close temporary listener with odcid */
+        /* close temporary listener with initial dcid */
         qsock = ngx_quic_find_socket(c, NGX_QUIC_UNSET_PN);
         if (qsock) {
             ngx_quic_close_socket(c, qsock);
