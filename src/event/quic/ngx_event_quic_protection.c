@@ -672,9 +672,13 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
 
 ngx_uint_t
 ngx_quic_keys_available(ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level)
+    enum ssl_encryption_level_t level, ngx_uint_t is_write)
 {
-    return keys->secrets[level].client.key.len != 0;
+    if (is_write == 0) {
+        return keys->secrets[level].client.key.len != 0;
+    }
+
+    return keys->secrets[level].server.key.len != 0;
 }
 
 
@@ -683,6 +687,7 @@ ngx_quic_keys_discard(ngx_quic_keys_t *keys,
     enum ssl_encryption_level_t level)
 {
     keys->secrets[level].client.key.len = 0;
+    keys->secrets[level].server.key.len = 0;
 }
 
 

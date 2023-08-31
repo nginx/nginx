@@ -434,7 +434,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
     }
 
     if (n <= 0 || SSL_in_init(ssl_conn)) {
-        if (ngx_quic_keys_available(qc->keys, ssl_encryption_early_data)
+        if (ngx_quic_keys_available(qc->keys, ssl_encryption_early_data, 0)
             && qc->client_tp_done)
         {
             if (ngx_quic_init_streams(c) != NGX_OK) {
