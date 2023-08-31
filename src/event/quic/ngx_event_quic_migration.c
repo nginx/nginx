@@ -518,9 +518,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
         return NGX_ERROR;
     }
 
-    if (ngx_quic_send_path_challenge(c, path) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    (void) ngx_quic_send_path_challenge(c, path);
 
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
     pto = ngx_max(ngx_quic_pto(c, ctx), 1000);
