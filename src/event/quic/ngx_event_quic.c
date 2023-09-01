@@ -509,9 +509,6 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
              *  to terminate the connection immediately.
              */
 
-            qc->error_level = c->ssl ? SSL_quic_read_level(c->ssl->connection)
-                                     : ssl_encryption_initial;
-
             if (qc->error == (ngx_uint_t) -1) {
                 qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
                 qc->error_app = 0;
@@ -524,17 +521,19 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
                            qc->error_app ? "app " : "", qc->error,
                            qc->error_reason ? qc->error_reason : "");
 
-            if (rc == NGX_OK) {
-                ctx = ngx_quic_get_send_ctx(qc, qc->error_level);
-                ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
-            }
+            for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+                ctx = &qc->send_ctx[i];
 
-            (void) ngx_quic_send_cc(c);
+                if (!ngx_quic_keys_available(qc->keys, ctx->level)) {
+                    continue;
+                }
 
-            if (qc->error_level == ssl_encryption_handshake) {
-                /* for clients that might not have handshake keys */
-                qc->error_level = ssl_encryption_initial;
+                qc->error_level = ctx->level;
                 (void) ngx_quic_send_cc(c);
+
+                if (rc == NGX_OK && !qc->close.timer_set) {
+                    ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
+                }
             }
         }
 
