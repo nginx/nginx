@@ -48,8 +48,6 @@ ngx_int_t ngx_quic_compat_init(ngx_conf_t *cf, SSL_CTX *ctx);
 int SSL_set_quic_method(SSL *ssl, const SSL_QUIC_METHOD *quic_method);
 int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
     const uint8_t *data, size_t len);
-enum ssl_encryption_level_t SSL_quic_read_level(const SSL *ssl);
-enum ssl_encryption_level_t SSL_quic_write_level(const SSL *ssl);
 int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,
     size_t params_len);
 void SSL_get_peer_quic_transport_params(const SSL *ssl,

@@ -44,7 +44,6 @@ struct ngx_quic_compat_s {
     const SSL_QUIC_METHOD        *method;
 
     enum ssl_encryption_level_t   write_level;
-    enum ssl_encryption_level_t   read_level;
 
     uint64_t                      read_record;
     ngx_quic_compat_keys_t        keys;
@@ -213,7 +212,6 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
 
     } else {
         com->method->set_read_secret((SSL *) ssl, level, cipher, secret, n);
-        com->read_level = level;
         com->read_record = 0;
 
         (void) ngx_quic_compat_set_encryption_secret(c->log, &com->keys, level,
@@ -580,32 +578,6 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
     res->len = ad.len + out.len;
 
     return NGX_OK;
-}
-
-
-enum ssl_encryption_level_t
-SSL_quic_read_level(const SSL *ssl)
-{
-    ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
-
-    c = ngx_ssl_get_connection(ssl);
-    qc = ngx_quic_get_connection(c);
-
-    return qc->compat->read_level;
-}
-
-
-enum ssl_encryption_level_t
-SSL_quic_write_level(const SSL *ssl)
-{
-    ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
-
-    c = ngx_ssl_get_connection(ssl);
-    qc = ngx_quic_get_connection(c);
-
-    return qc->compat->write_level;
 }
 
 
