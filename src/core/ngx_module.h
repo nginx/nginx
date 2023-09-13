@@ -107,7 +107,12 @@
 #endif
 
 #define NGX_MODULE_SIGNATURE_17  "0"
+
+#if (NGX_QUIC || NGX_COMPAT)
+#define NGX_MODULE_SIGNATURE_18  "1"
+#else
 #define NGX_MODULE_SIGNATURE_18  "0"
+#endif
 
 #if (NGX_HAVE_OPENAT)
 #define NGX_MODULE_SIGNATURE_19  "1"
