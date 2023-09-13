@@ -630,6 +630,10 @@ ngx_quic_do_init_streams(ngx_connection_t *c)
 
     qc->streams.initialized = 1;
 
+    if (!qc->closing && qc->close.timer_set) {
+        ngx_del_timer(&qc->close);
+    }
+
     return NGX_OK;
 }
 

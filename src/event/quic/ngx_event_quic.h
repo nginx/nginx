@@ -67,7 +67,8 @@ typedef struct {
     ngx_flag_t                     retry;
     ngx_flag_t                     gso_enabled;
     ngx_flag_t                     disable_active_migration;
-    ngx_msec_t                     timeout;
+    ngx_msec_t                     handshake_timeout;
+    ngx_msec_t                     idle_timeout;
     ngx_str_t                      host_key;
     size_t                         stream_buffer_size;
     ngx_uint_t                     max_concurrent_streams_bidi;

@@ -211,6 +211,8 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
     qc = ngx_quic_get_connection(c);
 
     ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+    ngx_add_timer(&qc->close, qc->conf->handshake_timeout);
+
     ngx_quic_connstate_dbg(c);
 
     c->read->handler = ngx_quic_input_handler;
@@ -483,6 +485,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
         for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
             ngx_quic_free_frames(c, &qc->send_ctx[i].frames);
             ngx_quic_free_frames(c, &qc->send_ctx[i].sent);
+        }
+
+        if (qc->close.timer_set) {
+            ngx_del_timer(&qc->close);
         }
 
         if (rc == NGX_DONE) {
