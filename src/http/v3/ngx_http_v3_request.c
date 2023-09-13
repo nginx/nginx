@@ -67,7 +67,6 @@ ngx_http_v3_init_stream(ngx_connection_t *c)
     hc->ssl = 1;
 
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
-    h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
 
     if (c->quic == NULL) {
         if (ngx_http_v3_init_session(c) != NGX_OK) {
@@ -75,7 +74,9 @@ ngx_http_v3_init_stream(ngx_connection_t *c)
             return;
         }
 
+        h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
         h3scf->quic.idle_timeout = clcf->keepalive_timeout;
+
         ngx_quic_run(c, &h3scf->quic);
         return;
     }
