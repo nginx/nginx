@@ -537,7 +537,7 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
                 qc->error_level = ctx->level;
                 (void) ngx_quic_send_cc(c);
 
-                if (rc == NGX_OK && !qc->close.timer_set) {
+                if (rc == NGX_OK) {
                     ngx_add_timer(&qc->close, 3 * ngx_quic_pto(c, ctx));
                 }
             }
