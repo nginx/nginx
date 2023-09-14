@@ -78,11 +78,12 @@
 #define NGX_HTTP_V3_ERR_DECODER_STREAM_ERROR       0x202
 
 
-#define ngx_http_quic_get_connection(c)                                       \
-    ((ngx_http_connection_t *) ((c)->quic ? (c)->quic->parent->data           \
+#define ngx_http_v3_get_session(c)                                            \
+    ((ngx_http_v3_session_t *) ((c)->quic ? (c)->quic->parent->data           \
                                           : (c)->data))
 
-#define ngx_http_v3_get_session(c)  ngx_http_quic_get_connection(c)->v3_session
+#define ngx_http_quic_get_connection(c)                                       \
+    (ngx_http_v3_get_session(c)->http_connection)
 
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
     ngx_http_get_module_loc_conf(ngx_http_quic_get_connection(c)->conf_ctx,   \
@@ -120,6 +121,8 @@ struct ngx_http_v3_parse_s {
 
 
 struct ngx_http_v3_session_s {
+    ngx_http_connection_t        *http_connection;
+
     ngx_http_v3_dynamic_table_t   table;
 
     ngx_event_t                   keepalive;

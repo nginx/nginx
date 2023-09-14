@@ -69,11 +69,6 @@ ngx_http_v3_init_stream(ngx_connection_t *c)
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
     if (c->quic == NULL) {
-        if (ngx_http_v3_init_session(c) != NGX_OK) {
-            ngx_http_close_connection(c);
-            return;
-        }
-
         h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
         h3scf->quic.idle_timeout = clcf->keepalive_timeout;
 
@@ -112,6 +107,10 @@ ngx_http_v3_init(ngx_connection_t *c)
     ngx_http_core_loc_conf_t  *clcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init");
+
+    if (ngx_http_v3_init_session(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     h3c = ngx_http_v3_get_session(c);
     clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);

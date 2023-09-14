@@ -324,10 +324,6 @@ typedef struct {
 #endif
 #endif
 
-#if (NGX_HTTP_V3 || NGX_COMPAT)
-    ngx_http_v3_session_t            *v3_session;
-#endif
-
     ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 
