@@ -131,6 +131,8 @@ struct ngx_http_v2_connection_s {
     ngx_uint_t                       processing;
     ngx_uint_t                       frames;
     ngx_uint_t                       idle;
+    ngx_uint_t                       new_streams;
+    ngx_uint_t                       refused_streams;
     ngx_uint_t                       priority_limit;
 
     size_t                           send_window;
