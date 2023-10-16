@@ -600,6 +600,8 @@ ngx_regex_cleanup(void *data)
      * the new cycle, these will be re-allocated.
      */
 
+    ngx_regex_malloc_init(NULL);
+
     if (ngx_regex_compile_context) {
         pcre2_compile_context_free(ngx_regex_compile_context);
         ngx_regex_compile_context = NULL;
@@ -610,6 +612,8 @@ ngx_regex_cleanup(void *data)
         ngx_regex_match_data = NULL;
         ngx_regex_match_data_size = 0;
     }
+
+    ngx_regex_malloc_done();
 
 #endif
 }
@@ -706,9 +710,6 @@ ngx_regex_module_init(ngx_cycle_t *cycle)
     ngx_regex_malloc_done();
 
     ngx_regex_studies = NULL;
-#if (NGX_PCRE2)
-    ngx_regex_compile_context = NULL;
-#endif
 
     return NGX_OK;
 }
