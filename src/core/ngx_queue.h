@@ -47,6 +47,9 @@ struct ngx_queue_s {
     (h)->prev = x
 
 
+#define ngx_queue_insert_before   ngx_queue_insert_tail
+
+
 #define ngx_queue_head(h)                                                     \
     (h)->next
 

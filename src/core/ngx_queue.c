@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 
 
+static void ngx_queue_merge(ngx_queue_t *queue, ngx_queue_t *tail,
+    ngx_int_t (*cmp)(const ngx_queue_t *, const ngx_queue_t *));
+
+
 /*
  * find the middle queue element if the queue has odd number of elements
  * or the first element of the queue's second part otherwise
@@ -45,13 +49,13 @@ ngx_queue_middle(ngx_queue_t *queue)
 }
 
 
-/* the stable insertion sort */
+/* the stable merge sort */
 
 void
 ngx_queue_sort(ngx_queue_t *queue,
     ngx_int_t (*cmp)(const ngx_queue_t *, const ngx_queue_t *))
 {
-    ngx_queue_t  *q, *prev, *next;
+    ngx_queue_t  *q, tail;
 
     q = ngx_queue_head(queue);
 
@@ -59,22 +63,44 @@ ngx_queue_sort(ngx_queue_t *queue,
         return;
     }
 
-    for (q = ngx_queue_next(q); q != ngx_queue_sentinel(queue); q = next) {
+    q = ngx_queue_middle(queue);
 
-        prev = ngx_queue_prev(q);
-        next = ngx_queue_next(q);
+    ngx_queue_split(queue, q, &tail);
 
-        ngx_queue_remove(q);
+    ngx_queue_sort(queue, cmp);
+    ngx_queue_sort(&tail, cmp);
 
-        do {
-            if (cmp(prev, q) <= 0) {
-                break;
-            }
+    ngx_queue_merge(queue, &tail, cmp);
+}
 
-            prev = ngx_queue_prev(prev);
 
-        } while (prev != ngx_queue_sentinel(queue));
+static void
+ngx_queue_merge(ngx_queue_t *queue, ngx_queue_t *tail,
+    ngx_int_t (*cmp)(const ngx_queue_t *, const ngx_queue_t *))
+{
+    ngx_queue_t  *q1, *q2;
 
-        ngx_queue_insert_after(prev, q);
+    q1 = ngx_queue_head(queue);
+    q2 = ngx_queue_head(tail);
+
+    for ( ;; ) {
+        if (q1 == ngx_queue_sentinel(queue)) {
+            ngx_queue_add(queue, tail);
+            break;
+        }
+
+        if (q2 == ngx_queue_sentinel(tail)) {
+            break;
+        }
+
+        if (cmp(q1, q2) <= 0) {
+            q1 = ngx_queue_next(q1);
+            continue;
+        }
+
+        ngx_queue_remove(q2);
+        ngx_queue_insert_before(q1, q2);
+
+        q2 = ngx_queue_head(tail);
     }
 }
