@@ -28,6 +28,10 @@ static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
 
 static ngx_int_t ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
+#ifndef OPENSSL_IS_BORINGSSL
+static ngx_int_t ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out,
+    u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
+#endif
 static ngx_int_t ngx_quic_crypto_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
 
@@ -426,65 +430,19 @@ static ngx_int_t
 ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
     ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
-    ngx_quic_crypto_ctx_t  *ctx;
-
-    ctx = s->ctx;
-
 #ifdef OPENSSL_IS_BORINGSSL
-    if (EVP_AEAD_CTX_open(ctx, out->data, &out->len, out->len, nonce, s->iv.len,
-                          in->data, in->len, ad->data, ad->len)
+    if (EVP_AEAD_CTX_open(s->ctx, out->data, &out->len, out->len, nonce,
+                          s->iv.len, in->data, in->len, ad->data, ad->len)
         != 1)
     {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_AEAD_CTX_open() failed");
         return NGX_ERROR;
     }
-#else
-    int  len;
-
-    if (EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, nonce) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_DecryptInit_ex() failed");
-        return NGX_ERROR;
-    }
-
-    in->len -= NGX_QUIC_TAG_LEN;
-
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, NGX_QUIC_TAG_LEN,
-                            in->data + in->len)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_SET_TAG) failed");
-        return NGX_ERROR;
-    }
-
-    if (EVP_CIPHER_mode(EVP_CIPHER_CTX_cipher(ctx)) == EVP_CIPH_CCM_MODE
-        && EVP_DecryptUpdate(ctx, NULL, &len, NULL, in->len) != 1)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_DecryptUpdate() failed");
-        return NGX_ERROR;
-    }
-
-    if (EVP_DecryptUpdate(ctx, NULL, &len, ad->data, ad->len) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_DecryptUpdate() failed");
-        return NGX_ERROR;
-    }
-
-    if (EVP_DecryptUpdate(ctx, out->data, &len, in->data, in->len) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_DecryptUpdate() failed");
-        return NGX_ERROR;
-    }
-
-    out->len = len;
-
-    if (EVP_DecryptFinal_ex(ctx, out->data + out->len, &len) <= 0) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_DecryptFinal_ex failed");
-        return NGX_ERROR;
-    }
-
-    out->len += len;
-#endif
 
     return NGX_OK;
+#else
+    return ngx_quic_crypto_common(s, out, nonce, in, ad, log);
+#endif
 }
 
 
@@ -492,66 +450,95 @@ ngx_int_t
 ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
     ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
-    ngx_quic_crypto_ctx_t  *ctx;
-
-    ctx = s->ctx;
-
 #ifdef OPENSSL_IS_BORINGSSL
-    if (EVP_AEAD_CTX_seal(ctx, out->data, &out->len, out->len, nonce, s->iv.len,
-                          in->data, in->len, ad->data, ad->len)
+    if (EVP_AEAD_CTX_seal(s->ctx, out->data, &out->len, out->len, nonce,
+                          s->iv.len, in->data, in->len, ad->data, ad->len)
         != 1)
     {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_AEAD_CTX_seal() failed");
         return NGX_ERROR;
     }
-#else
-    int  len;
 
-    if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, nonce) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptInit_ex() failed");
+    return NGX_OK;
+#else
+    return ngx_quic_crypto_common(s, out, nonce, in, ad, log);
+#endif
+}
+
+
+#ifndef OPENSSL_IS_BORINGSSL
+
+static ngx_int_t
+ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
+    ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
+{
+    int                     len, enc;
+    ngx_quic_crypto_ctx_t  *ctx;
+
+    ctx = s->ctx;
+    enc = EVP_CIPHER_CTX_encrypting(ctx);
+
+    if (EVP_CipherInit_ex(ctx, NULL, NULL, NULL, nonce, enc) != 1) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherInit_ex() failed");
         return NGX_ERROR;
+    }
+
+    if (enc == 0) {
+        in->len -= NGX_QUIC_TAG_LEN;
+
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, NGX_QUIC_TAG_LEN,
+                                in->data + in->len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, log, 0,
+                          "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_SET_TAG) failed");
+            return NGX_ERROR;
+        }
     }
 
     if (EVP_CIPHER_mode(EVP_CIPHER_CTX_cipher(ctx)) == EVP_CIPH_CCM_MODE
-        && EVP_EncryptUpdate(ctx, NULL, &len, NULL, in->len) != 1)
+        && EVP_CipherUpdate(ctx, NULL, &len, NULL, in->len) != 1)
     {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptUpdate() failed");
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherUpdate() failed");
         return NGX_ERROR;
     }
 
-    if (EVP_EncryptUpdate(ctx, NULL, &len, ad->data, ad->len) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptUpdate() failed");
+    if (EVP_CipherUpdate(ctx, NULL, &len, ad->data, ad->len) != 1) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherUpdate() failed");
         return NGX_ERROR;
     }
 
-    if (EVP_EncryptUpdate(ctx, out->data, &len, in->data, in->len) != 1) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptUpdate() failed");
+    if (EVP_CipherUpdate(ctx, out->data, &len, in->data, in->len) != 1) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherUpdate() failed");
         return NGX_ERROR;
     }
 
     out->len = len;
 
-    if (EVP_EncryptFinal_ex(ctx, out->data + out->len, &len) <= 0) {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptFinal_ex failed");
+    if (EVP_CipherFinal_ex(ctx, out->data + out->len, &len) <= 0) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherFinal_ex failed");
         return NGX_ERROR;
     }
 
     out->len += len;
 
-    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, NGX_QUIC_TAG_LEN,
-                            out->data + out->len)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_INFO, log, 0,
-                      "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_GET_TAG) failed");
-        return NGX_ERROR;
-    }
+    if (enc == 1) {
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, NGX_QUIC_TAG_LEN,
+                                out->data + out->len)
+            == 0)
+        {
+            ngx_ssl_error(NGX_LOG_INFO, log, 0,
+                          "EVP_CIPHER_CTX_ctrl(EVP_CTRL_AEAD_GET_TAG) failed");
+            return NGX_ERROR;
+        }
 
-    out->len += NGX_QUIC_TAG_LEN;
-#endif
+        out->len += NGX_QUIC_TAG_LEN;
+    }
 
     return NGX_OK;
 }
+
+#endif
 
 
 void
