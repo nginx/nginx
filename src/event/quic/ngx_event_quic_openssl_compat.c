@@ -218,6 +218,8 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         (void) ngx_quic_compat_set_encryption_secret(c, &com->keys, level,
                                                      cipher, secret, n);
     }
+
+    ngx_explicit_memzero(secret, n);
 }
 
 
@@ -245,15 +247,6 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
         ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
         return NGX_ERROR;
     }
-
-    if (sizeof(peer_secret->secret.data) < secret_len) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                      "unexpected secret len: %uz", secret_len);
-        return NGX_ERROR;
-    }
-
-    peer_secret->secret.len = secret_len;
-    ngx_memcpy(peer_secret->secret.data, secret, secret_len);
 
     key.len = key_len;
 
@@ -291,6 +284,8 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
     {
         return NGX_ERROR;
     }
+
+    ngx_explicit_memzero(key.data, key.len);
 
     return NGX_OK;
 }

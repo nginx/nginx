@@ -710,6 +710,8 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
         return NGX_ERROR;
     }
 
+    ngx_explicit_memzero(key.data, key.len);
+
     return NGX_OK;
 }
 
@@ -740,6 +742,9 @@ ngx_quic_keys_discard(ngx_quic_keys_t *keys,
 
     ngx_quic_crypto_hp_cleanup(client);
     ngx_quic_crypto_hp_cleanup(server);
+
+    ngx_explicit_memzero(client->secret.data, client->secret.len);
+    ngx_explicit_memzero(server->secret.data, server->secret.len);
 }
 
 
@@ -834,6 +839,14 @@ ngx_quic_keys_update(ngx_event_t *ev)
         goto failed;
     }
 
+    ngx_explicit_memzero(current->client.secret.data,
+                         current->client.secret.len);
+    ngx_explicit_memzero(current->server.secret.data,
+                         current->server.secret.len);
+
+    ngx_explicit_memzero(client_key.data, client_key.len);
+    ngx_explicit_memzero(server_key.data, server_key.len);
+
     return;
 
 failed:
@@ -856,6 +869,11 @@ ngx_quic_keys_cleanup(ngx_quic_keys_t *keys)
 
     ngx_quic_crypto_cleanup(&next->client);
     ngx_quic_crypto_cleanup(&next->server);
+
+    ngx_explicit_memzero(next->client.secret.data,
+                         next->client.secret.len);
+    ngx_explicit_memzero(next->server.secret.data,
+                         next->server.secret.len);
 }
 
 
