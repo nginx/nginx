@@ -32,8 +32,12 @@ static ngx_int_t ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out,
 static ngx_int_t ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 #endif
-static ngx_int_t ngx_quic_crypto_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
-    ngx_quic_secret_t *s, u_char *out, u_char *in);
+
+static ngx_int_t ngx_quic_crypto_hp_init(const EVP_CIPHER *cipher,
+    ngx_quic_secret_t *s, ngx_log_t *log);
+static ngx_int_t ngx_quic_crypto_hp(ngx_quic_secret_t *s,
+    u_char *out, u_char *in, ngx_log_t *log);
+static void ngx_quic_crypto_hp_cleanup(ngx_quic_secret_t *s);
 
 static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
     ngx_str_t *res);
@@ -193,6 +197,14 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
     }
 
     if (ngx_quic_crypto_init(ciphers.c, server, 1, log) == NGX_ERROR) {
+        goto failed;
+    }
+
+    if (ngx_quic_crypto_hp_init(ciphers.hp, client, log) == NGX_ERROR) {
+        goto failed;
+    }
+
+    if (ngx_quic_crypto_hp_init(ciphers.hp, server, log) == NGX_ERROR) {
         goto failed;
     }
 
@@ -556,53 +568,82 @@ ngx_quic_crypto_cleanup(ngx_quic_secret_t *s)
 
 
 static ngx_int_t
-ngx_quic_crypto_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
-    ngx_quic_secret_t *s, u_char *out, u_char *in)
+ngx_quic_crypto_hp_init(const EVP_CIPHER *cipher, ngx_quic_secret_t *s,
+    ngx_log_t *log)
 {
-    int              outlen;
     EVP_CIPHER_CTX  *ctx;
-    u_char           zero[NGX_QUIC_HP_LEN] = {0};
 
 #ifdef OPENSSL_IS_BORINGSSL
-    uint32_t         cnt;
-
-    ngx_memcpy(&cnt, in, sizeof(uint32_t));
-
-    if (cipher == (const EVP_CIPHER *) EVP_aead_chacha20_poly1305()) {
-        CRYPTO_chacha_20(out, zero, NGX_QUIC_HP_LEN, s->hp.data, &in[4], cnt);
+    if (cipher == (EVP_CIPHER *) EVP_aead_chacha20_poly1305()) {
+        /* no EVP interface */
+        s->hp_ctx = NULL;
         return NGX_OK;
     }
 #endif
 
     ctx = EVP_CIPHER_CTX_new();
     if (ctx == NULL) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CIPHER_CTX_new() failed");
         return NGX_ERROR;
     }
 
-    if (EVP_EncryptInit_ex(ctx, cipher, NULL, s->hp.data, in) != 1) {
+    if (EVP_EncryptInit_ex(ctx, cipher, NULL, s->hp.data, NULL) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptInit_ex() failed");
-        goto failed;
+        return NGX_ERROR;
+    }
+
+    s->hp_ctx = ctx;
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_crypto_hp(ngx_quic_secret_t *s, u_char *out, u_char *in,
+    ngx_log_t *log)
+{
+    int              outlen;
+    EVP_CIPHER_CTX  *ctx;
+    u_char           zero[NGX_QUIC_HP_LEN] = {0};
+
+    ctx = s->hp_ctx;
+
+#ifdef OPENSSL_IS_BORINGSSL
+    uint32_t         cnt;
+
+    if (ctx == NULL) {
+        ngx_memcpy(&cnt, in, sizeof(uint32_t));
+        CRYPTO_chacha_20(out, zero, NGX_QUIC_HP_LEN, s->hp.data, &in[4], cnt);
+        return NGX_OK;
+    }
+#endif
+
+    if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, in) != 1) {
+        ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptInit_ex() failed");
+        return NGX_ERROR;
     }
 
     if (!EVP_EncryptUpdate(ctx, out, &outlen, zero, NGX_QUIC_HP_LEN)) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptUpdate() failed");
-        goto failed;
+        return NGX_ERROR;
     }
 
     if (!EVP_EncryptFinal_ex(ctx, out + NGX_QUIC_HP_LEN, &outlen)) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_EncryptFinal_Ex() failed");
-        goto failed;
+        return NGX_ERROR;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
-
     return NGX_OK;
+}
 
-failed:
 
-    EVP_CIPHER_CTX_free(ctx);
-
-    return NGX_ERROR;
+static void
+ngx_quic_crypto_hp_cleanup(ngx_quic_secret_t *s)
+{
+    if (s->hp_ctx) {
+        EVP_CIPHER_CTX_free(s->hp_ctx);
+        s->hp_ctx = NULL;
+    }
 }
 
 
@@ -663,6 +704,10 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
         return NGX_ERROR;
     }
 
+    if (ngx_quic_crypto_hp_init(ciphers.hp, peer_secret, log) == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
@@ -690,6 +735,9 @@ ngx_quic_keys_discard(ngx_quic_keys_t *keys,
 
     ngx_quic_crypto_cleanup(client);
     ngx_quic_crypto_cleanup(server);
+
+    ngx_quic_crypto_hp_cleanup(client);
+    ngx_quic_crypto_hp_cleanup(server);
 }
 
 
@@ -742,11 +790,13 @@ ngx_quic_keys_update(ngx_event_t *ev)
     next->client.key.len = current->client.key.len;
     next->client.iv.len = NGX_QUIC_IV_LEN;
     next->client.hp = current->client.hp;
+    next->client.hp_ctx = current->client.hp_ctx;
 
     next->server.secret.len = current->server.secret.len;
     next->server.key.len = current->server.key.len;
     next->server.iv.len = NGX_QUIC_IV_LEN;
     next->server.hp = current->server.hp;
+    next->server.hp_ctx = current->server.hp_ctx;
 
     ngx_quic_hkdf_set(&seq[0], "tls13 quic ku",
                       &next->client.secret, &current->client.secret);
@@ -840,9 +890,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     }
 
     sample = &out.data[4 - pkt->num_len];
-    if (ngx_quic_crypto_hp(pkt->log, ciphers.hp, secret, mask, sample)
-        != NGX_OK)
-    {
+    if (ngx_quic_crypto_hp(secret, mask, sample, pkt->log) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1070,9 +1118,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     /* header protection */
 
-    if (ngx_quic_crypto_hp(pkt->log, ciphers.hp, secret, mask, sample)
-        != NGX_OK)
-    {
+    if (ngx_quic_crypto_hp(secret, mask, sample, pkt->log) != NGX_OK) {
         return NGX_DECLINED;
     }
 

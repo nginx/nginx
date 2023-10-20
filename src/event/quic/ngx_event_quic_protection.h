@@ -51,6 +51,7 @@ typedef struct {
     ngx_quic_iv_t             iv;
     ngx_quic_md_t             hp;
     ngx_quic_crypto_ctx_t    *ctx;
+    EVP_CIPHER_CTX           *hp_ctx;
 } ngx_quic_secret_t;
 
 
