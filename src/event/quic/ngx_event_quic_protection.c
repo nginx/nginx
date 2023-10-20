@@ -26,10 +26,10 @@ static ngx_int_t ngx_hkdf_extract(u_char *out_key, size_t *out_len,
 static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn);
 
-static ngx_int_t ngx_quic_tls_open(const ngx_quic_cipher_t *cipher,
+static ngx_int_t ngx_quic_crypto_open(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad, ngx_log_t *log);
-static ngx_int_t ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
+static ngx_int_t ngx_quic_crypto_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in);
 
 static ngx_int_t ngx_quic_create_packet(ngx_quic_header_t *pkt,
@@ -344,7 +344,7 @@ failed:
 
 
 static ngx_int_t
-ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
+ngx_quic_crypto_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
 
@@ -449,7 +449,7 @@ ngx_quic_tls_open(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
 
 ngx_int_t
-ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
+ngx_quic_crypto_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
     ngx_str_t *out, u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
 
@@ -565,7 +565,7 @@ ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
 
 static ngx_int_t
-ngx_quic_tls_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
+ngx_quic_crypto_hp(ngx_log_t *log, const EVP_CIPHER *cipher,
     ngx_quic_secret_t *s, u_char *out, u_char *in)
 {
     int              outlen;
@@ -801,15 +801,15 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
 
-    if (ngx_quic_tls_seal(ciphers.c, secret, &out,
-                          nonce, &pkt->payload, &ad, pkt->log)
+    if (ngx_quic_crypto_seal(ciphers.c, secret, &out,
+                             nonce, &pkt->payload, &ad, pkt->log)
         != NGX_OK)
     {
         return NGX_ERROR;
     }
 
     sample = &out.data[4 - pkt->num_len];
-    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
+    if (ngx_quic_crypto_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -862,7 +862,8 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_memcpy(secret.key.data, key, sizeof(key));
     secret.iv.len = NGX_QUIC_IV_LEN;
 
-    if (ngx_quic_tls_seal(ciphers.c, &secret, &itag, nonce, &in, &ad, pkt->log)
+    if (ngx_quic_crypto_seal(ciphers.c, &secret, &itag, nonce, &in, &ad,
+                             pkt->log)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -1032,7 +1033,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 
     /* header protection */
 
-    if (ngx_quic_tls_hp(pkt->log, ciphers.hp, secret, mask, sample)
+    if (ngx_quic_crypto_hp(pkt->log, ciphers.hp, secret, mask, sample)
         != NGX_OK)
     {
         return NGX_DECLINED;
@@ -1087,8 +1088,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     pkt->payload.len = in.len - NGX_QUIC_TAG_LEN;
     pkt->payload.data = pkt->plaintext + ad.len;
 
-    rc = ngx_quic_tls_open(ciphers.c, secret, &pkt->payload,
-                           nonce, &in, &ad, pkt->log);
+    rc = ngx_quic_crypto_open(ciphers.c, secret, &pkt->payload,
+                              nonce, &in, &ad, pkt->log);
     if (rc != NGX_OK) {
         return NGX_DECLINED;
     }

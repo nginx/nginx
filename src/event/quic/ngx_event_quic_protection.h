@@ -105,7 +105,7 @@ ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn);
 void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
 ngx_int_t ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
     enum ssl_encryption_level_t level);
-ngx_int_t ngx_quic_tls_seal(const ngx_quic_cipher_t *cipher,
+ngx_int_t ngx_quic_crypto_seal(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce, ngx_str_t *in,
     ngx_str_t *ad, ngx_log_t *log);
 ngx_int_t ngx_quic_hkdf_expand(ngx_quic_hkdf_t *hkdf, const EVP_MD *digest,

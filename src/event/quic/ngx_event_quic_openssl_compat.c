@@ -578,8 +578,8 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
     ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), rec->number);
 
-    if (ngx_quic_tls_seal(ciphers.c, secret, &out,
-                          nonce, &rec->payload, &ad, rec->log)
+    if (ngx_quic_crypto_seal(ciphers.c, secret, &out,
+                             nonce, &rec->payload, &ad, rec->log)
         != NGX_OK)
     {
         return NGX_ERROR;
