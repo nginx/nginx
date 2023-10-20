@@ -941,12 +941,16 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
     res.data = dst;
 
     if (ngx_quic_encrypt(&pkt, &res) != NGX_OK) {
+        ngx_quic_keys_cleanup(pkt.keys);
         return NGX_ERROR;
     }
 
     if (ngx_quic_send(c, res.data, res.len, c->sockaddr, c->socklen) < 0) {
+        ngx_quic_keys_cleanup(pkt.keys);
         return NGX_ERROR;
     }
+
+    ngx_quic_keys_cleanup(pkt.keys);
 
     return NGX_DONE;
 }
