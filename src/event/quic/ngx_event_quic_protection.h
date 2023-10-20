@@ -108,8 +108,7 @@ void ngx_quic_keys_cleanup(ngx_quic_keys_t *keys);
 ngx_int_t ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res);
 ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn);
 void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
-ngx_int_t ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
-    enum ssl_encryption_level_t level);
+ngx_int_t ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers);
 ngx_int_t ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_int_t enc, ngx_log_t *log);
 ngx_int_t ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out,

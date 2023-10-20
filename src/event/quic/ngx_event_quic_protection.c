@@ -15,6 +15,8 @@
 
 #define NGX_QUIC_AES_128_KEY_LEN      16
 
+#define NGX_QUIC_INITIAL_CIPHER       TLS1_3_CK_AES_128_GCM_SHA256
+
 
 static ngx_int_t ngx_hkdf_expand(u_char *out_key, size_t out_len,
     const EVP_MD *digest, const u_char *prk, size_t prk_len,
@@ -46,14 +48,9 @@ static ngx_int_t ngx_quic_create_retry_packet(ngx_quic_header_t *pkt,
 
 
 ngx_int_t
-ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers,
-    enum ssl_encryption_level_t level)
+ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers)
 {
     ngx_int_t  len;
-
-    if (level == ssl_encryption_initial) {
-        id = TLS1_3_CK_AES_128_GCM_SHA256;
-    }
 
     switch (id) {
 
@@ -188,7 +185,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         }
     }
 
-    if (ngx_quic_ciphers(0, &ciphers, ssl_encryption_initial) == NGX_ERROR) {
+    if (ngx_quic_ciphers(NGX_QUIC_INITIAL_CIPHER, &ciphers) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -664,7 +661,7 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
 
     keys->cipher = SSL_CIPHER_get_id(cipher);
 
-    key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
+    key_len = ngx_quic_ciphers(keys->cipher, &ciphers);
 
     if (key_len == NGX_ERROR) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "unexpected cipher");
@@ -780,9 +777,7 @@ ngx_quic_keys_update(ngx_event_t *ev)
 
     c->log->action = "updating keys";
 
-    if (ngx_quic_ciphers(keys->cipher, &ciphers, ssl_encryption_application)
-        == NGX_ERROR)
-    {
+    if (ngx_quic_ciphers(keys->cipher, &ciphers) == NGX_ERROR) {
         goto failed;
     }
 
@@ -927,7 +922,7 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
                    "quic retry itag len:%uz %xV", ad.len, &ad);
 #endif
 
-    if (ngx_quic_ciphers(0, &ciphers, pkt->level) == NGX_ERROR) {
+    if (ngx_quic_ciphers(NGX_QUIC_INITIAL_CIPHER, &ciphers) == NGX_ERROR) {
         return NGX_ERROR;
     }
 

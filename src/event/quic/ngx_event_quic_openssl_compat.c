@@ -238,7 +238,7 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
 
     keys->cipher = SSL_CIPHER_get_id(cipher);
 
-    key_len = ngx_quic_ciphers(keys->cipher, &ciphers, level);
+    key_len = ngx_quic_ciphers(keys->cipher, &ciphers);
 
     if (key_len == NGX_ERROR) {
         ngx_ssl_error(NGX_LOG_INFO, c->log, 0, "unexpected cipher");
