@@ -855,12 +855,11 @@ ngx_quic_keys_cleanup(ngx_quic_keys_t *keys)
 static ngx_int_t
 ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
-    u_char              *pnp, *sample;
-    ngx_str_t            ad, out;
-    ngx_uint_t           i;
-    ngx_quic_secret_t   *secret;
-    ngx_quic_ciphers_t   ciphers;
-    u_char               nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
+    u_char             *pnp, *sample;
+    ngx_str_t           ad, out;
+    ngx_uint_t          i;
+    ngx_quic_secret_t  *secret;
+    u_char              nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
     ad.data = res->data;
     ad.len = ngx_quic_create_header(pkt, ad.data, &pnp);
@@ -872,11 +871,6 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pkt->log, 0,
                    "quic ad len:%uz %xV", ad.len, &ad);
 #endif
-
-    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
-    {
-        return NGX_ERROR;
-    }
 
     secret = &pkt->keys->secrets[pkt->level].server;
 
@@ -1081,20 +1075,14 @@ ngx_quic_encrypt(ngx_quic_header_t *pkt, ngx_str_t *res)
 ngx_int_t
 ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
 {
-    u_char              *p, *sample;
-    size_t               len;
-    uint64_t             pn, lpn;
-    ngx_int_t            pnl;
-    ngx_str_t            in, ad;
-    ngx_uint_t           key_phase;
-    ngx_quic_secret_t   *secret;
-    ngx_quic_ciphers_t   ciphers;
-    uint8_t              nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
-
-    if (ngx_quic_ciphers(pkt->keys->cipher, &ciphers, pkt->level) == NGX_ERROR)
-    {
-        return NGX_ERROR;
-    }
+    u_char             *p, *sample;
+    size_t              len;
+    uint64_t            pn, lpn;
+    ngx_int_t           pnl;
+    ngx_str_t           in, ad;
+    ngx_uint_t          key_phase;
+    ngx_quic_secret_t  *secret;
+    uint8_t             nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
     secret = &pkt->keys->secrets[pkt->level].client;
 

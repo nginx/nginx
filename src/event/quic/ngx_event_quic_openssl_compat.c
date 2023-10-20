@@ -582,10 +582,9 @@ ngx_quic_compat_create_header(ngx_quic_compat_record_t *rec, u_char *out,
 static ngx_int_t
 ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
 {
-    ngx_str_t            ad, out;
-    ngx_quic_secret_t   *secret;
-    ngx_quic_ciphers_t   ciphers;
-    u_char               nonce[NGX_QUIC_IV_LEN];
+    ngx_str_t           ad, out;
+    ngx_quic_secret_t  *secret;
+    u_char              nonce[NGX_QUIC_IV_LEN];
 
     ad.data = res->data;
     ad.len = ngx_quic_compat_create_header(rec, ad.data, 0);
@@ -597,11 +596,6 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, rec->log, 0,
                    "quic compat ad len:%uz %xV", ad.len, &ad);
 #endif
-
-    if (ngx_quic_ciphers(rec->keys->cipher, &ciphers, rec->level) == NGX_ERROR)
-    {
-        return NGX_ERROR;
-    }
 
     secret = &rec->keys->secret;
 
