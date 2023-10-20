@@ -519,6 +519,21 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     qc = ngx_quic_get_connection(c);
 
+    if (!ngx_quic_keys_available(qc->keys, ctx->level, 1)) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "quic %s write keys discarded",
+                      ngx_quic_level_name(ctx->level));
+
+        while (!ngx_queue_empty(&ctx->frames)) {
+            q = ngx_queue_head(&ctx->frames);
+            ngx_queue_remove(q);
+
+            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+            ngx_quic_free_frame(c, f);
+        }
+
+        return 0;
+    }
+
     ngx_quic_init_packet(c, ctx, &pkt, qc->path);
 
     min_payload = ngx_quic_payload_size(&pkt, min);
