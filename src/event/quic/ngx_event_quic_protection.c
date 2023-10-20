@@ -117,6 +117,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
     ngx_str_t            iss;
     ngx_uint_t           i;
     const EVP_MD        *digest;
+    ngx_quic_md_t        client_key, server_key;
     ngx_quic_hkdf_t      seq[8];
     ngx_quic_secret_t   *client, *server;
     ngx_quic_ciphers_t   ciphers;
@@ -160,8 +161,8 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
     client->secret.len = SHA256_DIGEST_LENGTH;
     server->secret.len = SHA256_DIGEST_LENGTH;
 
-    client->key.len = NGX_QUIC_AES_128_KEY_LEN;
-    server->key.len = NGX_QUIC_AES_128_KEY_LEN;
+    client_key.len = NGX_QUIC_AES_128_KEY_LEN;
+    server_key.len = NGX_QUIC_AES_128_KEY_LEN;
 
     client->hp.len = NGX_QUIC_AES_128_KEY_LEN;
     server->hp.len = NGX_QUIC_AES_128_KEY_LEN;
@@ -171,11 +172,11 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
 
     /* labels per RFC 9001, 5.1. Packet Protection Keys */
     ngx_quic_hkdf_set(&seq[0], "tls13 client in", &client->secret, &iss);
-    ngx_quic_hkdf_set(&seq[1], "tls13 quic key", &client->key, &client->secret);
+    ngx_quic_hkdf_set(&seq[1], "tls13 quic key", &client_key, &client->secret);
     ngx_quic_hkdf_set(&seq[2], "tls13 quic iv", &client->iv, &client->secret);
     ngx_quic_hkdf_set(&seq[3], "tls13 quic hp", &client->hp, &client->secret);
     ngx_quic_hkdf_set(&seq[4], "tls13 server in", &server->secret, &iss);
-    ngx_quic_hkdf_set(&seq[5], "tls13 quic key", &server->key, &server->secret);
+    ngx_quic_hkdf_set(&seq[5], "tls13 quic key", &server_key, &server->secret);
     ngx_quic_hkdf_set(&seq[6], "tls13 quic iv", &server->iv, &server->secret);
     ngx_quic_hkdf_set(&seq[7], "tls13 quic hp", &server->hp, &server->secret);
 
@@ -189,11 +190,15 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, client, 0, log) == NGX_ERROR) {
+    if (ngx_quic_crypto_init(ciphers.c, client, &client_key, 0, log)
+        == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, server, 1, log) == NGX_ERROR) {
+    if (ngx_quic_crypto_init(ciphers.c, server, &server_key, 1, log)
+        == NGX_ERROR)
+    {
         goto failed;
     }
 
@@ -376,13 +381,13 @@ failed:
 
 ngx_int_t
 ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
-    ngx_int_t enc, ngx_log_t *log)
+    ngx_quic_md_t *key, ngx_int_t enc, ngx_log_t *log)
 {
 
 #ifdef OPENSSL_IS_BORINGSSL
     EVP_AEAD_CTX  *ctx;
 
-    ctx = EVP_AEAD_CTX_new(cipher, s->key.data, s->key.len,
+    ctx = EVP_AEAD_CTX_new(cipher, key->data, key->len,
                            EVP_AEAD_DEFAULT_TAG_LENGTH);
     if (ctx == NULL) {
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_AEAD_CTX_new() failed");
@@ -423,7 +428,7 @@ ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
         return NGX_ERROR;
     }
 
-    if (EVP_CipherInit_ex(ctx, NULL, NULL, s->key.data, NULL, enc) != 1) {
+    if (EVP_CipherInit_ex(ctx, NULL, NULL, key->data, NULL, enc) != 1) {
         EVP_CIPHER_CTX_free(ctx);
         ngx_ssl_error(NGX_LOG_INFO, log, 0, "EVP_CipherInit_ex() failed");
         return NGX_ERROR;
@@ -652,6 +657,7 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
     ngx_int_t            key_len;
     ngx_str_t            secret_str;
     ngx_uint_t           i;
+    ngx_quic_md_t        key;
     ngx_quic_hkdf_t      seq[3];
     ngx_quic_secret_t   *peer_secret;
     ngx_quic_ciphers_t   ciphers;
@@ -677,15 +683,14 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
     peer_secret->secret.len = secret_len;
     ngx_memcpy(peer_secret->secret.data, secret, secret_len);
 
-    peer_secret->key.len = key_len;
+    key.len = key_len;
     peer_secret->iv.len = NGX_QUIC_IV_LEN;
     peer_secret->hp.len = key_len;
 
     secret_str.len = secret_len;
     secret_str.data = (u_char *) secret;
 
-    ngx_quic_hkdf_set(&seq[0], "tls13 quic key",
-                      &peer_secret->key, &secret_str);
+    ngx_quic_hkdf_set(&seq[0], "tls13 quic key", &key, &secret_str);
     ngx_quic_hkdf_set(&seq[1], "tls13 quic iv", &peer_secret->iv, &secret_str);
     ngx_quic_hkdf_set(&seq[2], "tls13 quic hp", &peer_secret->hp, &secret_str);
 
@@ -695,7 +700,7 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
         }
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, peer_secret, is_write, log)
+    if (ngx_quic_crypto_init(ciphers.c, peer_secret, &key, is_write, log)
         == NGX_ERROR)
     {
         return NGX_ERROR;
@@ -758,7 +763,9 @@ ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys)
 void
 ngx_quic_keys_update(ngx_event_t *ev)
 {
+    ngx_int_t               key_len;
     ngx_uint_t              i;
+    ngx_quic_md_t           client_key, server_key;
     ngx_quic_hkdf_t         seq[6];
     ngx_quic_keys_t        *keys;
     ngx_connection_t       *c;
@@ -777,18 +784,21 @@ ngx_quic_keys_update(ngx_event_t *ev)
 
     c->log->action = "updating keys";
 
-    if (ngx_quic_ciphers(keys->cipher, &ciphers) == NGX_ERROR) {
+    key_len = ngx_quic_ciphers(keys->cipher, &ciphers);
+
+    if (key_len == NGX_ERROR) {
         goto failed;
     }
 
+    client_key.len = key_len;
+    server_key.len = key_len;
+
     next->client.secret.len = current->client.secret.len;
-    next->client.key.len = current->client.key.len;
     next->client.iv.len = NGX_QUIC_IV_LEN;
     next->client.hp = current->client.hp;
     next->client.hp_ctx = current->client.hp_ctx;
 
     next->server.secret.len = current->server.secret.len;
-    next->server.key.len = current->server.key.len;
     next->server.iv.len = NGX_QUIC_IV_LEN;
     next->server.hp = current->server.hp;
     next->server.hp_ctx = current->server.hp_ctx;
@@ -796,13 +806,13 @@ ngx_quic_keys_update(ngx_event_t *ev)
     ngx_quic_hkdf_set(&seq[0], "tls13 quic ku",
                       &next->client.secret, &current->client.secret);
     ngx_quic_hkdf_set(&seq[1], "tls13 quic key",
-                      &next->client.key, &next->client.secret);
+                      &client_key, &next->client.secret);
     ngx_quic_hkdf_set(&seq[2], "tls13 quic iv",
                       &next->client.iv, &next->client.secret);
     ngx_quic_hkdf_set(&seq[3], "tls13 quic ku",
                       &next->server.secret, &current->server.secret);
     ngx_quic_hkdf_set(&seq[4], "tls13 quic key",
-                      &next->server.key, &next->server.secret);
+                      &server_key, &next->server.secret);
     ngx_quic_hkdf_set(&seq[5], "tls13 quic iv",
                       &next->server.iv, &next->server.secret);
 
@@ -812,12 +822,14 @@ ngx_quic_keys_update(ngx_event_t *ev)
         }
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, &next->client, 0, c->log) == NGX_ERROR)
+    if (ngx_quic_crypto_init(ciphers.c, &next->client, &client_key, 0, c->log)
+        == NGX_ERROR)
     {
         goto failed;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, &next->server, 1, c->log) == NGX_ERROR)
+    if (ngx_quic_crypto_init(ciphers.c, &next->server, &server_key, 1, c->log)
+        == NGX_ERROR)
     {
         goto failed;
     }
@@ -901,11 +913,12 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
 {
     u_char              *start;
     ngx_str_t            ad, itag;
+    ngx_quic_md_t        key;
     ngx_quic_secret_t    secret;
     ngx_quic_ciphers_t   ciphers;
 
     /* 5.8.  Retry Packet Integrity */
-    static u_char     key[16] =
+    static u_char     key_data[16] =
         "\xbe\x0c\x69\x0b\x9f\x66\x57\x5a\x1d\x76\x6b\x54\xe3\x68\xc8\x4e";
     static u_char     nonce[NGX_QUIC_IV_LEN] =
         "\x46\x15\x99\xd3\x5d\x63\x2b\xf2\x23\x98\x25\xbb";
@@ -926,11 +939,13 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
         return NGX_ERROR;
     }
 
-    secret.key.len = sizeof(key);
-    ngx_memcpy(secret.key.data, key, sizeof(key));
+    key.len = sizeof(key_data);
+    ngx_memcpy(key.data, key_data, sizeof(key_data));
     secret.iv.len = NGX_QUIC_IV_LEN;
 
-    if (ngx_quic_crypto_init(ciphers.c, &secret, 1, pkt->log) == NGX_ERROR) {
+    if (ngx_quic_crypto_init(ciphers.c, &secret, &key, 1, pkt->log)
+        == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 

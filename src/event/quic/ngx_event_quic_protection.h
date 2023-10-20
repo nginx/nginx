@@ -47,7 +47,6 @@ typedef struct {
 
 typedef struct {
     ngx_quic_md_t             secret;
-    ngx_quic_md_t             key;
     ngx_quic_iv_t             iv;
     ngx_quic_md_t             hp;
     ngx_quic_crypto_ctx_t    *ctx;
@@ -110,7 +109,7 @@ ngx_int_t ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn);
 void ngx_quic_compute_nonce(u_char *nonce, size_t len, uint64_t pn);
 ngx_int_t ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers);
 ngx_int_t ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher,
-    ngx_quic_secret_t *s, ngx_int_t enc, ngx_log_t *log);
+    ngx_quic_secret_t *s, ngx_quic_md_t *key, ngx_int_t enc, ngx_log_t *log);
 ngx_int_t ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out,
     u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 void ngx_quic_crypto_cleanup(ngx_quic_secret_t *s);

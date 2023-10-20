@@ -229,6 +229,7 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
     ngx_int_t            key_len;
     ngx_str_t            secret_str;
     ngx_uint_t           i;
+    ngx_quic_md_t        key;
     ngx_quic_hkdf_t      seq[2];
     ngx_quic_secret_t   *peer_secret;
     ngx_quic_ciphers_t   ciphers;
@@ -254,13 +255,14 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
     peer_secret->secret.len = secret_len;
     ngx_memcpy(peer_secret->secret.data, secret, secret_len);
 
-    peer_secret->key.len = key_len;
+    key.len = key_len;
+
     peer_secret->iv.len = NGX_QUIC_IV_LEN;
 
     secret_str.len = secret_len;
     secret_str.data = (u_char *) secret;
 
-    ngx_quic_hkdf_set(&seq[0], "tls13 key", &peer_secret->key, &secret_str);
+    ngx_quic_hkdf_set(&seq[0], "tls13 key", &key, &secret_str);
     ngx_quic_hkdf_set(&seq[1], "tls13 iv", &peer_secret->iv, &secret_str);
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
@@ -284,7 +286,9 @@ ngx_quic_compat_set_encryption_secret(ngx_connection_t *c,
         cln->data = peer_secret;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, peer_secret, 1, c->log) == NGX_ERROR) {
+    if (ngx_quic_crypto_init(ciphers.c, peer_secret, &key, 1, c->log)
+        == NGX_ERROR)
+    {
         return NGX_ERROR;
     }
 
