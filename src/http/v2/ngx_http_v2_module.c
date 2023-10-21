@@ -388,7 +388,7 @@ ngx_http_v2_recv_buffer_size(ngx_conf_t *cf, void *post, void *data)
 {
     size_t *sp = data;
 
-    if (*sp <= 2 * NGX_HTTP_V2_STATE_BUFFER_SIZE) {
+    if (*sp <= NGX_HTTP_V2_STATE_BUFFER_SIZE) {
         return "value is too small";
     }
 

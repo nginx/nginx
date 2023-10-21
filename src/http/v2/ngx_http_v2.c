@@ -386,13 +386,11 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
     h2mcf = ngx_http_get_module_main_conf(h2c->http_connection->conf_ctx,
                                           ngx_http_v2_module);
 
-    available = h2mcf->recv_buffer_size - 2 * NGX_HTTP_V2_STATE_BUFFER_SIZE;
+    available = h2mcf->recv_buffer_size - NGX_HTTP_V2_STATE_BUFFER_SIZE;
 
     do {
         p = h2mcf->recv_buffer;
-
-        ngx_memcpy(p, h2c->state.buffer, NGX_HTTP_V2_STATE_BUFFER_SIZE);
-        end = p + h2c->state.buffer_used;
+        end = ngx_cpymem(p, h2c->state.buffer, h2c->state.buffer_used);
 
         n = c->recv(c, end, available);
 
@@ -2592,7 +2590,7 @@ ngx_http_v2_state_save(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
-    ngx_memcpy(h2c->state.buffer, pos, NGX_HTTP_V2_STATE_BUFFER_SIZE);
+    ngx_memcpy(h2c->state.buffer, pos, size);
 
     h2c->state.buffer_used = size;
     h2c->state.handler = handler;
