@@ -1,8 +1,5 @@
 {
   "name": "devcontainer",
   "dockerFile": "Dockerfile",
-  "customizations/vscode/extensions": ["vscode.vim"],
-  "settings": { "workbench.colorTheme": "Default Dark+" },
-  "forwardPorts": [80, 443],
   "postCreateCommand": "echo 'dev container online. prepare to melt.'"
 }
