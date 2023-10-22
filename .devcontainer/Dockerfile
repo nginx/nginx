@@ -4,12 +4,11 @@ RUN dnf clean all && \
     dnf update -y && \
     dnf install -y \
     yum-utils \
-    epel-release
-
-RUN dnf update -y && \
-    dnf install -y \
+    epel-release \
+    ncurses \
     git \
     vim \
+    tmux \
     gcc-c++ \
     make \
     pcre-devel \
@@ -19,11 +18,28 @@ RUN dnf update -y && \
     autoconf \
     automake \
     curl-devel \
-    libgeoip-devel \
-    liblmdb-devel \
-    libpcre++-devel \
     libtool \
     libxml2-devel \
-    libyajl \
     pkgconf \
     wget
+
+# libzip-devel from Rocky CRB repository
+RUN dnf config-manager --set-enabled crb && \
+    dnf install -y libzip-devel
+
+# enable devel repo and install devel packages
+RUN dnf config-manager --set-enabled devel && \
+    dnf install -y \
+    lmdb-devel \
+    yajl-devel \
+    pcre-devel
+
+# download and install the geoipupdate rpm 
+RUN wget -O /tmp/geoipupdate.rpm https://github.com/maxmind/geoipupdate/releases/download/v6.0.0/geoipupdate_6.0.0_linux_amd64.rpm && \
+    dnf install -y /tmp/geoipupdate.rpm
+
+COPY stafford.sh /usr/local/bin/stafford.sh
+
+ENTRYPOINT ["/usr/local/bin/stafford.sh"]
+
+CMD ["/bin/bash"]
