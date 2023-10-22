@@ -1,13 +1,6 @@
-FROM ubuntu:latest
+FROM centos:8
 
-# Env vars
-ENV DEBIAN_FRONTEND=noninteractive
+RUN dnf -y update && \
+    dnf -y install gcc-c++ pcre pcre-devel zlib zlib-devel make openssl openssl-devel
 
-# Package updates and install packages
-RUN apt-get update \
-    && apt-get -y install \
-    gcc \
-    make \
-    libpcre3 libpcre3-dev \
-    zlib1g zlib1g-dev \
-    openssl libssl-dev
+EXPOSE 80 443
