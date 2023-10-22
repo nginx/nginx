@@ -1,0 +1,79 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+if [ $SHA1 != NONE ]; then
+
+    have=NGX_HAVE_SHA1 . auto/have
+    CORE_INCS="$CORE_INCS $SHA1"
+
+    case "$NGX_CC_NAME" in
+
+        msvc* | owc* | bcc)
+            LINK_DEPS="$LINK_DEPS $SHA1/sha1.lib"
+            CORE_LIBS="$CORE_LIBS $SHA1/sha1.lib"
+        ;;
+
+        icc*)
+            LINK_DEPS="$LINK_DEPS $SHA1/libsha.a"
+
+            # to allow -ipo optimization we link with the *.o but not library
+            CORE_LIBS="$CORE_LIBS $SHA1/sha1_dgst.o"
+
+            if [ $SHA1_ASM = YES ]; then
+                CORE_LIBS="$CORE_LIBS $SHA1/asm/sx86-elf.o"
+            fi
+        ;;
+
+        *)
+            LINK_DEPS="$LINK_DEPS $SHA1/libsha.a"
+            CORE_LIBS="$CORE_LIBS $SHA1/libsha.a"
+            #CORE_LIBS="$CORE_LIBS -L $SHA1 -lsha"
+        ;;
+
+    esac
+
+else
+
+    if [ "$NGX_PLATFORM" != win32 ]; then
+
+        SHA1=NO
+
+        # FreeBSD
+
+        ngx_feature="sha1 in system md library"
+        ngx_feature_name=NGX_HAVE_SHA1
+        ngx_feature_run=no
+        ngx_feature_incs="#include <sha.h>"
+        ngx_feature_path=
+        ngx_feature_libs="-lmd"
+        ngx_feature_test="SHA_CTX sha1; SHA1_Init(&sha1)"
+        . auto/feature
+
+        ngx_sha1_lib="system md"
+
+        if [ $ngx_found = no ]; then
+
+            # OpenSSL crypto library
+
+            ngx_feature="sha1 in system OpenSSL crypto library"
+            ngx_feature_incs="#include <openssl/sha.h>"
+            ngx_feature_libs="-lcrypto"
+            . auto/feature
+
+            ngx_sha1_lib="system crypto"
+
+            if [ $ngx_found = yes ]; then
+                have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
+            fi
+        fi
+
+        if [ $ngx_found = yes ]; then
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+            SHA1=YES
+            SHA1_LIB=$ngx_sha1_lib
+        fi
+    fi
+
+fi

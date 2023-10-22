@@ -1,0 +1,136 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+# MSVC 6.0 SP2
+# MSVC Toolkit 2003 (7.1)
+# MSVC 2005 Express Edition SP1 (8.0)
+
+# optimizations
+
+# maximize speed, equivalent to -Og -Oi -Ot -Oy -Ob2 -Gs -GF -Gy
+CFLAGS="$CFLAGS -O2"
+
+# enable global optimization
+#CFLAGS="$CFLAGS -Og"
+# enable intrinsic functions
+#CFLAGS="$CFLAGS -Oi"
+
+# disable inline expansion
+#CFLAGS="$CFLAGS -Ob0"
+# explicit inline expansion
+#CFLAGS="$CFLAGS -Ob1"
+# explicit and implicit inline expansion
+#CFLAGS="$CFLAGS -Ob2"
+
+# enable frame pointer omission
+#CFLAGS="$CFLAGS -Oy"
+# disable stack checking calls
+#CFLAGS="$CFLAGS -Gs"
+
+# pools strings as read/write
+#CFLAGS="$CFLAGS -Gf"
+# pools strings as read-only
+#CFLAGS="$CFLAGS -GF"
+
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-G5"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-G6"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4, MSVC 7
+        CPU_OPT="-G7"
+    ;;
+esac
+
+# __cdecl, default, must be used with OpenSSL, md5 asm, and sha1 asm
+#CPU_OPT="$CPU_OPT -Gd"
+# __stdcall
+#CPU_OPT="$CPU_OPT -Gz"
+# __fastcall
+#CPU_OPT="$CPU_OPT -Gr"
+
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+
+# warnings
+
+CFLAGS="$CFLAGS -W4"
+
+# stop on warning
+CFLAGS="$CFLAGS -WX"
+
+# disable logo
+CFLAGS="$CFLAGS -nologo"
+
+# the link flags
+CORE_LINK="$CORE_LINK -link -verbose:lib"
+
+# link with libcmt.lib, multithreaded
+LIBC="-MT"
+# link with msvcrt.dll
+# however, MSVC Toolkit 2003 has no MSVCRT.LIB
+#LIBC="-MD"
+
+CFLAGS="$CFLAGS $LIBC"
+
+CORE_LIBS="$CORE_LIBS kernel32.lib user32.lib"
+
+# Win32 GUI mode application
+#CORE_LINK="$CORE_LINK -subsystem:windows -entry:mainCRTStartup"
+
+# debug
+# msvc8 under Wine issues
+#     Program database manager mismatch; please check your installation
+if [ $NGX_CC_NAME != msvc8 ]; then
+   CFLAGS="$CFLAGS -Zi"
+   CORE_LINK="$CORE_LINK -debug"
+fi
+
+
+# MSVC 2005 supports C99 variadic macros
+if [ $NGX_CC_NAME = msvc8 ]; then
+   have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
+fi
+
+
+# precompiled headers
+CORE_DEPS="$CORE_DEPS $NGX_OBJS/ngx_config.pch"
+CORE_LINK="$CORE_LINK $NGX_OBJS/ngx_pch.obj"
+NGX_PCH="$NGX_OBJS/ngx_config.pch"
+NGX_BUILD_PCH="-Ycngx_config.h -Fp$NGX_OBJS/ngx_config.pch"
+NGX_USE_PCH="-Yungx_config.h -Fp$NGX_OBJS/ngx_config.pch"
+
+
+# the resource file
+NGX_RES="$NGX_OBJS/nginx.res"
+NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
+CORE_LINK="$NGX_RES $CORE_LINK"
+
+
+ngx_objout="-Fo"
+ngx_binout="-Fe"
+ngx_objext="obj"
+ngx_binext=".exe"
+
+ngx_long_start='@<<
+	'
+ngx_long_end='<<'
+ngx_long_regex_cont=' \
+	'
+ngx_long_cont='
+	'
+
+# MSVC understand / in path
+#ngx_regex_dirsep='\\'
+#ngx_dirsep="\\"

@@ -1,0 +1,89 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+if [ "$NGX_PLATFORM" != win32 ]; then
+
+    ngx_feature="C compiler"
+    ngx_feature_name=
+    ngx_feature_run=yes
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test=
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+        echo
+        echo $0: error: C compiler $CC is not found
+        echo
+        exit 1
+    fi
+
+fi
+
+
+if [ "$CC" = cl ]; then
+    if `$NGX_WINE $CC -v 2>&1 \
+        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 16' \
+        >/dev/null 2>&1`; then
+
+        NGX_CC_NAME=msvc10
+        echo " + using Microsoft Visual C++ 10 compiler"
+
+    elif `$NGX_WINE $CC -v 2>&1 \
+        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 14' \
+        >/dev/null 2>&1`; then
+
+        NGX_CC_NAME=msvc8
+        echo " + using Microsoft Visual C++ 8 compiler"
+
+    elif `$NGX_WINE $CC -v 2>&1 \
+        | grep '^Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 13' \
+        >/dev/null 2>&1`; then
+
+        NGX_CC_NAME=msvc7
+        echo " + using Microsoft Visual C++ 7 compiler"
+
+    else
+        NGX_CC_NAME=msvc
+        echo " + using Microsoft Visual C++ compiler"
+    fi
+
+elif [ "$CC" = wcl386 ]; then
+    NGX_CC_NAME=owc
+    echo " + using Open Watcom C compiler"
+
+elif [ "$CC" = bcc32 ]; then
+    NGX_CC_NAME=bcc
+    echo " + using Borland C++ compiler"
+
+elif `$CC -V 2>&1 | grep '^Intel(R) C' >/dev/null 2>&1`; then
+    NGX_CC_NAME=icc
+    echo " + using Intel C++ compiler"
+
+elif `$CC -v 2>&1 | grep 'gcc version' >/dev/null 2>&1`; then
+    NGX_CC_NAME=gcc
+    echo " + using GNU C compiler"
+
+elif `$CC -v 2>&1 | grep '\(clang\|LLVM\) version' >/dev/null 2>&1`; then
+    NGX_CC_NAME=clang
+    echo " + using Clang C compiler"
+
+elif `$CC -V 2>&1 | grep 'Sun C' >/dev/null 2>&1`; then
+    NGX_CC_NAME=sunc
+    echo " + using Sun C compiler"
+
+elif `$CC -V 2>&1 | grep '^Compaq C' >/dev/null 2>&1`; then
+    NGX_CC_NAME=ccc
+    echo " + using Compaq C compiler"
+
+elif `$CC -V 2>&1 | grep '^aCC: ' >/dev/null 2>&1`; then
+    NGX_CC_NAME=acc
+    echo " + using HP aC++ compiler"
+
+else
+    NGX_CC_NAME=unknown
+
+fi

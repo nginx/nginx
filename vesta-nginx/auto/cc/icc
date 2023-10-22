@@ -1,0 +1,121 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+# Intel C++ compiler 7.1, 8.0, 8.1, 9.0, 11.1
+
+NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
+                         | sed -e 's/^.* Version \([^ ]*\) *Build.*$/\1/'`
+
+echo " + icc version: $NGX_ICC_VER"
+
+have=NGX_COMPILER value="\"Intel C Compiler $NGX_ICC_VER\"" . auto/define
+
+
+# optimizations
+
+CFLAGS="$CFLAGS -O"
+
+CORE_LINK="$CORE_LINK -opt_report_file=$NGX_OBJS/opt_report_file"
+
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-march=pentium"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-mcpu=pentiumpro -march=pentiumpro"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4, default
+        CPU_OPT="-march=pentium4"
+    ;;
+esac
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="-O $CPU_OPT"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="-O $CPU_OPT"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="-O $CPU_OPT"
+fi
+
+
+# warnings
+
+CFLAGS="$CFLAGS -w2"
+
+# disable some warnings
+
+# invalid type conversion: "int" to "char *"
+CFLAGS="$CFLAGS -wd171"
+# argument is incompatible with corresponding format string conversion
+CFLAGS="$CFLAGS -wd181"
+# zero used for undefined preprocessing identifier
+CFLAGS="$CFLAGS -wd193"
+# the format string ends before this argument
+CFLAGS="$CFLAGS -wd268"
+# invalid format string conversion
+CFLAGS="$CFLAGS -wd269"
+# conversion from "long long" to "size_t" may lose significant bits
+CFLAGS="$CFLAGS -wd810"
+# parameter was never referenced
+CFLAGS="$CFLAGS -wd869"
+# attribute "unused" is only allowed in a function definition, warning on pTHX_
+CFLAGS="$CFLAGS -wd1301"
+
+# STUB
+# enumerated type mixed with another type
+CFLAGS="$CFLAGS -wd188"
+# controlling expression is constant
+CFLAGS="$CFLAGS -wd279"
+# operands are evaluated in unspecified order
+CFLAGS="$CFLAGS -wd981"
+# external definition with no prior declaration
+CFLAGS="$CFLAGS -wd1418"
+# external declaration in primary source file
+CFLAGS="$CFLAGS -wd1419"
+
+case "$NGX_ICC_VER" in
+    9.*)
+        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
+        CFLAGS="$CFLAGS -wd1469"
+        # explicit conversion of a 64-bit integral type to a smaller
+        # integral type
+        CFLAGS="$CFLAGS -wd1683"
+        # conversion from pointer to same-sized integral type,
+        # warning on offsetof()
+        CFLAGS="$CFLAGS -wd1684"
+        # floating-point equality and inequality comparisons are unreliable,
+        # warning on SvTRUE()
+        CFLAGS="$CFLAGS -wd1572"
+    ;;
+
+    8.*)
+        # "cc" clobber ignored, warnings for Liunx's htonl()/htons()
+        CFLAGS="$CFLAGS -wd1469"
+        # floating-point equality and inequality comparisons are unreliable,
+        # warning on SvTRUE()
+        CFLAGS="$CFLAGS -wd1572"
+    ;;
+
+    *)
+    ;;
+esac
+
+# stop on warning
+CFLAGS="$CFLAGS -Werror"
+
+# debug
+CFLAGS="$CFLAGS -g"

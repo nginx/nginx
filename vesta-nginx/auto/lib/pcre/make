@@ -1,0 +1,64 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+case "$NGX_CC_NAME" in
+
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
+        ngx_pcre="PCRE=\"$PCRE\""
+    ;;
+
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\""
+        ngx_pcre=`echo PCRE=\"$PCRE\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=\"$CPU_OPT\""
+        ngx_pcre=`echo \-DPCRE=\"$PCRE\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+    *)
+        ngx_makefile=
+    ;;
+
+esac
+
+
+if [ -n "$ngx_makefile" ]; then
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+`echo "$PCRE/pcre.lib:	$PCRE/pcre.h $NGX_MAKEFILE"			\
+	| sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f auto/lib/pcre/$ngx_makefile $ngx_pcre $ngx_opt
+
+`echo "$PCRE/pcre.h:" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f auto/lib/pcre/$ngx_makefile $ngx_pcre pcre.h
+
+END
+
+else
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$PCRE/pcre.h:	$PCRE/Makefile
+
+$PCRE/Makefile:	$NGX_MAKEFILE
+	cd $PCRE \\
+	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
+	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
+	./configure --disable-shared $PCRE_CONF_OPT
+
+$PCRE/.libs/libpcre.a:	$PCRE/Makefile
+	cd $PCRE \\
+	&& \$(MAKE) libpcre.la
+
+END
+
+fi

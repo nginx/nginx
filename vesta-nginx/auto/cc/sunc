@@ -1,0 +1,158 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+# Sun C 5.7 Patch 117837-04 2005/05/11    Sun Studio 10
+# Sun C 5.8 2005/10/13                    Sun Studio 11
+# Sun C 5.9 SunOS_i386 2007/05/03         Sun Studio 12
+# Sun C 5.9 SunOS_sparc 2007/05/03
+# Sun C 5.10 SunOS_i386 2009/06/03        Sun Studio 12.1
+# Sun C 5.11 SunOS_i386 2010/08/13        Sun Studio 12.2
+
+NGX_SUNC_VER=`$CC -V 2>&1 | grep 'Sun C' 2>&1 \
+                          | sed -e 's/^.* Sun C \(.*\)/\1/'`
+
+echo " + Sun C version: $NGX_SUNC_VER"
+
+have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
+
+
+cat << END > $NGX_AUTOTEST.c
+
+int main() { printf("%d", __SUNPRO_C); }
+
+END
+
+eval "$CC -o $NGX_AUTOTEST $NGX_AUTOTEST.c >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    ngx_sunc_ver=`$NGX_AUTOTEST`
+fi
+
+rm -rf $NGX_AUTOTEST*
+
+# 1424 == 0x590, Sun Studio 12
+
+if [ "$ngx_sunc_ver" -ge 1424 ]; then
+    ngx_sparc32="-m32"
+    ngx_sparc64="-m64"
+    ngx_amd64="-m64"
+
+else
+    ngx_sparc32="-xarch=v8plus"
+    ngx_sparc64="-xarch=v9"
+    ngx_amd64="-xarch=amd64"
+fi
+
+case "$NGX_MACHINE" in
+
+    i86pc)
+        NGX_AUX=" src/os/unix/ngx_sunpro_x86.il"
+    ;;
+
+    sun4u | sun4v)
+        NGX_AUX=" src/os/unix/ngx_sunpro_sparc64.il"
+    ;;
+
+esac
+
+
+# optimizations
+
+# 20736 == 0x5100, Sun Studio 12.1
+
+if [ "$ngx_sunc_ver" -ge 20736 ]; then
+    ngx_fast="-fast"
+
+else
+    # older versions had problems with bit-fields
+    ngx_fast="-fast -xalias_level=any"
+fi
+
+IPO=-xipo
+CFLAGS="$CFLAGS $ngx_fast $IPO"
+CORE_LINK="$CORE_LINK $ngx_fast $IPO"
+
+
+case $CPU in
+    pentium)
+        # optimize for Pentium and Athlon
+        CPU_OPT="-xchip=pentium"
+    ;;
+
+    pentiumpro)
+        # optimize for Pentium Pro, Pentium II
+        CPU_OPT="-xchip=pentium_pro"
+    ;;
+
+    pentium3)
+        # optimize for Pentium III
+        CPU_OPT="-xchip=pentium3"
+        #CPU_OPT="$CPU_OPT -xarch=sse"
+        CPU_OPT="$CPU_OPT -xcache=16/32/4:256/32/4"
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4
+        CPU_OPT="-xchip=pentium4"
+        #CPU_OPT="$CPU_OPT -xarch=sse2"
+        CPU_OPT="$CPU_OPT -xcache=8/64/4:256/128/8"
+    ;;
+
+    opteron)
+        # optimize for Opteron
+        CPU_OPT="-xchip=opteron"
+        #CPU_OPT="$CPU_OPT -xarch=sse2"
+        CPU_OPT="$CPU_OPT -xcache=64/64/2:1024/64/16"
+    ;;
+
+    sparc32)
+        # build 32-bit UltraSparc binary
+        CPU_OPT="$ngx_sparc32"
+        CORE_LINK="$CORE_LINK $ngx_sparc32"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_sparc32"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+    sparc64)
+        # build 64-bit UltraSparc binary
+        CPU_OPT="$ngx_sparc64"
+        CORE_LINK="$CORE_LINK $ngx_sparc64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_sparc64"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+    amd64)
+        # build 64-bit amd64 binary
+        CPU_OPT="$ngx_amd64"
+        CORE_LINK="$CORE_LINK $ngx_amd64"
+        CC_AUX_FLAGS="$CC_AUX_FLAGS $ngx_amd64"
+        NGX_AUX=" src/os/unix/ngx_sunpro_amd64.il"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+esac
+
+
+CFLAGS="$CFLAGS $CPU_OPT"
+
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="$ngx_fast $IPO $CPU_OPT"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="$ngx_fast $IPO $CPU_OPT"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="$ngx_fast $IPO $CPU_OPT"
+fi
+
+
+# stop on warning
+CFLAGS="$CFLAGS -errwarn=%all"
+
+# debug
+CFLAGS="$CFLAGS -g"

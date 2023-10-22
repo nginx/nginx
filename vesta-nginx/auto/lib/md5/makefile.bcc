@@ -1,0 +1,22 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+CFLAGS = -q -O2 -tWM $(CPU_OPT) -DL_ENDIAN
+
+!if "$(MD5_ASM)" == "YES"
+
+md5.lib:
+	cd $(MD5)
+	bcc32 -c $(CFLAGS) -DMD5_ASM md5_dgst.c
+	tlib md5.lib +md5_dgst.obj +"asm\m-win32.obj"
+
+!else
+
+md5.lib:
+	cd $(MD5)
+	bcc32 -c $(CFLAGS) md5_dgst.c
+	tlib md5.lib +md5_dgst.obj
+
+!endif

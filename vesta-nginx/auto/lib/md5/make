@@ -1,0 +1,96 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+case "$NGX_CC_NAME" in
+
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC MD5_ASM=$MD5_ASM"
+        ngx_md5="MD5=\"$MD5\""
+    ;;
+
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\""
+        ngx_md5=`echo MD5=\"$MD5\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=\"$CPU_OPT\" -DMD5_ASM=$MD5_ASM"
+        ngx_md5=`echo \-DMD5=\"$MD5\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+esac
+
+
+done=NO
+
+
+case "$NGX_PLATFORM" in
+
+    win32)
+        cat << END                                        >> $NGX_MAKEFILE
+
+`echo "$MD5/md5.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f auto/lib/md5/$ngx_makefile $ngx_opt $ngx_md5
+
+END
+
+        done=YES
+    ;;
+
+    SunOS:*:i86pc)
+        if [ $MD5_ASM = YES ]; then
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT -DSOL -DMD5_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		MD5_ASM_OBJ=asm/mx86-sol.o clean libmd5.a
+
+END
+
+            done=YES
+        fi
+    ;;
+
+    # FreeBSD: i386
+    # Linux: i686
+
+    *:i386 | *:i686)
+        if [ $MD5_ASM = YES ]; then
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT -DELF -DMD5_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		MD5_ASM_OBJ=asm/mx86-elf.o clean libmd5.a
+
+END
+
+            done=YES
+        fi
+    ;;
+
+esac
+
+
+if [ $done = NO ]; then
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$MD5/libmd5.a:	$NGX_MAKEFILE
+	cd $MD5 \\
+	&& \$(MAKE) CFLAGS="$MD5_OPT" \\
+		CC="\$(CC)" MD5_ASM_OBJ= clean libmd5.a
+
+END
+
+fi

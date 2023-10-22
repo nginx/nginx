@@ -1,0 +1,40 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+echo $ngx_n "checking for $ngx_lib ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for $ngx_lib
+
+END
+
+ngx_found=no
+
+cat << END > $NGX_AUTOTEST.c
+
+$ngx_lib_incs
+
+int main() {
+    $ngx_lib_test;
+    return 0;
+}
+
+
+eval "$CC $cc_test_flags $ngx_lib_cflags \
+     -o $NGX_AUTOTEST $NGX_AUTOTEST.c $ngx_libs \
+     >> $NGX_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    echo " found"
+
+    ngx_found=yes
+
+else
+    echo " not found"
+fi
+
+rm -rf $NGX_AUTOTEST*

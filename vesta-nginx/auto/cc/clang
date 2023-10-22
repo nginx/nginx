@@ -1,0 +1,104 @@
+
+# Copyright (C) Nginx, Inc.
+
+
+# clang
+
+
+NGX_CLANG_VER=`$CC -v 2>&1 | grep '\(clang\|LLVM\) version' 2>&1 \
+                           | sed -e 's/^.* version \(.*\)/\1/'`
+
+echo " + clang version: $NGX_CLANG_VER"
+
+have=NGX_COMPILER value="\"clang $NGX_CLANG_VER\"" . auto/define
+
+
+CC_TEST_FLAGS="-pipe"
+
+
+# optimizations
+
+#NGX_CLANG_OPT="-O2"
+#NGX_CLANG_OPT="-Oz"
+NGX_CLANG_OPT="-O"
+
+case $CPU in
+    pentium)
+        # optimize for Pentium
+        CPU_OPT="-march=pentium"
+        NGX_CPU_CACHE_LINE=32
+    ;;
+
+    pentiumpro | pentium3)
+        # optimize for Pentium Pro, Pentium II and Pentium III
+        CPU_OPT="-march=pentiumpro"
+        NGX_CPU_CACHE_LINE=32
+    ;;
+
+    pentium4)
+        # optimize for Pentium 4
+        CPU_OPT="-march=pentium4"
+        NGX_CPU_CACHE_LINE=128
+    ;;
+
+    athlon)
+        # optimize for Athlon
+        CPU_OPT="-march=athlon"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+    opteron)
+        # optimize for Opteron
+        CPU_OPT="-march=opteron"
+        NGX_CPU_CACHE_LINE=64
+    ;;
+
+esac
+
+CC_AUX_FLAGS="$CC_AUX_FLAGS $CPU_OPT"
+
+
+CFLAGS="$CFLAGS -pipe $CPU_OPT"
+
+if [ ".$PCRE_OPT" = "." ]; then
+    PCRE_OPT="-O2 -pipe $CPU_OPT"
+else
+    PCRE_OPT="$PCRE_OPT -pipe"
+fi
+
+if [ ".$MD5_OPT" = "." ]; then
+    MD5_OPT="-O2 -pipe $CPU_OPT"
+else
+    MD5_OPT="$MD5_OPT -pipe"
+fi
+
+if [ ".$ZLIB_OPT" = "." ]; then
+    ZLIB_OPT="-O2 -pipe $CPU_OPT"
+else
+    ZLIB_OPT="$ZLIB_OPT -pipe"
+fi
+
+
+# warnings
+
+CFLAGS="$CFLAGS $NGX_CLANG_OPT -Wall -Wextra -Wpointer-arith"
+CFLAGS="$CFLAGS -Wconditional-uninitialized"
+#CFLAGS="$CFLAGS -Wmissing-prototypes"
+
+# we have a lot of unused function arguments
+CFLAGS="$CFLAGS -Wno-unused-parameter"
+
+# deprecated system OpenSSL library on OS X
+if [ "$NGX_SYSTEM" = "Darwin" ]; then
+    CFLAGS="$CFLAGS -Wno-deprecated-declarations"
+fi
+
+# stop on warning
+CFLAGS="$CFLAGS -Werror"
+
+# debug
+CFLAGS="$CFLAGS -g"
+
+if [ ".$CPP" = "." ]; then
+    CPP="$CC -E"
+fi

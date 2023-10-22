@@ -1,0 +1,83 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+    ngx_feature="GD library"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs="#include <gd.h>"
+    ngx_feature_path=
+    ngx_feature_libs="-lgd"
+    ngx_feature_test="gdImagePtr img = gdImageCreateFromGifPtr(1, NULL);"
+    . auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    # FreeBSD port
+
+    ngx_feature="GD library in /usr/local/"
+    ngx_feature_path="/usr/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lgd"
+    else
+        ngx_feature_libs="-L/usr/local/lib -lgd"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # NetBSD port
+
+    ngx_feature="GD library in /usr/pkg/"
+    ngx_feature_path="/usr/pkg/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lgd"
+    else
+        ngx_feature_libs="-L/usr/pkg/lib -lgd"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # MacPorts
+
+    ngx_feature="GD library in /opt/local/"
+    ngx_feature_path="/opt/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lgd"
+    else
+        ngx_feature_libs="-L/opt/local/lib -lgd"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = yes ]; then
+
+    CORE_INCS="$CORE_INCS $ngx_feature_path"
+    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+else
+
+cat << END
+
+$0: error: the HTTP image filter module requires the GD library.
+You can either do not enable the module or install the libraries.
+
+END
+
+    exit 1
+
+fi

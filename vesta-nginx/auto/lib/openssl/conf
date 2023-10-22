@@ -1,0 +1,127 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+if [ $OPENSSL != NONE ]; then
+
+    case "$CC" in
+
+        cl | bcc32)
+            have=NGX_OPENSSL . auto/have
+            have=NGX_SSL . auto/have
+
+            CFLAGS="$CFLAGS -DNO_SYS_TYPES_H"
+
+            CORE_INCS="$CORE_INCS $OPENSSL/openssl/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/openssl/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/openssl/lib/ssleay32.lib"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/openssl/lib/libeay32.lib"
+
+            # libeay32.lib requires gdi32.lib
+            CORE_LIBS="$CORE_LIBS gdi32.lib"
+            # OpenSSL 1.0.0 requires crypt32.lib
+            CORE_LIBS="$CORE_LIBS crypt32.lib"
+        ;;
+
+        *)
+            have=NGX_OPENSSL . auto/have
+            have=NGX_SSL . auto/have
+
+            CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+
+            if [ "$NGX_PLATFORM" = win32 ]; then
+                CORE_LIBS="$CORE_LIBS -lgdi32 -lcrypt32 -lws2_32"
+            fi
+        ;;
+    esac
+
+else
+
+    if [ "$NGX_PLATFORM" != win32 ]; then
+
+        OPENSSL=NO
+
+        ngx_feature="OpenSSL library"
+        ngx_feature_name="NGX_OPENSSL"
+        ngx_feature_run=no
+        ngx_feature_incs="#include <openssl/ssl.h>"
+        ngx_feature_path=
+        ngx_feature_libs="-lssl -lcrypto"
+        ngx_feature_test="SSL_library_init()"
+        . auto/feature
+
+        if [ $ngx_found = no ]; then
+
+            # FreeBSD port
+
+            ngx_feature="OpenSSL library in /usr/local/"
+            ngx_feature_path="/usr/local/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/usr/local/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
+        if [ $ngx_found = no ]; then
+
+            # NetBSD port
+
+            ngx_feature="OpenSSL library in /usr/pkg/"
+            ngx_feature_path="/usr/pkg/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/usr/pkg/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
+        if [ $ngx_found = no ]; then
+
+            # MacPorts
+
+            ngx_feature="OpenSSL library in /opt/local/"
+            ngx_feature_path="/opt/local/include"
+
+            if [ $NGX_RPATH = YES ]; then
+                ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lssl -lcrypto"
+            else
+                ngx_feature_libs="-L/opt/local/lib -lssl -lcrypto"
+            fi
+
+            . auto/feature
+        fi
+
+        if [ $ngx_found = yes ]; then
+            have=NGX_SSL . auto/have
+            CORE_INCS="$CORE_INCS $ngx_feature_path"
+            CORE_LIBS="$CORE_LIBS $ngx_feature_libs $NGX_LIBDL"
+            OPENSSL=YES
+        fi
+    fi
+
+    if [ $OPENSSL != YES ]; then
+
+cat << END
+
+$0: error: SSL modules require the OpenSSL library.
+You can either do not enable the modules, or install the OpenSSL library
+into the system, or build the OpenSSL library statically from the source
+with nginx by using --with-openssl=<path> option.
+
+END
+        exit 1
+    fi
+
+fi

@@ -1,0 +1,83 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+if [ $USE_PCRE = YES -o $PCRE != NONE ]; then
+    . auto/lib/pcre/conf
+
+else
+    if [ $USE_PCRE = DISABLED -a $HTTP_REWRITE = YES ]; then
+
+cat << END
+
+$0: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option or you have to enable the PCRE support.
+
+END
+        exit 1
+    fi
+fi
+
+
+if [ $USE_OPENSSL = YES ]; then
+    . auto/lib/openssl/conf
+fi
+
+if [ $USE_MD5 = YES ]; then
+
+    if [ $USE_OPENSSL = YES ]; then
+        have=NGX_HAVE_OPENSSL_MD5_H . auto/have
+        have=NGX_OPENSSL_MD5 . auto/have
+        have=NGX_HAVE_MD5 . auto/have
+        MD5=YES
+        MD5_LIB=OpenSSL
+
+    else
+        . auto/lib/md5/conf
+    fi
+
+fi
+
+if [ $USE_SHA1 = YES ]; then
+
+    if [ $USE_OPENSSL = YES ]; then
+        have=NGX_HAVE_OPENSSL_SHA1_H . auto/have
+        have=NGX_HAVE_SHA1 . auto/have
+        SHA1=YES
+        SHA1_LIB=OpenSSL
+
+    else
+        . auto/lib/sha1/conf
+    fi
+
+fi
+
+if [ $USE_ZLIB = YES ]; then
+    . auto/lib/zlib/conf
+fi
+
+if [ $USE_LIBXSLT = YES ]; then
+    . auto/lib/libxslt/conf
+fi
+
+if [ $USE_LIBGD = YES ]; then
+    . auto/lib/libgd/conf
+fi
+
+if [ $USE_PERL = YES ]; then
+    . auto/lib/perl/conf
+fi
+
+if [ $HTTP_GEOIP = YES ]; then
+    . auto/lib/geoip/conf
+fi
+
+if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
+    . auto/lib/google-perftools/conf
+fi
+
+if [ $NGX_LIBATOMIC != NO ]; then
+    . auto/lib/libatomic/conf
+fi

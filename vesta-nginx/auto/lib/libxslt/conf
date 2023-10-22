@@ -1,0 +1,156 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+    ngx_feature="libxslt"
+    ngx_feature_name=
+    ngx_feature_run=no
+    ngx_feature_incs="#include <libxml/parser.h>
+                      #include <libxml/tree.h>
+                      #include <libxslt/xslt.h>
+                      #include <libxslt/xsltInternals.h>
+                      #include <libxslt/transform.h>
+                      #include <libxslt/xsltutils.h>"
+    ngx_feature_path="/usr/include/libxml2"
+    ngx_feature_libs="-lxml2 -lxslt"
+    ngx_feature_test="xmlParserCtxtPtr    ctxt = NULL;
+                      xsltStylesheetPtr   sheet = NULL;
+                      xmlDocPtr           doc;
+                      doc = xmlParseChunk(ctxt, NULL, 0, 0);
+                      xsltApplyStylesheet(sheet, doc, NULL);"
+    . auto/feature
+
+
+if [ $ngx_found = no ]; then
+
+    # FreeBSD port
+
+    ngx_feature="libxslt in /usr/local/"
+    ngx_feature_path="/usr/local/include/libxml2 /usr/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lxml2 -lxslt"
+    else
+        ngx_feature_libs="-L/usr/local/lib -lxml2 -lxslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # NetBSD port
+
+    ngx_feature="libxslt in /usr/pkg/"
+    ngx_feature_path="/usr/pkg/include/libxml2 /usr/pkg/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lxml2 -lxslt"
+    else
+        ngx_feature_libs="-L/usr/pkg/lib -lxml2 -lxslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # MacPorts
+
+    ngx_feature="libxslt in /opt/local/"
+    ngx_feature_path="/opt/local/include/libxml2 /opt/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lxml2 -lxslt"
+    else
+        ngx_feature_libs="-L/opt/local/lib -lxml2 -lxslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = yes ]; then
+
+    CORE_INCS="$CORE_INCS $ngx_feature_path"
+    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+
+else
+
+cat << END
+
+$0: error: the HTTP XSLT module requires the libxml2/libxslt
+libraries. You can either do not enable the module or install the libraries.
+
+END
+
+    exit 1
+fi
+
+
+    ngx_feature="libexslt"
+    ngx_feature_name=NGX_HAVE_EXSLT
+    ngx_feature_run=no
+    ngx_feature_incs="#include <libexslt/exslt.h>"
+    ngx_feature_path="/usr/include/libxml2"
+    ngx_feature_libs="-lexslt"
+    ngx_feature_test="exsltRegisterAll();"
+    . auto/feature
+
+if [ $ngx_found = no ]; then
+
+    # FreeBSD port
+
+    ngx_feature="libexslt in /usr/local/"
+    ngx_feature_path="/usr/local/include/libxml2 /usr/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/local/lib -L/usr/local/lib -lexslt"
+    else
+        ngx_feature_libs="-L/usr/local/lib -lexslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # NetBSD port
+
+    ngx_feature="libexslt in /usr/pkg/"
+    ngx_feature_path="/usr/pkg/include/libxml2 /usr/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/usr/pkg/lib -L/usr/pkg/lib -lexslt"
+    else
+        ngx_feature_libs="-L/usr/pkg/lib -lexslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # MacPorts
+
+    ngx_feature="libexslt in /opt/local/"
+    ngx_feature_path="/opt/local/include/libxml2 /opt/local/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/local/lib -L/opt/local/lib -lexslt"
+    else
+        ngx_feature_libs="-L/opt/local/lib -lexslt"
+    fi
+
+    . auto/feature
+fi
+
+
+if [ $ngx_found = yes ]; then
+    CORE_LIBS="$CORE_LIBS -lexslt"
+fi

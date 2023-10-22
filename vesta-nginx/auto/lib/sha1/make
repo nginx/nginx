@@ -1,0 +1,96 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+case "$NGX_CC_NAME" in
+
+    msvc*)
+        ngx_makefile=makefile.msvc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC SHA1_ASM=$SHA1_ASM"
+        ngx_sha1="SHA1=\"$SHA1\""
+    ;;
+
+    owc*)
+        ngx_makefile=makefile.owc
+        ngx_opt="CPU_OPT=\"$CPU_OPT\""
+        ngx_sha1=`echo SHA1=\"$SHA1\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+    bcc)
+        ngx_makefile=makefile.bcc
+        ngx_opt="-DCPU_OPT=\"$CPU_OPT\" -DSHA1_ASM=$SHA1_ASM"
+        ngx_sha1=`echo \-DSHA1=\"$SHA1\" | sed -e "s/\//$ngx_regex_dirsep/g"`
+    ;;
+
+esac
+
+
+done=NO
+
+
+case "$NGX_PLATFORM" in
+
+    win32)
+        cat << END                                        >> $NGX_MAKEFILE
+
+`echo "$SHA1/sha1.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
+	\$(MAKE) -f auto/lib/sha1/$ngx_makefile $ngx_opt $ngx_sha1
+
+END
+
+        done=YES
+    ;;
+
+    SunOS:*:i86pc)
+        if [ $SHA1_ASM = YES ]; then
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$SHA1/libsha.a:	$NGX_MAKEFILE
+	cd $SHA1 \\
+	&& \$(MAKE) CFLAGS="$SHA1_OPT -DSOL -DSHA1_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		SHA_ASM_OBJ=asm/sx86-sol.o clean libsha.a
+
+END
+
+            done=YES
+        fi
+    ;;
+
+    # FreeBSD: i386
+    # Linux: i686
+
+    *:i386 | *:i686)
+        if [ $SHA1_ASM = YES ]; then
+
+            cat << END                                        >> $NGX_MAKEFILE
+
+$SHA1/libsha.a:	$NGX_MAKEFILE
+	cd $SHA1 \\
+	&& \$(MAKE) CFLAGS="$SHA1_OPT -DELF -DSHA1_ASM -DL_ENDIAN" \\
+		CC="\$(CC)" CPP="\$(CPP)" \\
+		SHA_ASM_OBJ=asm/sx86-elf.o clean libsha.a
+
+END
+
+            done=YES
+        fi
+    ;;
+
+esac
+
+
+if [ $done = NO ]; then
+
+    cat << END                                                >> $NGX_MAKEFILE
+
+$SHA1/libsha.a:	$NGX_MAKEFILE
+	cd $SHA1 \\
+	&& \$(MAKE) CFLAGS="$SHA1_OPT" \\
+		CC="\$(CC)" SHA_ASM_OBJ= clean libsha.a
+
+END
+
+fi

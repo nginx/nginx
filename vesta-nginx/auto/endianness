@@ -1,0 +1,50 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+echo $ngx_n "checking for system byte ordering ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+
+----------------------------------------
+checking for system byte ordering
+
+END
+
+
+cat << END > $NGX_AUTOTEST.c
+
+int main() {
+    int i = 0x11223344;
+    char *p;
+
+    p = (char *) &i;
+    if (*p == 0x44) return 0;
+    return 1;
+}
+
+END
+
+ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
+          -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+
+eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+
+if [ -x $NGX_AUTOTEST ]; then
+    if $NGX_AUTOTEST >/dev/null 2>&1; then
+        echo " little endian"
+        have=NGX_HAVE_LITTLE_ENDIAN . auto/have
+    else
+        echo " big endian"
+    fi
+
+    rm -rf $NGX_AUTOTEST*
+
+else
+    rm -rf $NGX_AUTOTEST*
+
+    echo
+    echo "$0: error: cannot detect system byte ordering"
+    exit 1
+fi

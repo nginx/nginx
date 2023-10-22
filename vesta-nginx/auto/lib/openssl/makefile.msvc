@@ -1,0 +1,14 @@
+
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+
+all:
+	cd $(OPENSSL)
+
+	perl Configure VC-WIN32 no-shared --prefix=openssl $(OPENSSL_OPT)
+
+	ms\do_ms
+
+	$(MAKE) -f ms\nt.mak
+	$(MAKE) -f ms\nt.mak install

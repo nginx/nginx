@@ -1,0 +1,206 @@
+.\"
+.\" Copyright (C) 2010 Sergey A. Osokin
+.\" Copyright (C) Nginx, Inc.
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\"
+.Dd June 16, 2015
+.Dt NGINX 8
+.Os
+.Sh NAME
+.Nm nginx
+.Nd "HTTP and reverse proxy server, mail proxy server"
+.Sh SYNOPSIS
+.Nm
+.Op Fl ?hqTtVv
+.Op Fl c Ar file
+.Op Fl g Ar directives
+.Op Fl p Ar prefix
+.Op Fl s Ar signal
+.Sh DESCRIPTION
+.Nm
+(pronounced
+.Dq engine x )
+is an HTTP and reverse proxy server, as well as a mail proxy server.
+It is known for its high performance, stability, rich feature set, simple
+configuration, and low resource consumption.
+.Pp
+The options are as follows:
+.Bl -tag -width ".Fl d Ar directives"
+.It Fl ?\& , h
+Print help.
+.It Fl c Ar file
+Use an alternative configuration
+.Ar file .
+.It Fl g Ar directives
+Set global configuration directives.
+See
+.Sx EXAMPLES
+for details.
+.It Fl p Ar prefix
+Set the prefix path.
+The default value is
+.Pa %%PREFIX%% .
+.It Fl q
+Suppress non-error messages during configuration testing.
+.It Fl s Ar signal
+Send a signal to the master process.
+The argument
+.Ar signal
+can be one of:
+.Cm stop , quit , reopen , reload .
+The following table shows the corresponding system signals:
+.Pp
+.Bl -tag -width ".Cm reopen" -compact
+.It Cm stop
+.Dv SIGTERM
+.It Cm quit
+.Dv SIGQUIT
+.It Cm reopen
+.Dv SIGUSR1
+.It Cm reload
+.Dv SIGHUP
+.El
+.It Fl t
+Do not run, just test the configuration file.
+.Nm
+checks the configuration file syntax and then tries to open files
+referenced in the configuration file.
+.It Fl T
+Same as
+.Fl t ,
+but additionally dump configuration files to standard output.
+.It Fl V
+Print the
+.Nm
+version, compiler version, and
+.Pa configure
+script parameters.
+.It Fl v
+Print the
+.Nm
+version.
+.El
+.Sh SIGNALS
+The master process of
+.Nm
+can handle the following signals:
+.Pp
+.Bl -tag -width ".Dv SIGINT , SIGTERM" -compact
+.It Dv SIGINT , SIGTERM
+Shut down quickly.
+.It Dv SIGHUP
+Reload configuration, start the new worker process with a new
+configuration, and gracefully shut down old worker processes.
+.It Dv SIGQUIT
+Shut down gracefully.
+.It Dv SIGUSR1
+Reopen log files.
+.It Dv SIGUSR2
+Upgrade the
+.Nm
+executable on the fly.
+.It Dv SIGWINCH
+Shut down worker processes gracefully.
+.El
+.Pp
+While there is no need to explicitly control worker processes normally,
+they support some signals too:
+.Pp
+.Bl -tag -width ".Dv SIGINT , SIGTERM" -compact
+.It Dv SIGTERM
+Shut down quickly.
+.It Dv SIGQUIT
+Shut down gracefully.
+.It Dv SIGUSR1
+Reopen log files.
+.El
+.Sh DEBUGGING LOG
+To enable a debugging log, reconfigure
+.Nm
+to build with debugging:
+.Pp
+.Dl "./configure --with-debug ..."
+.Pp
+and then set the
+.Cm debug
+level of the
+.Va error_log :
+.Pp
+.Dl "error_log /path/to/log debug;"
+.Pp
+It is also possible to enable the debugging for a particular IP address:
+.Bd -literal -offset indent
+events {
+	debug_connection 127.0.0.1;
+}
+.Ed
+.Sh ENVIRONMENT
+The
+.Ev NGINX
+environment variable is used internally by
+.Nm
+and should not be set directly by the user.
+.Sh FILES
+.Bl -tag -width indent
+.It Pa %%PID_PATH%%
+Contains the process ID of
+.Nm .
+The contents of this file are not sensitive, so it can be world-readable.
+.It Pa %%CONF_PATH%%
+The main configuration file.
+.It Pa %%ERROR_LOG_PATH%%
+Error log file.
+.El
+.Sh EXIT STATUS
+Exit status is 0 on success, or 1 if the command fails.
+.Sh EXAMPLES
+Test configuration file
+.Pa ~/mynginx.conf
+with global directives for PID and quantity of worker processes:
+.Bd -literal -offset indent
+nginx -t -c ~/mynginx.conf \e
+	-g "pid /var/run/mynginx.pid; worker_processes 2;"
+.Ed
+.Sh SEE ALSO
+.\"Xr nginx.conf 5
+.\"Pp
+Documentation at
+.Pa http://nginx.org/en/docs/ .
+.Pp
+For questions and technical support, please refer to
+.Pa http://nginx.org/en/support.html .
+.Sh HISTORY
+Development of
+.Nm
+started in 2002, with the first public release on October 4, 2004.
+.Sh AUTHORS
+.An -nosplit
+.An Igor Sysoev Aq igor@sysoev.ru .
+.Pp
+This manual page was originally written by
+.An Sergey A. Osokin Aq osa@FreeBSD.org.ru
+as a result of compiling many
+.Nm
+documents from all over the world.
