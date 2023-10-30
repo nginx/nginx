@@ -13,6 +13,8 @@
 typedef struct {
     ngx_array_t           *lengths;
     ngx_array_t           *values;
+    ngx_array_t           *flushes;
+
     ngx_str_t              name;
 
     unsigned               code:10;
@@ -114,10 +116,12 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
     for ( ;; ) {
 
         if (tf->lengths) {
+        	ngx_http_script_flush_no_cacheable_variables(r, tf->flushes);
             ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
             e.ip = tf->lengths->elts;
             e.request = r;
+            e.flushed = 1;
 
             /* 1 is for terminating '\0' as in static names */
             len = 1;
@@ -333,6 +337,7 @@ ngx_http_try_files(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             sc.source = &tf[i].name;
             sc.lengths = &tf[i].lengths;
             sc.values = &tf[i].values;
+            sc.flushes = &tf[i].flushes;
             sc.variables = n;
             sc.complete_lengths = 1;
             sc.complete_values = 1;
