@@ -968,7 +968,7 @@ ngx_http_script_copy_var_code(ngx_http_script_engine_t *e)
 
     if (!e->skip) {
 
-        if (e->flushed) {
+        if (1 || e->flushed) {
             value = ngx_http_get_indexed_variable(e->request, code->index);
 
         } else {
@@ -1155,12 +1155,14 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         }
 
     } else {
+        ngx_http_script_flush_no_cacheable_variables(r, code->flushes);
         ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
         le.ip = code->lengths->elts;
         le.line = e->line;
         le.request = r;
         le.quote = code->redirect;
+        le.flushed = 1;
 
         len = 0;
 
@@ -1763,12 +1765,14 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script complex value");
 
+    ngx_http_script_flush_no_cacheable_variables(e->request, code->flushes);
     ngx_memzero(&le, sizeof(ngx_http_script_engine_t));
 
     le.ip = code->lengths->elts;
     le.line = e->line;
     le.request = e->request;
     le.quote = e->quote;
+    le.flushed = 1;
 
     for (len = 0; *(uintptr_t *) le.ip; len += lcode(&le)) {
         lcode = *(ngx_http_script_len_code_pt *) le.ip;

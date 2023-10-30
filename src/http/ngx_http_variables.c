@@ -144,7 +144,10 @@ static ngx_int_t ngx_http_variable_time_iso8601(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_time_local(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
-
+// QTL_HTTP_CACHE
+static ngx_int_t ngx_http_variable_qtl_random(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+// end QTL_HTTP
 /*
  * TODO:
  *     Apache CGI: AUTH_TYPE, PATH_INFO (null), PATH_TRANSLATED
@@ -262,6 +265,11 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("is_args"), NULL, ngx_http_variable_is_args,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+// QTL_HTTP_CACHE
+    { ngx_string("random_"), NULL, ngx_http_variable_qtl_random,
+      0, NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_PREFIX, 0 },
+// end QTL_HTTP_CACHE
 
     { ngx_string("request_filename"), NULL,
       ngx_http_variable_request_filename, 0,
@@ -821,6 +829,49 @@ ngx_http_variable_cookies(ngx_http_request_t *r,
 {
     return ngx_http_variable_headers_internal(r, v, data, ';');
 }
+
+// QTL_HTTP_CACHE
+static ngx_int_t
+ngx_http_variable_qtl_random(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_str_t *name = (ngx_str_t *) data;
+
+    u_char     *arg;
+    size_t      len;
+    ngx_int_t   random_max;
+    ngx_uint_t  rand;
+
+    rand = 0;
+
+    len = name->len - (sizeof("random_") - 1);
+    arg = name->data + sizeof("random_") - 1;
+    if (len <= 0) {
+        goto qtl_random_result;
+    }
+
+    random_max = ngx_atoi(arg, len);
+    if (random_max == NGX_ERROR || random_max < 2 || random_max > 1e9) {
+        goto qtl_random_result;
+    }
+
+    rand = ngx_random() % random_max;
+
+qtl_random_result:
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                       "$%V=%uD", name, rand);
+    v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+    v->len = ngx_sprintf(v->data, "%uD", rand) - v->data;
+    v->valid = 1;
+    v->no_cacheable = 1;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+// end QTL_HTTP
 
 
 static ngx_int_t

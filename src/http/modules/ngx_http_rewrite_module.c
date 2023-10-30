@@ -390,6 +390,7 @@ ngx_http_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     sc.cf = cf;
     sc.source = &value[2];
     sc.lengths = &regex->lengths;
+    sc.flushes = &regex->flushes;
     sc.values = &lcf->codes;
     sc.variables = ngx_http_script_variables_count(&value[2]);
     sc.main = regex;
@@ -1001,12 +1002,14 @@ ngx_http_rewrite_value(ngx_conf_t *cf, ngx_http_rewrite_loc_conf_t *lcf,
 
     complex->code = ngx_http_script_complex_value_code;
     complex->lengths = NULL;
+    complex->flushes = NULL;
 
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
     sc.cf = cf;
     sc.source = value;
     sc.lengths = &complex->lengths;
+    sc.flushes = &complex->flushes;
     sc.values = &lcf->codes;
     sc.variables = n;
     sc.complete_lengths = 1;
