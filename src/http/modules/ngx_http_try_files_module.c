@@ -116,7 +116,7 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
     for ( ;; ) {
 
         if (tf->lengths) {
-        	ngx_http_script_flush_no_cacheable_variables(r, tf->flushes);
+            ngx_http_script_flush_no_cacheable_variables(r, tf->flushes);
             ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
             e.ip = tf->lengths->elts;
