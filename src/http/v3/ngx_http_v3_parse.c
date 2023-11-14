@@ -650,6 +650,8 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
                                          st->length == 1, c->log)
                     != NGX_OK)
                 {
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "client sent invalid encoded field line");
                     return NGX_ERROR;
                 }
 
