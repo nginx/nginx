@@ -2657,7 +2657,7 @@ ngx_http_huff_decode(u_char *state, u_char *src, size_t len, u_char **dst,
             != NGX_OK)
         {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http2 huffman decoding error at state %d: "
+                           "http huffman decoding error at state %d: "
                            "bad code 0x%Xd", *state, ch >> 4);
 
             return NGX_ERROR;
@@ -2667,7 +2667,7 @@ ngx_http_huff_decode(u_char *state, u_char *src, size_t len, u_char **dst,
             != NGX_OK)
         {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http2 huffman decoding error at state %d: "
+                           "http huffman decoding error at state %d: "
                            "bad code 0x%Xd", *state, ch & 0xf);
 
             return NGX_ERROR;
@@ -2677,7 +2677,7 @@ ngx_http_huff_decode(u_char *state, u_char *src, size_t len, u_char **dst,
     if (last) {
         if (!ending) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                           "http2 huffman decoding error: "
+                           "http huffman decoding error: "
                            "incomplete code 0x%Xd", ch);
 
             return NGX_ERROR;
