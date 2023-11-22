@@ -872,6 +872,7 @@ ngx_quic_expire_path_mtu_discovery(ngx_connection_t *c, ngx_quic_path_t *path)
 static ngx_int_t
 ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
 {
+    size_t                  mtu;
     ngx_int_t               rc;
     ngx_uint_t              log_error;
     ngx_quic_frame_t        frame;
@@ -895,7 +896,12 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
     log_error = c->log_error;
     c->log_error = NGX_ERROR_IGNORE_EMSGSIZE;
 
+    mtu = path->mtu;
+    path->mtu = path->mtud;
+
     rc = ngx_quic_frame_sendto(c, &frame, path->mtud, path);
+
+    path->mtu = mtu;
     c->log_error = log_error;
 
     if (rc == NGX_ERROR) {

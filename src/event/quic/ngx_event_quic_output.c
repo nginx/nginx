@@ -1181,7 +1181,7 @@ ngx_int_t
 ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     size_t min, ngx_quic_path_t *path)
 {
-    size_t                  min_payload, pad;
+    size_t                  max, max_payload, min_payload, pad;
     ssize_t                 len, sent;
     ngx_str_t               res;
     ngx_quic_header_t       pkt;
@@ -1194,14 +1194,24 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, frame->level);
 
+    max = ngx_quic_path_limit(c, path, path->mtu);
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic sendto %s packet max:%uz min:%uz",
+                   ngx_quic_level_name(ctx->level), max, min);
+
     ngx_quic_init_packet(c, ctx, &pkt, path);
 
-    min = ngx_quic_path_limit(c, path, min);
+    min_payload = ngx_quic_payload_size(&pkt, min);
+    max_payload = ngx_quic_payload_size(&pkt, max);
 
-    min_payload = min ? ngx_quic_payload_size(&pkt, min) : 0;
-
+    /* RFC 9001, 5.4.2.  Header Protection Sample */
     pad = 4 - pkt.num_len;
     min_payload = ngx_max(min_payload, pad);
+
+    if (min_payload > max_payload) {
+        return NGX_AGAIN;
+    }
 
 #if (NGX_DEBUG)
     frame->pnum = pkt.number;
@@ -1210,8 +1220,8 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     ngx_quic_log_frame(c->log, frame, 1);
 
     len = ngx_quic_create_frame(NULL, frame);
-    if (len > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE) {
-        return NGX_ERROR;
+    if ((size_t) len > max_payload) {
+        return NGX_AGAIN;
     }
 
     len = ngx_quic_create_frame(src, frame);
@@ -1258,8 +1268,6 @@ ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path, size_t size)
         max = (path->sent >= max) ? 0 : max - path->sent;
 
         if ((off_t) size > max) {
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic path limit %uz - %O", size, max);
             return max;
         }
     }
