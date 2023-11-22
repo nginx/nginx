@@ -336,6 +336,7 @@ typedef struct {
     unsigned                                    retried:1;
     unsigned                                    first:1;
     unsigned                                    rebound:1;
+    unsigned                                    path_challenged:1;
 } ngx_quic_header_t;
 
 

@@ -40,6 +40,14 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_frame_t        frame, *fp;
     ngx_quic_connection_t  *qc;
 
+    if (pkt->level != ssl_encryption_application || pkt->path_challenged) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic ignoring PATH_CHALLENGE");
+        return NGX_OK;
+    }
+
+    pkt->path_challenged = 1;
+
     qc = ngx_quic_get_connection(c);
 
     ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
