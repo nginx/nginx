@@ -223,7 +223,7 @@ static ngx_command_t ngx_http_scgi_commands[] = {
 
     { ngx_string("scgi_limit_rate"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_size_slot,
+      ngx_http_set_complex_value_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.limit_rate),
       NULL },
@@ -1301,7 +1301,7 @@ ngx_http_scgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
     conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
-    conf->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
+    conf->upstream.limit_rate = NGX_CONF_UNSET_PTR;
 
     conf->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
@@ -1413,8 +1413,8 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.buffer_size,
                               (size_t) ngx_pagesize);
 
-    ngx_conf_merge_size_value(conf->upstream.limit_rate,
-                              prev->upstream.limit_rate, 0);
+    ngx_conf_merge_ptr_value(conf->upstream.limit_rate,
+                              prev->upstream.limit_rate, NULL);
 
 
     ngx_conf_merge_bufs_value(conf->upstream.bufs, prev->upstream.bufs,

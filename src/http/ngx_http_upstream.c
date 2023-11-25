@@ -3236,7 +3236,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->downstream = c;
     p->pool = r->pool;
     p->log = c->log;
-    p->limit_rate = u->conf->limit_rate;
+    p->limit_rate = ngx_http_complex_value_size(r, u->conf->limit_rate, 0);
     p->start_sec = ngx_time();
 
     p->cacheable = u->cacheable || u->store;
