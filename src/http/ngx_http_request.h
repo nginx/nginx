@@ -597,8 +597,6 @@ struct ngx_http_request_s {
     u_char                           *schema_end;
     u_char                           *host_start;
     u_char                           *host_end;
-    u_char                           *port_start;
-    u_char                           *port_end;
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;

@@ -451,19 +451,16 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
             switch (ch) {
             case '/':
-                r->port_end = p;
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
                 break;
             case '?':
-                r->port_end = p;
                 r->uri_start = p;
                 r->args_start = p + 1;
                 r->empty_path_in_uri = 1;
                 state = sw_uri;
                 break;
             case ' ':
-                r->port_end = p;
                 /*
                  * use single "/" from request line to preserve pointers,
                  * if request line will be copied to large client buffer

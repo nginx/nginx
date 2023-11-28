@@ -1735,11 +1735,6 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             }
         }
 
-        if (r->port_start) {
-            r->port_start = new + (r->port_start - old);
-            r->port_end = new + (r->port_end - old);
-        }
-
         if (r->uri_ext) {
             r->uri_ext = new + (r->uri_ext - old);
         }
