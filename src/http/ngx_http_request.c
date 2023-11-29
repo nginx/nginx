@@ -1718,14 +1718,23 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             r->request_end = new + (r->request_end - old);
         }
 
-        r->method_end = new + (r->method_end - old);
+        if (r->method_end) {
+            r->method_end = new + (r->method_end - old);
+        }
 
-        r->uri_start = new + (r->uri_start - old);
-        r->uri_end = new + (r->uri_end - old);
+        if (r->uri_start) {
+            r->uri_start = new + (r->uri_start - old);
+        }
+
+        if (r->uri_end) {
+            r->uri_end = new + (r->uri_end - old);
+        }
 
         if (r->schema_start) {
             r->schema_start = new + (r->schema_start - old);
-            r->schema_end = new + (r->schema_end - old);
+            if (r->schema_end) {
+                r->schema_end = new + (r->schema_end - old);
+            }
         }
 
         if (r->host_start) {
@@ -1749,9 +1758,18 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     } else {
         r->header_name_start = new;
-        r->header_name_end = new + (r->header_name_end - old);
-        r->header_start = new + (r->header_start - old);
-        r->header_end = new + (r->header_end - old);
+
+        if (r->header_name_end) {
+            r->header_name_end = new + (r->header_name_end - old);
+        }
+
+        if (r->header_start) {
+            r->header_start = new + (r->header_start - old);
+        }
+
+        if (r->header_end) {
+            r->header_end = new + (r->header_end - old);
+        }
     }
 
     r->header_in = b;
