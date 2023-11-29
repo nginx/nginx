@@ -37,7 +37,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
 {
     size_t                  min;
-    ngx_quic_frame_t        frame, *fp;
+    ngx_quic_frame_t       *fp;
     ngx_quic_connection_t  *qc;
 
     if (pkt->level != ssl_encryption_application || pkt->path_challenged) {
@@ -50,11 +50,14 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
-    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+    fp = ngx_quic_alloc_frame(c);
+    if (fp == NULL) {
+        return NGX_ERROR;
+    }
 
-    frame.level = ssl_encryption_application;
-    frame.type = NGX_QUIC_FT_PATH_RESPONSE;
-    frame.u.path_response = *f;
+    fp->level = ssl_encryption_application;
+    fp->type = NGX_QUIC_FT_PATH_RESPONSE;
+    fp->u.path_response = *f;
 
     /*
      * RFC 9000, 8.2.2.  Path Validation Responses
@@ -73,7 +76,7 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
 
     min = (ngx_quic_path_limit(c, pkt->path, 1200) < 1200) ? 0 : 1200;
 
-    if (ngx_quic_frame_sendto(c, &frame, min, pkt->path) == NGX_ERROR) {
+    if (ngx_quic_frame_sendto(c, fp, min, pkt->path) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -546,22 +549,25 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 static ngx_int_t
 ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
-    size_t            min;
-    ngx_uint_t        n;
-    ngx_quic_frame_t  frame;
+    size_t             min;
+    ngx_uint_t         n;
+    ngx_quic_frame_t  *frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL send path_challenge tries:%ui",
                    path->seqnum, path->tries);
 
-    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
-
-    frame.level = ssl_encryption_application;
-    frame.type = NGX_QUIC_FT_PATH_CHALLENGE;
-
     for (n = 0; n < 2; n++) {
 
-        ngx_memcpy(frame.u.path_challenge.data, path->challenge[n], 8);
+        frame = ngx_quic_alloc_frame(c);
+        if (frame == NULL) {
+            return NGX_ERROR;
+        }
+
+        frame->level = ssl_encryption_application;
+        frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
+
+        ngx_memcpy(frame->u.path_challenge.data, path->challenge[n], 8);
 
         /*
          * RFC 9000, 8.2.1.  Initiating Path Validation
@@ -574,7 +580,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 
         min = (ngx_quic_path_limit(c, path, 1200) < 1200) ? 0 : 1200;
 
-        if (ngx_quic_frame_sendto(c, &frame, min, path) == NGX_ERROR) {
+        if (ngx_quic_frame_sendto(c, frame, min, path) == NGX_ERROR) {
             return NGX_ERROR;
         }
     }
@@ -883,14 +889,17 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
     size_t                  mtu;
     ngx_int_t               rc;
     ngx_uint_t              log_error;
-    ngx_quic_frame_t        frame;
+    ngx_quic_frame_t       *frame;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
-    ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
 
-    frame.level = ssl_encryption_application;
-    frame.type = NGX_QUIC_FT_PING;
+    frame->level = ssl_encryption_application;
+    frame->type = NGX_QUIC_FT_PING;
 
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
@@ -907,7 +916,7 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
     mtu = path->mtu;
     path->mtu = path->mtud;
 
-    rc = ngx_quic_frame_sendto(c, &frame, path->mtud, path);
+    rc = ngx_quic_frame_sendto(c, frame, path->mtud, path);
 
     path->mtu = mtu;
     c->log_error = log_error;

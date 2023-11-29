@@ -593,6 +593,7 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             break;
 
         case NGX_QUIC_FT_PING:
+        case NGX_QUIC_FT_PATH_CHALLENGE:
         case NGX_QUIC_FT_PATH_RESPONSE:
         case NGX_QUIC_FT_CONNECTION_CLOSE:
             ngx_quic_free_frame(c, f);
@@ -824,11 +825,11 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
 void
 ngx_quic_pto_handler(ngx_event_t *ev)
 {
-    ngx_uint_t              i;
+    ngx_uint_t              i, n;
     ngx_msec_t              now;
     ngx_queue_t            *q;
     ngx_connection_t       *c;
-    ngx_quic_frame_t       *f, frame;
+    ngx_quic_frame_t       *f;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
@@ -865,16 +866,20 @@ ngx_quic_pto_handler(ngx_event_t *ev)
                        "quic pto %s pto_count:%ui",
                        ngx_quic_level_name(ctx->level), qc->pto_count);
 
-        ngx_memzero(&frame, sizeof(ngx_quic_frame_t));
+        for (n = 0; n < 2; n++) {
 
-        frame.level = ctx->level;
-        frame.type = NGX_QUIC_FT_PING;
+            f = ngx_quic_alloc_frame(c);
+            if (f == NULL) {
+                goto failed;
+            }
 
-        if (ngx_quic_frame_sendto(c, &frame, 0, qc->path) != NGX_OK
-            || ngx_quic_frame_sendto(c, &frame, 0, qc->path) != NGX_OK)
-        {
-            ngx_quic_close_connection(c, NGX_ERROR);
-            return;
+            f->level = ctx->level;
+            f->type = NGX_QUIC_FT_PING;
+            f->ignore_congestion = 1;
+
+            if (ngx_quic_frame_sendto(c, f, 0, qc->path) == NGX_ERROR) {
+                goto failed;
+            }
         }
     }
 
@@ -883,6 +888,13 @@ ngx_quic_pto_handler(ngx_event_t *ev)
     ngx_quic_set_lost_timer(c);
 
     ngx_quic_connstate_dbg(c);
+
+    return;
+
+failed:
+
+    ngx_quic_close_connection(c, NGX_ERROR);
+    return;
 }
 
 
