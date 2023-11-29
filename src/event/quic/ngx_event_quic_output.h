@@ -34,5 +34,7 @@ ngx_int_t ngx_quic_send_ack_range(ngx_connection_t *c,
 
 ngx_int_t ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     size_t min, ngx_quic_path_t *path);
+size_t ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path,
+    size_t size);
 
 #endif /* _NGX_EVENT_QUIC_OUTPUT_H_INCLUDED_ */

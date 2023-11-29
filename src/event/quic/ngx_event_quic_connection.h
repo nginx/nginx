@@ -106,8 +106,7 @@ struct ngx_quic_path_s {
     size_t                            max_mtu;
     off_t                             sent;
     off_t                             received;
-    u_char                            challenge1[8];
-    u_char                            challenge2[8];
+    u_char                            challenge[2][8];
     uint64_t                          seqnum;
     uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
     ngx_str_t                         addr_text;

@@ -63,8 +63,6 @@ static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     struct sockaddr *sockaddr, socklen_t socklen);
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
-static size_t ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path,
-    size_t size);
 
 
 ngx_int_t
@@ -1250,7 +1248,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 }
 
 
-static size_t
+size_t
 ngx_quic_path_limit(ngx_connection_t *c, ngx_quic_path_t *path, size_t size)
 {
     off_t  max;

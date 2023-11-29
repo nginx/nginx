@@ -36,6 +36,7 @@ ngx_int_t
 ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_path_challenge_frame_t *f)
 {
+    size_t                  min;
     ngx_quic_frame_t        frame, *fp;
     ngx_quic_connection_t  *qc;
 
@@ -57,8 +58,14 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     /*
      * An endpoint MUST expand datagrams that contain a PATH_RESPONSE frame
      * to at least the smallest allowed maximum datagram size of 1200 bytes.
+     * ...
+     * However, an endpoint MUST NOT expand the datagram containing the
+     * PATH_RESPONSE if the resulting data exceeds the anti-amplification limit.
      */
-    if (ngx_quic_frame_sendto(c, &frame, 1200, pkt->path) == NGX_ERROR) {
+
+    min = (ngx_quic_path_limit(c, pkt->path, 1200) < 1200) ? 0 : 1200;
+
+    if (ngx_quic_frame_sendto(c, &frame, min, pkt->path) == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -113,8 +120,8 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
             continue;
         }
 
-        if (ngx_memcmp(path->challenge1, f->data, sizeof(f->data)) == 0
-            || ngx_memcmp(path->challenge2, f->data, sizeof(f->data)) == 0)
+        if (ngx_memcmp(path->challenge[0], f->data, sizeof(f->data)) == 0
+            || ngx_memcmp(path->challenge[1], f->data, sizeof(f->data)) == 0)
         {
             goto valid;
         }
@@ -510,11 +517,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 
     path->tries = 0;
 
-    if (RAND_bytes(path->challenge1, 8) != 1) {
-        return NGX_ERROR;
-    }
-
-    if (RAND_bytes(path->challenge2, 8) != 1) {
+    if (RAND_bytes((u_char *) path->challenge, sizeof(path->challenge)) != 1) {
         return NGX_ERROR;
     }
 
@@ -535,6 +538,8 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 static ngx_int_t
 ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
+    size_t            min;
+    ngx_uint_t        n;
     ngx_quic_frame_t  frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -546,26 +551,24 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
     frame.level = ssl_encryption_application;
     frame.type = NGX_QUIC_FT_PATH_CHALLENGE;
 
-    ngx_memcpy(frame.u.path_challenge.data, path->challenge1, 8);
+    for (n = 0; n < 2; n++) {
 
-    /*
-     * RFC 9000, 8.2.1.  Initiating Path Validation
-     *
-     * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
-     * to at least the smallest allowed maximum datagram size of 1200 bytes,
-     * unless the anti-amplification limit for the path does not permit
-     * sending a datagram of this size.
-     */
+        ngx_memcpy(frame.u.path_challenge.data, path->challenge[n], 8);
 
-     /* same applies to PATH_RESPONSE frames */
-    if (ngx_quic_frame_sendto(c, &frame, 1200, path) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+        /*
+         * RFC 9000, 8.2.1.  Initiating Path Validation
+         *
+         * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
+         * to at least the smallest allowed maximum datagram size of 1200 bytes,
+         * unless the anti-amplification limit for the path does not permit
+         * sending a datagram of this size.
+         */
 
-    ngx_memcpy(frame.u.path_challenge.data, path->challenge2, 8);
+        min = (ngx_quic_path_limit(c, path, 1200) < 1200) ? 0 : 1200;
 
-    if (ngx_quic_frame_sendto(c, &frame, 1200, path) == NGX_ERROR) {
-        return NGX_ERROR;
+        if (ngx_quic_frame_sendto(c, &frame, min, path) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
