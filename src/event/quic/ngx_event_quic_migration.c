@@ -169,6 +169,7 @@ valid:
 
             path->mtu = prev->mtu;
             path->max_mtu = prev->max_mtu;
+            path->mtu_unvalidated = 0;
         }
     }
 
@@ -180,6 +181,13 @@ valid:
                                            14720));
         qc->congestion.ssthresh = (size_t) -1;
         qc->congestion.recovery_start = ngx_current_msec;
+    }
+
+    path->validated = 1;
+
+    if (path->mtu_unvalidated) {
+        path->mtu_unvalidated = 0;
+        return ngx_quic_validate_path(c, path);
     }
 
     /*
@@ -198,8 +206,6 @@ valid:
                   path->seqnum, &path->addr_text);
 
     ngx_quic_path_dbg(c, "is validated", path);
-
-    path->validated = 1;
 
     ngx_quic_discover_path_mtu(c, path);
 
@@ -578,7 +584,15 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
          * sending a datagram of this size.
          */
 
-        min = (ngx_quic_path_limit(c, path, 1200) < 1200) ? 0 : 1200;
+        if (path->mtu_unvalidated
+            || ngx_quic_path_limit(c, path, 1200) < 1200)
+        {
+            min = 0;
+            path->mtu_unvalidated = 1;
+
+        } else {
+            min = 1200;
+        }
 
         if (ngx_quic_frame_sendto(c, frame, min, path) == NGX_ERROR) {
             return NGX_ERROR;

@@ -111,7 +111,8 @@ struct ngx_quic_path_s {
     uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
-    ngx_uint_t                        validated; /* unsigned validated:1; */
+    unsigned                          validated:1;
+    unsigned                          mtu_unvalidated:1;
 };
 
 
