@@ -266,8 +266,7 @@ struct ngx_quic_frame_s {
     ngx_queue_t                                 queue;
     uint64_t                                    pnum;
     size_t                                      plen;
-    ngx_msec_t                                  first;
-    ngx_msec_t                                  last;
+    ngx_msec_t                                  send_time;
     ssize_t                                     len;
     unsigned                                    need_ack:1;
     unsigned                                    pkt_need_ack:1;

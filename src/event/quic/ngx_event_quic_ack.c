@@ -265,16 +265,16 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
             }
 
             if (f->pnum == max) {
-                st->max_pn = f->last;
+                st->max_pn = f->send_time;
             }
 
             /* save earliest and latest send times of frames ack'ed */
-            if (st->oldest == NGX_TIMER_INFINITE || f->last < st->oldest) {
-                st->oldest = f->last;
+            if (st->oldest == NGX_TIMER_INFINITE || f->send_time < st->oldest) {
+                st->oldest = f->send_time;
             }
 
-            if (st->newest == NGX_TIMER_INFINITE || f->last > st->newest) {
-                st->newest = f->last;
+            if (st->newest == NGX_TIMER_INFINITE || f->send_time > st->newest) {
+                st->newest = f->send_time;
             }
 
             ngx_queue_remove(&f->queue);
@@ -329,7 +329,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 
     cg->in_flight -= f->plen;
 
-    timer = f->last - cg->recovery_start;
+    timer = f->send_time - cg->recovery_start;
 
     if ((ngx_msec_int_t) timer <= 0) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -465,7 +465,7 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                 break;
             }
 
-            wait = start->last + thr - now;
+            wait = start->send_time + thr - now;
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic detect_lost pnum:%uL thr:%M wait:%i level:%d",
@@ -477,14 +477,14 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                 break;
             }
 
-            if (start->last > qc->first_rtt) {
+            if (start->send_time > qc->first_rtt) {
 
-                if (oldest == NGX_TIMER_INFINITE || start->last < oldest) {
-                    oldest = start->last;
+                if (oldest == NGX_TIMER_INFINITE || start->send_time < oldest) {
+                    oldest = start->send_time;
                 }
 
-                if (newest == NGX_TIMER_INFINITE || start->last > newest) {
-                    newest = start->last;
+                if (newest == NGX_TIMER_INFINITE || start->send_time > newest) {
+                    newest = start->send_time;
                 }
 
                 nlost++;
@@ -672,7 +672,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     cg->in_flight -= f->plen;
     f->plen = 0;
 
-    timer = f->last - cg->recovery_start;
+    timer = f->send_time - cg->recovery_start;
 
     if ((ngx_msec_int_t) timer <= 0) {
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -730,7 +730,8 @@ ngx_quic_set_lost_timer(ngx_connection_t *c)
         if (ctx->largest_ack != NGX_QUIC_UNSET_PN) {
             q = ngx_queue_head(&ctx->sent);
             f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-            w = (ngx_msec_int_t) (f->last + ngx_quic_lost_threshold(qc) - now);
+            w = (ngx_msec_int_t)
+                            (f->send_time + ngx_quic_lost_threshold(qc) - now);
 
             if (f->pnum <= ctx->largest_ack) {
                 if (w < 0 || ctx->largest_ack - f->pnum >= NGX_QUIC_PKT_THR) {
@@ -745,8 +746,8 @@ ngx_quic_set_lost_timer(ngx_connection_t *c)
 
         q = ngx_queue_last(&ctx->sent);
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
-        w = (ngx_msec_int_t) (f->last + (ngx_quic_pto(c, ctx) << qc->pto_count)
-                              - now);
+        w = (ngx_msec_int_t)
+                (f->send_time + (ngx_quic_pto(c, ctx) << qc->pto_count) - now);
 
         if (w < 0) {
             w = 0;
@@ -828,6 +829,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
     ngx_uint_t              i, n;
     ngx_msec_t              now;
     ngx_queue_t            *q;
+    ngx_msec_int_t          w;
     ngx_connection_t       *c;
     ngx_quic_frame_t       *f;
     ngx_quic_send_ctx_t    *ctx;
@@ -849,6 +851,8 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
         q = ngx_queue_last(&ctx->sent);
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        w = (ngx_msec_int_t)
+                (f->send_time + (ngx_quic_pto(c, ctx) << qc->pto_count) - now);
 
         if (f->pnum <= ctx->largest_ack
             && ctx->largest_ack != NGX_QUIC_UNSET_PN)
@@ -856,9 +860,7 @@ ngx_quic_pto_handler(ngx_event_t *ev)
             continue;
         }
 
-        if ((ngx_msec_int_t) (f->last + (ngx_quic_pto(c, ctx) << qc->pto_count)
-                              - now) > 0)
-        {
+        if (w > 0) {
             continue;
         }
 

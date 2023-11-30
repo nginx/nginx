@@ -586,8 +586,7 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         }
 
         f->pnum = ctx->pnum;
-        f->first = now;
-        f->last = now;
+        f->send_time = now;
         f->plen = 0;
 
         ngx_quic_log_frame(c->log, f, 1);
@@ -1265,8 +1264,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
     }
 
     frame->pnum = ctx->pnum;
-    frame->first = now;
-    frame->last = now;
+    frame->send_time = now;
     frame->plen = res.len;
 
     ctx->pnum++;
