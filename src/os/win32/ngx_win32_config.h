@@ -280,7 +280,11 @@ typedef int                 sig_atomic_t;
 
 #define NGX_HAVE_GETADDRINFO         1
 
-#define ngx_random               rand
+#define ngx_random()                                                          \
+    ((long) (0x7fffffff & ( ((uint32_t) rand() << 16)                         \
+                          ^ ((uint32_t) rand() << 8)                          \
+                          ^ ((uint32_t) rand()) )))
+
 #define ngx_debug_init()
 
 
