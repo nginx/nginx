@@ -181,6 +181,8 @@ valid:
                                            14720));
         qc->congestion.ssthresh = (size_t) -1;
         qc->congestion.recovery_start = ngx_current_msec;
+
+        ngx_quic_init_rtt(qc);
     }
 
     path->validated = 1;

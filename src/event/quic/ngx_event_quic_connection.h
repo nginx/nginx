@@ -65,6 +65,13 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
 #define ngx_quic_get_socket(c)               ((ngx_quic_socket_t *)((c)->udp))
 
+#define ngx_quic_init_rtt(qc)                                                 \
+    (qc)->avg_rtt = NGX_QUIC_INITIAL_RTT;                                     \
+    (qc)->rttvar = NGX_QUIC_INITIAL_RTT / 2;                                  \
+    (qc)->min_rtt = NGX_TIMER_INFINITE;                                       \
+    (qc)->first_rtt = NGX_TIMER_INFINITE;                                     \
+    (qc)->latest_rtt = 0;
+
 
 typedef enum {
     NGX_QUIC_PATH_IDLE = 0,
