@@ -266,6 +266,8 @@ struct ngx_quic_connection_s {
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
 
+    uint64_t                          rst_pnum;    /* first on validated path */
+
     off_t                             received;
 
     ngx_uint_t                        error;

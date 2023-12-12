@@ -110,6 +110,7 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
     ngx_uint_t              rst;
     ngx_queue_t            *q;
     ngx_quic_path_t        *path, *prev;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -174,6 +175,11 @@ valid:
     }
 
     if (rst) {
+        /* prevent old path packets contribution to congestion control */
+
+        ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+        qc->rst_pnum = ctx->pnum;
+
         ngx_memzero(&qc->congestion, sizeof(ngx_quic_congestion_t));
 
         qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,

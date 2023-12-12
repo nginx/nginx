@@ -325,6 +325,10 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    if (f->pnum < qc->rst_pnum) {
+        return;
+    }
+
     blocked = (cg->in_flight >= cg->window) ? 1 : 0;
 
     cg->in_flight -= f->plen;
@@ -666,6 +670,10 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
+
+    if (f->pnum < qc->rst_pnum) {
+        return;
+    }
 
     blocked = (cg->in_flight >= cg->window) ? 1 : 0;
 
