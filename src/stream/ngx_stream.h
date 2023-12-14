@@ -45,9 +45,8 @@ typedef struct {
     socklen_t                      socklen;
     ngx_str_t                      addr_text;
 
-    /* server ctx */
-    ngx_stream_conf_ctx_t         *ctx;
-
+    unsigned                       set:1;
+    unsigned                       default_server:1;
     unsigned                       bind:1;
     unsigned                       wildcard:1;
     unsigned                       ssl:1;
@@ -69,50 +68,7 @@ typedef struct {
     int                            fastopen;
 #endif
     int                            type;
-} ngx_stream_listen_t;
-
-
-typedef struct {
-    ngx_stream_conf_ctx_t         *ctx;
-    ngx_str_t                      addr_text;
-    unsigned                       ssl:1;
-    unsigned                       proxy_protocol:1;
-} ngx_stream_addr_conf_t;
-
-typedef struct {
-    in_addr_t                      addr;
-    ngx_stream_addr_conf_t         conf;
-} ngx_stream_in_addr_t;
-
-
-#if (NGX_HAVE_INET6)
-
-typedef struct {
-    struct in6_addr                addr6;
-    ngx_stream_addr_conf_t         conf;
-} ngx_stream_in6_addr_t;
-
-#endif
-
-
-typedef struct {
-    /* ngx_stream_in_addr_t or ngx_stream_in6_addr_t */
-    void                          *addrs;
-    ngx_uint_t                     naddrs;
-} ngx_stream_port_t;
-
-
-typedef struct {
-    int                            family;
-    int                            type;
-    in_port_t                      port;
-    ngx_array_t                    addrs; /* array of ngx_stream_conf_addr_t */
-} ngx_stream_conf_port_t;
-
-
-typedef struct {
-    ngx_stream_listen_t            opt;
-} ngx_stream_conf_addr_t;
+} ngx_stream_listen_opt_t;
 
 
 typedef enum {
@@ -153,7 +109,6 @@ typedef struct {
 
 typedef struct {
     ngx_array_t                    servers;     /* ngx_stream_core_srv_conf_t */
-    ngx_array_t                    listen;      /* ngx_stream_listen_t */
 
     ngx_stream_phase_engine_t      phase_engine;
 
@@ -163,22 +118,32 @@ typedef struct {
     ngx_array_t                    prefix_variables; /* ngx_stream_variable_t */
     ngx_uint_t                     ncaptures;
 
+    ngx_uint_t                     server_names_hash_max_size;
+    ngx_uint_t                     server_names_hash_bucket_size;
+
     ngx_uint_t                     variables_hash_max_size;
     ngx_uint_t                     variables_hash_bucket_size;
 
     ngx_hash_keys_arrays_t        *variables_keys;
+
+    ngx_array_t                   *ports;
 
     ngx_stream_phase_t             phases[NGX_STREAM_LOG_PHASE + 1];
 } ngx_stream_core_main_conf_t;
 
 
 typedef struct {
+    /* array of the ngx_stream_server_name_t, "server_name" directive */
+    ngx_array_t                    server_names;
+
     ngx_stream_content_handler_pt  handler;
 
     ngx_stream_conf_ctx_t         *ctx;
 
     u_char                        *file_name;
     ngx_uint_t                     line;
+
+    ngx_str_t                      server_name;
 
     ngx_flag_t                     tcp_nodelay;
     size_t                         preread_buffer_size;
@@ -191,8 +156,96 @@ typedef struct {
 
     ngx_msec_t                     proxy_protocol_timeout;
 
-    ngx_uint_t                     listen;  /* unsigned  listen:1; */
+    unsigned                       listen:1;
+#if (NGX_PCRE)
+    unsigned                       captures:1;
+#endif
 } ngx_stream_core_srv_conf_t;
+
+
+/* list of structures to find core_srv_conf quickly at run time */
+
+
+typedef struct {
+#if (NGX_PCRE)
+    ngx_stream_regex_t            *regex;
+#endif
+    ngx_stream_core_srv_conf_t    *server;   /* virtual name server conf */
+    ngx_str_t                      name;
+} ngx_stream_server_name_t;
+
+
+typedef struct {
+    ngx_hash_combined_t            names;
+
+    ngx_uint_t                     nregex;
+    ngx_stream_server_name_t      *regex;
+} ngx_stream_virtual_names_t;
+
+
+typedef struct {
+    /* the default server configuration for this address:port */
+    ngx_stream_core_srv_conf_t    *default_server;
+
+    ngx_stream_virtual_names_t    *virtual_names;
+
+    unsigned                       ssl:1;
+    unsigned                       proxy_protocol:1;
+} ngx_stream_addr_conf_t;
+
+
+typedef struct {
+    in_addr_t                      addr;
+    ngx_stream_addr_conf_t         conf;
+} ngx_stream_in_addr_t;
+
+
+#if (NGX_HAVE_INET6)
+
+typedef struct {
+    struct in6_addr                addr6;
+    ngx_stream_addr_conf_t         conf;
+} ngx_stream_in6_addr_t;
+
+#endif
+
+
+typedef struct {
+    /* ngx_stream_in_addr_t or ngx_stream_in6_addr_t */
+    void                          *addrs;
+    ngx_uint_t                     naddrs;
+} ngx_stream_port_t;
+
+
+typedef struct {
+    int                            family;
+    int                            type;
+    in_port_t                      port;
+    ngx_array_t                    addrs; /* array of ngx_stream_conf_addr_t */
+} ngx_stream_conf_port_t;
+
+
+typedef struct {
+    ngx_stream_listen_opt_t        opt;
+
+    unsigned                       protocols:3;
+    unsigned                       protocols_set:1;
+    unsigned                       protocols_changed:1;
+
+    ngx_hash_t                     hash;
+    ngx_hash_wildcard_t           *wc_head;
+    ngx_hash_wildcard_t           *wc_tail;
+
+#if (NGX_PCRE)
+    ngx_uint_t                     nregex;
+    ngx_stream_server_name_t      *regex;
+#endif
+
+    /* the default server configuration for this address:port */
+    ngx_stream_core_srv_conf_t    *default_server;
+    ngx_array_t                    servers;
+                                      /* array of ngx_stream_core_srv_conf_t */
+} ngx_stream_conf_addr_t;
 
 
 struct ngx_stream_session_s {
@@ -209,6 +262,8 @@ struct ngx_stream_session_s {
     void                         **ctx;
     void                         **main_conf;
     void                         **srv_conf;
+
+    ngx_stream_virtual_names_t    *virtual_names;
 
     ngx_stream_upstream_t         *upstream;
     ngx_array_t                   *upstream_states;
@@ -283,6 +338,9 @@ typedef struct {
 #define NGX_STREAM_WRITE_BUFFERED  0x10
 
 
+ngx_int_t ngx_stream_add_listen(ngx_conf_t *cf,
+    ngx_stream_core_srv_conf_t *cscf, ngx_stream_listen_opt_t *lsopt);
+
 void ngx_stream_core_run_phases(ngx_stream_session_t *s);
 ngx_int_t ngx_stream_core_generic_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph);
@@ -291,6 +349,10 @@ ngx_int_t ngx_stream_core_preread_phase(ngx_stream_session_t *s,
 ngx_int_t ngx_stream_core_content_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph);
 
+ngx_int_t ngx_stream_validate_host(ngx_str_t *host, ngx_pool_t *pool,
+    ngx_uint_t alloc);
+ngx_int_t ngx_stream_find_virtual_server(ngx_stream_session_t *s,
+    ngx_str_t *host, ngx_stream_core_srv_conf_t **cscfp);
 
 void ngx_stream_init_connection(ngx_connection_t *c);
 void ngx_stream_session_handler(ngx_event_t *rev);

@@ -33,6 +33,8 @@ typedef struct {
 static ngx_int_t ngx_stream_ssl_preread_handler(ngx_stream_session_t *s);
 static ngx_int_t ngx_stream_ssl_preread_parse_record(
     ngx_stream_ssl_preread_ctx_t *ctx, u_char *pos, u_char *last);
+static ngx_int_t ngx_stream_ssl_preread_servername(ngx_stream_session_t *s,
+    ngx_str_t *servername);
 static ngx_int_t ngx_stream_ssl_preread_protocol_variable(
     ngx_stream_session_t *s, ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_preread_server_name_variable(
@@ -185,6 +187,10 @@ ngx_stream_ssl_preread_handler(ngx_stream_session_t *s)
         if (rc == NGX_DECLINED) {
             ngx_stream_set_ctx(s, NULL, ngx_stream_ssl_preread_module);
             return NGX_DECLINED;
+        }
+
+        if (rc == NGX_OK) {
+            return ngx_stream_ssl_preread_servername(s, &ctx->host);
         }
 
         if (rc != NGX_AGAIN) {
@@ -404,9 +410,6 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         case sw_sni_host:
             ctx->host.len = (p[1] << 8) + p[2];
 
-            ngx_log_debug1(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
-                           "ssl preread: SNI hostname \"%V\"", &ctx->host);
-
             state = sw_ext;
             dst = NULL;
             size = ext;
@@ -493,6 +496,54 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
     ctx->dst = dst;
 
     return NGX_AGAIN;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_preread_servername(ngx_stream_session_t *s,
+    ngx_str_t *servername)
+{
+    ngx_int_t                    rc;
+    ngx_str_t                    host;
+    ngx_connection_t            *c;
+    ngx_stream_core_srv_conf_t  *cscf;
+
+    c = s->connection;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                   "SSL preread server name: \"%V\"", servername);
+
+    if (servername->len == 0) {
+        return NGX_OK;
+    }
+
+    host = *servername;
+
+    rc = ngx_stream_validate_host(&host, c->pool, 1);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_DECLINED) {
+        return NGX_OK;
+    }
+
+    rc = ngx_stream_find_virtual_server(s, &host, &cscf);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_DECLINED) {
+        return NGX_OK;
+    }
+
+    s->srv_conf = cscf->ctx->srv_conf;
+
+    ngx_set_connection_log(c, cscf->error_log);
+
+    return NGX_OK;
 }
 
 

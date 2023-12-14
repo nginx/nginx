@@ -18,10 +18,10 @@ typedef struct {
     ngx_msec_t       handshake_timeout;
 
     ngx_flag_t       prefer_server_ciphers;
+    ngx_flag_t       reject_handshake;
 
     ngx_ssl_t        ssl;
 
-    ngx_uint_t       listen;
     ngx_uint_t       protocols;
 
     ngx_uint_t       verify;
@@ -53,9 +53,6 @@ typedef struct {
 
     ngx_flag_t       session_tickets;
     ngx_array_t     *session_ticket_keys;
-
-    u_char          *file;
-    ngx_uint_t       line;
 } ngx_stream_ssl_conf_t;
 
 

@@ -16,16 +16,34 @@ static ngx_int_t ngx_stream_init_phases(ngx_conf_t *cf,
     ngx_stream_core_main_conf_t *cmcf);
 static ngx_int_t ngx_stream_init_phase_handlers(ngx_conf_t *cf,
     ngx_stream_core_main_conf_t *cmcf);
-static ngx_int_t ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
-    ngx_stream_listen_t *listen);
-static char *ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports);
+
+static ngx_int_t ngx_stream_add_addresses(ngx_conf_t *cf,
+    ngx_stream_core_srv_conf_t *cscf, ngx_stream_conf_port_t *port,
+    ngx_stream_listen_opt_t *lsopt);
+static ngx_int_t ngx_stream_add_address(ngx_conf_t *cf,
+    ngx_stream_core_srv_conf_t *cscf, ngx_stream_conf_port_t *port,
+    ngx_stream_listen_opt_t *lsopt);
+static ngx_int_t ngx_stream_add_server(ngx_conf_t *cf,
+    ngx_stream_core_srv_conf_t *cscf, ngx_stream_conf_addr_t *addr);
+
+static ngx_int_t ngx_stream_optimize_servers(ngx_conf_t *cf,
+    ngx_stream_core_main_conf_t *cmcf, ngx_array_t *ports);
+static ngx_int_t ngx_stream_server_names(ngx_conf_t *cf,
+    ngx_stream_core_main_conf_t *cmcf, ngx_stream_conf_addr_t *addr);
+static ngx_int_t ngx_stream_cmp_conf_addrs(const void *one, const void *two);
+static int ngx_libc_cdecl ngx_stream_cmp_dns_wildcards(const void *one,
+    const void *two);
+
+static ngx_int_t ngx_stream_init_listening(ngx_conf_t *cf,
+    ngx_stream_conf_port_t *port);
+static ngx_listening_t *ngx_stream_add_listening(ngx_conf_t *cf,
+    ngx_stream_conf_addr_t *addr);
 static ngx_int_t ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
     ngx_stream_conf_addr_t *addr);
 #if (NGX_HAVE_INET6)
 static ngx_int_t ngx_stream_add_addrs6(ngx_conf_t *cf,
     ngx_stream_port_t *stport, ngx_stream_conf_addr_t *addr);
 #endif
-static ngx_int_t ngx_stream_cmp_conf_addrs(const void *one, const void *two);
 
 
 ngx_uint_t  ngx_stream_max_module;
@@ -74,10 +92,8 @@ static char *
 ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                          *rv;
-    ngx_uint_t                     i, m, mi, s;
+    ngx_uint_t                     mi, m, s;
     ngx_conf_t                     pcf;
-    ngx_array_t                    ports;
-    ngx_stream_listen_t           *listen;
     ngx_stream_module_t           *module;
     ngx_stream_conf_ctx_t         *ctx;
     ngx_stream_core_srv_conf_t   **cscfp;
@@ -251,21 +267,13 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if (ngx_array_init(&ports, cf->temp_pool, 4, sizeof(ngx_stream_conf_port_t))
-        != NGX_OK)
-    {
+    /* optimize the lists of ports, addresses and server names */
+
+    if (ngx_stream_optimize_servers(cf, cmcf, cmcf->ports) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
-    listen = cmcf->listen.elts;
-
-    for (i = 0; i < cmcf->listen.nelts; i++) {
-        if (ngx_stream_add_ports(cf, &ports, &listen[i]) != NGX_OK) {
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    return ngx_stream_optimize_servers(cf, &ports);
+    return NGX_CONF_OK;
 }
 
 
@@ -377,73 +385,295 @@ ngx_stream_init_phase_handlers(ngx_conf_t *cf,
 }
 
 
-static ngx_int_t
-ngx_stream_add_ports(ngx_conf_t *cf, ngx_array_t *ports,
-    ngx_stream_listen_t *listen)
+ngx_int_t
+ngx_stream_add_listen(ngx_conf_t *cf, ngx_stream_core_srv_conf_t *cscf,
+    ngx_stream_listen_opt_t *lsopt)
 {
-    in_port_t                p;
-    ngx_uint_t               i;
-    struct sockaddr         *sa;
-    ngx_stream_conf_port_t  *port;
-    ngx_stream_conf_addr_t  *addr;
+    in_port_t                     p;
+    ngx_uint_t                    i;
+    struct sockaddr              *sa;
+    ngx_stream_conf_port_t       *port;
+    ngx_stream_core_main_conf_t  *cmcf;
 
-    sa = listen->sockaddr;
+    cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+
+    if (cmcf->ports == NULL) {
+        cmcf->ports = ngx_array_create(cf->temp_pool, 2,
+                                       sizeof(ngx_stream_conf_port_t));
+        if (cmcf->ports == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    sa = lsopt->sockaddr;
     p = ngx_inet_get_port(sa);
 
-    port = ports->elts;
-    for (i = 0; i < ports->nelts; i++) {
+    port = cmcf->ports->elts;
+    for (i = 0; i < cmcf->ports->nelts; i++) {
 
-        if (p == port[i].port
-            && listen->type == port[i].type
-            && sa->sa_family == port[i].family)
+        if (p != port[i].port
+            || lsopt->type != port[i].type
+            || sa->sa_family != port[i].family)
         {
-            /* a port is already in the port list */
-
-            port = &port[i];
-            goto found;
+            continue;
         }
+
+        /* a port is already in the port list */
+
+        return ngx_stream_add_addresses(cf, cscf, &port[i], lsopt);
     }
 
     /* add a port to the port list */
 
-    port = ngx_array_push(ports);
+    port = ngx_array_push(cmcf->ports);
     if (port == NULL) {
         return NGX_ERROR;
     }
 
     port->family = sa->sa_family;
-    port->type = listen->type;
+    port->type = lsopt->type;
     port->port = p;
+    port->addrs.elts = NULL;
 
-    if (ngx_array_init(&port->addrs, cf->temp_pool, 2,
-                       sizeof(ngx_stream_conf_addr_t))
-        != NGX_OK)
-    {
-        return NGX_ERROR;
+    return ngx_stream_add_address(cf, cscf, port, lsopt);
+}
+
+
+static ngx_int_t
+ngx_stream_add_addresses(ngx_conf_t *cf, ngx_stream_core_srv_conf_t *cscf,
+    ngx_stream_conf_port_t *port, ngx_stream_listen_opt_t *lsopt)
+{
+    ngx_uint_t               i, default_server, proxy_protocol,
+                             protocols, protocols_prev;
+    ngx_stream_conf_addr_t  *addr;
+#if (NGX_STREAM_SSL)
+    ngx_uint_t               ssl;
+#endif
+
+    /*
+     * we cannot compare whole sockaddr struct's as kernel
+     * may fill some fields in inherited sockaddr struct's
+     */
+
+    addr = port->addrs.elts;
+
+    for (i = 0; i < port->addrs.nelts; i++) {
+
+        if (ngx_cmp_sockaddr(lsopt->sockaddr, lsopt->socklen,
+                             addr[i].opt.sockaddr,
+                             addr[i].opt.socklen, 0)
+            != NGX_OK)
+        {
+            continue;
+        }
+
+        /* the address is already in the address list */
+
+        if (ngx_stream_add_server(cf, cscf, &addr[i]) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        /* preserve default_server bit during listen options overwriting */
+        default_server = addr[i].opt.default_server;
+
+        proxy_protocol = lsopt->proxy_protocol || addr[i].opt.proxy_protocol;
+        protocols = lsopt->proxy_protocol;
+        protocols_prev = addr[i].opt.proxy_protocol;
+
+#if (NGX_STREAM_SSL)
+        ssl = lsopt->ssl || addr[i].opt.ssl;
+        protocols |= lsopt->ssl << 1;
+        protocols_prev |= addr[i].opt.ssl << 1;
+#endif
+
+        if (lsopt->set) {
+
+            if (addr[i].opt.set) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "duplicate listen options for %V",
+                                   &addr[i].opt.addr_text);
+                return NGX_ERROR;
+            }
+
+            addr[i].opt = *lsopt;
+        }
+
+        /* check the duplicate "default" server for this address:port */
+
+        if (lsopt->default_server) {
+
+            if (default_server) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "a duplicate default server for %V",
+                                   &addr[i].opt.addr_text);
+                return NGX_ERROR;
+            }
+
+            default_server = 1;
+            addr[i].default_server = cscf;
+        }
+
+        /* check for conflicting protocol options */
+
+        if ((protocols | protocols_prev) != protocols_prev) {
+
+            /* options added */
+
+            if ((addr[i].opt.set && !lsopt->set)
+                || addr[i].protocols_changed
+                || (protocols | protocols_prev) != protocols)
+            {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "protocol options redefined for %V",
+                                   &addr[i].opt.addr_text);
+            }
+
+            addr[i].protocols = protocols_prev;
+            addr[i].protocols_set = 1;
+            addr[i].protocols_changed = 1;
+
+        } else if ((protocols_prev | protocols) != protocols) {
+
+            /* options removed */
+
+            if (lsopt->set
+                || (addr[i].protocols_set && protocols != addr[i].protocols))
+            {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "protocol options redefined for %V",
+                                   &addr[i].opt.addr_text);
+            }
+
+            addr[i].protocols = protocols;
+            addr[i].protocols_set = 1;
+            addr[i].protocols_changed = 1;
+
+        } else {
+
+            /* the same options */
+
+            if ((lsopt->set && addr[i].protocols_changed)
+                || (addr[i].protocols_set && protocols != addr[i].protocols))
+            {
+                ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                   "protocol options redefined for %V",
+                                   &addr[i].opt.addr_text);
+            }
+
+            addr[i].protocols = protocols;
+            addr[i].protocols_set = 1;
+        }
+
+        addr[i].opt.default_server = default_server;
+        addr[i].opt.proxy_protocol = proxy_protocol;
+#if (NGX_STREAM_SSL)
+        addr[i].opt.ssl = ssl;
+#endif
+
+        return NGX_OK;
     }
 
-found:
+    /* add the address to the addresses list that bound to this port */
+
+    return ngx_stream_add_address(cf, cscf, port, lsopt);
+}
+
+
+/*
+ * add the server address, the server names and the server core module
+ * configurations to the port list
+ */
+
+static ngx_int_t
+ngx_stream_add_address(ngx_conf_t *cf, ngx_stream_core_srv_conf_t *cscf,
+    ngx_stream_conf_port_t *port, ngx_stream_listen_opt_t *lsopt)
+{
+    ngx_stream_conf_addr_t  *addr;
+
+    if (port->addrs.elts == NULL) {
+        if (ngx_array_init(&port->addrs, cf->temp_pool, 4,
+                           sizeof(ngx_stream_conf_addr_t))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
 
     addr = ngx_array_push(&port->addrs);
     if (addr == NULL) {
         return NGX_ERROR;
     }
 
-    addr->opt = *listen;
+    addr->opt = *lsopt;
+    addr->protocols = 0;
+    addr->protocols_set = 0;
+    addr->protocols_changed = 0;
+    addr->hash.buckets = NULL;
+    addr->hash.size = 0;
+    addr->wc_head = NULL;
+    addr->wc_tail = NULL;
+#if (NGX_PCRE)
+    addr->nregex = 0;
+    addr->regex = NULL;
+#endif
+    addr->default_server = cscf;
+    addr->servers.elts = NULL;
+
+    return ngx_stream_add_server(cf, cscf, addr);
+}
+
+
+/* add the server core module configuration to the address:port */
+
+static ngx_int_t
+ngx_stream_add_server(ngx_conf_t *cf, ngx_stream_core_srv_conf_t *cscf,
+    ngx_stream_conf_addr_t *addr)
+{
+    ngx_uint_t                    i;
+    ngx_stream_core_srv_conf_t  **server;
+
+    if (addr->servers.elts == NULL) {
+        if (ngx_array_init(&addr->servers, cf->temp_pool, 4,
+                           sizeof(ngx_stream_core_srv_conf_t *))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+    } else {
+        server = addr->servers.elts;
+        for (i = 0; i < addr->servers.nelts; i++) {
+            if (server[i] == cscf) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "a duplicate listen %V",
+                                   &addr->opt.addr_text);
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    server = ngx_array_push(&addr->servers);
+    if (server == NULL) {
+        return NGX_ERROR;
+    }
+
+    *server = cscf;
 
     return NGX_OK;
 }
 
 
-static char *
-ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
+static ngx_int_t
+ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_stream_core_main_conf_t *cmcf,
+    ngx_array_t *ports)
 {
-    ngx_uint_t                   i, p, last, bind_wildcard;
-    ngx_listening_t             *ls;
-    ngx_stream_port_t           *stport;
-    ngx_stream_conf_port_t      *port;
-    ngx_stream_conf_addr_t      *addr;
-    ngx_stream_core_srv_conf_t  *cscf;
+    ngx_uint_t               p, a;
+    ngx_stream_conf_port_t  *port;
+    ngx_stream_conf_addr_t  *addr;
+
+    if (ports == NULL) {
+        return NGX_OK;
+    }
 
     port = ports->elts;
     for (p = 0; p < ports->nelts; p++) {
@@ -451,174 +681,190 @@ ngx_stream_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
         ngx_sort(port[p].addrs.elts, (size_t) port[p].addrs.nelts,
                  sizeof(ngx_stream_conf_addr_t), ngx_stream_cmp_conf_addrs);
 
-        addr = port[p].addrs.elts;
-        last = port[p].addrs.nelts;
-
         /*
-         * if there is the binding to the "*:port" then we need to bind()
-         * to the "*:port" only and ignore the other bindings
+         * check whether all name-based servers have the same
+         * configuration as a default server for given address:port
          */
 
-        if (addr[last - 1].opt.wildcard) {
-            addr[last - 1].opt.bind = 1;
-            bind_wildcard = 1;
+        addr = port[p].addrs.elts;
+        for (a = 0; a < port[p].addrs.nelts; a++) {
 
-        } else {
-            bind_wildcard = 0;
+            if (addr[a].servers.nelts > 1
+#if (NGX_PCRE)
+                || addr[a].default_server->captures
+#endif
+               )
+            {
+                if (ngx_stream_server_names(cf, cmcf, &addr[a]) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+            }
         }
 
-        i = 0;
+        if (ngx_stream_init_listening(cf, &port[p]) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
 
-        while (i < last) {
+    return NGX_OK;
+}
 
-            if (bind_wildcard && !addr[i].opt.bind) {
-                i++;
+
+static ngx_int_t
+ngx_stream_server_names(ngx_conf_t *cf, ngx_stream_core_main_conf_t *cmcf,
+    ngx_stream_conf_addr_t *addr)
+{
+    ngx_int_t                     rc;
+    ngx_uint_t                    n, s;
+    ngx_hash_init_t               hash;
+    ngx_hash_keys_arrays_t        ha;
+    ngx_stream_server_name_t     *name;
+    ngx_stream_core_srv_conf_t  **cscfp;
+#if (NGX_PCRE)
+    ngx_uint_t                    regex, i;
+
+    regex = 0;
+#endif
+
+    ngx_memzero(&ha, sizeof(ngx_hash_keys_arrays_t));
+
+    ha.temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, cf->log);
+    if (ha.temp_pool == NULL) {
+        return NGX_ERROR;
+    }
+
+    ha.pool = cf->pool;
+
+    if (ngx_hash_keys_array_init(&ha, NGX_HASH_LARGE) != NGX_OK) {
+        goto failed;
+    }
+
+    cscfp = addr->servers.elts;
+
+    for (s = 0; s < addr->servers.nelts; s++) {
+
+        name = cscfp[s]->server_names.elts;
+
+        for (n = 0; n < cscfp[s]->server_names.nelts; n++) {
+
+#if (NGX_PCRE)
+            if (name[n].regex) {
+                regex++;
                 continue;
             }
+#endif
 
-            ls = ngx_create_listening(cf, addr[i].opt.sockaddr,
-                                      addr[i].opt.socklen);
-            if (ls == NULL) {
-                return NGX_CONF_ERROR;
+            rc = ngx_hash_add_key(&ha, &name[n].name, name[n].server,
+                                  NGX_HASH_WILDCARD_KEY);
+
+            if (rc == NGX_ERROR) {
+                goto failed;
             }
 
-            ls->addr_ntop = 1;
-            ls->handler = ngx_stream_init_connection;
-            ls->pool_size = 256;
-            ls->type = addr[i].opt.type;
-
-            cscf = addr->opt.ctx->srv_conf[ngx_stream_core_module.ctx_index];
-
-            ls->logp = cscf->error_log;
-            ls->log.data = &ls->addr_text;
-            ls->log.handler = ngx_accept_log_error;
-
-            ls->backlog = addr[i].opt.backlog;
-            ls->rcvbuf = addr[i].opt.rcvbuf;
-            ls->sndbuf = addr[i].opt.sndbuf;
-
-            ls->wildcard = addr[i].opt.wildcard;
-
-            ls->keepalive = addr[i].opt.so_keepalive;
-#if (NGX_HAVE_KEEPALIVE_TUNABLE)
-            ls->keepidle = addr[i].opt.tcp_keepidle;
-            ls->keepintvl = addr[i].opt.tcp_keepintvl;
-            ls->keepcnt = addr[i].opt.tcp_keepcnt;
-#endif
-
-#if (NGX_HAVE_INET6)
-            ls->ipv6only = addr[i].opt.ipv6only;
-#endif
-
-#if (NGX_HAVE_TCP_FASTOPEN)
-            ls->fastopen = addr[i].opt.fastopen;
-#endif
-
-#if (NGX_HAVE_REUSEPORT)
-            ls->reuseport = addr[i].opt.reuseport;
-#endif
-
-            stport = ngx_palloc(cf->pool, sizeof(ngx_stream_port_t));
-            if (stport == NULL) {
-                return NGX_CONF_ERROR;
+            if (rc == NGX_DECLINED) {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "invalid server name or wildcard \"%V\" on %V",
+                              &name[n].name, &addr->opt.addr_text);
+                goto failed;
             }
 
-            ls->servers = stport;
-
-            stport->naddrs = i + 1;
-
-            switch (ls->sockaddr->sa_family) {
-#if (NGX_HAVE_INET6)
-            case AF_INET6:
-                if (ngx_stream_add_addrs6(cf, stport, addr) != NGX_OK) {
-                    return NGX_CONF_ERROR;
-                }
-                break;
-#endif
-            default: /* AF_INET */
-                if (ngx_stream_add_addrs(cf, stport, addr) != NGX_OK) {
-                    return NGX_CONF_ERROR;
-                }
-                break;
+            if (rc == NGX_BUSY) {
+                ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                              "conflicting server name \"%V\" on %V, ignored",
+                              &name[n].name, &addr->opt.addr_text);
             }
-
-            addr++;
-            last--;
         }
     }
 
-    return NGX_CONF_OK;
-}
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = cmcf->server_names_hash_max_size;
+    hash.bucket_size = cmcf->server_names_hash_bucket_size;
+    hash.name = "server_names_hash";
+    hash.pool = cf->pool;
 
+    if (ha.keys.nelts) {
+        hash.hash = &addr->hash;
+        hash.temp_pool = NULL;
 
-static ngx_int_t
-ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
-    ngx_stream_conf_addr_t *addr)
-{
-    ngx_uint_t             i;
-    struct sockaddr_in    *sin;
-    ngx_stream_in_addr_t  *addrs;
+        if (ngx_hash_init(&hash, ha.keys.elts, ha.keys.nelts) != NGX_OK) {
+            goto failed;
+        }
+    }
 
-    stport->addrs = ngx_pcalloc(cf->pool,
-                                stport->naddrs * sizeof(ngx_stream_in_addr_t));
-    if (stport->addrs == NULL) {
+    if (ha.dns_wc_head.nelts) {
+
+        ngx_qsort(ha.dns_wc_head.elts, (size_t) ha.dns_wc_head.nelts,
+                  sizeof(ngx_hash_key_t), ngx_stream_cmp_dns_wildcards);
+
+        hash.hash = NULL;
+        hash.temp_pool = ha.temp_pool;
+
+        if (ngx_hash_wildcard_init(&hash, ha.dns_wc_head.elts,
+                                   ha.dns_wc_head.nelts)
+            != NGX_OK)
+        {
+            goto failed;
+        }
+
+        addr->wc_head = (ngx_hash_wildcard_t *) hash.hash;
+    }
+
+    if (ha.dns_wc_tail.nelts) {
+
+        ngx_qsort(ha.dns_wc_tail.elts, (size_t) ha.dns_wc_tail.nelts,
+                  sizeof(ngx_hash_key_t), ngx_stream_cmp_dns_wildcards);
+
+        hash.hash = NULL;
+        hash.temp_pool = ha.temp_pool;
+
+        if (ngx_hash_wildcard_init(&hash, ha.dns_wc_tail.elts,
+                                   ha.dns_wc_tail.nelts)
+            != NGX_OK)
+        {
+            goto failed;
+        }
+
+        addr->wc_tail = (ngx_hash_wildcard_t *) hash.hash;
+    }
+
+    ngx_destroy_pool(ha.temp_pool);
+
+#if (NGX_PCRE)
+
+    if (regex == 0) {
+        return NGX_OK;
+    }
+
+    addr->nregex = regex;
+    addr->regex = ngx_palloc(cf->pool,
+                             regex * sizeof(ngx_stream_server_name_t));
+    if (addr->regex == NULL) {
         return NGX_ERROR;
     }
 
-    addrs = stport->addrs;
+    i = 0;
 
-    for (i = 0; i < stport->naddrs; i++) {
+    for (s = 0; s < addr->servers.nelts; s++) {
 
-        sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
-        addrs[i].addr = sin->sin_addr.s_addr;
+        name = cscfp[s]->server_names.elts;
 
-        addrs[i].conf.ctx = addr[i].opt.ctx;
-#if (NGX_STREAM_SSL)
-        addrs[i].conf.ssl = addr[i].opt.ssl;
-#endif
-        addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
-        addrs[i].conf.addr_text = addr[i].opt.addr_text;
+        for (n = 0; n < cscfp[s]->server_names.nelts; n++) {
+            if (name[n].regex) {
+                addr->regex[i++] = name[n];
+            }
+        }
     }
+
+#endif
 
     return NGX_OK;
+
+failed:
+
+    ngx_destroy_pool(ha.temp_pool);
+
+    return NGX_ERROR;
 }
-
-
-#if (NGX_HAVE_INET6)
-
-static ngx_int_t
-ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
-    ngx_stream_conf_addr_t *addr)
-{
-    ngx_uint_t              i;
-    struct sockaddr_in6    *sin6;
-    ngx_stream_in6_addr_t  *addrs6;
-
-    stport->addrs = ngx_pcalloc(cf->pool,
-                                stport->naddrs * sizeof(ngx_stream_in6_addr_t));
-    if (stport->addrs == NULL) {
-        return NGX_ERROR;
-    }
-
-    addrs6 = stport->addrs;
-
-    for (i = 0; i < stport->naddrs; i++) {
-
-        sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
-        addrs6[i].addr6 = sin6->sin6_addr;
-
-        addrs6[i].conf.ctx = addr[i].opt.ctx;
-#if (NGX_STREAM_SSL)
-        addrs6[i].conf.ssl = addr[i].opt.ssl;
-#endif
-        addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
-        addrs6[i].conf.addr_text = addr[i].opt.addr_text;
-    }
-
-    return NGX_OK;
-}
-
-#endif
 
 
 static ngx_int_t
@@ -630,12 +876,12 @@ ngx_stream_cmp_conf_addrs(const void *one, const void *two)
     second = (ngx_stream_conf_addr_t *) two;
 
     if (first->opt.wildcard) {
-        /* a wildcard must be the last resort, shift it to the end */
+        /* a wildcard address must be the last resort, shift it to the end */
         return 1;
     }
 
     if (second->opt.wildcard) {
-        /* a wildcard must be the last resort, shift it to the end */
+        /* a wildcard address must be the last resort, shift it to the end */
         return -1;
     }
 
@@ -653,3 +899,265 @@ ngx_stream_cmp_conf_addrs(const void *one, const void *two)
 
     return 0;
 }
+
+
+static int ngx_libc_cdecl
+ngx_stream_cmp_dns_wildcards(const void *one, const void *two)
+{
+    ngx_hash_key_t  *first, *second;
+
+    first = (ngx_hash_key_t *) one;
+    second = (ngx_hash_key_t *) two;
+
+    return ngx_dns_strcmp(first->key.data, second->key.data);
+}
+
+
+static ngx_int_t
+ngx_stream_init_listening(ngx_conf_t *cf, ngx_stream_conf_port_t *port)
+{
+    ngx_uint_t               i, last, bind_wildcard;
+    ngx_listening_t         *ls;
+    ngx_stream_port_t       *stport;
+    ngx_stream_conf_addr_t  *addr;
+
+    addr = port->addrs.elts;
+    last = port->addrs.nelts;
+
+    /*
+     * If there is a binding to an "*:port" then we need to bind() to
+     * the "*:port" only and ignore other implicit bindings.  The bindings
+     * have been already sorted: explicit bindings are on the start, then
+     * implicit bindings go, and wildcard binding is in the end.
+     */
+
+    if (addr[last - 1].opt.wildcard) {
+        addr[last - 1].opt.bind = 1;
+        bind_wildcard = 1;
+
+    } else {
+        bind_wildcard = 0;
+    }
+
+    i = 0;
+
+    while (i < last) {
+
+        if (bind_wildcard && !addr[i].opt.bind) {
+            i++;
+            continue;
+        }
+
+        ls = ngx_stream_add_listening(cf, &addr[i]);
+        if (ls == NULL) {
+            return NGX_ERROR;
+        }
+
+        stport = ngx_pcalloc(cf->pool, sizeof(ngx_stream_port_t));
+        if (stport == NULL) {
+            return NGX_ERROR;
+        }
+
+        ls->servers = stport;
+
+        stport->naddrs = i + 1;
+
+        switch (ls->sockaddr->sa_family) {
+
+#if (NGX_HAVE_INET6)
+        case AF_INET6:
+            if (ngx_stream_add_addrs6(cf, stport, addr) != NGX_OK) {
+                return NGX_ERROR;
+            }
+            break;
+#endif
+        default: /* AF_INET */
+            if (ngx_stream_add_addrs(cf, stport, addr) != NGX_OK) {
+                return NGX_ERROR;
+            }
+            break;
+        }
+
+        addr++;
+        last--;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_listening_t *
+ngx_stream_add_listening(ngx_conf_t *cf, ngx_stream_conf_addr_t *addr)
+{
+    ngx_listening_t             *ls;
+    ngx_stream_core_srv_conf_t  *cscf;
+
+    ls = ngx_create_listening(cf, addr->opt.sockaddr, addr->opt.socklen);
+    if (ls == NULL) {
+        return NULL;
+    }
+
+    ls->addr_ntop = 1;
+
+    ls->handler = ngx_stream_init_connection;
+
+    ls->pool_size = 256;
+
+    cscf = addr->default_server;
+
+    ls->logp = cscf->error_log;
+    ls->log.data = &ls->addr_text;
+    ls->log.handler = ngx_accept_log_error;
+
+    ls->type = addr->opt.type;
+    ls->backlog = addr->opt.backlog;
+    ls->rcvbuf = addr->opt.rcvbuf;
+    ls->sndbuf = addr->opt.sndbuf;
+
+    ls->keepalive = addr->opt.so_keepalive;
+#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+    ls->keepidle = addr->opt.tcp_keepidle;
+    ls->keepintvl = addr->opt.tcp_keepintvl;
+    ls->keepcnt = addr->opt.tcp_keepcnt;
+#endif
+
+#if (NGX_HAVE_INET6)
+    ls->ipv6only = addr->opt.ipv6only;
+#endif
+
+#if (NGX_HAVE_TCP_FASTOPEN)
+    ls->fastopen = addr->opt.fastopen;
+#endif
+
+#if (NGX_HAVE_REUSEPORT)
+    ls->reuseport = addr->opt.reuseport;
+#endif
+
+    ls->wildcard = addr->opt.wildcard;
+
+    return ls;
+}
+
+
+static ngx_int_t
+ngx_stream_add_addrs(ngx_conf_t *cf, ngx_stream_port_t *stport,
+    ngx_stream_conf_addr_t *addr)
+{
+    ngx_uint_t                   i;
+    struct sockaddr_in          *sin;
+    ngx_stream_in_addr_t        *addrs;
+    ngx_stream_virtual_names_t  *vn;
+
+    stport->addrs = ngx_pcalloc(cf->pool,
+                                stport->naddrs * sizeof(ngx_stream_in_addr_t));
+    if (stport->addrs == NULL) {
+        return NGX_ERROR;
+    }
+
+    addrs = stport->addrs;
+
+    for (i = 0; i < stport->naddrs; i++) {
+
+        sin = (struct sockaddr_in *) addr[i].opt.sockaddr;
+        addrs[i].addr = sin->sin_addr.s_addr;
+        addrs[i].conf.default_server = addr[i].default_server;
+#if (NGX_STREAM_SSL)
+        addrs[i].conf.ssl = addr[i].opt.ssl;
+#endif
+        addrs[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
+
+        if (addr[i].hash.buckets == NULL
+            && (addr[i].wc_head == NULL
+                || addr[i].wc_head->hash.buckets == NULL)
+            && (addr[i].wc_tail == NULL
+                || addr[i].wc_tail->hash.buckets == NULL)
+#if (NGX_PCRE)
+            && addr[i].nregex == 0
+#endif
+            )
+        {
+            continue;
+        }
+
+        vn = ngx_palloc(cf->pool, sizeof(ngx_stream_virtual_names_t));
+        if (vn == NULL) {
+            return NGX_ERROR;
+        }
+
+        addrs[i].conf.virtual_names = vn;
+
+        vn->names.hash = addr[i].hash;
+        vn->names.wc_head = addr[i].wc_head;
+        vn->names.wc_tail = addr[i].wc_tail;
+#if (NGX_PCRE)
+        vn->nregex = addr[i].nregex;
+        vn->regex = addr[i].regex;
+#endif
+    }
+
+    return NGX_OK;
+}
+
+
+#if (NGX_HAVE_INET6)
+
+static ngx_int_t
+ngx_stream_add_addrs6(ngx_conf_t *cf, ngx_stream_port_t *stport,
+    ngx_stream_conf_addr_t *addr)
+{
+    ngx_uint_t                   i;
+    struct sockaddr_in6         *sin6;
+    ngx_stream_in6_addr_t       *addrs6;
+    ngx_stream_virtual_names_t  *vn;
+
+    stport->addrs = ngx_pcalloc(cf->pool,
+                                stport->naddrs * sizeof(ngx_stream_in6_addr_t));
+    if (stport->addrs == NULL) {
+        return NGX_ERROR;
+    }
+
+    addrs6 = stport->addrs;
+
+    for (i = 0; i < stport->naddrs; i++) {
+
+        sin6 = (struct sockaddr_in6 *) addr[i].opt.sockaddr;
+        addrs6[i].addr6 = sin6->sin6_addr;
+        addrs6[i].conf.default_server = addr[i].default_server;
+#if (NGX_STREAM_SSL)
+        addrs6[i].conf.ssl = addr[i].opt.ssl;
+#endif
+        addrs6[i].conf.proxy_protocol = addr[i].opt.proxy_protocol;
+
+        if (addr[i].hash.buckets == NULL
+            && (addr[i].wc_head == NULL
+                || addr[i].wc_head->hash.buckets == NULL)
+            && (addr[i].wc_tail == NULL
+                || addr[i].wc_tail->hash.buckets == NULL)
+#if (NGX_PCRE)
+            && addr[i].nregex == 0
+#endif
+            )
+        {
+            continue;
+        }
+
+        vn = ngx_palloc(cf->pool, sizeof(ngx_stream_virtual_names_t));
+        if (vn == NULL) {
+            return NGX_ERROR;
+        }
+
+        addrs6[i].conf.virtual_names = vn;
+
+        vn->names.hash = addr[i].hash;
+        vn->names.wc_head = addr[i].wc_head;
+        vn->names.wc_tail = addr[i].wc_tail;
+#if (NGX_PCRE)
+        vn->nregex = addr[i].nregex;
+        vn->regex = addr[i].regex;
+#endif
+    }
+
+    return NGX_OK;
+}
+
+#endif
