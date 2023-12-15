@@ -19,7 +19,7 @@
 
 #define ngx_quic_path_dbg(c, msg, path)                                       \
     ngx_log_debug7(NGX_LOG_DEBUG_EVENT, c->log, 0,                            \
-                   "quic path seq:%uL %s tx:%O rx:%O valid:%ui st:%d mtu:%uz",\
+                   "quic path seq:%uL %s tx:%O rx:%O valid:%d st:%d mtu:%uz", \
                    path->seqnum, msg, path->sent, path->received,             \
                    path->validated, path->state, path->mtu);
 
