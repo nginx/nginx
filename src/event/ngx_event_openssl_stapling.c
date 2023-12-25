@@ -893,7 +893,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
     ocsp->cert_status = V_OCSP_CERTSTATUS_GOOD;
     ocsp->conf = ocf;
 
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 
     ocsp->certs = SSL_get0_verified_chain(c->ssl->connection);
 
