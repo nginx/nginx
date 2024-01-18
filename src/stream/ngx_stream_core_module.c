@@ -1215,6 +1215,12 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     if (lsopt.type == SOCK_DGRAM) {
+#if (NGX_HAVE_TCP_FASTOPEN)
+        if (lsopt.fastopen != -1) {
+            return "\"fastopen\" parameter is incompatible with \"udp\"";
+        }
+#endif
+
         if (backlog) {
             return "\"backlog\" parameter is incompatible with \"udp\"";
         }
@@ -1244,12 +1250,6 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (lsopt.proxy_protocol) {
             return "\"proxy_protocol\" parameter is incompatible with \"udp\"";
         }
-
-#if (NGX_HAVE_TCP_FASTOPEN)
-        if (lsopt.fastopen != -1) {
-            return "\"fastopen\" parameter is incompatible with \"udp\"";
-        }
-#endif
     }
 
     for (n = 0; n < u.naddrs; n++) {
