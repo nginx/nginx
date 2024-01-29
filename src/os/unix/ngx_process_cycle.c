@@ -948,7 +948,7 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
         }
     }
 
-    if (ngx_exiting) {
+    if (ngx_exiting && !ngx_terminate) {
         c = cycle->connections;
         for (i = 0; i < cycle->connection_n; i++) {
             if (c[i].fd != -1
@@ -963,11 +963,11 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
                 ngx_debug_quit = 1;
             }
         }
+    }
 
-        if (ngx_debug_quit) {
-            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "aborting");
-            ngx_debug_point();
-        }
+    if (ngx_debug_quit) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "aborting");
+        ngx_debug_point();
     }
 
     /*
