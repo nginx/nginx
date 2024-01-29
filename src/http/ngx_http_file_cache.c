@@ -690,6 +690,8 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         c->file.aio->data = r;
         c->file.aio->handler = ngx_http_cache_aio_event_handler;
 
+        ngx_add_timer(&c->file.aio->event, 60000);
+
         r->main->blocked++;
         r->aio = 1;
 
@@ -736,6 +738,17 @@ ngx_http_cache_aio_event_handler(ngx_event_t *ev)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache aio: \"%V?%V\"", &r->uri, &r->args);
+
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "aio operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
 
     r->main->blocked--;
     r->aio = 0;
@@ -786,6 +799,8 @@ ngx_http_cache_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
         return NGX_ERROR;
     }
 
+    ngx_add_timer(&task->event, 60000);
+
     r->main->blocked++;
     r->aio = 1;
 
@@ -806,6 +821,17 @@ ngx_http_cache_thread_event_handler(ngx_event_t *ev)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http file cache thread: \"%V?%V\"", &r->uri, &r->args);
+
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "thread operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
 
     r->main->blocked--;
     r->aio = 0;

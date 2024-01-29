@@ -332,6 +332,7 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size)
             return NGX_ERROR;
         }
 
+        task->event.log = c->log;
         task->handler = ngx_linux_sendfile_thread_handler;
 
         c->sendfile_task = task;

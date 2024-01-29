@@ -3949,6 +3949,8 @@ ngx_http_upstream_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
     r->aio = 1;
     p->aio = 1;
 
+    ngx_add_timer(&task->event, 60000);
+
     return NGX_OK;
 }
 
@@ -3966,6 +3968,17 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream thread: \"%V?%V\"", &r->uri, &r->args);
+
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "thread operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
 
     r->main->blocked--;
     r->aio = 0;

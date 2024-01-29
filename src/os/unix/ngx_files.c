@@ -110,6 +110,8 @@ ngx_thread_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
             return NGX_ERROR;
         }
 
+        task->event.log = file->log;
+
         file->thread_task = task;
     }
 
@@ -492,6 +494,8 @@ ngx_thread_write_chain_to_file(ngx_file_t *file, ngx_chain_t *cl, off_t offset,
         if (task == NULL) {
             return NGX_ERROR;
         }
+
+        task->event.log = file->log;
 
         file->thread_task = task;
     }
