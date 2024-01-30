@@ -2694,6 +2694,8 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http terminate request count:%d", mr->count);
 
+    mr->terminated = 1;
+
     if (rc > 0 && (mr->headers_out.status == 0 || mr->connection->sent == 0)) {
         mr->headers_out.status = rc;
     }
@@ -2716,8 +2718,11 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     if (mr->write_event_handler) {
 
         if (mr->blocked) {
+            r = r->connection->data;
+
             r->connection->error = 1;
             r->write_event_handler = ngx_http_request_finalizer;
+
             return;
         }
 
