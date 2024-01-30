@@ -57,7 +57,9 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         do_write = 1;
     }
 
-    if (p->upstream->fd != (ngx_socket_t) -1) {
+    if (p->upstream
+        && p->upstream->fd != (ngx_socket_t) -1)
+    {
         rev = p->upstream->read;
 
         flags = (rev->eof || rev->error) ? NGX_CLOSE_EVENT : 0;
@@ -108,7 +110,9 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     ngx_msec_t    delay;
     ngx_chain_t  *chain, *cl, *ln;
 
-    if (p->upstream_eof || p->upstream_error || p->upstream_done) {
+    if (p->upstream_eof || p->upstream_error || p->upstream_done
+        || p->upstream == NULL)
+    {
         return NGX_OK;
     }
 
