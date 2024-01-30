@@ -5187,6 +5187,9 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     }
 
     curves = ngx_palloc(pool, n * sizeof(int));
+    if (curves == NULL) {
+        return NGX_ERROR;
+    }
 
     n = SSL_get1_curves(c->ssl->connection, curves);
     len = 0;
