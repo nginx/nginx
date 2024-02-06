@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -9,7 +10,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_stream.h>
-
+#include <ngx_ssl_engine.h>
 
 static void ngx_stream_log_session(ngx_stream_session_t *s);
 static void ngx_stream_close_connection(ngx_connection_t *c);
@@ -268,7 +269,6 @@ ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
     }
 
     size = p - buf;
-
     if (c->recv(c, buf, size) != (ssize_t) size) {
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
@@ -325,7 +325,7 @@ ngx_stream_log_session(ngx_stream_session_t *s)
 }
 
 
-static void
+void
 ngx_stream_close_connection(ngx_connection_t *c)
 {
     ngx_pool_t  *pool;
@@ -351,6 +351,14 @@ ngx_stream_close_connection(ngx_connection_t *c)
     pool = c->pool;
 
     ngx_close_connection(c);
+
+#if (NGX_STREAM_SSL)
+    if (c->ssl_enabled && ngx_use_ssl_engine
+        && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+        ngx_ssl_engine_heuristic_poll(c->log);
+    }
+#endif
 
     ngx_destroy_pool(pool);
 }

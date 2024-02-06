@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -34,6 +35,11 @@ static ngx_int_t ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 static ngx_inline void ngx_kqueue_dump_event(ngx_log_t *log,
     struct kevent *kev);
+#if (NGX_SSL)
+static ngx_int_t ngx_kqueue_add_async_connection(ngx_connection_t *c);
+static ngx_int_t ngx_kqueue_del_async_connection(ngx_connection_t *c,
+    ngx_uint_t flags);
+#endif
 
 static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
@@ -92,7 +98,14 @@ static ngx_event_module_t  ngx_kqueue_module_ctx = {
 #endif
         ngx_kqueue_process_events,         /* process the events */
         ngx_kqueue_init,                   /* init the events */
-        ngx_kqueue_done                    /* done the events */
+        ngx_kqueue_done,                   /* done the events */
+#if (NGX_SSL)
+        ngx_kqueue_add_async_connection,   /* add an async conn */
+        ngx_kqueue_del_async_connection    /* del an async conn */
+#else
+        NULL,                              /* add an async conn */
+        NULL                               /* del an async conn */
+#endif
     }
 
 };
@@ -421,7 +434,16 @@ ngx_kqueue_set_event(ngx_event_t *ev, ngx_int_t filter, ngx_uint_t flags)
 
     kev = &change_list[nchanges];
 
+#if (NGX_SSL)
+    if (ev->async) {
+        kev->ident = c->async_fd;
+    }
+    else {
+        kev->ident = c->fd;
+    }
+#else
     kev->ident = c->fd;
+#endif
     kev->filter = (short) filter;
     kev->flags = (u_short) flags;
     kev->udata = NGX_KQUEUE_UDATA_T ((uintptr_t) ev | ev->instance);
@@ -492,7 +514,67 @@ ngx_kqueue_notify(ngx_event_handler_pt handler)
 }
 
 #endif
+#if (NGX_SSL)
+static ngx_int_t
+ngx_kqueue_add_async_connection(ngx_connection_t *c)
+{
+    ngx_int_t          rc;
+    c->async->active = 1;
+    c->async->disabled = 0;
 
+    rc = ngx_kqueue_set_event(c->async, EVFILT_READ, EV_ADD|EV_ENABLE);
+
+    return rc;
+}
+
+static ngx_int_t
+ngx_kqueue_del_async_connection(ngx_connection_t *c, ngx_uint_t flags)
+{
+    ngx_int_t     rc;
+    ngx_event_t  *e;
+
+    c->async->active = 0;
+    c->async->disabled = 0;
+
+    if (c->async->index < nchanges
+        && ((uintptr_t) change_list[c->async->index].udata & (uintptr_t) ~1)
+            == (uintptr_t) c->async)
+    {
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->async->log, 0,
+                       "async kevent deleted: %d: ft:%i",
+                       ngx_event_ident(c->async->data), EVFILT_READ);
+        /* if the event is still not passed to a kernel we will not pass it */
+        nchanges--;
+
+        if (c->async->index < nchanges) {
+            e = (ngx_event_t *)
+                    ((uintptr_t) change_list[nchanges].udata & (uintptr_t) ~1);
+            change_list[c->async->index] = change_list[nchanges];
+            e->index = c->async->index;
+        }
+
+        return NGX_OK;
+    }
+
+    if (flags & NGX_CLOSE_EVENT) {
+        return NGX_OK;
+    }
+
+    if (flags & NGX_DISABLE_EVENT) {
+        c->async->disabled = 1;
+
+    } else {
+        flags |= EV_DELETE;
+    }
+
+    flags |= NGX_FLUSH_EVENT;
+    rc = ngx_kqueue_set_event(c->async, EVFILT_READ, flags);
+
+    c->async_fd = -1;
+
+    return rc;
+}
+#endif
 
 static ngx_int_t
 ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,

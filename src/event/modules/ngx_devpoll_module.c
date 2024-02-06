@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -94,6 +95,8 @@ static ngx_event_module_t  ngx_devpoll_module_ctx = {
         ngx_devpoll_process_events,        /* process the events */
         ngx_devpoll_init,                  /* init the events */
         ngx_devpoll_done,                  /* done the events */
+        NULL,                              /* add an async conn */
+        NULL                               /* del an async conn */
     }
 
 };

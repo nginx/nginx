@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -24,6 +25,8 @@ static void *ngx_mail_ssl_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
 static char *ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_mail_ssl_asynch(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_mail_ssl_starttls(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -82,6 +85,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, enable),
       &ngx_mail_ssl_deprecated },
+
+    { ngx_string("ssl_asynch"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
+      ngx_mail_ssl_asynch,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, asynch),
+      NULL },
 
     { ngx_string("starttls"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
@@ -323,6 +333,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
      */
 
     scf->enable = NGX_CONF_UNSET;
+    scf->asynch = NGX_CONF_UNSET;
     scf->starttls = NGX_CONF_UNSET_UINT;
     scf->certificates = NGX_CONF_UNSET_PTR;
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
@@ -350,6 +361,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_pool_cleanup_t  *cln;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->asynch, prev->asynch, 0);
     ngx_conf_merge_uint_value(conf->starttls, prev->starttls,
                          NGX_MAIL_STARTTLS_OFF);
 
@@ -392,9 +404,9 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->listen) {
         mode = "listen ... ssl";
-
     } else if (conf->enable) {
         mode = "ssl";
+        conf->ssl.asynch = conf->asynch;
 
     } else if (conf->starttls != NGX_MAIL_STARTTLS_OFF) {
         mode = "starttls";
@@ -567,6 +579,34 @@ ngx_mail_ssl_enable(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         scf->file = cf->conf_file->file.name.data;
         scf->line = cf->conf_file->line;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_ssl_asynch(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_ssl_conf_t *scf = conf;
+
+    char  *rv;
+
+    rv = ngx_conf_set_flag_slot(cf, cmd, conf);
+
+    if (rv != NGX_CONF_OK) {
+        return rv;
+    }
+
+    /* If ssl_asynch on is configured, then ssl on is configured by default
+     * This will align 'ssl_asynch on;' and 'listen port ssl' diretives
+     * */
+
+    if(scf->asynch && (scf->enable != 1)) {
+        scf->enable = scf->asynch;
+    }
+
+    scf->file = cf->conf_file->file.name.data;
+    scf->line = cf->conf_file->line;
 
     return NGX_CONF_OK;
 }

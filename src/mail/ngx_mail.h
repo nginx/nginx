@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -37,6 +38,7 @@ typedef struct {
     unsigned                bind:1;
     unsigned                wildcard:1;
     unsigned                ssl:1;
+    unsigned                asynch:1;
 #if (NGX_HAVE_INET6)
     unsigned                ipv6only:1;
 #endif
@@ -58,6 +60,7 @@ typedef struct {
     ngx_str_t               addr_text;
     unsigned                ssl:1;
     unsigned                proxy_protocol:1;
+    ngx_uint_t              asynch;
 } ngx_mail_addr_conf_t;
 
 typedef struct {

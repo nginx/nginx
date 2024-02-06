@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -76,6 +77,10 @@ static ngx_atomic_t   ngx_stat_waiting0;
 ngx_atomic_t         *ngx_stat_waiting = &ngx_stat_waiting0;
 
 #endif
+
+
+ngx_atomic_t   ngx_ssl_active0 = 0;
+ngx_atomic_t  *ngx_ssl_active = &ngx_ssl_active0;
 
 
 
@@ -171,7 +176,7 @@ static ngx_event_module_t  ngx_event_core_module_ctx = {
     ngx_event_core_create_conf,            /* create configuration */
     ngx_event_core_init_conf,              /* init configuration */
 
-    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
+    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
 };
 
 
@@ -616,6 +621,9 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 {
     ngx_uint_t           m, i;
     ngx_event_t         *rev, *wev;
+#if (NGX_SSL)
+    ngx_event_t         *aev;
+#endif
     ngx_listening_t     *ls;
     ngx_connection_t    *c, *next, *old;
     ngx_core_conf_t     *ccf;
@@ -761,6 +769,20 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         wev[i].closed = 1;
     }
 
+#if (NGX_SSL)
+    cycle->async_events = ngx_alloc(sizeof(ngx_event_t) * cycle->connection_n,
+                                    cycle->log);
+    if (cycle->async_events == NULL) {
+        return NGX_ERROR;
+    }
+
+    aev = cycle->async_events;
+    for (i = 0; i < cycle->connection_n; i++) {
+        aev[i].closed = 1;
+        aev[i].instance = 1;
+    }
+#endif
+
     i = cycle->connection_n;
     next = NULL;
 
@@ -771,6 +793,10 @@ ngx_event_process_init(ngx_cycle_t *cycle)
         c[i].read = &cycle->read_events[i];
         c[i].write = &cycle->write_events[i];
         c[i].fd = (ngx_socket_t) -1;
+#if (NGX_SSL)
+        c[i].async = &cycle->async_events[i];
+        c[i].async_fd = (ngx_socket_t) -1;
+#endif
 
         next = &c[i];
     } while (i);

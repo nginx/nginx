@@ -1,6 +1,7 @@
 
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
+# Copyright (C) Intel, Inc.
 
 
 if [ $EVENT_SELECT = NO -a $EVENT_FOUND = NO ]; then
@@ -54,6 +55,10 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
     have=NGX_TEST_BUILD_SOLARIS_SENDFILEV . auto/have
     CORE_SRCS="$CORE_SRCS $SOLARIS_SENDFILEV_SRCS"
 fi
+
+
+SSL_ENGINE_MODULES="$SSL_ENGINE_MODULES $DASYNC_ENGINE_MODULE"
+CORE_SRCS="$CORE_SRCS $DASYNC_ENGINE_SRCS"
 
 
 if [ $HTTP = YES ]; then
@@ -1259,7 +1264,7 @@ fi
 
 if [ $USE_OPENSSL = YES ]; then
     ngx_module_type=CORE
-    ngx_module_name=ngx_openssl_module
+    ngx_module_name=
     ngx_module_incs=
     ngx_module_deps=src/event/ngx_event_openssl.h
     ngx_module_srcs="src/event/ngx_event_openssl.c
@@ -1286,7 +1291,7 @@ if [ $USE_PCRE = YES ]; then
 fi
 
 
-modules="$CORE_MODULES $EVENT_MODULES"
+modules="$CORE_MODULES $EVENT_MODULES $SSL_ENGINE_MODULES"
 
 
 # thread pool module should be initialized after events

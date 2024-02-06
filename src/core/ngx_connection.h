@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -123,9 +124,14 @@ struct ngx_connection_s {
     void               *data;
     ngx_event_t        *read;
     ngx_event_t        *write;
+#if (NGX_SSL)
+    ngx_event_t        *async;
+#endif
 
     ngx_socket_t        fd;
-
+#if (NGX_SSL)
+    ngx_socket_t        async_fd;
+#endif
     ngx_recv_pt         recv;
     ngx_send_pt         send;
     ngx_recv_chain_pt   recv_chain;
@@ -149,6 +155,8 @@ struct ngx_connection_s {
 
 #if (NGX_SSL || NGX_COMPAT)
     ngx_ssl_connection_t  *ssl;
+    ngx_flag_t          asynch;
+    unsigned            ssl_enabled:1;
 #endif
 
     ngx_udp_connection_t  *udp;
@@ -184,6 +192,9 @@ struct ngx_connection_s {
     unsigned            tcp_nopush:2;    /* ngx_connection_tcp_nopush_e */
 
     unsigned            need_last_buf:1;
+#if (NGX_SSL)
+    unsigned            num_async_fds:8;
+#endif
 
 #if (NGX_HAVE_SENDFILE_NODISKIO || NGX_COMPAT)
     unsigned            busy_count:2;

@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -760,6 +761,24 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strcmp(value[i].data, "asynch") == 0) {
+#if (NGX_STREAM_SSL)
+            ngx_stream_ssl_conf_t  *sslcf;
+            sslcf = ngx_stream_conf_get_module_srv_conf(cf,
+                                                        ngx_stream_ssl_module);
+            sslcf->asynch = 1;
+
+            ls->ssl = 1;
+            ls->asynch = 1;
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"asynch\" parameter requires "
+                               "ngx_stream_ssl_module");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
         if (ngx_strncmp(value[i].data, "so_keepalive=", 13) == 0) {
 
             if (ngx_strcmp(&value[i].data[13], "on") == 0) {
@@ -868,6 +887,10 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_STREAM_SSL)
         if (ls->ssl) {
             return "\"ssl\" parameter is incompatible with \"udp\"";
+        }
+
+        if (ls->asynch) {
+            return "\"asynch\" parameter is incompatible with \"udp\"";
         }
 #endif
 

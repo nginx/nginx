@@ -52,7 +52,7 @@ static ngx_command_t  ngx_iocp_commands[] = {
 };
 
 
-static ngx_event_module_t  ngx_iocp_module_ctx = {
+ngx_event_module_t  ngx_iocp_module_ctx = {
     &iocp_name,
     ngx_iocp_create_conf,                  /* create configuration */
     ngx_iocp_init_conf,                    /* init configuration */
@@ -92,8 +92,6 @@ ngx_os_io_t ngx_iocp_io = {
     ngx_overlapped_wsarecv,
     NULL,
     ngx_udp_overlapped_wsarecv,
-    NULL,
-    NULL,
     NULL,
     ngx_overlapped_wsasend_chain,
     0

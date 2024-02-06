@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -24,7 +25,6 @@ typedef struct ngx_stream_session_s  ngx_stream_session_t;
 #include <ngx_stream_script.h>
 #include <ngx_stream_upstream.h>
 #include <ngx_stream_upstream_round_robin.h>
-
 
 #define NGX_STREAM_OK                        200
 #define NGX_STREAM_BAD_REQUEST               400
@@ -51,6 +51,9 @@ typedef struct {
     unsigned                       bind:1;
     unsigned                       wildcard:1;
     unsigned                       ssl:1;
+#if (NGX_STREAM_SSL)
+    unsigned                       asynch:1;
+#endif
 #if (NGX_HAVE_INET6)
     unsigned                       ipv6only:1;
 #endif
@@ -76,6 +79,9 @@ typedef struct {
     ngx_stream_conf_ctx_t         *ctx;
     ngx_str_t                      addr_text;
     unsigned                       ssl:1;
+#if (NGX_STREAM_SSL)
+    unsigned                       asynch:1;
+#endif
     unsigned                       proxy_protocol:1;
 } ngx_stream_addr_conf_t;
 

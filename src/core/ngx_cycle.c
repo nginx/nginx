@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -81,6 +82,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
+    cycle->no_ssl_init = old_cycle->no_ssl_init;
 
     cycle->conf_prefix.len = old_cycle->conf_prefix.len;
     cycle->conf_prefix.data = ngx_pstrdup(pool, &old_cycle->conf_prefix);
@@ -270,6 +272,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     conf.log = log;
     conf.module_type = NGX_CORE_MODULE;
     conf.cmd_type = NGX_MAIN_CONF;
+    conf.no_ssl_init = cycle->no_ssl_init;
 
 #if 0
     log->log_level = NGX_LOG_DEBUG_ALL;

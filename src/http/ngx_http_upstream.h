@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -229,6 +230,7 @@ typedef struct {
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_ssl_t                       *ssl;
+    ngx_flag_t                       ssl_asynch;
     ngx_flag_t                       ssl_session_reuse;
 
     ngx_http_complex_value_t        *ssl_name;

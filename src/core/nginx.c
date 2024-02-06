@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -182,6 +183,10 @@ ngx_module_t  ngx_core_module = {
 static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
+/* indicate that nginx start without ngx_ssl_init()
+ * which will involve OpenSSL configuration file to
+ * start OpenSSL engine */
+ngx_uint_t          ngx_no_ssl_init;
 static u_char      *ngx_prefix;
 static u_char      *ngx_error_log;
 static u_char      *ngx_conf_file;
@@ -248,6 +253,7 @@ main(int argc, char *const *argv)
 
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
+    init_cycle.no_ssl_init = ngx_no_ssl_init;
     ngx_cycle = &init_cycle;
 
     init_cycle.pool = ngx_create_pool(1024, log);
@@ -782,11 +788,13 @@ ngx_get_options(int argc, char *const *argv)
 
             case 't':
                 ngx_test_config = 1;
+                ngx_no_ssl_init = 1;
                 break;
 
             case 'T':
                 ngx_test_config = 1;
                 ngx_dump_config = 1;
+                ngx_no_ssl_init = 1;
                 break;
 
             case 'q':
@@ -854,6 +862,7 @@ ngx_get_options(int argc, char *const *argv)
                 return NGX_ERROR;
 
             case 's':
+                ngx_no_ssl_init = 1;
                 if (*p) {
                     ngx_signal = (char *) p;
 
@@ -879,6 +888,7 @@ ngx_get_options(int argc, char *const *argv)
 
             default:
                 ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));
+                ngx_no_ssl_init = 1;
                 return NGX_ERROR;
             }
         }

@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -82,6 +83,10 @@ struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
+    ngx_flag_t                  asynch;
+    size_t                      max_pipelines;
+    size_t                      split_send_fragment;
+    size_t                      max_send_fragment;
 };
 
 
@@ -249,6 +254,7 @@ ngx_ssl_session_t *ngx_ssl_get0_session(ngx_connection_t *c);
 
 ngx_int_t ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name);
 
+#define ngx_ssl_waiting_for_async(c) SSL_waiting_for_async(c->ssl->connection)
 
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
@@ -309,7 +315,7 @@ ngx_int_t ngx_ssl_shutdown(ngx_connection_t *c);
 void ngx_cdecl ngx_ssl_error(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
     char *fmt, ...);
 void ngx_ssl_cleanup_ctx(void *data);
-
+ngx_int_t ngx_ssl_async_process_fds(ngx_connection_t *c) ;
 
 extern int  ngx_ssl_connection_index;
 extern int  ngx_ssl_server_conf_index;

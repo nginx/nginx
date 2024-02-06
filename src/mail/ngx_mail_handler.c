@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -134,6 +135,9 @@ ngx_mail_init_connection(ngx_connection_t *c)
 
 #if (NGX_MAIL_SSL)
     s->ssl = addr_conf->ssl;
+    if (addr_conf->asynch) {
+        c->asynch = addr_conf->asynch;
+    }
 #endif
 
     s->addr_text = &addr_conf->addr_text;

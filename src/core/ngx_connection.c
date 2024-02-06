@@ -2,12 +2,14 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_ssl_engine.h>
 
 
 ngx_os_io_t  ngx_io;
@@ -1048,7 +1050,14 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                      * for closed shared listening sockets unless
                      * the events was explicitly deleted
                      */
-
+#if (NGX_SSL)
+                    if (c->asynch && ngx_del_async_conn) {
+                        if (c->num_async_fds) {
+                            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                            c->num_async_fds--;
+                        }
+                    }
+#endif
                     ngx_del_event(c->read, NGX_READ_EVENT, 0);
 
                 } else {
@@ -1098,6 +1107,9 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
     ngx_uint_t         instance;
     ngx_event_t       *rev, *wev;
+#if (NGX_SSL)
+    ngx_event_t       *aev;
+#endif
     ngx_connection_t  *c;
 
     /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
@@ -1131,11 +1143,18 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     rev = c->read;
     wev = c->write;
+#if (NGX_SSL)
+    aev = c->async;
+#endif
 
     ngx_memzero(c, sizeof(ngx_connection_t));
 
     c->read = rev;
     c->write = wev;
+#if (NGX_SSL)
+    c->async = aev;
+#endif
+
     c->fd = s;
     c->log = log;
 
@@ -1143,17 +1162,32 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
+#if (NGX_SSL)
+    ngx_memzero(aev, sizeof(ngx_event_t));
+#endif
 
     rev->instance = !instance;
     wev->instance = !instance;
+#if (NGX_SSL)
+    aev->instance = !instance;
+#endif
 
     rev->index = NGX_INVALID_INDEX;
     wev->index = NGX_INVALID_INDEX;
+#if (NGX_SSL)
+    aev->index = NGX_INVALID_INDEX;
+#endif
 
     rev->data = c;
     wev->data = c;
+#if (NGX_SSL)
+    aev->data = c;
+#endif
 
     wev->write = 1;
+#if (NGX_SSL)
+    aev->async = 1;
+#endif
 
     return c;
 }
@@ -1192,11 +1226,32 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_del_timer(c->write);
     }
 
+#if (NGX_SSL)
+    if (c->async->timer_set) {
+        ngx_del_timer(c->async);
+    }
+
+    if (c->asynch && ngx_del_async_conn) {
+        if (c->num_async_fds) {
+            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+            c->num_async_fds--;
+        }
+    }
+#endif
+
     if (!c->shared) {
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
 
         } else {
+#if (NGX_SSL)
+            if (c->asynch && ngx_del_async_conn) {
+                if (c->num_async_fds) {
+                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                    c->num_async_fds--;
+                }
+            }
+#endif
             if (c->read->active || c->read->disabled) {
                 ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             }
@@ -1215,8 +1270,17 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_delete_posted_event(c->write);
     }
 
+#if (NGX_SSL)
+    if (c->async->posted) {
+        ngx_delete_posted_event(c->async);
+    }
+#endif
+
     c->read->closed = 1;
     c->write->closed = 1;
+#if (NGX_SSL)
+    c->async->closed = 1;
+#endif
 
     ngx_reusable_connection(c, 0);
 
@@ -1226,6 +1290,9 @@ ngx_close_connection(ngx_connection_t *c)
 
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
+#if (NGX_SSL)
+    c->async_fd = (ngx_socket_t) -1;
+#endif
 
     if (c->shared) {
         return;
@@ -1273,6 +1340,13 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, -1);
 #endif
+
+#if (NGX_SSL)
+        if (c->ssl_enabled && ngx_use_ssl_engine
+            && ngx_ssl_engine_enable_heuristic_polling) {
+            (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
+        }
+#endif
     }
 
     c->reusable = reusable;
@@ -1286,6 +1360,14 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, 1);
+#endif
+
+#if (NGX_SSL)
+        if (c->ssl_enabled && ngx_use_ssl_engine
+            && ngx_ssl_engine_enable_heuristic_polling) {
+            (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+            ngx_ssl_engine_heuristic_poll(c->log);
+        }
 #endif
     }
 }

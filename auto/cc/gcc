@@ -1,6 +1,7 @@
 
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
+# Copyright (C) Intel, Inc.
 
 
 # gcc 2.7.2.3, 2.8.1, 2.95.4, egcs-1.1.2
@@ -48,9 +49,9 @@ esac
 
 # optimizations
 
-#NGX_GCC_OPT="-O2"
+NGX_GCC_OPT="-O2 -D_FORTIFY_SOURCE=2 -fno-strict-overflow -fno-delete-null-pointer-checks -fwrapv"
 #NGX_GCC_OPT="-Os"
-NGX_GCC_OPT="-O"
+#NGX_GCC_OPT="-O"
 
 #CFLAGS="$CFLAGS -fomit-frame-pointer"
 
@@ -173,6 +174,10 @@ CFLAGS="$CFLAGS -g"
 
 # DragonFly's gcc3 generates DWARF
 #CFLAGS="$CFLAGS -g -gstabs"
+
+# required by Intel SDL
+CFLAGS="$CFLAGS -fstack-protector -fPIE -fPIC -Wformat -Wformat-security"
+CORE_LINK="-z noexecstack -z relro -z now -pie"
 
 if [ ".$CPP" = "." ]; then
     CPP="$CC -E"

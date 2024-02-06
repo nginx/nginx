@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -463,6 +464,23 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "the \"ssl\" parameter requires "
+                               "ngx_mail_ssl_module");
+            return NGX_CONF_ERROR;
+#endif
+        }
+
+        if (ngx_strcmp(value[i].data, "asynch") == 0) {
+#if (NGX_MAIL_SSL)
+            ngx_mail_ssl_conf_t  *sslcf;
+            sslcf = ngx_mail_conf_get_module_srv_conf(cf, ngx_mail_ssl_module);
+            sslcf->asynch = 1;
+
+            ls->ssl = 1;
+            ls->asynch = 1;
+            continue;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the \"asynch\" parameter requires "
                                "ngx_mail_ssl_module");
             return NGX_CONF_ERROR;
 #endif

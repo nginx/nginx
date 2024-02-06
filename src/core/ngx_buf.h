@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -134,7 +135,7 @@ typedef struct {
      && !(b)->in_file && !(b)->flush && !(b)->last_buf)
 
 #define ngx_buf_size(b)                                                      \
-    (ngx_buf_in_memory(b) ? (off_t) ((b)->last - (b)->pos):                  \
+    (ngx_buf_in_memory(b) ? (off_t) (unsigned) ((b)->last - (b)->pos):       \
                             ((b)->file_last - (b)->file_pos))
 
 ngx_buf_t *ngx_create_temp_buf(ngx_pool_t *pool, size_t size);

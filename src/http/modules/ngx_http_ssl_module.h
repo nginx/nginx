@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -17,6 +18,8 @@
 typedef struct {
     ngx_flag_t                      enable;
 
+    ngx_flag_t                      enable_asynch;
+
     ngx_ssl_t                       ssl;
 
     ngx_flag_t                      prefer_server_ciphers;
@@ -29,6 +32,9 @@ typedef struct {
     ngx_uint_t                      verify_depth;
 
     size_t                          buffer_size;
+    size_t                          max_pipelines;
+    size_t                          split_send_fragment;
+    size_t                          max_send_fragment;
 
     ssize_t                         builtin_session_cache;
 

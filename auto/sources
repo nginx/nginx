@@ -1,6 +1,7 @@
 
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
+# Copyright (C) Intel, Inc.
 
 
 CORE_MODULES="ngx_core_module ngx_errlog_module ngx_conf_module"
@@ -123,12 +124,20 @@ EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
 IOCP_MODULE=ngx_iocp_module
 IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 
+SSL_ENGINE_MODULES="ngx_ssl_engine_module ngx_ssl_engine_core_module"
+SSL_ENGINE_INCS="src/engine src/engine/modules"
+SSL_ENGINE_DEPS="src/engine/ngx_ssl_engine.h"
+SSL_ENGINE_SRCS="src/engine/ngx_ssl_engine.c"
+
+DASYNC_ENGINE_MODULE=ngx_ssl_engine_dasync_module
+DASYNC_ENGINE_SRCS=src/engine/modules/ngx_ssl_engine_dasync_module.c
+
 FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
 LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
 
-UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
+UNIX_INCS="$CORE_INCS $EVENT_INCS $SSL_ENGINE_INCS src/os/unix"
 
-UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
+UNIX_DEPS="$CORE_DEPS $EVENT_DEPS $SSL_ENGINE_DEPS \
             src/os/unix/ngx_time.h \
             src/os/unix/ngx_errno.h \
             src/os/unix/ngx_alloc.h \
@@ -157,7 +166,7 @@ UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \
 #            src/os/unix/ngx_sunpro_sparc64.il \
 
 
-UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
+UNIX_SRCS="$CORE_SRCS $EVENT_SRCS $SSL_ENGINE_SRCS \
             src/os/unix/ngx_time.c \
             src/os/unix/ngx_errno.c \
             src/os/unix/ngx_alloc.c \

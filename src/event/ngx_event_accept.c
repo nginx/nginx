@@ -2,12 +2,14 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_ssl_engine.h>
 
 
 static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all);
@@ -247,6 +249,9 @@ ngx_event_accept(ngx_event_t *ev)
 
         rev->log = log;
         wev->log = log;
+#if (NGX_SSL)
+        c->async->log = log;
+#endif
 
         /*
          * TODO: MT: - ngx_atomic_fetch_add()
@@ -416,6 +421,15 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 
 #endif
 
+#if (NGX_SSL)
+        if (c->asynch && ngx_del_async_conn) {
+            if (c->num_async_fds) {
+                ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                c->num_async_fds--;
+            }
+        }
+#endif
+
         if (ngx_del_event(c->read, NGX_READ_EVENT, NGX_DISABLE_EVENT)
             == NGX_ERROR)
         {
@@ -499,6 +513,14 @@ ngx_close_accepted_connection(ngx_connection_t *c)
 
 #if (NGX_STAT_STUB)
     (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
+#endif
+
+#if (NGX_SSL)
+    if (c->ssl_enabled && ngx_use_ssl_engine
+        && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, -1);
+        ngx_ssl_engine_heuristic_poll(c->log);
+    }
 #endif
 }
 

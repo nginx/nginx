@@ -2,13 +2,14 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-
+#include <ngx_ssl_engine.h>
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_upstream_cache(ngx_http_request_t *r,
@@ -957,7 +958,8 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     case NGX_DECLINED:
 
-        if ((size_t) (u->buffer.end - u->buffer.start) < u->conf->buffer_size) {
+        if ((size_t) (unsigned) (u->buffer.end - u->buffer.start) \
+            < u->conf->buffer_size) {
             u->buffer.start = NULL;
 
         } else {
@@ -1336,7 +1338,14 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
         if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
 
             event = ev->write ? NGX_WRITE_EVENT : NGX_READ_EVENT;
-
+#if (NGX_HTTP_SSL)
+            if (c->asynch && ngx_del_async_conn) {
+                if (c->num_async_fds) {
+                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                    c->num_async_fds--;
+                }
+            }
+#endif
             if (ngx_del_event(ev, event, 0) != NGX_OK) {
                 ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1463,7 +1472,14 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     if ((ngx_event_flags & NGX_USE_LEVEL_EVENT) && ev->active) {
 
         event = ev->write ? NGX_WRITE_EVENT : NGX_READ_EVENT;
-
+#if (NGX_HTTP_SSL)
+        if (c->asynch && ngx_del_async_conn) {
+            if (c->num_async_fds) {
+                ngx_del_async_conn(c, NGX_DISABLE_EVENT);
+                c->num_async_fds--;
+            }
+        }
+#endif
         if (ngx_del_event(ev, event, 0) != NGX_OK) {
             ngx_http_upstream_finalize_request(r, u,
                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -1596,6 +1612,9 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->log = r->connection->log;
     c->pool->log = c->log;
     c->read->log = c->log;
+#if (NGX_SSL)
+    c->async->log = c->log;
+#endif
     c->write->log = c->log;
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
@@ -1726,6 +1745,10 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
 
     r->connection->log->action = "SSL handshaking to upstream";
 
+    if (ngx_use_ssl_engine && ngx_ssl_engine_enable_heuristic_polling) {
+        (void) ngx_atomic_fetch_add(ngx_ssl_active, 1);
+    }
+
     rc = ngx_ssl_handshake(c);
 
     if (rc == NGX_AGAIN) {
@@ -1772,6 +1795,10 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
     long  rc;
 
     if (c->ssl->handshaked) {
+        if (c->asynch && r->connection->error) {
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+            return;
+        }
 
         if (u->conf->ssl_verify) {
             rc = SSL_get_verify_result(c->ssl->connection);
@@ -1968,8 +1995,23 @@ ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
     return NGX_OK;
 }
 
-#endif
 
+static ngx_inline ngx_int_t
+ngx_http_upstream_ssl_check_want_async(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    if (r->connection->error && u->peer.connection
+        && u->peer.connection->ssl && u->peer.connection->asynch
+        && SSL_in_init(u->peer.connection->ssl->connection)
+        && SSL_want_async(u->peer.connection->ssl->connection)) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "connection closed but need to wait until async job done");
+        return 1;
+    }
+    return 0;
+}
+
+#endif
 
 static ngx_int_t
 ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
@@ -4450,6 +4492,12 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
 
+#if (NGX_HTTP_SSL)
+    if (ngx_http_upstream_ssl_check_want_async(r, u)) {
+        return;
+    }
+#endif
+
     if (u->cleanup == NULL) {
         /* the request was already finalized */
         ngx_http_finalize_request(r, NGX_DONE);
@@ -4554,7 +4602,8 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
             }
         }
 
-        ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
+        if (u->pipe)
+            ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
     }
 
 #endif

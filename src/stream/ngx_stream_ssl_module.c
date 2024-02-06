@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -85,6 +86,13 @@ static ngx_conf_post_t  ngx_stream_ssl_conf_command_post =
 
 
 static ngx_command_t  ngx_stream_ssl_commands[] = {
+
+    { ngx_string("ssl_asynch"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_conf_t, asynch),
+      NULL },
 
     { ngx_string("ssl_handshake_timeout"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
@@ -348,6 +356,8 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
 
     if (c->ssl == NULL) {
         c->log->action = "SSL handshaking";
+
+        c->asynch = sslcf->ssl.asynch;
 
         rv = ngx_stream_ssl_init_connection(&sslcf->ssl, c);
 
@@ -668,6 +678,7 @@ ngx_stream_ssl_create_conf(ngx_conf_t *cf)
      *     scf->shm_zone = NULL;
      */
 
+    scf->asynch = NGX_CONF_UNSET;
     scf->handshake_timeout = NGX_CONF_UNSET_MSEC;
     scf->certificates = NGX_CONF_UNSET_PTR;
     scf->certificate_keys = NGX_CONF_UNSET_PTR;
@@ -692,6 +703,8 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_stream_ssl_conf_t *conf = child;
 
     ngx_pool_cleanup_t  *cln;
+
+    ngx_conf_merge_value(conf->asynch, prev->asynch, 0);
 
     ngx_conf_merge_msec_value(conf->handshake_timeout,
                          prev->handshake_timeout, 60000);
@@ -733,6 +746,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
     conf->ssl.log = cf->log;
+    conf->ssl.asynch = conf->asynch;
 
     if (!conf->listen) {
         return NGX_CONF_OK;

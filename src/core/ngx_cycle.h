@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -73,6 +74,9 @@ struct ngx_cycle_s {
     ngx_connection_t         *connections;
     ngx_event_t              *read_events;
     ngx_event_t              *write_events;
+#if (NGX_SSL)
+    ngx_event_t              *async_events;
+#endif
 
     ngx_cycle_t              *old_cycle;
 
@@ -83,6 +87,7 @@ struct ngx_cycle_s {
     ngx_str_t                 error_log;
     ngx_str_t                 lock_file;
     ngx_str_t                 hostname;
+    ngx_flag_t                no_ssl_init;
 };
 
 

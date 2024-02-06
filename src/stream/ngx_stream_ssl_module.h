@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -20,6 +21,8 @@ typedef struct {
     ngx_flag_t       prefer_server_ciphers;
 
     ngx_ssl_t        ssl;
+
+    ngx_flag_t       asynch;
 
     ngx_uint_t       listen;
     ngx_uint_t       protocols;

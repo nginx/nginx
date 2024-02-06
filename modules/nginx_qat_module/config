@@ -1,0 +1,15 @@
+# Copyright (C) Intel, Inc.
+
+ngx_addon_name=ngx_ssl_engine_qat_module
+
+if test -n "$ngx_module_link"; then
+    ngx_module_type=ENGINE
+    ngx_module_name=ngx_ssl_engine_qat_module
+    ngx_module_srcs="$ngx_addon_dir/ngx_ssl_engine_qat_module.c"
+
+    . auto/module
+else
+    SSL_ENGINE_MODULES="$SSL_ENGINE_MODULES ngx_ssl_engine_qat_module"
+    NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_ssl_engine_qat_module.c"
+fi
+

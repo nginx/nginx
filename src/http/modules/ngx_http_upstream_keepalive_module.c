@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Maxim Dounin
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -288,6 +289,9 @@ found:
     c->log = pc->log;
     c->read->log = pc->log;
     c->write->log = pc->log;
+#if (NGX_SSL)
+    c->async->log = pc->log;
+#endif
     c->pool->log = pc->log;
 
     if (c->read->timer_set) {
@@ -386,6 +390,11 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     if (c->write->timer_set) {
         ngx_del_timer(c->write);
     }
+#if (NGX_SSL)
+    if (c->async->timer_set) {
+        ngx_del_timer(c->async);
+    }
+#endif
 
     c->write->handler = ngx_http_upstream_keepalive_dummy_handler;
     c->read->handler = ngx_http_upstream_keepalive_close_handler;
@@ -395,6 +404,9 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     c->log = ngx_cycle->log;
     c->read->log = ngx_cycle->log;
     c->write->log = ngx_cycle->log;
+#if (NGX_SSL)
+    c->async->log = ngx_cycle->log;
+#endif
     c->pool->log = ngx_cycle->log;
 
     item->socklen = pc->socklen;

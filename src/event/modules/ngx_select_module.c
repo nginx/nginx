@@ -2,6 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Nginx, Inc.
+ * Copyright (C) Intel, Inc.
  */
 
 
@@ -50,7 +51,9 @@ static ngx_event_module_t  ngx_select_module_ctx = {
         NULL,                              /* trigger a notify */
         ngx_select_process_events,         /* process the events */
         ngx_select_init,                   /* init the events */
-        ngx_select_done                    /* done the events */
+        ngx_select_done,                   /* done the events */
+        NULL,                              /* add an async conn */
+        NULL                               /* del an async conn */
     }
 
 };
