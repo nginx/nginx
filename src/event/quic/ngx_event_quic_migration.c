@@ -909,6 +909,7 @@ static ngx_int_t
 ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     size_t                  mtu;
+    uint64_t                pnum;
     ngx_int_t               rc;
     ngx_uint_t              log_error;
     ngx_quic_frame_t       *frame;
@@ -925,7 +926,7 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
 
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
-    path->mtu_pnum[path->tries] = ctx->pnum;
+    pnum = ctx->pnum;
 
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL send probe "
@@ -943,14 +944,18 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
     path->mtu = mtu;
     c->log_error = log_error;
 
+    if (rc == NGX_OK) {
+        path->mtu_pnum[path->tries] = pnum;
+        return NGX_OK;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic path seq:%uL rejected mtu:%uz",
+                   path->seqnum, path->mtud);
+
     if (rc == NGX_ERROR) {
         if (c->write->error) {
             c->write->error = 0;
-
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic path seq:%uL rejected mtu:%uz",
-                           path->seqnum, path->mtud);
-
             return NGX_DECLINED;
         }
 
@@ -976,7 +981,7 @@ ngx_quic_handle_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path,
         pnum = path->mtu_pnum[i];
 
         if (pnum == NGX_QUIC_UNSET_PN) {
-            break;
+            continue;
         }
 
         if (pnum < min || pnum > max) {
