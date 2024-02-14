@@ -5,6 +5,82 @@
 <change_log title="nginx">
 
 
+<changes ver="1.25.4" date="2024-02-14">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3 в рабочем процессе мог произойти segmentation fault
+во время обработки специально созданной QUIC-сессии
+(CVE-2024-24989, CVE-2024-24990).
+</para>
+<para lang="en">
+when using HTTP/3 a segmentation fault might occur in a worker process
+while processing a specially crafted QUIC session
+(CVE-2024-24989, CVE-2024-24990).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+соединения с незавершенными AIO-операциями могли закрываться преждевременно
+во время плавного завершения старых рабочих процессов.
+</para>
+<para lang="en">
+connections with pending AIO operations might be closed prematurely
+during graceful shutdown of old worker processes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx не пишет в лог сообщения об утечке сокетов,
+если во время плавного завершения старых рабочих процессов
+было запрошено быстрое завершение.
+</para>
+<para lang="en">
+socket leak alerts no longer logged when fast shutdown
+was requested after graceful shutdown of old worker processes.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании AIO в подзапросе могла происходить
+ошибка на сокете, утечка сокетов,
+либо segmentation fault в рабочем процессе (при SSL-проксировании).
+</para>
+<para lang="en">
+a socket descriptor error, a socket leak,
+or a segmentation fault in a worker process (for SSL proxying)
+might occur if AIO was used in a subrequest.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовалось SSL-проксирование и директива image_filter,
+а ошибки с кодом 415 перенаправлялись с помощью директивы error_page.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if SSL proxying was used along with the "image_filter" directive
+and errors with code 415 were redirected with the "error_page" directive.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления и улучшения в HTTP/3.
+</para>
+<para lang="en">
+Bugfixes and improvements in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.25.3" date="2023-10-24">
 
 <change type="change">
