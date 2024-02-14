@@ -1097,6 +1097,7 @@ ngx_quic_stream_cleanup_handler(void *data)
                    "quic stream id:0x%xL cleanup", qs->id);
 
     if (ngx_quic_shutdown_stream(c, NGX_RDWR_SHUTDOWN) != NGX_OK) {
+        qs->connection = NULL;
         goto failed;
     }
 
