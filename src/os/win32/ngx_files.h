@@ -154,7 +154,8 @@ ngx_int_t ngx_file_info(u_char *filename, ngx_file_info_t *fi);
     (((off_t) (fi)->nFileSizeHigh << 32) | (fi)->nFileSizeLow)
 #define ngx_file_fs_size(fi)        ngx_file_size(fi)
 
-#define ngx_file_uniq(fi)   (*(ngx_file_uniq_t *) &(fi)->nFileIndexHigh)
+#define ngx_file_uniq(fi)                                                    \
+    (((ngx_file_uniq_t) (fi)->nFileIndexHigh << 32) | (fi)->nFileIndexLow)
 
 
 /* 116444736000000000 is commented in src/os/win32/ngx_time.c */
