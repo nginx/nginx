@@ -51,7 +51,10 @@ ngx_os_init(ngx_log_t *log)
     }
 
     ngx_pagesize = getpagesize();
-    ngx_cacheline_size = NGX_CPU_CACHE_LINE;
+
+    if (ngx_cacheline_size == 0) {
+        ngx_cacheline_size = NGX_CPU_CACHE_LINE;
+    }
 
     for (n = ngx_pagesize; n >>= 1; ngx_pagesize_shift++) { /* void */ }
 
