@@ -489,6 +489,7 @@ ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         if (cf->args->nelts == 2) {
+            ngx_str_set(&ret->text.value, "");
             return NGX_CONF_OK;
         }
 
