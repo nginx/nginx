@@ -228,6 +228,10 @@ ngx_feature_test="struct crypt_data  cd;
                   crypt_r(\"key\", \"salt\", &cd);"
 . auto/feature
 
+if [ $ngx_found = yes ]; then
+    CRYPT_LIB="-lcrypt"
+fi
+
 
 ngx_include="sys/vfs.h";     . auto/include
 
