@@ -46,6 +46,22 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # Homebrew on Apple Silicon
+
+    ngx_feature="Google perftools in /opt/homebrew/"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/homebrew/lib -L/opt/homebrew/lib -lprofiler"
+    else
+        ngx_feature_libs="-L/opt/homebrew/lib -lprofiler"
+    fi
+
+    . auto/feature
+fi
+
+
 if [ $ngx_found = yes ]; then
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
 

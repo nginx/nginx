@@ -65,6 +65,23 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # Homebrew on Apple Silicon
+
+    ngx_feature="GD library in /opt/homebrew/"
+    ngx_feature_path="/opt/homebrew/include"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="-R/opt/homebrew/lib -L/opt/homebrew/lib -lgd"
+    else
+        ngx_feature_libs="-L/opt/homebrew/lib -lgd"
+    fi
+
+    . auto/feature
+fi
+
+
 if [ $ngx_found = yes ]; then
 
     CORE_INCS="$CORE_INCS $ngx_feature_path"
