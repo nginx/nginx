@@ -190,7 +190,7 @@ ngx_stream_geo_cidr_variable(ngx_stream_session_t *s,
         p = inaddr6->s6_addr;
 
         if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
-            inaddr = p[12] << 24;
+            inaddr = (in_addr_t) p[12] << 24;
             inaddr += p[13] << 16;
             inaddr += p[14] << 8;
             inaddr += p[15];
@@ -263,7 +263,7 @@ ngx_stream_geo_range_variable(ngx_stream_session_t *s,
             if (IN6_IS_ADDR_V4MAPPED(inaddr6)) {
                 p = inaddr6->s6_addr;
 
-                inaddr = p[12] << 24;
+                inaddr = (in_addr_t) p[12] << 24;
                 inaddr += p[13] << 16;
                 inaddr += p[14] << 8;
                 inaddr += p[15];

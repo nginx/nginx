@@ -148,7 +148,7 @@ ngx_http_access_handler(ngx_http_request_t *r)
         p = sin6->sin6_addr.s6_addr;
 
         if (alcf->rules && IN6_IS_ADDR_V4MAPPED(&sin6->sin6_addr)) {
-            addr = p[12] << 24;
+            addr = (in_addr_t) p[12] << 24;
             addr += p[13] << 16;
             addr += p[14] << 8;
             addr += p[15];
