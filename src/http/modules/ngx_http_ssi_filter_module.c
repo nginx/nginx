@@ -2001,7 +2001,7 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
 #else
 
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                  "the using of the regex \"%V\" in SSI requires PCRE library",
+                  "using regex \"%V\" in SSI requires PCRE library",
                   pattern);
     return NGX_HTTP_SSI_ERROR;
 

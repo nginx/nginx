@@ -631,7 +631,7 @@ ngx_http_add_regex_referer(ngx_conf_t *cf, ngx_http_referer_conf_t *rlcf,
 #else
 
     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                       "the using of the regex \"%V\" requires PCRE library",
+                       "using regex \"%V\" requires PCRE library",
                        name);
 
     return NGX_ERROR;
