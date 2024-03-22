@@ -53,7 +53,7 @@ typedef struct {
 
     ngx_flag_t       session_tickets;
     ngx_array_t     *session_ticket_keys;
-} ngx_stream_ssl_conf_t;
+} ngx_stream_ssl_srv_conf_t;
 
 
 extern ngx_module_t  ngx_stream_ssl_module;

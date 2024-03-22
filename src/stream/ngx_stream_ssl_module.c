@@ -40,12 +40,12 @@ static ngx_int_t ngx_stream_ssl_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 
 static ngx_int_t ngx_stream_ssl_add_variables(ngx_conf_t *cf);
-static void *ngx_stream_ssl_create_conf(ngx_conf_t *cf);
-static char *ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent,
+static void *ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf);
+static char *ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
 
 static ngx_int_t ngx_stream_ssl_compile_certificates(ngx_conf_t *cf,
-    ngx_stream_ssl_conf_t *conf);
+    ngx_stream_ssl_srv_conf_t *conf);
 
 static char *ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -90,21 +90,21 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, handshake_timeout),
+      offsetof(ngx_stream_ssl_srv_conf_t, handshake_timeout),
       NULL },
 
     { ngx_string("ssl_certificate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_array_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, certificates),
+      offsetof(ngx_stream_ssl_srv_conf_t, certificates),
       NULL },
 
     { ngx_string("ssl_certificate_key"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_array_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, certificate_keys),
+      offsetof(ngx_stream_ssl_srv_conf_t, certificate_keys),
       NULL },
 
     { ngx_string("ssl_password_file"),
@@ -118,63 +118,63 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, dhparam),
+      offsetof(ngx_stream_ssl_srv_conf_t, dhparam),
       NULL },
 
     { ngx_string("ssl_ecdh_curve"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, ecdh_curve),
+      offsetof(ngx_stream_ssl_srv_conf_t, ecdh_curve),
       NULL },
 
     { ngx_string("ssl_protocols"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, protocols),
+      offsetof(ngx_stream_ssl_srv_conf_t, protocols),
       &ngx_stream_ssl_protocols },
 
     { ngx_string("ssl_ciphers"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, ciphers),
+      offsetof(ngx_stream_ssl_srv_conf_t, ciphers),
       NULL },
 
     { ngx_string("ssl_verify_client"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, verify),
+      offsetof(ngx_stream_ssl_srv_conf_t, verify),
       &ngx_stream_ssl_verify },
 
     { ngx_string("ssl_verify_depth"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, verify_depth),
+      offsetof(ngx_stream_ssl_srv_conf_t, verify_depth),
       NULL },
 
     { ngx_string("ssl_client_certificate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, client_certificate),
+      offsetof(ngx_stream_ssl_srv_conf_t, client_certificate),
       NULL },
 
     { ngx_string("ssl_trusted_certificate"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, trusted_certificate),
+      offsetof(ngx_stream_ssl_srv_conf_t, trusted_certificate),
       NULL },
 
     { ngx_string("ssl_prefer_server_ciphers"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, prefer_server_ciphers),
+      offsetof(ngx_stream_ssl_srv_conf_t, prefer_server_ciphers),
       NULL },
 
     { ngx_string("ssl_session_cache"),
@@ -188,42 +188,42 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, session_tickets),
+      offsetof(ngx_stream_ssl_srv_conf_t, session_tickets),
       NULL },
 
     { ngx_string("ssl_session_ticket_key"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_array_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, session_ticket_keys),
+      offsetof(ngx_stream_ssl_srv_conf_t, session_ticket_keys),
       NULL },
 
     { ngx_string("ssl_session_timeout"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_sec_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, session_timeout),
+      offsetof(ngx_stream_ssl_srv_conf_t, session_timeout),
       NULL },
 
     { ngx_string("ssl_crl"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, crl),
+      offsetof(ngx_stream_ssl_srv_conf_t, crl),
       NULL },
 
     { ngx_string("ssl_conf_command"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE2,
       ngx_conf_set_keyval_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, conf_commands),
+      offsetof(ngx_stream_ssl_srv_conf_t, conf_commands),
       &ngx_stream_ssl_conf_command_post },
 
     { ngx_string("ssl_reject_handshake"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, reject_handshake),
+      offsetof(ngx_stream_ssl_srv_conf_t, reject_handshake),
       NULL },
 
     { ngx_string("ssl_alpn"),
@@ -244,8 +244,8 @@ static ngx_stream_module_t  ngx_stream_ssl_module_ctx = {
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
 
-    ngx_stream_ssl_create_conf,            /* create server configuration */
-    ngx_stream_ssl_merge_conf              /* merge server configuration */
+    ngx_stream_ssl_create_srv_conf,        /* create server configuration */
+    ngx_stream_ssl_merge_srv_conf          /* merge server configuration */
 };
 
 
@@ -339,11 +339,11 @@ static ngx_str_t ngx_stream_ssl_sess_id_ctx = ngx_string("STREAM");
 static ngx_int_t
 ngx_stream_ssl_handler(ngx_stream_session_t *s)
 {
-    long                    rc;
-    X509                   *cert;
-    ngx_int_t               rv;
-    ngx_connection_t       *c;
-    ngx_stream_ssl_conf_t  *sslcf;
+    long                        rc;
+    X509                       *cert;
+    ngx_int_t                   rv;
+    ngx_connection_t           *c;
+    ngx_stream_ssl_srv_conf_t  *sscf;
 
     if (!s->ssl) {
         return NGX_OK;
@@ -351,23 +351,23 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
 
     c = s->connection;
 
-    sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+    sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
     if (c->ssl == NULL) {
         c->log->action = "SSL handshaking";
 
-        rv = ngx_stream_ssl_init_connection(&sslcf->ssl, c);
+        rv = ngx_stream_ssl_init_connection(&sscf->ssl, c);
 
         if (rv != NGX_OK) {
             return rv;
         }
     }
 
-    if (sslcf->verify) {
+    if (sscf->verify) {
         rc = SSL_get_verify_result(c->ssl->connection);
 
         if (rc != X509_V_OK
-            && (sslcf->verify != 3 || !ngx_ssl_verify_error_optional(rc)))
+            && (sscf->verify != 3 || !ngx_ssl_verify_error_optional(rc)))
         {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "client SSL certificate verify error: (%l:%s)",
@@ -378,7 +378,7 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
             return NGX_ERROR;
         }
 
-        if (sslcf->verify == 1) {
+        if (sscf->verify == 1) {
             cert = SSL_get_peer_certificate(c->ssl->connection);
 
             if (cert == NULL) {
@@ -403,7 +403,7 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 {
     ngx_int_t                    rc;
     ngx_stream_session_t        *s;
-    ngx_stream_ssl_conf_t       *sslcf;
+    ngx_stream_ssl_srv_conf_t   *sscf;
     ngx_stream_core_srv_conf_t  *cscf;
 
     s = c->data;
@@ -425,9 +425,9 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
     }
 
     if (rc == NGX_AGAIN) {
-        sslcf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+        sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
-        ngx_add_timer(c->read, sslcf->handshake_timeout);
+        ngx_add_timer(c->read, sscf->handshake_timeout);
 
         c->ssl->handler = ngx_stream_ssl_handshake_handler;
 
@@ -470,7 +470,7 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     const char                  *servername;
     ngx_connection_t            *c;
     ngx_stream_session_t        *s;
-    ngx_stream_ssl_conf_t       *sscf;
+    ngx_stream_ssl_srv_conf_t   *sscf;
     ngx_stream_core_srv_conf_t  *cscf;
 
     c = ngx_ssl_get_connection(ssl_conn);
@@ -625,7 +625,7 @@ ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
     ngx_uint_t                   i, nelts;
     ngx_connection_t            *c;
     ngx_stream_session_t        *s;
-    ngx_stream_ssl_conf_t       *sslcf;
+    ngx_stream_ssl_srv_conf_t   *sscf;
     ngx_stream_complex_value_t  *certs, *keys;
 
     c = ngx_ssl_get_connection(ssl_conn);
@@ -636,11 +636,11 @@ ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
 
     s = c->data;
 
-    sslcf = arg;
+    sscf = arg;
 
-    nelts = sslcf->certificate_values->nelts;
-    certs = sslcf->certificate_values->elts;
-    keys = sslcf->certificate_key_values->elts;
+    nelts = sscf->certificate_values->nelts;
+    certs = sscf->certificate_values->elts;
+    keys = sscf->certificate_key_values->elts;
 
     for (i = 0; i < nelts; i++) {
 
@@ -659,7 +659,7 @@ ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg)
                        "ssl key: \"%s\"", key.data);
 
         if (ngx_ssl_connection_certificate(c, c->pool, &cert, &key,
-                                           sslcf->passwords)
+                                           sscf->passwords)
             != NGX_OK)
         {
             return 0;
@@ -755,53 +755,53 @@ ngx_stream_ssl_add_variables(ngx_conf_t *cf)
 
 
 static void *
-ngx_stream_ssl_create_conf(ngx_conf_t *cf)
+ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
 {
-    ngx_stream_ssl_conf_t  *scf;
+    ngx_stream_ssl_srv_conf_t  *sscf;
 
-    scf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_ssl_conf_t));
-    if (scf == NULL) {
+    sscf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_ssl_srv_conf_t));
+    if (sscf == NULL) {
         return NULL;
     }
 
     /*
      * set by ngx_pcalloc():
      *
-     *     scf->protocols = 0;
-     *     scf->certificate_values = NULL;
-     *     scf->dhparam = { 0, NULL };
-     *     scf->ecdh_curve = { 0, NULL };
-     *     scf->client_certificate = { 0, NULL };
-     *     scf->trusted_certificate = { 0, NULL };
-     *     scf->crl = { 0, NULL };
-     *     scf->alpn = { 0, NULL };
-     *     scf->ciphers = { 0, NULL };
-     *     scf->shm_zone = NULL;
+     *     sscf->protocols = 0;
+     *     sscf->certificate_values = NULL;
+     *     sscf->dhparam = { 0, NULL };
+     *     sscf->ecdh_curve = { 0, NULL };
+     *     sscf->client_certificate = { 0, NULL };
+     *     sscf->trusted_certificate = { 0, NULL };
+     *     sscf->crl = { 0, NULL };
+     *     sscf->alpn = { 0, NULL };
+     *     sscf->ciphers = { 0, NULL };
+     *     sscf->shm_zone = NULL;
      */
 
-    scf->handshake_timeout = NGX_CONF_UNSET_MSEC;
-    scf->certificates = NGX_CONF_UNSET_PTR;
-    scf->certificate_keys = NGX_CONF_UNSET_PTR;
-    scf->passwords = NGX_CONF_UNSET_PTR;
-    scf->conf_commands = NGX_CONF_UNSET_PTR;
-    scf->prefer_server_ciphers = NGX_CONF_UNSET;
-    scf->reject_handshake = NGX_CONF_UNSET;
-    scf->verify = NGX_CONF_UNSET_UINT;
-    scf->verify_depth = NGX_CONF_UNSET_UINT;
-    scf->builtin_session_cache = NGX_CONF_UNSET;
-    scf->session_timeout = NGX_CONF_UNSET;
-    scf->session_tickets = NGX_CONF_UNSET;
-    scf->session_ticket_keys = NGX_CONF_UNSET_PTR;
+    sscf->handshake_timeout = NGX_CONF_UNSET_MSEC;
+    sscf->certificates = NGX_CONF_UNSET_PTR;
+    sscf->certificate_keys = NGX_CONF_UNSET_PTR;
+    sscf->passwords = NGX_CONF_UNSET_PTR;
+    sscf->conf_commands = NGX_CONF_UNSET_PTR;
+    sscf->prefer_server_ciphers = NGX_CONF_UNSET;
+    sscf->reject_handshake = NGX_CONF_UNSET;
+    sscf->verify = NGX_CONF_UNSET_UINT;
+    sscf->verify_depth = NGX_CONF_UNSET_UINT;
+    sscf->builtin_session_cache = NGX_CONF_UNSET;
+    sscf->session_timeout = NGX_CONF_UNSET;
+    sscf->session_tickets = NGX_CONF_UNSET;
+    sscf->session_ticket_keys = NGX_CONF_UNSET_PTR;
 
-    return scf;
+    return sscf;
 }
 
 
 static char *
-ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
+ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_stream_ssl_conf_t *prev = parent;
-    ngx_stream_ssl_conf_t *conf = child;
+    ngx_stream_ssl_srv_conf_t *prev = parent;
+    ngx_stream_ssl_srv_conf_t *conf = child;
 
     ngx_pool_cleanup_t  *cln;
 
@@ -1010,7 +1010,7 @@ ngx_stream_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 static ngx_int_t
 ngx_stream_ssl_compile_certificates(ngx_conf_t *cf,
-    ngx_stream_ssl_conf_t *conf)
+    ngx_stream_ssl_srv_conf_t *conf)
 {
     ngx_str_t                           *cert, *key;
     ngx_uint_t                           i, nelts;
@@ -1099,19 +1099,19 @@ found:
 static char *
 ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_stream_ssl_conf_t  *scf = conf;
+    ngx_stream_ssl_srv_conf_t  *sscf = conf;
 
     ngx_str_t  *value;
 
-    if (scf->passwords != NGX_CONF_UNSET_PTR) {
+    if (sscf->passwords != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
     }
 
     value = cf->args->elts;
 
-    scf->passwords = ngx_ssl_read_password_file(cf, &value[1]);
+    sscf->passwords = ngx_ssl_read_password_file(cf, &value[1]);
 
-    if (scf->passwords == NULL) {
+    if (sscf->passwords == NULL) {
         return NGX_CONF_ERROR;
     }
 
@@ -1122,7 +1122,7 @@ ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_stream_ssl_conf_t  *scf = conf;
+    ngx_stream_ssl_srv_conf_t  *sscf = conf;
 
     size_t       len;
     ngx_str_t   *value, name, size;
@@ -1134,17 +1134,17 @@ ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     for (i = 1; i < cf->args->nelts; i++) {
 
         if (ngx_strcmp(value[i].data, "off") == 0) {
-            scf->builtin_session_cache = NGX_SSL_NO_SCACHE;
+            sscf->builtin_session_cache = NGX_SSL_NO_SCACHE;
             continue;
         }
 
         if (ngx_strcmp(value[i].data, "none") == 0) {
-            scf->builtin_session_cache = NGX_SSL_NONE_SCACHE;
+            sscf->builtin_session_cache = NGX_SSL_NONE_SCACHE;
             continue;
         }
 
         if (ngx_strcmp(value[i].data, "builtin") == 0) {
-            scf->builtin_session_cache = NGX_SSL_DFLT_BUILTIN_SCACHE;
+            sscf->builtin_session_cache = NGX_SSL_DFLT_BUILTIN_SCACHE;
             continue;
         }
 
@@ -1159,7 +1159,7 @@ ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto invalid;
             }
 
-            scf->builtin_session_cache = n;
+            sscf->builtin_session_cache = n;
 
             continue;
         }
@@ -1202,13 +1202,13 @@ ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
-            scf->shm_zone = ngx_shared_memory_add(cf, &name, n,
+            sscf->shm_zone = ngx_shared_memory_add(cf, &name, n,
                                                    &ngx_stream_ssl_module);
-            if (scf->shm_zone == NULL) {
+            if (sscf->shm_zone == NULL) {
                 return NGX_CONF_ERROR;
             }
 
-            scf->shm_zone->init = ngx_ssl_session_cache_init;
+            sscf->shm_zone->init = ngx_ssl_session_cache_init;
 
             continue;
         }
@@ -1216,8 +1216,8 @@ ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         goto invalid;
     }
 
-    if (scf->shm_zone && scf->builtin_session_cache == NGX_CONF_UNSET) {
-        scf->builtin_session_cache = NGX_SSL_NO_BUILTIN_SCACHE;
+    if (sscf->shm_zone && sscf->builtin_session_cache == NGX_CONF_UNSET) {
+        sscf->builtin_session_cache = NGX_SSL_NO_BUILTIN_SCACHE;
     }
 
     return NGX_CONF_OK;
@@ -1236,14 +1236,14 @@ ngx_stream_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 
-    ngx_stream_ssl_conf_t  *scf = conf;
+    ngx_stream_ssl_srv_conf_t  *sscf = conf;
 
     u_char      *p;
     size_t       len;
     ngx_str_t   *value;
     ngx_uint_t   i;
 
-    if (scf->alpn.len) {
+    if (sscf->alpn.len) {
         return "is duplicate";
     }
 
@@ -1260,19 +1260,19 @@ ngx_stream_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         len += value[i].len + 1;
     }
 
-    scf->alpn.data = ngx_pnalloc(cf->pool, len);
-    if (scf->alpn.data == NULL) {
+    sscf->alpn.data = ngx_pnalloc(cf->pool, len);
+    if (sscf->alpn.data == NULL) {
         return NGX_CONF_ERROR;
     }
 
-    p = scf->alpn.data;
+    p = sscf->alpn.data;
 
     for (i = 1; i < cf->args->nelts; i++) {
         *p++ = value[i].len;
         p = ngx_cpymem(p, value[i].data, value[i].len);
     }
 
-    scf->alpn.len = len;
+    sscf->alpn.len = len;
 
     return NGX_CONF_OK;
 
@@ -1301,9 +1301,9 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
 {
     ngx_uint_t                     a, p, s;
     ngx_stream_handler_pt         *h;
-    ngx_stream_ssl_conf_t         *sscf;
     ngx_stream_conf_addr_t        *addr;
     ngx_stream_conf_port_t        *port;
+    ngx_stream_ssl_srv_conf_t     *sscf;
     ngx_stream_core_srv_conf_t   **cscfp, *cscf;
     ngx_stream_core_main_conf_t   *cmcf;
 
