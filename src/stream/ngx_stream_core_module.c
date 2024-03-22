@@ -1015,6 +1015,20 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[i].data, "accept_filter=", 14) == 0) {
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+            lsopt.accept_filter = (char *) &value[i].data[14];
+            lsopt.set = 1;
+            lsopt.bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "accept filters \"%V\" are not supported "
+                               "on this platform, ignored",
+                               &value[i]);
+#endif
+            continue;
+        }
+
         if (ngx_strcmp(value[i].data, "deferred") == 0) {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
             lsopt.deferred_accept = 1;
@@ -1185,6 +1199,12 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (backlog) {
             return "\"backlog\" parameter is incompatible with \"udp\"";
         }
+
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+        if (lsopt.accept_filter) {
+            return "\"accept_filter\" parameter is incompatible with \"udp\"";
+        }
+#endif
 
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
         if (lsopt.deferred_accept) {

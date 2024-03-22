@@ -1021,6 +1021,10 @@ ngx_stream_add_listening(ngx_conf_t *cf, ngx_stream_conf_addr_t *addr)
     ls->keepcnt = addr->opt.tcp_keepcnt;
 #endif
 
+#if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
+    ls->accept_filter = addr->opt.accept_filter;
+#endif
+
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
     ls->deferred_accept = addr->opt.deferred_accept;
 #endif
