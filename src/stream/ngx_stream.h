@@ -56,18 +56,19 @@ typedef struct {
     unsigned                       reuseport:1;
     unsigned                       so_keepalive:2;
     unsigned                       proxy_protocol:1;
+
+    int                            backlog;
+    int                            rcvbuf;
+    int                            sndbuf;
+    int                            type;
+#if (NGX_HAVE_TCP_FASTOPEN)
+    int                            fastopen;
+#endif
 #if (NGX_HAVE_KEEPALIVE_TUNABLE)
     int                            tcp_keepidle;
     int                            tcp_keepintvl;
     int                            tcp_keepcnt;
 #endif
-    int                            backlog;
-    int                            rcvbuf;
-    int                            sndbuf;
-#if (NGX_HAVE_TCP_FASTOPEN)
-    int                            fastopen;
-#endif
-    int                            type;
 } ngx_stream_listen_opt_t;
 
 
