@@ -920,6 +920,9 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lsopt.type = SOCK_STREAM;
     lsopt.rcvbuf = -1;
     lsopt.sndbuf = -1;
+#if (NGX_HAVE_SETFIB)
+    lsopt.setfib = -1;
+#endif
 #if (NGX_HAVE_TCP_FASTOPEN)
     lsopt.fastopen = -1;
 #endif
@@ -948,6 +951,22 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             lsopt.bind = 1;
             continue;
         }
+
+#if (NGX_HAVE_SETFIB)
+        if (ngx_strncmp(value[i].data, "setfib=", 7) == 0) {
+            lsopt.setfib = ngx_atoi(value[i].data + 7, value[i].len - 7);
+            lsopt.set = 1;
+            lsopt.bind = 1;
+
+            if (lsopt.setfib == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid setfib \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+#endif
 
 #if (NGX_HAVE_TCP_FASTOPEN)
         if (ngx_strncmp(value[i].data, "fastopen=", 9) == 0) {

@@ -62,6 +62,9 @@ typedef struct {
     int                            rcvbuf;
     int                            sndbuf;
     int                            type;
+#if (NGX_HAVE_SETFIB)
+    int                            setfib;
+#endif
 #if (NGX_HAVE_TCP_FASTOPEN)
     int                            fastopen;
 #endif
