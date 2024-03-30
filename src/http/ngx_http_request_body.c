@@ -1142,6 +1142,17 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
                 if (clcf->client_max_body_size
+                    && clcf->client_max_body_size < rb->chunked->skipped)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "client sent too many chunk extensions");
+
+                    r->lingering_close = 1;
+
+                    return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+                }
+
+                if (clcf->client_max_body_size
                     && clcf->client_max_body_size
                        - r->headers_in.content_length_n < rb->chunked->size)
                 {
@@ -1221,6 +1232,20 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
                 /* a whole response has been parsed successfully */
 
+                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+                if (clcf->client_max_body_size
+                    && clcf->client_max_body_size < rb->chunked->skipped)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "client sent too many chunk extensions "
+                                  "or trailer headers");
+
+                    r->lingering_close = 1;
+
+                    return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+                }
+
                 rb->rest = 0;
 
                 tl = ngx_chain_get_free_buf(r->pool, &rb->free);
@@ -1241,6 +1266,20 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             if (rc == NGX_AGAIN) {
+
+                clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+                if (clcf->client_max_body_size
+                    && clcf->client_max_body_size < rb->chunked->skipped)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "client sent too many chunk extensions "
+                                  "or trailer headers");
+
+                    r->lingering_close = 1;
+
+                    return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+                }
 
                 /* set rb->rest, amount of data we want to see next time */
 
