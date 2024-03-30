@@ -902,6 +902,18 @@ ngx_mail_read_command(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    s->commands++;
+
+    if (s->commands > cscf->max_commands) {
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent too many commands");
+
+        s->quit = 1;
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
     return NGX_OK;
 }
 
