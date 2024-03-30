@@ -227,7 +227,7 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
         ngx_str_set(&s->out, imap_next);
     }
 
-    if (s->buffer->pos < s->buffer->last) {
+    if (s->buffer->pos < s->buffer->last || c->read->ready) {
         s->blocked = 1;
     }
 
