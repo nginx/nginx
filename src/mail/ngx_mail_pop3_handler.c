@@ -120,6 +120,7 @@ ngx_mail_pop3_init_protocol(ngx_event_t *rev)
 void
 ngx_mail_pop3_auth_state(ngx_event_t *rev)
 {
+    size_t               n;
     ngx_int_t            rc;
     ngx_connection_t    *c;
     ngx_mail_session_t  *s;
@@ -292,6 +293,12 @@ ngx_mail_pop3_auth_state(ngx_event_t *rev)
         if (s->buffer->pos == s->buffer->last) {
             s->buffer->pos = s->buffer->start;
             s->buffer->last = s->buffer->start;
+
+        } else {
+            n = s->buffer->last - s->buffer->pos;
+            ngx_memmove(s->buffer->start, s->buffer->pos, n);
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start + n;
         }
 
         if (s->state) {

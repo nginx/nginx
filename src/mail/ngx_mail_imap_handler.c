@@ -103,6 +103,7 @@ void
 ngx_mail_imap_auth_state(ngx_event_t *rev)
 {
     u_char              *p;
+    size_t               n;
     ngx_int_t            rc;
     ngx_uint_t           tag;
     ngx_connection_t    *c;
@@ -286,6 +287,12 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
             if (s->buffer->pos == s->buffer->last) {
                 s->buffer->pos = s->buffer->start;
                 s->buffer->last = s->buffer->start;
+
+            } else {
+                n = s->buffer->last - s->buffer->pos;
+                ngx_memmove(s->buffer->start, s->buffer->pos, n);
+                s->buffer->pos = s->buffer->start;
+                s->buffer->last = s->buffer->start + n;
             }
 
             s->tag.len = 0;
