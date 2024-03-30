@@ -805,7 +805,7 @@ ngx_mail_send(ngx_event_t *wev)
         }
 
         if (s->blocked) {
-            c->read->handler(c->read);
+            ngx_post_event(c->read, &ngx_posted_events);
         }
 
         return;
