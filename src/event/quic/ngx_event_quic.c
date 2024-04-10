@@ -211,7 +211,10 @@ ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf)
     qc = ngx_quic_get_connection(c);
 
     ngx_add_timer(c->read, qc->tp.max_idle_timeout);
-    ngx_add_timer(&qc->close, qc->conf->handshake_timeout);
+
+    if (!qc->streams.initialized) {
+        ngx_add_timer(&qc->close, qc->conf->handshake_timeout);
+    }
 
     ngx_quic_connstate_dbg(c);
 
