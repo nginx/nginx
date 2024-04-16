@@ -5,6 +5,83 @@
 <change_log title="nginx">
 
 
+<changes ver="1.25.5" date="2024-04-16">
+
+<change type="feature">
+<para lang="ru">
+виртуальные сервера в модуле stream.
+</para>
+<para lang="en">
+virtual servers in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модуль ngx_stream_pass_module.
+</para>
+<para lang="en">
+the ngx_stream_pass_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметры deferred, accept_filter и setfib директивы listen в модуле stream.
+</para>
+<para lang="en">
+the "deferred", "accept_filter", and "setfib" parameters of the "listen"
+directive in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+определение размера строки кеша процессора для некоторых архитектур.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+cache line size detection for some architectures.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка Homebrew на Apple Silicon.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+support for Homebrew on Apple Silicon.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+улучшения и исправления кросс-компиляции для Windows.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+Windows cross-compilation bugfixes and improvements.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неожиданное закрытие соединения при использовании 0-RTT в QUIC.<br/>
+Спасибо Владимиру Хомутову.
+</para>
+<para lang="en">
+unexpected connection closure while using 0-RTT in QUIC.<br/>
+Thanks to Vladimir Khomutov.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.25.4" date="2024-02-14">
 
 <change type="security">
