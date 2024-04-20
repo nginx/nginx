@@ -97,6 +97,18 @@ static uint32_t  usual[] = {
 
 #endif
 
+/* Parse the request line and decide if it ends with the http version */
+ngx_int_t
+ngx_http_parse_the_end_of_request_line(u_char *m)
+{
+    if (m[0] == ' ' && m[1] == 'H' && m[2] == 'T' && m[3] == 'T' && m[4] == 'P'
+        && m[5] == '/' && m[6] >= '1' && m[6] <= '9' && m[7] == '.'
+        && m[8] >= '0' && m[8] <= '9' && m[9] == CR && m[10] == LF)
+    {
+        return 1;
+    }
+    return 0;
+}
 
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
@@ -607,9 +619,13 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
             switch (ch) {
             case ' ':
-                r->uri_end = p;
-                state = sw_http_09;
-                break;
+                if (ngx_http_parse_the_end_of_request_line(p) == 0) {
+                      break;
+                }else{
+                      r->uri_end = p;
+                      state = sw_http_09;
+                      break;
+                }
             case CR:
                 r->uri_end = p;
                 r->http_minor = 9;
