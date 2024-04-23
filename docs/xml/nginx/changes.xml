@@ -5,6 +5,20 @@
 <change_log title="nginx">
 
 
+<changes ver="1.26.0" date="2024-04-23">
+
+<change>
+<para lang="ru">
+Стабильная ветка 1.26.x.
+</para>
+<para lang="en">
+1.26.x stable branch.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.25.5" date="2024-04-16">
 
 <change type="feature">
