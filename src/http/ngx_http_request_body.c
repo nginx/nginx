@@ -44,6 +44,18 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     if (r != r->main || r->request_body || r->discard_body) {
         r->request_body_no_buffering = 0;
+
+        if (r->request_body && r->request_body->no_buffering) {
+            r->headers_in.content_length_n = 0;
+            r->request_body->bufs = NULL;
+
+            if (r->reading_body) {
+                r->reading_body = 0;
+                r->keepalive = 0;
+                r->lingering_close = 1;
+            }
+        }
+
         post_handler(r);
         return NGX_OK;
     }
@@ -69,6 +81,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
      *     rb->busy = NULL;
      *     rb->chunked = NULL;
      *     rb->received = 0;
+     *     rb->no_buffering = 0;
      *     rb->filter_need_buffering = 0;
      *     rb->last_sent = 0;
      *     rb->last_saved = 0;
@@ -214,6 +227,7 @@ done:
         } else {
             /* rc == NGX_AGAIN */
             r->reading_body = 1;
+            r->request_body->no_buffering = 1;
         }
 
         r->read_event_handler = ngx_http_block_reading;
