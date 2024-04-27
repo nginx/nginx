@@ -543,6 +543,7 @@ struct ngx_http_request_s {
     unsigned                          keepalive:1;
     unsigned                          lingering_close:1;
     unsigned                          discard_body:1;
+    unsigned                          discarding_body:1;
     unsigned                          reading_body:1;
     unsigned                          internal:1;
     unsigned                          error_page:1;

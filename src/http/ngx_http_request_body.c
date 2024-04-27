@@ -684,6 +684,8 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
 
+    r->discard_body = 1;
+
     if (rev->timer_set) {
         ngx_del_timer(rev);
     }
@@ -726,7 +728,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 
     r->count++;
-    r->discard_body = 1;
+    r->discarding_body = 1;
 
     return NGX_OK;
 }
@@ -755,7 +757,7 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
         timer = (ngx_msec_t) r->lingering_time - (ngx_msec_t) ngx_time();
 
         if ((ngx_msec_int_t) timer <= 0) {
-            r->discard_body = 0;
+            r->discarding_body = 0;
             r->lingering_close = 0;
             ngx_http_finalize_request(r, NGX_ERROR);
             return;
@@ -768,7 +770,7 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_read_discarded_request_body(r);
 
     if (rc == NGX_OK) {
-        r->discard_body = 0;
+        r->discarding_body = 0;
         r->lingering_close = 0;
         r->lingering_time = 0;
         ngx_http_finalize_request(r, NGX_DONE);

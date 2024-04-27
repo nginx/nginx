@@ -2507,6 +2507,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->internal = 1;
 
     sr->discard_body = r->discard_body;
+    sr->discarding_body = r->discarding_body;
     sr->expect_tested = 1;
     sr->main_filter_need_in_memory = r->main_filter_need_in_memory;
 
