@@ -2040,6 +2040,15 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.content_length) {
+        if (r->headers_in.transfer_encoding) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent \"Content-Length\" and "
+                          "\"Transfer-Encoding\" headers "
+                          "at the same time");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
         r->headers_in.content_length_n =
                             ngx_atoof(r->headers_in.content_length->value.data,
                                       r->headers_in.content_length->value.len);
@@ -2065,15 +2074,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
             && ngx_strncasecmp(r->headers_in.transfer_encoding->value.data,
                                (u_char *) "chunked", 7) == 0)
         {
-            if (r->headers_in.content_length) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent \"Content-Length\" and "
-                              "\"Transfer-Encoding\" headers "
-                              "at the same time");
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                return NGX_ERROR;
-            }
-
             r->headers_in.chunked = 1;
 
         } else {
