@@ -221,6 +221,11 @@ done:
     }
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+
+        r->lingering_close = 1;
+        r->headers_in.content_length_n = 0;
+        r->request_body->bufs = NULL;
+
         r->main->count--;
         r->read_event_handler = ngx_http_block_reading;
     }
@@ -287,6 +292,11 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_do_read_client_request_body(r);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+
+        r->lingering_close = 1;
+        r->headers_in.content_length_n = 0;
+        r->request_body->bufs = NULL;
+
         r->read_event_handler = ngx_http_block_reading;
         ngx_http_finalize_request(r, rc);
     }
@@ -1150,8 +1160,6 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   "body: %O+%O bytes",
                                   r->headers_in.content_length_n,
                                   rb->chunked->size);
-
-                    r->lingering_close = 1;
 
                     return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
                 }
