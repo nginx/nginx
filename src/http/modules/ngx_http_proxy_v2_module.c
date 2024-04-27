@@ -496,6 +496,9 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     } else if (r->headers_in.chunked && r->reading_body) {
         ctx->ctx.internal_body_length = -1;
 
+    } else if (r->discard_body) {
+        ctx->ctx.internal_body_length = 0;
+
     } else {
         ctx->ctx.internal_body_length = r->headers_in.content_length_n;
     }
