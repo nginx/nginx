@@ -1206,11 +1206,7 @@ ngx_http_variable_content_length(ngx_http_request_t *r,
         v->no_cacheable = 1;
 
     } else if (r->discard_body) {
-        v->len = 1;
-        v->data = (u_char *) "0";
-        v->valid = 1;
-        v->no_cacheable = 0;
-        v->not_found = 0;
+        v->not_found = 1;
 
     } else if (r->headers_in.content_length_n >= 0) {
         p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
