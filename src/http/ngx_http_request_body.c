@@ -222,6 +222,7 @@ done:
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         r->main->count--;
+        r->read_event_handler = ngx_http_block_reading;
     }
 
     return rc;
@@ -286,6 +287,7 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_do_read_client_request_body(r);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        r->read_event_handler = ngx_http_block_reading;
         ngx_http_finalize_request(r, rc);
     }
 }
