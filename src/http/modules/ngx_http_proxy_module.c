@@ -1286,6 +1286,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         ctx->internal_body_length = -1;
         ctx->internal_chunked = 1;
 
+    } else if (r->discard_body) {
+        ctx->internal_body_length = -1;
+
     } else {
         ctx->internal_body_length = r->headers_in.content_length_n;
     }

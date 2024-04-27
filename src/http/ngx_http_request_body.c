@@ -46,7 +46,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         r->request_body_no_buffering = 0;
 
         if (r->request_body && r->request_body->no_buffering) {
-            r->headers_in.content_length_n = 0;
+            r->discard_body = 1;
             r->request_body->bufs = NULL;
 
             if (r->reading_body) {
@@ -237,7 +237,7 @@ done:
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
 
         r->lingering_close = 1;
-        r->headers_in.content_length_n = 0;
+        r->discard_body = 1;
         r->request_body->bufs = NULL;
 
         r->main->count--;
@@ -308,7 +308,7 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
 
         r->lingering_close = 1;
-        r->headers_in.content_length_n = 0;
+        r->discard_body = 1;
         r->request_body->bufs = NULL;
 
         r->read_event_handler = ngx_http_block_reading;
@@ -663,6 +663,11 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http set discard body");
+
+    r->discard_body = 1;
+
 #if (NGX_HTTP_V2)
     if (r->stream) {
         r->stream->skip_data = 1;
@@ -681,10 +686,6 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 
     rev = r->connection->read;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
-
-    r->discard_body = 1;
 
     if (rev->timer_set) {
         ngx_del_timer(rev);
