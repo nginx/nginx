@@ -764,12 +764,12 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
 
         engine = ENGINE_by_id((char *) p);
 
+        *last++ = ':';
+
         if (engine == NULL) {
             *err = "ENGINE_by_id() failed";
             return NULL;
         }
-
-        *last++ = ':';
 
         pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
 
