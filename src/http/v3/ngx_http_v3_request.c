@@ -1575,6 +1575,15 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 /* rc == NGX_OK */
 
                 if (max != -1 && (uint64_t) (max - rb->received) < st->length) {
+
+                    if (r->headers_in.content_length_n != -1) {
+                        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                                      "client intended to send body data "
+                                      "larger than declared");
+
+                        return NGX_HTTP_BAD_REQUEST;
+                    }
+
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "client intended to send too large "
                                   "body: %O+%ui bytes",
