@@ -83,6 +83,11 @@ ngx_stream_pass_handler(ngx_stream_session_t *s)
 
     c->log->action = "passing connection to port";
 
+    if (c->type == SOCK_DGRAM) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, "cannot pass udp connection");
+        goto failed;
+    }
+
     if (c->buffer && c->buffer->pos != c->buffer->last) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "cannot pass connection with preread data");
@@ -217,6 +222,10 @@ ngx_stream_pass_cleanup(void *data)
 static ngx_int_t
 ngx_stream_pass_match(ngx_listening_t *ls, ngx_addr_t *addr)
 {
+    if (ls->type == SOCK_DGRAM) {
+        return NGX_DECLINED;
+    }
+
     if (!ls->wildcard) {
         return ngx_cmp_sockaddr(ls->sockaddr, ls->socklen,
                                 addr->sockaddr, addr->socklen, 1);
