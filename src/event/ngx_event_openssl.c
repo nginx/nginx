@@ -3993,33 +3993,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_BAD_RECORD_TYPE
             || n == SSL_R_BAD_RECORD_TYPE                            /*  443 */
 #endif
-            || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
-#ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
-            || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE             /* 1010 */
-            || n == SSL_R_SSLV3_ALERT_BAD_RECORD_MAC                 /* 1020 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPTION_FAILED              /* 1021 */
-            || n == SSL_R_TLSV1_ALERT_RECORD_OVERFLOW                /* 1022 */
-            || n == SSL_R_SSLV3_ALERT_DECOMPRESSION_FAILURE          /* 1030 */
-            || n == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE              /* 1040 */
-            || n == SSL_R_SSLV3_ALERT_NO_CERTIFICATE                 /* 1041 */
-            || n == SSL_R_SSLV3_ALERT_BAD_CERTIFICATE                /* 1042 */
-            || n == SSL_R_SSLV3_ALERT_UNSUPPORTED_CERTIFICATE        /* 1043 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_REVOKED            /* 1044 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED            /* 1045 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_UNKNOWN            /* 1046 */
-            || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER              /* 1047 */
-            || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA                     /* 1048 */
-            || n == SSL_R_TLSV1_ALERT_ACCESS_DENIED                  /* 1049 */
-            || n == SSL_R_TLSV1_ALERT_DECODE_ERROR                   /* 1050 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPT_ERROR                  /* 1051 */
-            || n == SSL_R_TLSV1_ALERT_EXPORT_RESTRICTION             /* 1060 */
-            || n == SSL_R_TLSV1_ALERT_PROTOCOL_VERSION               /* 1070 */
-            || n == SSL_R_TLSV1_ALERT_INSUFFICIENT_SECURITY          /* 1071 */
-            || n == SSL_R_TLSV1_ALERT_INTERNAL_ERROR                 /* 1080 */
-            || n == SSL_R_TLSV1_ALERT_USER_CANCELLED                 /* 1090 */
-            || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION               /* 1100 */
-#endif
-            || n == 1121 /* SSL_R_TLSV1_ALERT_ECH_REQUIRED */
+            || (n >= SSL_AD_REASON_OFFSET                            /* 1000 */
+                && n <= SSL_AD_REASON_OFFSET + 255)
             )
         {
             switch (c->log_error) {
