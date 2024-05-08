@@ -989,21 +989,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch == CR) {
-                r->header_name_end = p;
-                r->header_start = p;
-                r->header_end = p;
-                state = sw_almost_done;
-                break;
-            }
-
-            if (ch == LF) {
-                r->header_name_end = p;
-                r->header_start = p;
-                r->header_end = p;
-                goto done;
-            }
-
             /* IIS may send the duplicate "HTTP/1.1 ..." lines */
             if (ch == '/'
                 && r->upstream
