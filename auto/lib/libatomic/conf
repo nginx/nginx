@@ -19,7 +19,7 @@ else
                       #include <atomic_ops.h>"
     ngx_feature_path=
     ngx_feature_libs="-latomic_ops"
-    ngx_feature_test="long  n = 0;
+    ngx_feature_test="AO_t  n = 0;
                       if (!AO_compare_and_swap(&n, 0, 1))
                           return 1;
                       if (AO_fetch_and_add(&n, 1) != 1)
