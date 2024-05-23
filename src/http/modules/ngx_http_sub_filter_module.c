@@ -335,9 +335,13 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     while (ctx->in || ctx->buf) {
 
         if (ctx->buf == NULL) {
-            ctx->buf = ctx->in->buf;
-            ctx->in = ctx->in->next;
+
+            cl = ctx->in;
+            ctx->buf = cl->buf;
+            ctx->in = cl->next;
             ctx->pos = ctx->buf->pos;
+
+            ngx_free_chain(r->pool, cl);
         }
 
         if (ctx->buf->flush || ctx->buf->recycled) {

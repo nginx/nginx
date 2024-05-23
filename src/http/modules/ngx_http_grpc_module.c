@@ -1231,7 +1231,7 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
     ngx_buf_t              *b;
     ngx_int_t               rc;
     ngx_uint_t              next, last;
-    ngx_chain_t            *cl, *out, **ll;
+    ngx_chain_t            *cl, *out, *ln, **ll;
     ngx_http_upstream_t    *u;
     ngx_http_grpc_ctx_t    *ctx;
     ngx_http_grpc_frame_t  *f;
@@ -1459,7 +1459,10 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
             last = 1;
         }
 
+        ln = in;
         in = in->next;
+
+        ngx_free_chain(r->pool, ln);
     }
 
     ctx->in = in;
