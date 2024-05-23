@@ -985,10 +985,14 @@ static void
 ngx_http_gzip_filter_free_copy_buf(ngx_http_request_t *r,
     ngx_http_gzip_ctx_t *ctx)
 {
-    ngx_chain_t  *cl;
+    ngx_chain_t  *cl, *ln;
 
-    for (cl = ctx->copied; cl; cl = cl->next) {
-        ngx_pfree(r->pool, cl->buf->start);
+    for (cl = ctx->copied; cl; /* void */) {
+        ln = cl;
+        cl = cl->next;
+
+        ngx_pfree(r->pool, ln->buf->start);
+        ngx_free_chain(r->pool, ln);
     }
 
     ctx->copied = NULL;

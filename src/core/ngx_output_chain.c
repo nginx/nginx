@@ -117,7 +117,10 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
 
                 ngx_debug_point();
 
-                ctx->in = ctx->in->next;
+                cl = ctx->in;
+                ctx->in = cl->next;
+
+                ngx_free_chain(ctx->pool, cl);
 
                 continue;
             }
@@ -203,7 +206,10 @@ ngx_output_chain(ngx_output_chain_ctx_t *ctx, ngx_chain_t *in)
             /* delete the completed buf from the ctx->in chain */
 
             if (ngx_buf_size(ctx->in->buf) == 0) {
-                ctx->in = ctx->in->next;
+                cl = ctx->in;
+                ctx->in = cl->next;
+
+                ngx_free_chain(ctx->pool, cl);
             }
 
             cl = ngx_alloc_chain_link(ctx->pool);
