@@ -308,7 +308,7 @@ ngx_http_v3_set_capacity(ngx_connection_t *c, ngx_uint_t capacity)
     prev_max = dt->capacity / 32;
 
     if (max > prev_max) {
-        elts = ngx_alloc(max * sizeof(void *), c->log);
+        elts = ngx_alloc((max + 1) * sizeof(void *), c->log);
         if (elts == NULL) {
             return NGX_ERROR;
         }
