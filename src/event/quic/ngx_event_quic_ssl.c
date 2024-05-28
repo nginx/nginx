@@ -326,6 +326,11 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_crypto_frame_t  *f;
 
     qc = ngx_quic_get_connection(c);
+
+    if (!ngx_quic_keys_available(qc->keys, pkt->level, 0)) {
+        return NGX_OK;
+    }
+
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
     f = &frame->u.crypto;
 
