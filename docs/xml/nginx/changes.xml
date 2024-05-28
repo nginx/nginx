@@ -5,6 +5,62 @@
 <change_log title="nginx">
 
 
+<changes ver="1.26.1" date="2024-05-29">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3 обработка специально созданной QUIC-сессии могла
+приводить к падению рабочего процесса, отправке клиенту содержимого памяти
+рабочего процесса на системах с MTU больше 4096 байт, а также потенциально
+могла иметь другие последствия
+(CVE-2024-32760, CVE-2024-31079, CVE-2024-35200, CVE-2024-34161).<br/>
+Спасибо Nils Bars из CISPA.
+</para>
+<para lang="en">
+when using HTTP/3, processing of a specially crafted QUIC session might
+cause a worker process crash, worker process memory disclosure on systems
+with MTU larger than 4096 bytes, or might have potential other impact
+(CVE-2024-32760, CVE-2024-31079, CVE-2024-35200, CVE-2024-34161).<br/>
+Thanks to Nils Bars of CISPA.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+уменьшено потребление памяти для долгоживущих запросов,
+если используются директивы gzip, gunzip, ssi, sub_filter или grpc_pass.
+</para>
+<para lang="en">
+reduced memory consumption for long-lived requests
+if "gzip", "gunzip", "ssi", "sub_filter", or "grpc_pass" directives are used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 14,
+если использовался параметр --with-atomic.<br/>
+Спасибо Edgar Bonet.
+</para>
+<para lang="en">
+nginx could not be built by gcc 14
+if the --with-atomic option was used.<br/>
+Thanks to Edgar Bonet.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в HTTP/3.
+</para>
+<para lang="en">
+in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.26.0" date="2024-04-23">
 
 <change>
