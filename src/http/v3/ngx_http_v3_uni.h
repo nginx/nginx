@@ -19,6 +19,8 @@ ngx_int_t ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type);
 
 ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
 
+ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
+    ngx_uint_t type);
 ngx_int_t ngx_http_v3_send_settings(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_send_goaway(ngx_connection_t *c, uint64_t id);
 ngx_int_t ngx_http_v3_send_ack_section(ngx_connection_t *c,

@@ -134,7 +134,17 @@ ngx_http_v3_init(ngx_connection_t *c)
         }
     }
 
-    return ngx_http_v3_send_settings(c);
+    if (ngx_http_v3_send_settings(c) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (h3scf->max_table_capacity > 0) {
+        if (ngx_http_v3_get_uni_stream(c, NGX_HTTP_V3_STREAM_DECODER) == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 
@@ -398,14 +408,12 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 void
 ngx_http_v3_reset_stream(ngx_connection_t *c)
 {
-    ngx_http_v3_session_t   *h3c;
-    ngx_http_v3_srv_conf_t  *h3scf;
-
-    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+    ngx_http_v3_session_t  *h3c;
 
     h3c = ngx_http_v3_get_session(c);
 
-    if (h3scf->max_table_capacity > 0 && !c->read->eof && !h3c->hq
+    if (!c->read->eof && !h3c->hq
+        && h3c->known_streams[NGX_HTTP_V3_STREAM_SERVER_DECODER]
         && (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
     {
         (void) ngx_http_v3_send_cancel_stream(c, c->quic->id);
