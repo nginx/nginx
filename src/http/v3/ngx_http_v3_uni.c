@@ -20,8 +20,6 @@ static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static void ngx_http_v3_uni_dummy_read_handler(ngx_event_t *wev);
 static void ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev);
-static ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
-    ngx_uint_t type);
 
 
 void
@@ -307,7 +305,7 @@ ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev)
 }
 
 
-static ngx_connection_t *
+ngx_connection_t *
 ngx_http_v3_get_uni_stream(ngx_connection_t *c, ngx_uint_t type)
 {
     u_char                     buf[NGX_HTTP_V3_VARLEN_INT_LEN];
