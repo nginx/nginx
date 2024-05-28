@@ -648,6 +648,7 @@ ngx_quic_free_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb)
     ngx_quic_free_chain(c, qb->chain);
 
     qb->chain = NULL;
+    qb->last_chain = NULL;
 }
 
 
