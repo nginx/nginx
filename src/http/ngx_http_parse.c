@@ -2209,6 +2209,7 @@ ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 
     } else {
         args->len = 0;
+        args->data = NULL;
     }
 }
 
