@@ -410,6 +410,8 @@ ngx_http_v3_reset_stream(ngx_connection_t *c)
 {
     ngx_http_v3_session_t  *h3c;
 
+    ngx_reusable_connection(c, 0);
+
     h3c = ngx_http_v3_get_session(c);
 
     if (!c->read->eof && !h3c->hq
