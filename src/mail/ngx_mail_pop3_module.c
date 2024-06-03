@@ -30,6 +30,8 @@ static ngx_conf_bitmask_t  ngx_mail_pop3_auth_methods[] = {
     { ngx_string("apop"), NGX_MAIL_AUTH_APOP_ENABLED },
     { ngx_string("cram-md5"), NGX_MAIL_AUTH_CRAM_MD5_ENABLED },
     { ngx_string("external"), NGX_MAIL_AUTH_EXTERNAL_ENABLED },
+    { ngx_string("xoauth2"), NGX_MAIL_AUTH_XOAUTH2_ENABLED },
+    { ngx_string("oauthbearer"), NGX_MAIL_AUTH_OAUTHBEARER_ENABLED },
     { ngx_null_string, 0 }
 };
 
@@ -40,6 +42,8 @@ static ngx_str_t  ngx_mail_pop3_auth_methods_names[] = {
     ngx_null_string,  /* APOP */
     ngx_string("CRAM-MD5"),
     ngx_string("EXTERNAL"),
+    ngx_string("XOAUTH2"),
+    ngx_string("OAUTHBEARER"),
     ngx_null_string   /* NONE */
 };
 
@@ -183,7 +187,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     size += sizeof("SASL") - 1 + sizeof(CRLF) - 1;
 
     for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
-         m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
+         m < NGX_MAIL_AUTH_NONE_ENABLED;
          m <<= 1, i++)
     {
         if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
@@ -214,7 +218,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     p = ngx_cpymem(p, "SASL", sizeof("SASL") - 1);
 
     for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
-         m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
+         m < NGX_MAIL_AUTH_NONE_ENABLED;
          m <<= 1, i++)
     {
         if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
@@ -254,7 +258,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
            + sizeof("." CRLF) - 1;
 
     for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
-         m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
+         m < NGX_MAIL_AUTH_NONE_ENABLED;
          m <<= 1, i++)
     {
         if (ngx_mail_pop3_auth_methods_names[i].len == 0) {
@@ -279,7 +283,7 @@ ngx_mail_pop3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                    sizeof("+OK methods supported:" CRLF) - 1);
 
     for (m = NGX_MAIL_AUTH_PLAIN_ENABLED, i = 0;
-         m <= NGX_MAIL_AUTH_EXTERNAL_ENABLED;
+         m < NGX_MAIL_AUTH_NONE_ENABLED;
          m <<= 1, i++)
     {
         if (ngx_mail_pop3_auth_methods_names[i].len == 0) {

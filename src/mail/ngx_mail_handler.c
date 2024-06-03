@@ -761,6 +761,274 @@ ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
 }
 
 
+ngx_int_t
+ngx_mail_auth_xoauth2(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
+{
+    u_char     *p, *last;
+    ngx_str_t  *arg, oauth;
+
+    arg = s->args.elts;
+
+    if (s->auth_err.len) {
+        ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                       "mail auth xoauth2 cancel");
+
+        if (s->args.nelts == 1 && arg[0].len == 0) {
+            s->out = s->auth_err;
+            s->quit = s->auth_quit;
+            s->state = 0;
+            s->mail_state = 0;
+            ngx_str_null(&s->auth_err);
+            return NGX_OK;
+        }
+
+        s->quit = s->auth_quit;
+        ngx_str_null(&s->auth_err);
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth xoauth2: \"%V\"", &arg[n]);
+
+    oauth.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[n].len));
+    if (oauth.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&oauth, &arg[n]) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid base64 encoding in "
+                      "AUTH XOAUTH2 command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    /*
+     * https://developers.google.com/gmail/imap/xoauth2-protocol
+     * "user=" {User} "^Aauth=Bearer " {token} "^A^A"
+     */
+
+    p = oauth.data;
+    last = p + oauth.len;
+
+    while (p < last) {
+        if (*p++ == '\1') {
+            s->login.len = p - oauth.data - 1;
+            s->login.data = oauth.data;
+            s->passwd.len = last - p;
+            s->passwd.data = p;
+            break;
+        }
+    }
+
+    if (s->login.len < sizeof("user=") - 1
+        || ngx_strncasecmp(s->login.data, (u_char *) "user=",
+                           sizeof("user=") - 1)
+           != 0)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid login in AUTH XOAUTH2 command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->login.len -= sizeof("user=") - 1;
+    s->login.data += sizeof("user=") - 1;
+
+    if (s->passwd.len < sizeof("auth=Bearer ") - 1
+        || ngx_strncasecmp(s->passwd.data, (u_char *) "auth=Bearer ",
+                           sizeof("auth=Bearer ") - 1)
+           != 0)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid token in AUTH XOAUTH2 command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->passwd.len -= sizeof("auth=Bearer ") - 1;
+    s->passwd.data += sizeof("auth=Bearer ") - 1;
+
+    if (s->passwd.len < 2
+        || s->passwd.data[s->passwd.len - 2] != '\1'
+        || s->passwd.data[s->passwd.len - 1] != '\1')
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid token in AUTH XOAUTH2 command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->passwd.len -= 2;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth xoauth2: \"%V\" \"%V\"", &s->login, &s->passwd);
+
+    s->auth_method = NGX_MAIL_AUTH_XOAUTH2;
+
+    return NGX_DONE;
+}
+
+
+ngx_int_t
+ngx_mail_auth_oauthbearer(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n)
+{
+    u_char     *p, *d, *last, *prev;
+    ngx_str_t  *arg, oauth;
+
+    arg = s->args.elts;
+
+    if (s->auth_err.len) {
+        ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                       "mail auth oauthbearer cancel");
+
+        if (s->args.nelts == 1
+            && ngx_strncmp(arg[0].data, (u_char *) "AQ==", 4) == 0)
+        {
+            s->out = s->auth_err;
+            s->quit = s->auth_quit;
+            s->state = 0;
+            s->mail_state = 0;
+            ngx_str_null(&s->auth_err);
+            return NGX_OK;
+        }
+
+        s->quit = s->auth_quit;
+        ngx_str_null(&s->auth_err);
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth oauthbearer: \"%V\"", &arg[n]);
+
+    oauth.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[n].len));
+    if (oauth.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&oauth, &arg[n]) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid base64 encoding in "
+                      "AUTH OAUTHBEARER command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    /*
+     * RFC 7628
+     * "n,a=user@example.com,^A...^Aauth=Bearer <token>^A^A"
+     */
+
+    p = oauth.data;
+    last = p + oauth.len;
+
+    s->login.len = 0;
+    prev = NULL;
+
+    while (p < last) {
+        if (*p == ',') {
+            if (prev
+                && (size_t) (p - prev) > sizeof("a=") - 1
+                && ngx_strncasecmp(prev, (u_char *) "a=", sizeof("a=") - 1)
+                   == 0)
+            {
+                s->login.len = p - prev - (sizeof("a=") - 1);
+                s->login.data = prev + sizeof("a=") - 1;
+                break;
+            }
+
+            p++;
+            prev = p;
+            continue;
+        }
+
+        if (*p == '\1') {
+            break;
+        }
+
+        p++;
+    }
+
+    if (s->login.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid login in AUTH OAUTHBEARER command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    s->passwd.len = 0;
+    prev = NULL;
+
+    while (p < last) {
+        if (*p == '\1') {
+            if (prev
+                && (size_t) (p - prev) > sizeof("auth=Bearer ") - 1
+                && ngx_strncasecmp(prev, (u_char *) "auth=Bearer ",
+                                   sizeof("auth=Bearer ") - 1)
+                   == 0)
+            {
+                s->passwd.len = p - prev - (sizeof("auth=Bearer ") - 1);
+                s->passwd.data = prev + sizeof("auth=Bearer ") - 1;
+                break;
+            }
+
+            p++;
+            prev = p;
+            continue;
+        }
+
+        p++;
+    }
+
+    if (s->passwd.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid token in AUTH OAUTHBEARER command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    /* decode =2C =3D in login */
+
+    p = s->login.data;
+    d = s->login.data;
+    last = s->login.data + s->login.len;
+
+    while (p < last) {
+        if (*p == '=') {
+
+            /*
+             * login is always followed by other data,
+             * so p[1] and p[2] can be checked directly
+             */
+
+            if (p[1] == '2' && (p[2] == 'C' || p[2] == 'c')) {
+                *d++ = ',';
+
+            } else if (p[1] == '3' && (p[2] == 'D' || p[2] == 'd')) {
+                *d++ = '=';
+
+            } else {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent invalid login in "
+                              "AUTH OAUTHBEARER command");
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
+            }
+
+            p += 3;
+            continue;
+        }
+
+        *d++ = *p++;
+    }
+
+    s->login.len = d - s->login.data;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth oauthbearer: \"%V\" \"%V\"",
+                   &s->login, &s->passwd);
+
+    s->auth_method = NGX_MAIL_AUTH_OAUTHBEARER;
+
+    return NGX_DONE;
+}
+
+
 void
 ngx_mail_send(ngx_event_t *wev)
 {
@@ -925,12 +1193,16 @@ ngx_mail_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 {
     s->args.nelts = 0;
 
-    if (s->buffer->pos == s->buffer->last) {
-        s->buffer->pos = s->buffer->start;
-        s->buffer->last = s->buffer->start;
-    }
+    if (s->state) {
+        /* preserve tag */
+        s->arg_start = s->buffer->pos;
 
-    s->state = 0;
+    } else {
+        if (s->buffer->pos == s->buffer->last) {
+            s->buffer->pos = s->buffer->start;
+            s->buffer->last = s->buffer->start;
+        }
+    }
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);

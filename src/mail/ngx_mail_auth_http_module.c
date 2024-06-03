@@ -53,6 +53,7 @@ struct ngx_mail_auth_http_ctx_s {
     ngx_str_t                       err;
     ngx_str_t                       errmsg;
     ngx_str_t                       errcode;
+    ngx_str_t                       errsasl;
 
     time_t                          sleep;
 
@@ -67,6 +68,7 @@ static void ngx_mail_auth_http_ignore_status_line(ngx_mail_session_t *s,
 static void ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx);
 static void ngx_mail_auth_sleep_handler(ngx_event_t *rev);
+static void ngx_mail_auth_send_error(ngx_mail_session_t *s);
 static ngx_int_t ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx);
 static void ngx_mail_auth_http_block_read(ngx_event_t *rev);
@@ -152,6 +154,8 @@ static ngx_str_t   ngx_mail_auth_http_method[] = {
     ngx_string("apop"),
     ngx_string("cram-md5"),
     ngx_string("external"),
+    ngx_string("xoauth2"),
+    ngx_string("oauthbearer"),
     ngx_string("none")
 };
 
@@ -677,6 +681,51 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 continue;
             }
 
+            if (len == sizeof("Auth-Error-SASL") - 1
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Error-SASL",
+                                   sizeof("Auth-Error-SASL") - 1)
+                   == 0)
+            {
+                if (s->auth_method != NGX_MAIL_AUTH_XOAUTH2
+                    && s->auth_method != NGX_MAIL_AUTH_OAUTHBEARER)
+                {
+                    continue;
+                }
+
+                len = ctx->header_end - ctx->header_start;
+
+                if (s->protocol == NGX_MAIL_SMTP_PROTOCOL) {
+                    size = len + sizeof("334 " CRLF) - 1;
+
+                } else {
+                    size = len + sizeof("+ " CRLF) - 1;
+                }
+
+                p = ngx_pnalloc(s->connection->pool, size);
+                if (p == NULL) {
+                    ngx_close_connection(ctx->peer.connection);
+                    ngx_destroy_pool(ctx->pool);
+                    ngx_mail_session_internal_server_error(s);
+                    return;
+                }
+
+                ctx->errsasl.len = size;
+                ctx->errsasl.data = p;
+
+                if (s->protocol == NGX_MAIL_SMTP_PROTOCOL) {
+                    *p++ = '3'; *p++ = '3'; *p++ = '4'; *p++ = ' ';
+
+                } else {
+                    *p++ = '+'; *p++ = ' ';
+                }
+
+                p = ngx_cpymem(p, ctx->header_start, len);
+                *p++ = CR; *p = LF;
+
+                continue;
+            }
+
             /* ignore other headers */
 
             continue;
@@ -717,14 +766,15 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                     *p++ = CR; *p = LF;
                 }
 
-                s->out = ctx->err;
+                s->out = ctx->errsasl;
+                s->auth_err = ctx->err;
                 timer = ctx->sleep;
 
                 ngx_destroy_pool(ctx->pool);
 
                 if (timer == 0) {
-                    s->quit = 1;
-                    ngx_mail_send(s->connection->write);
+                    s->auth_quit = 1;
+                    ngx_mail_auth_send_error(s);
                     return;
                 }
 
@@ -858,9 +908,8 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
 static void
 ngx_mail_auth_sleep_handler(ngx_event_t *rev)
 {
-    ngx_connection_t          *c;
-    ngx_mail_session_t        *s;
-    ngx_mail_core_srv_conf_t  *cscf;
+    ngx_connection_t    *c;
+    ngx_mail_session_t  *s;
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0, "mail auth sleep handler");
 
@@ -877,33 +926,7 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
             return;
         }
 
-        cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
-
-        rev->handler = cscf->protocol->auth_state;
-
-        s->mail_state = 0;
-        s->auth_method = NGX_MAIL_AUTH_PLAIN;
-        s->tag.len = 0;
-
-        c->log->action = "in auth state";
-
-        ngx_mail_send(c->write);
-
-        if (c->destroyed) {
-            return;
-        }
-
-        ngx_add_timer(rev, cscf->timeout);
-
-        if (rev->ready) {
-            rev->handler(rev);
-            return;
-        }
-
-        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-            ngx_mail_close_connection(c);
-        }
-
+        ngx_mail_auth_send_error(s);
         return;
     }
 
@@ -911,6 +934,57 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
             ngx_mail_close_connection(c);
         }
+    }
+}
+
+
+static void
+ngx_mail_auth_send_error(ngx_mail_session_t *s)
+{
+    ngx_event_t               *rev;
+    ngx_connection_t          *c;
+    ngx_mail_core_srv_conf_t  *cscf;
+
+    c = s->connection;
+    rev = c->read;
+
+    cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
+
+    rev->handler = cscf->protocol->auth_state;
+
+    s->auth_method = NGX_MAIL_AUTH_PLAIN;
+
+    c->log->action = "in auth state";
+
+    if (s->out.len == 0) {
+        s->out = s->auth_err;
+        s->quit = s->auth_quit;
+        ngx_str_null(&s->auth_err);
+
+        s->state = 0;
+        s->mail_state = 0;
+        s->tag.len = 0;
+
+    } else {
+        s->auth_err.len -= s->tag.len;
+        s->auth_err.data += s->tag.len;
+    }
+
+    ngx_mail_send(c->write);
+
+    if (c->destroyed) {
+        return;
+    }
+
+    ngx_add_timer(rev, cscf->timeout);
+
+    if (rev->ready) {
+        rev->handler(rev);
+        return;
+    }
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_mail_close_connection(c);
     }
 }
 
