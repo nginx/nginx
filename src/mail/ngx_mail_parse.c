@@ -30,6 +30,9 @@ ngx_mail_pop3_parse_command(ngx_mail_session_t *s)
 
     state = s->state;
 
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
+                   "pop3 parse: %d", state);
+
     for (p = s->buffer->pos; p < s->buffer->last; p++) {
         ch = *p;
 
@@ -247,6 +250,9 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
     } state;
 
     state = s->state;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
+                   "imap parse: %d", state);
 
     for (p = s->buffer->pos; p < s->buffer->last; p++) {
         ch = *p;
@@ -690,6 +696,9 @@ ngx_mail_smtp_parse_command(ngx_mail_session_t *s)
     } state;
 
     state = s->state;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
+                   "smtp parse: %d", state);
 
     for (p = s->buffer->pos; p < s->buffer->last; p++) {
         ch = *p;
