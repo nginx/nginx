@@ -518,6 +518,10 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
     case NGX_MAIL_AUTH_PLAIN:
 
+        if (s->args.nelts == 2) {
+            return ngx_mail_auth_plain(s, c, 1);
+        }
+
         ngx_str_set(&s->out, pop3_next);
         s->mail_state = ngx_pop3_auth_plain;
 
@@ -540,6 +544,10 @@ ngx_mail_pop3_auth(ngx_mail_session_t *s, ngx_connection_t *c)
 
         if (!(pscf->auth_methods & NGX_MAIL_AUTH_EXTERNAL_ENABLED)) {
             return NGX_MAIL_PARSE_INVALID_COMMAND;
+        }
+
+        if (s->args.nelts == 2) {
+            return ngx_mail_auth_external(s, c, 1);
         }
 
         ngx_str_set(&s->out, pop3_username);
