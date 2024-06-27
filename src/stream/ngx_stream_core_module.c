@@ -458,6 +458,13 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
         return NGX_OK;
     }
 
+    if (cscf->handler == NULL) {
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "no handler for server");
+        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return NGX_OK;
+    }
+
     cscf->handler(s);
 
     return NGX_OK;
@@ -732,13 +739,6 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
 
         conf->resolver = prev->resolver;
-    }
-
-    if (conf->handler == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                      "no handler for server in %s:%ui",
-                      conf->file_name, conf->line);
-        return NGX_CONF_ERROR;
     }
 
     if (conf->error_log == NULL) {
