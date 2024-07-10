@@ -1,0 +1,11 @@
+proxy_temp/
+scgi_temp/
+uwsgi_temp/
+client_body_temp/
+fastcgi_temp/
+objs/
+./logs
+*.log
+*.pid
+
+
