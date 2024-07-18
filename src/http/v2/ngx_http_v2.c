@@ -292,6 +292,11 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     c->data = h2c;
 
+    if (ngx_exiting) {
+        ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
+        return;
+    }
+
     rev->handler = ngx_http_v2_read_handler;
     c->write->handler = ngx_http_v2_write_handler;
 
