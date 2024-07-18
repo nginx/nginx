@@ -139,6 +139,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_age(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
@@ -299,6 +301,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_multi_header_lines,
                  offsetof(ngx_http_headers_out_t, link), 0 },
+
+    { ngx_string("Age"),
+                 ngx_http_upstream_process_age, 0,
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_string("X-Accel-Expires"),
                  ngx_http_upstream_process_accel_expires, 0,
@@ -496,6 +502,7 @@ ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
     { ngx_string("Cache-Control"), NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL },
     { ngx_string("Set-Cookie"), NGX_HTTP_UPSTREAM_IGN_SET_COOKIE },
     { ngx_string("Vary"), NGX_HTTP_UPSTREAM_IGN_VARY },
+    { ngx_string("Age"), NGX_HTTP_UPSTREAM_IGN_AGE },
     { ngx_null_string, 0 }
 };
 
@@ -5118,14 +5125,16 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
             return NGX_OK;
         }
 
-        if (n == 0) {
+        if (n <= u->headers_in.age_n) {
             u->headers_in.no_cache = 1;
             return NGX_OK;
         }
 
-        r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time() + n,
+        r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time()
+                                      + n - u->headers_in.age_n,
                                       NGX_MAX_INT_T_VALUE);
         u->headers_in.expired = 0;
+        u->headers_in.max_age = 1;
     }
 
 extensions:
@@ -5306,6 +5315,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
             r->cache->valid_sec = ngx_time() + n;
             u->headers_in.no_cache = 0;
             u->headers_in.expired = 0;
+            u->headers_in.max_age = 0;
             return NGX_OK;
         }
     }
@@ -5319,6 +5329,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         r->cache->valid_sec = n;
         u->headers_in.no_cache = 0;
         u->headers_in.expired = 0;
+        u->headers_in.max_age = 0;
     }
     }
 #endif
@@ -5562,6 +5573,61 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
     }
 
     r->cache->vary = vary;
+    }
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_age(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (u->headers_in.age) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "upstream sent duplicate header line: \"%V: %V\", "
+                      "previous value: \"%V: %V\", ignored",
+                      &h->key, &h->value,
+                      &u->headers_in.age->key,
+                      &u->headers_in.age->value);
+        h->hash = 0;
+        return NGX_OK;
+    }
+
+    u->headers_in.age = h;
+    h->next = NULL;
+
+#if (NGX_HTTP_CACHE)
+    {
+    ngx_int_t  n;
+
+    if (u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_AGE) {
+        return NGX_OK;
+    }
+
+    if (r->cache == NULL || !u->cacheable) {
+        return NGX_OK;
+    }
+
+    n = ngx_atoi(h->value.data, h->value.len);
+
+    if (n != NGX_ERROR) {
+        u->headers_in.age_n = n;
+
+        if (u->headers_in.max_age) {
+            if (n >= r->cache->valid_sec - ngx_time()) {
+                u->headers_in.no_cache = 1;
+                return NGX_OK;
+            }
+
+            r->cache->valid_sec -= n;
+        }
+    }
     }
 #endif
 
