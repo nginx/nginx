@@ -27,6 +27,8 @@ static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_upstream_cache_age(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 #endif
 
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
@@ -304,7 +306,8 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Age"),
                  ngx_http_upstream_process_age, 0,
-                 ngx_http_upstream_copy_header_line, 0, 0 },
+                 ngx_http_upstream_copy_header_line,
+                 offsetof(ngx_http_headers_out_t, age), 0 },
 
     { ngx_string("X-Accel-Expires"),
                  ngx_http_upstream_process_accel_expires, 0,
@@ -455,6 +458,10 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
 
     { ngx_string("upstream_cache_etag"), NULL,
       ngx_http_upstream_cache_etag, 0,
+      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
+
+    { ngx_string("upstream_cache_age"), NULL,
+      ngx_http_upstream_cache_age, 0,
       NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
 #endif
@@ -6362,6 +6369,60 @@ ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     v->not_found = 0;
     v->len = r->cache->etag.len;
     v->data = r->cache->etag.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_cache_age(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+    time_t   now, age;
+
+    if (r->upstream == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    if (!r->cached
+        || r->cache == NULL
+        || r->upstream->cache_status == NGX_HTTP_CACHE_REVALIDATED)
+    {
+        if (r->upstream->headers_in.age == NULL) {
+            v->not_found = 1;
+            return NGX_OK;
+        }
+
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->len = r->upstream->headers_in.age->value.len;
+        v->data = r->upstream->headers_in.age->value.data;
+
+        return NGX_OK;
+    }
+
+    p = ngx_pnalloc(r->pool, NGX_TIME_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    now = ngx_time();
+    age = now - r->cache->date;
+
+    if (r->cache->date > now) {
+        age = 0;
+    }
+
+    age += r->upstream->headers_in.age_n;
+
+    v->len = ngx_sprintf(p, "%T", age) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
 
     return NGX_OK;
 }
