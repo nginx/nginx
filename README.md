@@ -1,10 +1,13 @@
+![NGINX Banner](docs/img/logo.png "NGINX Banner")
 
-# NGINX
 NGINX (pronounced "engine x" or "en-jin-eks") is the world's most popular Web Server, as well as a powerful, high performance Load Balancer, Reverse Proxy, API Gateway and Content Cache.
 
 NGINX is free and open source software, distributed under the terms of a simplified [2-clause BSD-like license](LICENSE.md).
 
 A commercial version, [NGINX Plus](https://www.f5.com/products/nginx/nginx-plus), with additional enterprise features and support, is available from [F5, Inc](https://www.f5.com/).
+
+> [!IMPORTANT]
+> The goal of this README is to provide a basic, structured introduction to NGINX for novice users. Please refer to the [full NGINX documentation](https://nginx.org/en/docs/) for detailed information on [installing](https://nginx.org/en/docs/install.html), [building](https://nginx.org/en/docs/configure.html), [configuring](https://nginx.org/en/docs/dirindex.html), [debugging](https://nginx.org/en/docs/debugging_log.html), etc... These documentation pages also contain a more detailed [Beginners Guide](https://nginx.org/en/docs/beginners_guide.html), How-Tos, [Development guides](https://nginx.org/en/docs/dev/development_guide.html), and a complete module and [directive reference](https://nginx.org/en/docs/dirindex.html).
 
 # Table of contents
 - [How it works](#how-it-works)
@@ -12,10 +15,17 @@ A commercial version, [NGINX Plus](https://www.f5.com/products/nginx/nginx-plus)
   - [Configurations](#configurations)
   - [Runtime](#runtime)
 - [Downloading and installing](#downloading-and-installing)
+  - [Stable and Mainline binaries](#stable-and-mainline-binaries)
+  - [Linux binary installation process](#linux-binary-installation-process)
+  - [FreeBSD installation process](#freebsd-installation-process)
+  - [Windows executables](#windows-executables)
+  - [Dynamic modules](#dynamic-modules)
 - [Getting started with NGINX](#getting-started-with-nginx)
 - [Building from source](#building-from-source)
 - [Technical specifications](#technical-specifications)
-- [Asking questions, reporting issues, and contributing](#asking-questions-reporting-issues-and-contributing)
+- [Asking questions and reporting issues](#asking-questions-reporting-issues-and-contributing)
+- [Contributing code](#contributing-code)
+- [Additional help and resources](#additional-help-and-resources)
 - [Changelog](#changelog)
 - [License](#license)
 
@@ -28,7 +38,7 @@ NGINX is installed software with binary packages available for all major operati
 ## Modules
 NGINX is comprised of individual modules, each extending core functionality by providing additional, configurable features. See "Modules reference" at the bottom of [nginx documentation](https://nginx.org/en/docs/) for a complete list of native modules.
 
-NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. Dynamic modules (eg. njs) are built and distributed separately. They can be added to, or removed from, an NGINX installation at any time.
+NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. Dynamic modules (eg. [njs](https://github.com/nginx/njs)) are built and distributed separately. They can be added to, or removed from, an NGINX installation at any time.
 
 > [!IMPORTANT]
 > Official NGINX package distributions are built with all native open-source static modules.
@@ -50,14 +60,59 @@ By default, the number of [worker processes](https://nginx.org/en/docs/ngx_core_
 > Processes synchronize data through shared memory. For this reason, many NGINX directives require the allocation of shared memory zones. As an example, when configuring [rate limiting](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req), connecting clients must be tracked in a [common memory zone](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req_zone) so all worker processes can know how many times a particular client has accessed the server in a span of time.
 
 # Downloading and installing
+Follow these steps to download and install precompiled NGINX binaries. You may also choose to [build the module locally from source code](#building-from-source).
+
+## Stable and Mainline binaries
+NGINX binaries are built and distributed in two versions. You'll need to decide which is appropriate for your purposes.
+
+### Mainline builds 
+Contain the latest features and bug fixes and are always up to date. However, they may include experimental modules and/or features which introduce new defects.
+
+### Stable builds
+May not contain all of the latest modules and/or features, but do include all of the latest critical bug and security patches, which are ported from the mainline version. We recommend the stable version for production servers.
+
+## Linux binary installation process
+NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to the package manager.
+
+### GPG keys
+GPG signing keys are used to verify the authenticity of packages. Read more [important details](https://nginx.org/en/linux_packages.html#signatures) on our GPG/PGP keys.
+
+### Upgrades
+Future upgrades to the latest version can be managed using the same package manager without the need to manually download and authenticate binaries.
+
+### Installation instructions
+Once a repository has been added and authenticated, follow [these steps](https://nginx.org/en/linux_packages.html) to install NGINX binaries using the package manager native to your Linux distribution.
+
+## FreeBSD installation process
+For more information on installing NGINX on FreeBSD system, visit https://nginx.org/en/docs/install.html
+
+## Windows executables
+Windows executables for mainline and stable versions can be found on the main [NGINX download page](https://nginx.org/en/download.html).
+
+## Dynamic modules
+NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike standard, Static modules, which must be complied into NGINX binaries at build-time, Dynamic modules can be downloaded, installed, and configured at any point. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
+
+> [!TIP]
+> [NGINX JavaScript (NJS)](https://github.com/nginx/njs), is a popular NGINX dynamic module that enables the extension of core NGINX functionality using familiar JavaScript syntax.
 
 # Getting started with NGINX
+For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
 
 # Building from source
 
 # Technical specifications
 
-# Asking questions, reporting issues, and contributing
+# Asking questions and reporting issues
+We encourage you to engage with us.
+- [NGINX GitHub Discussions](https://github.com/nginx/nginx/discussions), is the go-to place to start asking questions and sharing your thoughts.
+- Our [GitHub Issues](https://github.com/nginx/nginx/issues) page offers space to submit and discuss specific issues
+
+# Contributing code 
+Please see the [Contributing](CONTRIBUTING.md) guide for information on how to contribute code.
+
+# Additional help and resources
+- See the [NGINX Community Blog](https://blog.nginx.org/) for more tips, tricks and HOW-TOs related to NGINX and accompanying open source products.
+- Access [nginx.org](https://nginx.org/), your go-to source for all documentation, information and software related to the NGINX suite of open source products.
 
 # Changelog
 See our [changelog](https://nginx.org/en/CHANGES) to keep track of updates.
