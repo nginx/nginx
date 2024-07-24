@@ -1,6 +1,6 @@
 ![NGINX Banner](docs/img/logo.png "NGINX Banner")
 
-NGINX (pronounced "engine x" or "en-jin-eks") is the world's most popular Web Server, as well as a powerful, high performance Load Balancer, Reverse Proxy, API Gateway and Content Cache.
+NGINX (pronounced "engine x" or "en-jin-eks") is the world's most popular Web Server, high performance Load Balancer, Reverse Proxy, API Gateway and Content Cache.
 
 NGINX is free and open source software, distributed under the terms of a simplified [2-clause BSD-like license](LICENSE.md).
 
@@ -21,6 +21,10 @@ A commercial version, [NGINX Plus](https://www.f5.com/products/nginx/nginx-plus)
   - [Windows executables](#windows-executables)
   - [Dynamic modules](#dynamic-modules)
 - [Getting started with NGINX](#getting-started-with-nginx)
+  - [Installing SSL certificates and enabling TLS encryption](#installing-ssl-certificates-and-enabling-tls-encryption)
+  - [Load Balancing](#load-balancing)
+  - [Rate limiting](#rate-limiting)
+  - [Content caching](#content-caching)
 - [Building from source](#building-from-source)
 - [Technical specifications](#technical-specifications)
 - [Asking questions and reporting issues](#asking-questions-reporting-issues-and-contributing)
@@ -98,6 +102,18 @@ NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/do
 # Getting started with NGINX
 For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
 
+## Installing SSL certificates and enabling TLS encryption
+See [Configuring HTTPS servers](https://nginx.org/en/docs/http/configuring_https_servers.html) for a quick guide on how to enable secure traffic to your NGINX installation.
+
+## Load Balancing
+For a quick start guide on configuring NGINX as a Load Balancer, please see [Using nginx as HTTP load balancer](https://nginx.org/en/docs/http/load_balancing.html)
+
+## Rate limiting
+See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-nginx) blog post for an overview of a core concept of provisioning NGINX as an API Gateway
+
+## Content caching
+See [A Guide to Caching with NGINX and NGINX Plus](https://blog.nginx.org/blog/nginx-caching-guide) blog post for an overview of how to use NGINX as a content cache (eg. edge server of a content delivery network).
+
 # Building from source
 
 # Technical specifications
@@ -111,8 +127,8 @@ We encourage you to engage with us.
 Please see the [Contributing](CONTRIBUTING.md) guide for information on how to contribute code.
 
 # Additional help and resources
-- See the [NGINX Community Blog](https://blog.nginx.org/) for more tips, tricks and HOW-TOs related to NGINX and accompanying open source products.
-- Access [nginx.org](https://nginx.org/), your go-to source for all documentation, information and software related to the NGINX suite of open source products.
+- See the [NGINX Community Blog](https://blog.nginx.org/) for more tips, tricks and HOW-TOs related to NGINX and related projects.
+- Access [nginx.org](https://nginx.org/), your go-to source for all documentation, information and software related to the NGINX suite of projects.
 
 # Changelog
 See our [changelog](https://nginx.org/en/CHANGES) to keep track of updates.
