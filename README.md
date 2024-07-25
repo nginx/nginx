@@ -26,7 +26,16 @@ A commercial version, [NGINX Plus](https://www.f5.com/products/nginx/nginx-plus)
   - [Rate limiting](#rate-limiting)
   - [Content caching](#content-caching)
 - [Building from source](#building-from-source)
+  - [Installing dependencies](#installing-dependencies)
+  - [Cloning the NGINX GitHub repository](#cloning-the-nginx-github-repository)
+  - [Configuring the build](#configuring-the-build)
+  - [Compiling](#compiling)
+  - [Location of binary and installation](#location-of-binary-and-installation)
+  - [Running and testing the installed binary](#running-and-testing-the-installed-binary)
 - [Technical specifications](#technical-specifications)
+  - [Supported distributions](#supported-distributions)
+  - [Windows](#windows)
+  - [Supported deployment environments](#supported-deployment-environments)
 - [Asking questions and reporting issues](#asking-questions-reporting-issues-and-contributing)
 - [Contributing code](#contributing-code)
 - [Additional help and resources](#additional-help-and-resources)
@@ -115,8 +124,110 @@ See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-ngi
 See [A Guide to Caching with NGINX and NGINX Plus](https://blog.nginx.org/blog/nginx-caching-guide) blog post for an overview of how to use NGINX as a content cache (eg. edge server of a content delivery network).
 
 # Building from source
+The following steps can be used to build NGINX the source code available in this repository.
+
+## Installing dependencies
+Most Linux distributions will require several dependencies to be installed in order to build NGINX. The following instructions are specific to the `apt` package manager, widely available on most Ubuntu/Debian distributions and their derivatives.
+
+> [!TIP]
+> It is always a good idea to update your package repository lists prior to installing new packages. 
+> ```bash
+> sudo apt update
+> ```
+
+### Installing compiler and make utility
+Use the following command to install the GNU C compiler and Make utility.
+
+```bash
+sudo apt install gcc make
+```
+
+### Installing dependency libraries
+
+```bash
+sudo apt install libpcre3-dev zlib1g-dev
+```
+
+> [!WARNING]
+> This is the minimal set of dependency libraries needed to build NGINX. Other dependencies may be required if you choose to build NGINX with additional modules. Monitor the output of the `configure` command discussed in the following sections for information on which modules may be missing. For example, if you plan to use SSL certificates to encrypt traffic with TLS, you'll need to install the OpenSSL library. To do so, issue the following command.
+
+>```bash
+>sudo apt install libssl-dev
+>
+
+## Cloning the NGINX GitHub repository
+Using your preferred method, clone the NGINX repository into your development directory. See [Cloning a GitHub Repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) for additional help.
+
+```bash
+git clone https://github.com/nginx/nginx.git
+```
+
+## Configuring the build
+Prior to building NGINX (and most other Linux source packages), you must issue the `configure` command with [appropriate flags](https://nginx.org/en/docs/configure.html). This will generate a Makefile in your NGINX source root directory that can then be used to compile NGINX with [options specified during configuration](https://nginx.org/en/docs/configure.html).
+
+From the NGINX source code repository's root directory:
+
+```bash
+auto/configure
+```
+
+> [!IMPORTANT]
+> Configuring the build without any flags will compile NGINX with the minimal set of options. Please refer to https://nginx.org/en/docs/configure.html for a full list of available build configuration options.
+
+## Compiling
+The `configure` script will generate a `Makefile` in the NGINX source root directory upon successful execution. The compile NGINX into a binary, issue the following command from that same directory:
+
+```bash
+make
+```
+
+## Location of binary and installation
+After successful compilation, a binary will be generated at `<NJS_SRC_ROOT_DIR>/objs/nginx`. To install this binary, issue the following command from the source root directory:
+
+```bash
+sudo make install
+```
+
+> [!IMPORTANT]
+> The binary will be installed into the `/usr/local/nginx/` directory.
+
+## Running and testing the installed binary
+To run the installed binary, issue the following command:
+
+```bash
+sudo /usr/local/nginx/sbin/nginx
+```
+
+You may test NGINX operation using `curl`.
+
+```bash
+curl localhost
+```
+
+The output of which should start with:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+```
 
 # Technical specifications
+Pre-built NGINX binaries are available and supported across a wide number of operating systems. Please refer to [this complete list](https://nginx.org/en/) of operating systems, architectures, libraries and other features supported by NGINX.
+
+## Supported distributions
+A [complete list of available Linux packages](https://nginx.org/en/linux_packages.html#distributions) can be found on the binary download page.
+
+See [Tested OS Platforms](https://nginx.org/en/#tested_os_and_platforms) for a  list of operating systems that NGINX is confirmed to run on.
+
+## Windows 
+Windows support is tested on Windows XP, Windows Server 2003, Windows 7, Windows 10. [Windows executables](https://nginx.org/en/download.html) can be found on the download page.
+
+## Supported deployment environments
+- Container
+- Public cloud (AWS, Google Cloud Platform, Microsoft Azure)
+- Virtual machine
 
 # Asking questions and reporting issues
 We encourage you to engage with us.
