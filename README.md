@@ -7,7 +7,7 @@ NGINX is free and open source software, distributed under the terms of a simplif
 A commercial version, [NGINX Plus](https://www.f5.com/products/nginx/nginx-plus), with additional enterprise features and support, is available from [F5, Inc](https://www.f5.com/).
 
 > [!IMPORTANT]
-> The goal of this README is to provide a basic, structured introduction to NGINX for novice users. Please refer to the [full NGINX documentation](https://nginx.org/en/docs/) for detailed information on [installing](https://nginx.org/en/docs/install.html), [building](https://nginx.org/en/docs/configure.html), [configuring](https://nginx.org/en/docs/dirindex.html), [debugging](https://nginx.org/en/docs/debugging_log.html), etc... These documentation pages also contain a more detailed [Beginners Guide](https://nginx.org/en/docs/beginners_guide.html), How-Tos, [Development guides](https://nginx.org/en/docs/dev/development_guide.html), and a complete module and [directive reference](https://nginx.org/en/docs/dirindex.html).
+> The goal of this README is to provide a basic, structured introduction to NGINX for novice users. Please refer to the [full NGINX documentation](https://nginx.org/en/docs/) for detailed information on [installing](https://nginx.org/en/docs/install.html), [building](https://nginx.org/en/docs/configure.html), [configuring](https://nginx.org/en/docs/dirindex.html), [debugging](https://nginx.org/en/docs/debugging_log.html), and so on. These documentation pages also contain a more detailed [Beginners Guide](https://nginx.org/en/docs/beginners_guide.html), How-Tos, [Development guides](https://nginx.org/en/docs/dev/development_guide.html), and a complete module and [directive reference](https://nginx.org/en/docs/dirindex.html).
 
 # Table of contents
 - [How it works](#how-it-works)
@@ -51,10 +51,10 @@ NGINX is installed software with binary packages available for all major operati
 ## Modules
 NGINX is comprised of individual modules, each extending core functionality by providing additional, configurable features. See "Modules reference" at the bottom of [nginx documentation](https://nginx.org/en/docs/) for a complete list of native modules.
 
-NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. Dynamic modules (eg. [njs](https://github.com/nginx/njs)) are built and distributed separately. They can be added to, or removed from, an NGINX installation at any time.
+NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. [Dynamic modules](https://nginx.org/en/linux_packages.html#dynmodules) (for example, [njs](https://github.com/nginx/njs)) are built and distributed separately. They can be added to, or removed from, an NGINX installation at any time.
 
 > [!IMPORTANT]
-> Official NGINX package distributions are built with all native open-source static modules.
+> Official NGINX package distributions are built with all native open source static modules.
 
 ## Configurations
 NGINX is highly flexible and configurable. Provisioning the software is achieved via text-based config file(s) organized in functional sections called "Contexts", accepting a vast amount of configuration parameters called "[Directives](https://nginx.org/en/docs/dirindex.html)". See [Configuration File's Structure](https://nginx.org/en/docs/beginners_guide.html#conf_structure) for a comprehensive definition of Directives and Contexts.
@@ -76,7 +76,7 @@ By default, the number of [worker processes](https://nginx.org/en/docs/ngx_core_
 Follow these steps to download and install precompiled NGINX binaries. You may also choose to [build the module locally from source code](#building-from-source).
 
 ## Stable and Mainline binaries
-NGINX binaries are built and distributed in two versions. You'll need to decide which is appropriate for your purposes.
+NGINX binaries are built and distributed in two versions: stable and mainline. You'll need to decide which is appropriate for your purposes.
 
 ### Mainline builds 
 Contain the latest features and bug fixes and are always up to date. However, they may include experimental modules and/or features which introduce new defects.
@@ -100,7 +100,7 @@ Once a repository has been added and authenticated, follow [these steps](https:/
 For more information on installing NGINX on FreeBSD system, visit https://nginx.org/en/docs/install.html
 
 ## Windows executables
-Windows executables for mainline and stable versions can be found on the main [NGINX download page](https://nginx.org/en/download.html).
+Windows executables for mainline and stable versions can be found on the main [NGINX download page](https://nginx.org/en/download.html). Note that the current implementation of NGINX for Windows is at the Proof-of-Concept stage and can only be used for development and testing purposes.
 
 ## Dynamic modules
 NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike standard, Static modules, which must be complied into NGINX binaries at build-time, Dynamic modules can be downloaded, installed, and configured at any point. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
@@ -109,19 +109,19 @@ NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/do
 > [NGINX JavaScript (NJS)](https://github.com/nginx/njs), is a popular NGINX dynamic module that enables the extension of core NGINX functionality using familiar JavaScript syntax.
 
 # Getting started with NGINX
-For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html)
+For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html).
 
 ## Installing SSL certificates and enabling TLS encryption
 See [Configuring HTTPS servers](https://nginx.org/en/docs/http/configuring_https_servers.html) for a quick guide on how to enable secure traffic to your NGINX installation.
 
 ## Load Balancing
-For a quick start guide on configuring NGINX as a Load Balancer, please see [Using nginx as HTTP load balancer](https://nginx.org/en/docs/http/load_balancing.html)
+For a quick start guide on configuring NGINX as a Load Balancer, please see [Using nginx as HTTP load balancer](https://nginx.org/en/docs/http/load_balancing.html).
 
 ## Rate limiting
-See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-nginx) blog post for an overview of a core concept of provisioning NGINX as an API Gateway
+See our [Rate Limiting with NGINX](https://blog.nginx.org/blog/rate-limiting-nginx) blog post for an overview of a core concept of provisioning NGINX as an API Gateway.
 
 ## Content caching
-See [A Guide to Caching with NGINX and NGINX Plus](https://blog.nginx.org/blog/nginx-caching-guide) blog post for an overview of how to use NGINX as a content cache (eg. edge server of a content delivery network).
+See [A Guide to Caching with NGINX and NGINX Plus](https://blog.nginx.org/blog/nginx-caching-guide) blog post for an overview of how to use NGINX as a content cache (e.g. edge server of a content delivery network).
 
 # Building from source
 The following steps can be used to build NGINX the source code available in this repository.
@@ -222,7 +222,7 @@ A [complete list of available Linux packages](https://nginx.org/en/linux_package
 See [Tested OS Platforms](https://nginx.org/en/#tested_os_and_platforms) for a  list of operating systems that NGINX is confirmed to run on.
 
 ## Windows 
-Windows support is tested on Windows XP, Windows Server 2003, Windows 7, Windows 10. [Windows executables](https://nginx.org/en/download.html) can be found on the download page.
+Windows support is tested on Windows XP, Windows Server 2003, Windows 7, Windows 10. [Windows executables](https://nginx.org/en/download.html) can be found on the download page. Note that the current implementation of NGINX for Windows is at the Proof-of-Concept stage and can only be used for development and testing purposes.
 
 ## Supported deployment environments
 - Container
