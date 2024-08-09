@@ -743,8 +743,15 @@ ngx_quic_keys_discard(ngx_quic_keys_t *keys,
     ngx_quic_crypto_hp_cleanup(client);
     ngx_quic_crypto_hp_cleanup(server);
 
-    ngx_explicit_memzero(client->secret.data, client->secret.len);
-    ngx_explicit_memzero(server->secret.data, server->secret.len);
+    if (client->secret.len) {
+        ngx_explicit_memzero(client->secret.data, client->secret.len);
+        client->secret.len = 0;
+    }
+
+    if (server->secret.len) {
+        ngx_explicit_memzero(server->secret.data, server->secret.len);
+        server->secret.len = 0;
+    }
 }
 
 
@@ -844,6 +851,9 @@ ngx_quic_keys_update(ngx_event_t *ev)
     ngx_explicit_memzero(current->server.secret.data,
                          current->server.secret.len);
 
+    current->client.secret.len = 0;
+    current->server.secret.len = 0;
+
     ngx_explicit_memzero(client_key.data, client_key.len);
     ngx_explicit_memzero(server_key.data, server_key.len);
 
@@ -870,10 +880,17 @@ ngx_quic_keys_cleanup(ngx_quic_keys_t *keys)
     ngx_quic_crypto_cleanup(&next->client);
     ngx_quic_crypto_cleanup(&next->server);
 
-    ngx_explicit_memzero(next->client.secret.data,
-                         next->client.secret.len);
-    ngx_explicit_memzero(next->server.secret.data,
-                         next->server.secret.len);
+    if (next->client.secret.len) {
+        ngx_explicit_memzero(next->client.secret.data,
+                             next->client.secret.len);
+        next->client.secret.len = 0;
+    }
+
+    if (next->server.secret.len) {
+        ngx_explicit_memzero(next->server.secret.data,
+                             next->server.secret.len);
+        next->server.secret.len = 0;
+    }
 }
 
 
