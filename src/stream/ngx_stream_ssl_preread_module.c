@@ -519,7 +519,7 @@ ngx_stream_ssl_preread_servername(ngx_stream_session_t *s,
 
     host = *servername;
 
-    rc = ngx_stream_validate_host(&host, c->pool, 1);
+    rc = ngx_stream_validate_host(&host, c->pool, 0);
 
     if (rc == NGX_ERROR) {
         return NGX_ERROR;
