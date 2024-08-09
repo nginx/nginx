@@ -51,12 +51,12 @@ if "gzip", "gunzip", "ssi", "sub_filter", or "grpc_pass" directives are used.
 <change type="bugfix">
 <para lang="ru">
 nginx не собирался gcc 14,
-если использовался параметр --with-atomic.<br/>
+если использовался параметр --with-libatomic.<br/>
 Спасибо Edgar Bonet.
 </para>
 <para lang="en">
 nginx could not be built by gcc 14
-if the --with-atomic option was used.<br/>
+if the --with-libatomic option was used.<br/>
 Thanks to Edgar Bonet.
 </para>
 </change>
