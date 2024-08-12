@@ -5,6 +5,55 @@
 <change_log title="nginx">
 
 
+<changes ver="1.27.1" date="2024-08-14">
+
+<change type="security">
+<para lang="ru">
+обработка специально созданного mp4-файла модулем ngx_http_mp4_module
+могла приводить к падению рабочего процесса (CVE-2024-7347).<br/>
+Спасибо Nils Bars.
+</para>
+<para lang="en">
+processing of a specially crafted mp4 file by the ngx_http_mp4_module
+might cause a worker process crash (CVE-2024-7347).<br/>
+Thanks to Nils Bars.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь обработчик в модуле stream не является обязательным.
+</para>
+<para lang="en">
+now the stream module handler is not mandatory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+новые HTTP/2-соединения могли игнорировать
+плавное завершение старых рабочих процессов.<br/>
+Спасибо Kasei Wang.
+</para>
+<para lang="en">
+new HTTP/2 connections might ignore
+graceful shutdown of old worker processes.<br/>
+Thanks to Kasei Wang.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в HTTP/3.
+</para>
+<para lang="en">
+Bugfixes in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.27.0" date="2024-05-29">
 
 <change type="security">
