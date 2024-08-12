@@ -3099,7 +3099,8 @@ static ngx_int_t
 ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
     ngx_http_mp4_trak_t *trak, ngx_uint_t start)
 {
-    uint32_t               start_sample, chunk, samples, id, next_chunk, n,
+    uint64_t               n;
+    uint32_t               start_sample, chunk, samples, id, next_chunk,
                            prev_samples;
     ngx_buf_t             *data, *buf;
     ngx_uint_t             entries, target_chunk, chunk_samples;
@@ -3160,7 +3161,7 @@ ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
                        "samples:%uD, id:%uD",
                        start_sample, chunk, next_chunk - chunk, samples, id);
 
-        n = (next_chunk - chunk) * samples;
+        n = (uint64_t) (next_chunk - chunk) * samples;
 
         if (start_sample < n) {
             goto found;
@@ -3182,7 +3183,7 @@ ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
                    "sample:%uD, chunk:%uD, chunks:%uD, samples:%uD",
                    start_sample, chunk, next_chunk - chunk, samples);
 
-    n = (next_chunk - chunk) * samples;
+    n = (uint64_t) (next_chunk - chunk) * samples;
 
     if (start_sample > n) {
         ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
