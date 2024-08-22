@@ -51,6 +51,8 @@ static char *ngx_stream_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_stream_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
@@ -76,6 +78,14 @@ static ngx_conf_enum_t  ngx_stream_ssl_verify[] = {
     { ngx_string("on"), 1 },
     { ngx_string("optional"), 2 },
     { ngx_string("optional_no_ca"), 3 },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_conf_enum_t  ngx_stream_ssl_ocsp[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_string("leaf"), 2 },
     { ngx_null_string, 0 }
 };
 
@@ -210,6 +220,27 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_ssl_srv_conf_t, crl),
+      NULL },
+
+    { ngx_string("ssl_ocsp"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_enum_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, ocsp),
+      &ngx_stream_ssl_ocsp },
+
+    { ngx_string("ssl_ocsp_responder"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, ocsp_responder),
+      NULL },
+
+    { ngx_string("ssl_ocsp_cache"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_stream_ssl_ocsp_cache,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("ssl_conf_command"),
@@ -777,6 +808,7 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->alpn = { 0, NULL };
      *     sscf->ciphers = { 0, NULL };
      *     sscf->shm_zone = NULL;
+     *     sscf->ocsp_responder = { 0, NULL };
      */
 
     sscf->handshake_timeout = NGX_CONF_UNSET_MSEC;
@@ -792,6 +824,8 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->session_timeout = NGX_CONF_UNSET;
     sscf->session_tickets = NGX_CONF_UNSET;
     sscf->session_ticket_keys = NGX_CONF_UNSET_PTR;
+    sscf->ocsp = NGX_CONF_UNSET_UINT;
+    sscf->ocsp_cache_zone = NGX_CONF_UNSET_PTR;
 
     return sscf;
 }
@@ -846,6 +880,10 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->conf_commands, prev->conf_commands, NULL);
 
+    ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
+    ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
+    ngx_conf_merge_ptr_value(conf->ocsp_cache_zone,
+                         prev->ocsp_cache_zone, NULL);
 
     conf->ssl.log = cf->log;
 
@@ -955,6 +993,23 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
 
         if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (conf->ocsp) {
+
+        if (conf->verify == 3) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "\"ssl_ocsp\" is incompatible with "
+                          "\"ssl_verify_client optional_no_ca\"");
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp,
+                         conf->ocsp_cache_zone)
+            != NGX_OK)
+        {
             return NGX_CONF_ERROR;
         }
     }
@@ -1232,6 +1287,85 @@ invalid:
 
 
 static char *
+ngx_stream_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_stream_ssl_srv_conf_t *sscf = conf;
+
+    size_t       len;
+    ngx_int_t    n;
+    ngx_str_t   *value, name, size;
+    ngx_uint_t   j;
+
+    if (sscf->ocsp_cache_zone != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        sscf->ocsp_cache_zone = NULL;
+        return NGX_CONF_OK;
+    }
+
+    if (value[1].len <= sizeof("shared:") - 1
+        || ngx_strncmp(value[1].data, "shared:", sizeof("shared:") - 1) != 0)
+    {
+        goto invalid;
+    }
+
+    len = 0;
+
+    for (j = sizeof("shared:") - 1; j < value[1].len; j++) {
+        if (value[1].data[j] == ':') {
+            break;
+        }
+
+        len++;
+    }
+
+    if (len == 0 || j == value[1].len) {
+        goto invalid;
+    }
+
+    name.len = len;
+    name.data = value[1].data + sizeof("shared:") - 1;
+
+    size.len = value[1].len - j - 1;
+    size.data = name.data + len + 1;
+
+    n = ngx_parse_size(&size);
+
+    if (n == NGX_ERROR) {
+        goto invalid;
+    }
+
+    if (n < (ngx_int_t) (8 * ngx_pagesize)) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "OCSP cache \"%V\" is too small", &value[1]);
+
+        return NGX_CONF_ERROR;
+    }
+
+    sscf->ocsp_cache_zone = ngx_shared_memory_add(cf, &name, n,
+                                                  &ngx_stream_ssl_module_ctx);
+    if (sscf->ocsp_cache_zone == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    sscf->ocsp_cache_zone->init = ngx_ssl_ocsp_cache_init;
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid OCSP cache \"%V\"", &value[1]);
+
+    return NGX_CONF_ERROR;
+}
+
+
+static char *
 ngx_stream_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
@@ -1308,6 +1442,27 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
     ngx_stream_core_main_conf_t   *cmcf;
 
     cmcf = ngx_stream_conf_get_module_main_conf(cf, ngx_stream_core_module);
+    cscfp = cmcf->servers.elts;
+
+    for (s = 0; s < cmcf->servers.nelts; s++) {
+
+        sscf = cscfp[s]->ctx->srv_conf[ngx_stream_ssl_module.ctx_index];
+
+        if (sscf->ssl.ctx == NULL) {
+            continue;
+        }
+
+        cscf = cscfp[s]->ctx->srv_conf[ngx_stream_core_module.ctx_index];
+
+        if (sscf->ocsp) {
+            if (ngx_ssl_ocsp_resolver(cf, &sscf->ssl, cscf->resolver,
+                                      cscf->resolver_timeout)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+        }
+    }
 
     h = ngx_array_push(&cmcf->phases[NGX_STREAM_SSL_PHASE].handlers);
     if (h == NULL) {
