@@ -57,6 +57,11 @@ typedef struct {
     ngx_uint_t       ocsp;
     ngx_str_t        ocsp_responder;
     ngx_shm_zone_t  *ocsp_cache_zone;
+
+    ngx_flag_t       stapling;
+    ngx_flag_t       stapling_verify;
+    ngx_str_t        stapling_file;
+    ngx_str_t        stapling_responder;
 } ngx_stream_ssl_srv_conf_t;
 
 
