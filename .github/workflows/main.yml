@@ -1,0 +1,27 @@
+name: Deployment
+run-name: Deployment in ${{ inputs.target-environment }}/${{ inputs.target-region }} of ${{ inputs.target-image-tag }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target-environment:
+        type: choice
+        description: 'Target environment for deployment'
+        required: true
+        options:
+          - test
+          - int
+          - e2e
+          - prod
+        target-region:
+        type: choice
+        description: "AWS region for deployment"
+        required: true
+        options:
+          - cn-north-1
+          - cn-north-2
+          - cn-north-3
+      target-image-tag:
+        type: string
+        description: 'Set base image to deploy. ex: test-xxx'
+        required: true
