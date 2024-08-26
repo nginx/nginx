@@ -25,3 +25,33 @@ on:
         type: string
         description: 'Set base image to deploy. ex: test-xxx'
         required: true
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.target-environment }}-${{ inputs.target-region }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: Deploy to "${{ inputs.target-environment }}" environment in "${{ inputs.target-region }}" region - "${{ inputs.target-image-tag }}"
+    runs-on: "cawe-linux-x64-compute-medium"
+    steps:
+      - name: Check target-environment & target-region
+      shell: bash
+      run:
+        environment="${{ inputs.target-environment }}"
+        region="${{ inputs.target-region }}"
+
+        if [[ "$environment" == "test" && ! "$region" =~ ^(cn-north-1)$ ]]; then
+          echo "Invalid - Deployments for $environment deployment can only be performed to cn-north-1, not $region"
+          exit 1
+        elif [[ "$environment" == "int" && ! "$region" =~ ^(cn-north-1)$ ]]; then
+          echo "Invalid - Deployments for $environment environment can only be performed to cn-north-1, not $region"
+          exit 1
+        else
+         echo "Valid - Deployments for $environment environment can be performed to $region"
+         if
