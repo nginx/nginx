@@ -15,8 +15,6 @@ release: export
 
 	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
 
-	mv $(TEMP)/$(NGINX)/docs/text/LICENSE $(TEMP)/$(NGINX)
-	mv $(TEMP)/$(NGINX)/docs/text/README $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/man $(TEMP)/$(NGINX)
 
