@@ -27,6 +27,7 @@ fi
 
 cat << END > $NGX_AUTOTEST.c
 
+#include <stdio.h>
 #include <sys/types.h>
 $NGX_INCLUDE_UNISTD_H
 $ngx_feature_incs
