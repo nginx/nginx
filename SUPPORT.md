@@ -19,7 +19,7 @@ For a comprehensive NGINX documentation, check out [https://nginx.org](https://n
 
 ## Contributing
 
-Please see the [contributing guide](https://github.com/nginx/nginx/blob/main/CONTRIBUTING.md) for guidelines on how to best contribute to this project.
+Please see the [contributing guide](https://github.com/nginx/nginx/blob/master/CONTRIBUTING.md) for guidelines on how to best contribute to this project.
 
 <!-- ## Commercial Support
 
