@@ -238,7 +238,10 @@ done:
 
         r->lingering_close = 1;
         r->discard_body = 1;
-        r->request_body->bufs = NULL;
+
+        if (r->request_body) {
+            r->request_body->bufs = NULL;
+        }
 
         r->main->count--;
         r->read_event_handler = ngx_http_block_reading;
