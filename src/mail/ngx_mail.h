@@ -47,6 +47,7 @@ typedef struct {
     int                     tcp_keepintvl;
     int                     tcp_keepcnt;
 #endif
+    int                     protocol;
     int                     backlog;
     int                     rcvbuf;
     int                     sndbuf;
