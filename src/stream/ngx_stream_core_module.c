@@ -984,6 +984,13 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 #endif
 
+#ifdef IPPROTO_MPTCP
+        if (ngx_strcmp(value[i].data, "multipath") == 0) {
+            lsopt.protocol = IPPROTO_MPTCP;
+            continue;
+        }
+#endif
+
         if (ngx_strncmp(value[i].data, "backlog=", 8) == 0) {
             lsopt.backlog = ngx_atoi(value[i].data + 8, value[i].len - 8);
             lsopt.set = 1;
@@ -1251,6 +1258,12 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return "\"proxy_protocol\" parameter is incompatible with \"udp\"";
         }
     }
+
+#ifdef IPPROTO_MPTCP
+        if (lsopt.protocol == IPPROTO_MPTCP) {
+             return "\"multipath\" parameter is incompatible with \"udp\"";
+        }
+#endif
 
     for (n = 0; n < u.naddrs; n++) {
 
