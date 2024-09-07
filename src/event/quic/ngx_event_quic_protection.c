@@ -122,7 +122,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
     ngx_quic_secret_t   *client, *server;
     ngx_quic_ciphers_t   ciphers;
 
-    static const uint8_t salt[20] =
+    static const uint8_t salt[] =
         "\x38\x76\x2c\xf7\xf5\x59\x34\xb3\x4d\x17"
         "\x9a\xe6\xa4\xc8\x0c\xad\xcc\xbb\x7f\x0a";
 
@@ -140,7 +140,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
     is_len = SHA256_DIGEST_LENGTH;
 
     if (ngx_hkdf_extract(is, &is_len, digest, secret->data, secret->len,
-                         salt, sizeof(salt))
+                         salt, sizeof(salt) - 1)
         != NGX_OK)
     {
         return NGX_ERROR;
@@ -153,7 +153,7 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
                    "quic ngx_quic_set_initial_secret");
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
-                   "quic salt len:%uz %*xs", sizeof(salt), sizeof(salt), salt);
+                   "quic salt len:%uz %xs", sizeof(salt) - 1, salt);
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, log, 0,
                    "quic initial secret len:%uz %*xs", is_len, is_len, is);
 #endif
@@ -953,10 +953,14 @@ ngx_quic_create_retry_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
     ngx_quic_ciphers_t   ciphers;
 
     /* 5.8.  Retry Packet Integrity */
-    static u_char     key_data[16] =
-        "\xbe\x0c\x69\x0b\x9f\x66\x57\x5a\x1d\x76\x6b\x54\xe3\x68\xc8\x4e";
-    static u_char     nonce[NGX_QUIC_IV_LEN] =
-        "\x46\x15\x99\xd3\x5d\x63\x2b\xf2\x23\x98\x25\xbb";
+    static u_char     key_data[16] = {
+        0xbe, 0x0c, 0x69, 0x0b, 0x9f, 0x66, 0x57, 0x5a,
+        0x1d, 0x76, 0x6b, 0x54, 0xe3, 0x68, 0xc8, 0x4e,
+    };
+    static u_char     nonce[NGX_QUIC_IV_LEN] = {
+        0x46, 0x15, 0x99, 0xd3, 0x5d, 0x63,
+        0x2b, 0xf2, 0x23, 0x98, 0x25, 0xbb,
+    };
     static ngx_str_t  in = ngx_string("");
 
     ad.data = res->data;
