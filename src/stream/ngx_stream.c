@@ -1046,6 +1046,10 @@ ngx_stream_add_listening(ngx_conf_t *cf, ngx_stream_conf_addr_t *addr)
     ls->reuseport = addr->opt.reuseport;
 #endif
 
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+    ls->transparent = addr->opt.transparent;
+#endif
+
     ls->wildcard = addr->opt.wildcard;
 
     return ls;
