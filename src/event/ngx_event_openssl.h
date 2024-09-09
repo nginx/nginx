@@ -196,6 +196,7 @@ typedef struct {
 #define NGX_SSL_CACHE_CERT  0
 #define NGX_SSL_CACHE_PKEY  1
 #define NGX_SSL_CACHE_CRL   2
+#define NGX_SSL_CACHE_CA    3
 
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);

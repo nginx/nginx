@@ -22,6 +22,8 @@ static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
+static int ngx_ssl_cmp_x509_name(const X509_NAME *const *a,
+    const X509_NAME *const *b);
 static void ngx_ssl_passwords_cleanup(void *data);
 static int ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
@@ -656,6 +658,12 @@ ngx_int_t
 ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_int_t depth)
 {
+    int                   n, i;
+    char                 *err;
+    X509                 *x509;
+    X509_NAME            *name;
+    X509_STORE           *store;
+    STACK_OF(X509)       *chain;
     STACK_OF(X509_NAME)  *list;
 
     SSL_CTX_set_verify(ssl->ctx, SSL_VERIFY_PEER, ngx_ssl_verify_callback);
@@ -666,33 +674,83 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
-    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (SSL_CTX_load_verify_locations(ssl->ctx, (char *) cert->data, NULL)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_load_verify_locations(\"%s\") failed",
-                      cert->data);
-        return NGX_ERROR;
-    }
-
-    /*
-     * SSL_CTX_load_verify_locations() may leave errors in the error queue
-     * while returning success
-     */
-
-    ERR_clear_error();
-
-    list = SSL_load_client_CA_file((char *) cert->data);
-
+    list = sk_X509_NAME_new(ngx_ssl_cmp_x509_name);
     if (list == NULL) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_load_client_CA_file(\"%s\") failed", cert->data);
         return NGX_ERROR;
     }
+
+    store = SSL_CTX_get_cert_store(ssl->ctx);
+
+    if (store == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_get_cert_store() failed");
+        return NGX_ERROR;
+    }
+
+    chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CA, &err, cert, NULL);
+    if (chain == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load certificate \"%s\": %s",
+                          cert->data, err);
+        }
+
+        sk_X509_NAME_pop_free(list, X509_NAME_free);
+        return NGX_ERROR;
+    }
+
+    n = sk_X509_num(chain);
+
+    for (i = 0; i < n; i++) {
+        x509 = sk_X509_value(chain, i);
+
+        if (X509_STORE_add_cert(store, x509) != 1) {
+
+            if (ngx_ssl_cert_already_in_hash()) {
+                continue;
+            }
+
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "X509_STORE_add_cert(\"%s\") failed", cert->data);
+            sk_X509_NAME_pop_free(list, X509_NAME_free);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+
+        name = X509_get_subject_name(x509);
+        if (name == NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "X509_get_subject_name(\"%s\") failed", cert->data);
+            sk_X509_NAME_pop_free(list, X509_NAME_free);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+
+        name = X509_NAME_dup(name);
+        if (name == NULL) {
+            sk_X509_NAME_pop_free(list, X509_NAME_free);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+
+#ifdef OPENSSL_IS_BORINGSSL
+        if (sk_X509_NAME_find(list, NULL, name) > 0) {
+#else
+        if (sk_X509_NAME_find(list, name) >= 0) {
+#endif
+            X509_NAME_free(name);
+            continue;
+        }
+
+        if (sk_X509_NAME_push(list, name) == 0) {
+            sk_X509_NAME_pop_free(list, X509_NAME_free);
+            sk_X509_pop_free(chain, X509_free);
+            X509_NAME_free(name);
+            return NGX_ERROR;
+        }
+    }
+
+    sk_X509_pop_free(chain, X509_free);
 
     SSL_CTX_set_client_CA_list(ssl->ctx, list);
 
@@ -704,6 +762,12 @@ ngx_int_t
 ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     ngx_int_t depth)
 {
+    int              i, n;
+    char            *err;
+    X509            *x509;
+    X509_STORE      *store;
+    STACK_OF(X509)  *chain;
+
     SSL_CTX_set_verify(ssl->ctx, SSL_CTX_get_verify_mode(ssl->ctx),
                        ngx_ssl_verify_callback);
 
@@ -713,25 +777,44 @@ ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_OK;
     }
 
-    if (ngx_conf_full_name(cf->cycle, cert, 1) != NGX_OK) {
-        return NGX_ERROR;
-    }
+    store = SSL_CTX_get_cert_store(ssl->ctx);
 
-    if (SSL_CTX_load_verify_locations(ssl->ctx, (char *) cert->data, NULL)
-        == 0)
-    {
+    if (store == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_load_verify_locations(\"%s\") failed",
-                      cert->data);
+                      "SSL_CTX_get_cert_store() failed");
         return NGX_ERROR;
     }
 
-    /*
-     * SSL_CTX_load_verify_locations() may leave errors in the error queue
-     * while returning success
-     */
+    chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CA, &err, cert, NULL);
+    if (chain == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load certificate \"%s\": %s",
+                          cert->data, err);
+        }
 
-    ERR_clear_error();
+        return NGX_ERROR;
+    }
+
+    n = sk_X509_num(chain);
+
+    for (i = 0; i < n; i++) {
+        x509 = sk_X509_value(chain, i);
+
+        if (X509_STORE_add_cert(store, x509) != 1) {
+
+            if (ngx_ssl_cert_already_in_hash()) {
+                continue;
+            }
+
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "X509_STORE_add_cert(\"%s\") failed", cert->data);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+    }
+
+    sk_X509_pop_free(chain, X509_free);
 
     return NGX_OK;
 }
@@ -984,6 +1067,13 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
             }
         }
     }
+}
+
+
+static int
+ngx_ssl_cmp_x509_name(const X509_NAME *const *a, const X509_NAME *const *b)
+{
+    return (X509_NAME_cmp(*a, *b));
 }
 
 
