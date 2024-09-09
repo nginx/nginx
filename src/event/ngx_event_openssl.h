@@ -193,6 +193,9 @@ typedef struct {
 #define NGX_SSL_BUFSIZE  16384
 
 
+#define NGX_SSL_CACHE_CERT  0
+
+
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
 
