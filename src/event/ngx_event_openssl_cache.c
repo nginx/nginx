@@ -11,6 +11,7 @@
 
 #define NGX_SSL_CACHE_PATH    0
 #define NGX_SSL_CACHE_DATA    1
+#define NGX_SSL_CACHE_ENGINE  2
 
 
 typedef struct {
@@ -57,6 +58,13 @@ static void *ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err,
 static void ngx_ssl_cache_cert_free(void *data);
 static void *ngx_ssl_cache_cert_ref(char **err, void *data);
 
+static void *ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err,
+    void *data);
+static int ngx_ssl_cache_pkey_password_callback(char *buf, int size, int rwflag,
+    void *userdata);
+static void ngx_ssl_cache_pkey_free(void *data);
+static void *ngx_ssl_cache_pkey_ref(char **err, void *data);
+
 static BIO *ngx_ssl_cache_create_bio(ngx_ssl_cache_key_t *id, char **err);
 
 static void *ngx_openssl_cache_create_conf(ngx_cycle_t *cycle);
@@ -94,6 +102,11 @@ static ngx_ssl_cache_type_t  ngx_ssl_cache_types[] = {
     { ngx_ssl_cache_cert_create,
       ngx_ssl_cache_cert_free,
       ngx_ssl_cache_cert_ref },
+
+    /* NGX_SSL_CACHE_PKEY */
+    { ngx_ssl_cache_pkey_create,
+      ngx_ssl_cache_pkey_free,
+      ngx_ssl_cache_pkey_ref },
 };
 
 
@@ -166,6 +179,11 @@ ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
 {
     if (ngx_strncmp(path->data, "data:", sizeof("data:") - 1) == 0) {
         id->type = NGX_SSL_CACHE_DATA;
+
+    } else if (index == NGX_SSL_CACHE_PKEY
+        && ngx_strncmp(path->data, "engine:", sizeof("engine:") - 1) == 0)
+    {
+        id->type = NGX_SSL_CACHE_ENGINE;
 
     } else {
         if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
@@ -346,6 +364,156 @@ ngx_ssl_cache_cert_ref(char **err, void *data)
     }
 
     return chain;
+}
+
+
+static void *
+ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
+{
+    ngx_array_t  *passwords = data;
+
+    BIO              *bio;
+    EVP_PKEY         *pkey;
+    ngx_str_t        *pwd;
+    ngx_uint_t        tries;
+    pem_password_cb  *cb;
+
+    if (id->type == NGX_SSL_CACHE_ENGINE) {
+
+#ifndef OPENSSL_NO_ENGINE
+
+        u_char  *p, *last;
+        ENGINE  *engine;
+
+        p = id->data + sizeof("engine:") - 1;
+        last = (u_char *) ngx_strchr(p, ':');
+
+        if (last == NULL) {
+            *err = "invalid syntax";
+            return NULL;
+        }
+
+        *last = '\0';
+
+        engine = ENGINE_by_id((char *) p);
+
+        *last++ = ':';
+
+        if (engine == NULL) {
+            *err = "ENGINE_by_id() failed";
+            return NULL;
+        }
+
+        pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
+
+        if (pkey == NULL) {
+            *err = "ENGINE_load_private_key() failed";
+            ENGINE_free(engine);
+            return NULL;
+        }
+
+        ENGINE_free(engine);
+
+        return pkey;
+
+#else
+
+        *err = "loading \"engine:...\" certificate keys is not supported";
+        return NULL;
+
+#endif
+    }
+
+    bio = ngx_ssl_cache_create_bio(id, err);
+    if (bio == NULL) {
+        return NULL;
+    }
+
+    if (passwords) {
+        tries = passwords->nelts;
+        pwd = passwords->elts;
+        cb = ngx_ssl_cache_pkey_password_callback;
+
+    } else {
+        tries = 1;
+        pwd = NULL;
+        cb = NULL;
+    }
+
+    for ( ;; ) {
+
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
+        if (pkey != NULL) {
+            break;
+        }
+
+        if (tries-- > 1) {
+            ERR_clear_error();
+            (void) BIO_reset(bio);
+            pwd++;
+            continue;
+        }
+
+        *err = "PEM_read_bio_PrivateKey() failed";
+        BIO_free(bio);
+        return NULL;
+    }
+
+    BIO_free(bio);
+
+    return pkey;
+}
+
+
+static int
+ngx_ssl_cache_pkey_password_callback(char *buf, int size, int rwflag,
+    void *userdata)
+{
+    ngx_str_t  *pwd = userdata;
+
+    if (rwflag) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      "ngx_ssl_cache_pkey_password_callback() is called "
+                      "for encryption");
+        return 0;
+    }
+
+    if (pwd == NULL) {
+        return 0;
+    }
+
+    if (pwd->len > (size_t) size) {
+        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                      "password is truncated to %d bytes", size);
+    } else {
+        size = pwd->len;
+    }
+
+    ngx_memcpy(buf, pwd->data, size);
+
+    return size;
+}
+
+
+static void
+ngx_ssl_cache_pkey_free(void *data)
+{
+    EVP_PKEY_free(data);
+}
+
+
+static void *
+ngx_ssl_cache_pkey_ref(char **err, void *data)
+{
+    EVP_PKEY  *pkey = data;
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+    EVP_PKEY_up_ref(pkey);
+#else
+    CRYPTO_add(&pkey->references, 1, CRYPTO_LOCK_EVP_PKEY);
+#endif
+
+    return data;
 }
 
 

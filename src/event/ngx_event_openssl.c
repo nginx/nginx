@@ -18,10 +18,6 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
-static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
-    ngx_str_t *key, ngx_array_t *passwords);
-static int ngx_ssl_password_callback(char *buf, int size, int rwflag,
-    void *userdata);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
@@ -537,7 +533,7 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     }
 #endif
 
-    pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords);
+    pkey = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_PKEY, &err, key, passwords);
     if (pkey == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -611,7 +607,8 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
 
 #endif
 
-    pkey = ngx_ssl_load_certificate_key(pool, &err, key, passwords);
+    pkey = ngx_ssl_cache_connection_fetch(pool, NGX_SSL_CACHE_PKEY, &err,
+                                          key, passwords);
     if (pkey == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
@@ -632,151 +629,6 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
     EVP_PKEY_free(pkey);
 
     return NGX_OK;
-}
-
-
-static EVP_PKEY *
-ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
-    ngx_str_t *key, ngx_array_t *passwords)
-{
-    BIO              *bio;
-    EVP_PKEY         *pkey;
-    ngx_str_t        *pwd;
-    ngx_uint_t        tries;
-    pem_password_cb  *cb;
-
-    if (ngx_strncmp(key->data, "engine:", sizeof("engine:") - 1) == 0) {
-
-#ifndef OPENSSL_NO_ENGINE
-
-        u_char  *p, *last;
-        ENGINE  *engine;
-
-        p = key->data + sizeof("engine:") - 1;
-        last = (u_char *) ngx_strchr(p, ':');
-
-        if (last == NULL) {
-            *err = "invalid syntax";
-            return NULL;
-        }
-
-        *last = '\0';
-
-        engine = ENGINE_by_id((char *) p);
-
-        *last++ = ':';
-
-        if (engine == NULL) {
-            *err = "ENGINE_by_id() failed";
-            return NULL;
-        }
-
-        pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
-
-        if (pkey == NULL) {
-            *err = "ENGINE_load_private_key() failed";
-            ENGINE_free(engine);
-            return NULL;
-        }
-
-        ENGINE_free(engine);
-
-        return pkey;
-
-#else
-
-        *err = "loading \"engine:...\" certificate keys is not supported";
-        return NULL;
-
-#endif
-    }
-
-    if (ngx_strncmp(key->data, "data:", sizeof("data:") - 1) == 0) {
-
-        bio = BIO_new_mem_buf(key->data + sizeof("data:") - 1,
-                              key->len - (sizeof("data:") - 1));
-        if (bio == NULL) {
-            *err = "BIO_new_mem_buf() failed";
-            return NULL;
-        }
-
-    } else {
-
-        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, key)
-            != NGX_OK)
-        {
-            *err = NULL;
-            return NULL;
-        }
-
-        bio = BIO_new_file((char *) key->data, "r");
-        if (bio == NULL) {
-            *err = "BIO_new_file() failed";
-            return NULL;
-        }
-    }
-
-    if (passwords) {
-        tries = passwords->nelts;
-        pwd = passwords->elts;
-        cb = ngx_ssl_password_callback;
-
-    } else {
-        tries = 1;
-        pwd = NULL;
-        cb = NULL;
-    }
-
-    for ( ;; ) {
-
-        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
-        if (pkey != NULL) {
-            break;
-        }
-
-        if (tries-- > 1) {
-            ERR_clear_error();
-            (void) BIO_reset(bio);
-            pwd++;
-            continue;
-        }
-
-        *err = "PEM_read_bio_PrivateKey() failed";
-        BIO_free(bio);
-        return NULL;
-    }
-
-    BIO_free(bio);
-
-    return pkey;
-}
-
-
-static int
-ngx_ssl_password_callback(char *buf, int size, int rwflag, void *userdata)
-{
-    ngx_str_t *pwd = userdata;
-
-    if (rwflag) {
-        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
-                      "ngx_ssl_password_callback() is called for encryption");
-        return 0;
-    }
-
-    if (pwd == NULL) {
-        return 0;
-    }
-
-    if (pwd->len > (size_t) size) {
-        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                      "password is truncated to %d bytes", size);
-    } else {
-        size = pwd->len;
-    }
-
-    ngx_memcpy(buf, pwd->data, size);
-
-    return size;
 }
 
 
