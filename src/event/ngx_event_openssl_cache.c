@@ -10,6 +10,7 @@
 
 
 #define NGX_SSL_CACHE_PATH    0
+#define NGX_SSL_CACHE_DATA    1
 
 
 typedef struct {
@@ -51,6 +52,13 @@ static ngx_int_t ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index,
 static ngx_ssl_cache_node_t *ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache,
     ngx_ssl_cache_type_t *type, ngx_ssl_cache_key_t *id, uint32_t hash);
 
+static void *ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err,
+    void *data);
+static void ngx_ssl_cache_cert_free(void *data);
+static void *ngx_ssl_cache_cert_ref(char **err, void *data);
+
+static BIO *ngx_ssl_cache_create_bio(ngx_ssl_cache_key_t *id, char **err);
+
 static void *ngx_openssl_cache_create_conf(ngx_cycle_t *cycle);
 static void ngx_ssl_cache_cleanup(void *data);
 static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
@@ -82,6 +90,10 @@ ngx_module_t  ngx_openssl_cache_module = {
 
 static ngx_ssl_cache_type_t  ngx_ssl_cache_types[] = {
 
+    /* NGX_SSL_CACHE_CERT */
+    { ngx_ssl_cache_cert_create,
+      ngx_ssl_cache_cert_free,
+      ngx_ssl_cache_cert_ref },
 };
 
 
@@ -152,13 +164,18 @@ static ngx_int_t
 ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
     ngx_ssl_cache_key_t *id)
 {
-    if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
-        != NGX_OK)
-    {
-        return NGX_ERROR;
-    }
+    if (ngx_strncmp(path->data, "data:", sizeof("data:") - 1) == 0) {
+        id->type = NGX_SSL_CACHE_DATA;
 
-    id->type = NGX_SSL_CACHE_PATH;
+    } else {
+        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        id->type = NGX_SSL_CACHE_PATH;
+    }
 
     id->len = path->len;
     id->data = path->data;
@@ -216,6 +233,144 @@ ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache, ngx_ssl_cache_type_t *type,
     }
 
     return NULL;
+}
+
+
+static void *
+ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
+{
+    BIO             *bio;
+    X509            *x509;
+    u_long           n;
+    STACK_OF(X509)  *chain;
+
+    chain = sk_X509_new_null();
+    if (chain == NULL) {
+        *err = "sk_X509_new_null() failed";
+        return NULL;
+    }
+
+    bio = ngx_ssl_cache_create_bio(id, err);
+    if (bio == NULL) {
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    /* certificate itself */
+
+    x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
+    if (x509 == NULL) {
+        *err = "PEM_read_bio_X509_AUX() failed";
+        BIO_free(bio);
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    if (sk_X509_push(chain, x509) == 0) {
+        *err = "sk_X509_push() failed";
+        BIO_free(bio);
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    /* rest of the chain */
+
+    for ( ;; ) {
+
+        x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        if (x509 == NULL) {
+            n = ERR_peek_last_error();
+
+            if (ERR_GET_LIB(n) == ERR_LIB_PEM
+                && ERR_GET_REASON(n) == PEM_R_NO_START_LINE)
+            {
+                /* end of file */
+                ERR_clear_error();
+                break;
+            }
+
+            /* some real error */
+
+            *err = "PEM_read_bio_X509() failed";
+            BIO_free(bio);
+            sk_X509_pop_free(chain, X509_free);
+            return NULL;
+        }
+
+        if (sk_X509_push(chain, x509) == 0) {
+            *err = "sk_X509_push() failed";
+            BIO_free(bio);
+            X509_free(x509);
+            sk_X509_pop_free(chain, X509_free);
+            return NULL;
+        }
+    }
+
+    BIO_free(bio);
+
+    return chain;
+}
+
+
+static void
+ngx_ssl_cache_cert_free(void *data)
+{
+    sk_X509_pop_free(data, X509_free);
+}
+
+
+static void *
+ngx_ssl_cache_cert_ref(char **err, void *data)
+{
+    int              n, i;
+    X509            *x509;
+    STACK_OF(X509)  *chain;
+
+    chain = sk_X509_dup(data);
+    if (chain == NULL) {
+        *err = "sk_X509_dup() failed";
+        return NULL;
+    }
+
+    n = sk_X509_num(chain);
+
+    for (i = 0; i < n; i++) {
+        x509 = sk_X509_value(chain, i);
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+        X509_up_ref(x509);
+#else
+        CRYPTO_add(&x509->references, 1, CRYPTO_LOCK_X509);
+#endif
+    }
+
+    return chain;
+}
+
+
+static BIO *
+ngx_ssl_cache_create_bio(ngx_ssl_cache_key_t *id, char **err)
+{
+    BIO  *bio;
+
+    if (id->type == NGX_SSL_CACHE_DATA) {
+
+        bio = BIO_new_mem_buf(id->data + sizeof("data:") - 1,
+                              id->len - (sizeof("data:") - 1));
+        if (bio == NULL) {
+            *err = "BIO_new_mem_buf() failed";
+        }
+
+        return bio;
+    }
+
+    bio = BIO_new_file((char *) id->data, "r");
+    if (bio == NULL) {
+        *err = "BIO_new_file() failed";
+    }
+
+    return bio;
 }
 
 

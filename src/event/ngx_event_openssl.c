@@ -18,8 +18,6 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
-static X509 *ngx_ssl_load_certificate(ngx_pool_t *pool, char **err,
-    ngx_str_t *cert, STACK_OF(X509) **chain);
 static EVP_PKEY *ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
     ngx_str_t *key, ngx_array_t *passwords);
 static int ngx_ssl_password_callback(char *buf, int size, int rwflag,
@@ -449,8 +447,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     EVP_PKEY        *pkey;
     STACK_OF(X509)  *chain;
 
-    x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
-    if (x509 == NULL) {
+    chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CERT, &err, cert, NULL);
+    if (chain == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                           "cannot load certificate \"%s\": %s",
@@ -459,6 +457,8 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
         return NGX_ERROR;
     }
+
+    x509 = sk_X509_shift(chain);
 
     if (SSL_CTX_use_certificate(ssl->ctx, x509) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -570,8 +570,9 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
     EVP_PKEY        *pkey;
     STACK_OF(X509)  *chain;
 
-    x509 = ngx_ssl_load_certificate(pool, &err, cert, &chain);
-    if (x509 == NULL) {
+    chain = ngx_ssl_cache_connection_fetch(pool, NGX_SSL_CACHE_CERT, &err,
+                                           cert, NULL);
+    if (chain == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                           "cannot load certificate \"%s\": %s",
@@ -580,6 +581,8 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
 
         return NGX_ERROR;
     }
+
+    x509 = sk_X509_shift(chain);
 
     if (SSL_use_certificate(c->ssl->connection, x509) == 0) {
         ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
@@ -629,96 +632,6 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
     EVP_PKEY_free(pkey);
 
     return NGX_OK;
-}
-
-
-static X509 *
-ngx_ssl_load_certificate(ngx_pool_t *pool, char **err, ngx_str_t *cert,
-    STACK_OF(X509) **chain)
-{
-    BIO     *bio;
-    X509    *x509, *temp;
-    u_long   n;
-
-    if (ngx_strncmp(cert->data, "data:", sizeof("data:") - 1) == 0) {
-
-        bio = BIO_new_mem_buf(cert->data + sizeof("data:") - 1,
-                              cert->len - (sizeof("data:") - 1));
-        if (bio == NULL) {
-            *err = "BIO_new_mem_buf() failed";
-            return NULL;
-        }
-
-    } else {
-
-        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, cert)
-            != NGX_OK)
-        {
-            *err = NULL;
-            return NULL;
-        }
-
-        bio = BIO_new_file((char *) cert->data, "r");
-        if (bio == NULL) {
-            *err = "BIO_new_file() failed";
-            return NULL;
-        }
-    }
-
-    /* certificate itself */
-
-    x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
-    if (x509 == NULL) {
-        *err = "PEM_read_bio_X509_AUX() failed";
-        BIO_free(bio);
-        return NULL;
-    }
-
-    /* rest of the chain */
-
-    *chain = sk_X509_new_null();
-    if (*chain == NULL) {
-        *err = "sk_X509_new_null() failed";
-        BIO_free(bio);
-        X509_free(x509);
-        return NULL;
-    }
-
-    for ( ;; ) {
-
-        temp = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-        if (temp == NULL) {
-            n = ERR_peek_last_error();
-
-            if (ERR_GET_LIB(n) == ERR_LIB_PEM
-                && ERR_GET_REASON(n) == PEM_R_NO_START_LINE)
-            {
-                /* end of file */
-                ERR_clear_error();
-                break;
-            }
-
-            /* some real error */
-
-            *err = "PEM_read_bio_X509() failed";
-            BIO_free(bio);
-            X509_free(x509);
-            sk_X509_pop_free(*chain, X509_free);
-            return NULL;
-        }
-
-        if (sk_X509_push(*chain, temp) == 0) {
-            *err = "sk_X509_push() failed";
-            BIO_free(bio);
-            X509_free(x509);
-            sk_X509_pop_free(*chain, X509_free);
-            return NULL;
-        }
-    }
-
-    BIO_free(bio);
-
-    return x509;
 }
 
 
