@@ -90,6 +90,11 @@ struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
+
+    ngx_array_t                 certs;
+
+    ngx_rbtree_t                staple_rbtree;
+    ngx_rbtree_node_t           staple_sentinel;
 };
 
 
@@ -330,10 +335,8 @@ extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
 extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
-extern int  ngx_ssl_certificate_index;
-extern int  ngx_ssl_next_certificate_index;
+extern int  ngx_ssl_index;
 extern int  ngx_ssl_certificate_name_index;
-extern int  ngx_ssl_stapling_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */
