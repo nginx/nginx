@@ -224,6 +224,11 @@ ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 
+void *ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
+    ngx_str_t *path, void *data);
+void *ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index,
+    char **err, ngx_str_t *path, void *data);
+
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
     ngx_array_t *passwords);
