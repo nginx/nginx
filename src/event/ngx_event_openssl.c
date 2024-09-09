@@ -18,6 +18,7 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
+static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
@@ -739,15 +740,14 @@ ngx_ssl_trusted_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 ngx_int_t
 ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
 {
-    X509_STORE   *store;
-    X509_LOOKUP  *lookup;
+    int                  n, i;
+    char                *err;
+    X509_CRL            *x509;
+    X509_STORE          *store;
+    STACK_OF(X509_CRL)  *chain;
 
     if (crl->len == 0) {
         return NGX_OK;
-    }
-
-    if (ngx_conf_full_name(cf->cycle, crl, 1) != NGX_OK) {
-        return NGX_ERROR;
     }
 
     store = SSL_CTX_get_cert_store(ssl->ctx);
@@ -758,26 +758,66 @@ ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
         return NGX_ERROR;
     }
 
-    lookup = X509_STORE_add_lookup(store, X509_LOOKUP_file());
+    chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CRL, &err, crl, NULL);
+    if (chain == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load CRL \"%s\": %s", crl->data, err);
+        }
 
-    if (lookup == NULL) {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "X509_STORE_add_lookup() failed");
         return NGX_ERROR;
     }
 
-    if (X509_LOOKUP_load_file(lookup, (char *) crl->data, X509_FILETYPE_PEM)
-        == 0)
-    {
-        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "X509_LOOKUP_load_file(\"%s\") failed", crl->data);
-        return NGX_ERROR;
+    n = sk_X509_CRL_num(chain);
+
+    for (i = 0; i < n; i++) {
+        x509 = sk_X509_CRL_value(chain, i);
+
+        if (X509_STORE_add_crl(store, x509) != 1) {
+
+            if (ngx_ssl_cert_already_in_hash()) {
+                continue;
+            }
+
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "X509_STORE_add_crl(\"%s\") failed", crl->data);
+            sk_X509_CRL_pop_free(chain, X509_CRL_free);
+            return NGX_ERROR;
+        }
     }
+
+    sk_X509_CRL_pop_free(chain, X509_CRL_free);
 
     X509_STORE_set_flags(store,
                          X509_V_FLAG_CRL_CHECK|X509_V_FLAG_CRL_CHECK_ALL);
 
     return NGX_OK;
+}
+
+
+static ngx_inline ngx_int_t
+ngx_ssl_cert_already_in_hash(void)
+{
+#if !(OPENSSL_VERSION_NUMBER >= 0x1010009fL \
+      || LIBRESSL_VERSION_NUMBER >= 0x3050000fL)
+    u_long  error;
+
+    /*
+     * OpenSSL prior to 1.1.0i doesn't ignore duplicate certificate entries,
+     * see https://github.com/openssl/openssl/commit/c0452248
+     */
+
+    error = ERR_peek_last_error();
+
+    if (ERR_GET_LIB(error) == ERR_LIB_X509
+        && ERR_GET_REASON(error) == X509_R_CERT_ALREADY_IN_HASH_TABLE)
+    {
+        ERR_clear_error();
+        return 1;
+    }
+#endif
+
+    return 0;
 }
 
 
