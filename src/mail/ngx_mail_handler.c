@@ -714,6 +714,7 @@ ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c)
                    "mail auth cram-md5: \"%V\" \"%V\"", &s->login, &s->passwd);
 
     s->auth_method = NGX_MAIL_AUTH_CRAM_MD5;
+    s->proxy_auth_method = NGX_MAIL_AUTH_CRAM_MD5;
 
     return NGX_DONE;
 }
@@ -748,6 +749,7 @@ ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
                    "mail auth external: \"%V\"", &s->login);
 
     s->auth_method = NGX_MAIL_AUTH_EXTERNAL;
+    s->proxy_auth_method = NGX_MAIL_AUTH_EXTERNAL;
 
     return NGX_DONE;
 }
