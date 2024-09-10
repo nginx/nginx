@@ -36,10 +36,6 @@ Enterprise distributions, commercial support and training are available from [F5
   - [Compiling](#compiling)
   - [Location of binary and installation](#location-of-binary-and-installation)
   - [Running and testing the installed binary](#running-and-testing-the-installed-binary)
-- [Technical specifications](#technical-specifications)
-  - [Supported distributions](#supported-distributions)
-  - [Windows](#windows)
-  - [Supported deployment environments](#supported-deployment-environments)
 - [Asking questions and reporting issues](#asking-questions-reporting-issues-and-contributing)
 - [Contributing code](#contributing-code)
 - [Additional help and resources](#additional-help-and-resources)
@@ -53,12 +49,9 @@ NGINX is installed software with binary packages available for all major operati
 > While nearly all popular Linux-based operating systems are distributed with a community version of nginx, we highly advise installation and usage of official [packages](https://nginx.org/en/linux_packages.html) or sources from this repository. Doing so ensures that you're using the most recent release or source code, including the latest feature-set, fixes and security patches.
 
 ## Modules
-NGINX is comprised of individual modules, each extending core functionality by providing additional, configurable features. See "Modules reference" at the bottom of [nginx documentation](https://nginx.org/en/docs/) for a complete list of native modules.
+NGINX is comprised of individual modules, each extending core functionality by providing additional, configurable features. See "Modules reference" at the bottom of [nginx documentation](https://nginx.org/en/docs/) for a complete list of official modules.
 
-NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. [Dynamic modules](https://nginx.org/en/linux_packages.html#dynmodules) (for example, [njs](https://github.com/nginx/njs)) are built and distributed separately. They can be added to, or removed from, an NGINX installation at any time.
-
-> [!IMPORTANT]
-> Official NGINX package distributions are built with all native open source static modules.
+NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. See [Dynamic Modules](#dynamic-modules) for more information on how they work, as well as, how to obtain, install, and configure them.
 
 ## Configurations
 NGINX is highly flexible and configurable. Provisioning the software is achieved via text-based config file(s) organized in functional sections called "Contexts", accepting a vast amount of configuration parameters called "[Directives](https://nginx.org/en/docs/dirindex.html)". See [Configuration File's Structure](https://nginx.org/en/docs/beginners_guide.html#conf_structure) for a comprehensive definition of Directives and Contexts.
@@ -77,7 +70,7 @@ The number of [worker processes](https://nginx.org/en/docs/ngx_core_module.html#
 > Processes synchronize data through shared memory. For this reason, many NGINX directives require the allocation of shared memory zones. As an example, when configuring [rate limiting](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req), connecting clients must be tracked in a [common memory zone](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req_zone) so all worker processes can know how many times a particular client has accessed the server in a span of time.
 
 # Downloading and installing
-Follow these steps to download and install precompiled NGINX binaries. You may also choose to [build the module locally from source code](#building-from-source).
+Follow these steps to download and install precompiled NGINX binaries. You may also choose to [build NGINX locally from source code](#building-from-source).
 
 ## Stable and Mainline binaries
 NGINX binaries are built and distributed in two versions: stable and mainline. You'll need to [decide which is appropriate for your purposes](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/#choosing-between-a-stable-or-a-mainline-version).
@@ -101,10 +94,13 @@ For more information on installing NGINX on FreeBSD system, visit https://nginx.
 Windows executables for mainline and stable releases can be found on the main [NGINX download page](https://nginx.org/en/download.html). Note that the current implementation of NGINX for Windows is at the Proof-of-Concept stage and should only be used for development and testing purposes.
 
 ## Dynamic modules
-NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike standard, Static modules, which must be complied into NGINX binaries at build-time, Dynamic modules can be downloaded, installed, and configured at any point. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
+NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike standard, Static modules, which must be complied into NGINX binaries at build-time, Dynamic modules can be downloaded, installed, and configured after the core NGINX binaries have been built. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
 
 > [!TIP]
 > [NGINX JavaScript (njs)](https://github.com/nginx/njs), is a popular NGINX dynamic module that enables the extension of core NGINX functionality using familiar JavaScript syntax.
+
+> [!IMPORTANT]
+> If desired, dynamic modules can also be built statically into NGINX at compile time.
 
 # Getting started with NGINX
 For a gentle introduction to NGINX basics, please see our [Beginner’s Guide](https://nginx.org/en/docs/beginners_guide.html).
@@ -160,7 +156,7 @@ git clone https://github.com/nginx/nginx.git
 ```
 
 ## Configuring the build
-Prior to building NGINX (and most other Linux source packages), you must issue the `configure` command with [appropriate flags](https://nginx.org/en/docs/configure.html). This will generate a Makefile in your NGINX source root directory that can then be used to compile NGINX with [options specified during configuration](https://nginx.org/en/docs/configure.html).
+Prior to building NGINX (and most other Linux source packages), you must run the `configure` script with [appropriate flags](https://nginx.org/en/docs/configure.html). This will generate a Makefile in your NGINX source root directory that can then be used to compile NGINX with [options specified during configuration](https://nginx.org/en/docs/configure.html).
 
 From the NGINX source code repository's root directory:
 
@@ -179,7 +175,7 @@ make
 ```
 
 ## Location of binary and installation
-After successful compilation, a binary will be generated at `<NJS_SRC_ROOT_DIR>/objs/nginx`. To install this binary, issue the following command from the source root directory:
+After successful compilation, a binary will be generated at `<NGINX_SRC_ROOT_DIR>/objs/nginx`. To install this binary, issue the following command from the source root directory:
 
 ```bash
 sudo make install
@@ -209,22 +205,6 @@ The output of which should start with:
 <head>
 <title>Welcome to nginx!</title>
 ```
-
-# Technical specifications
-Pre-built NGINX binaries are available and supported across a wide number of operating systems. Please refer to [this complete list](https://nginx.org/en/) of operating systems, architectures, libraries and other features supported by NGINX.
-
-## Supported distributions
-A [complete list of available Linux packages](https://nginx.org/en/linux_packages.html#distributions) can be found on the binary download page.
-
-See [Tested OS Platforms](https://nginx.org/en/#tested_os_and_platforms) for a  list of operating systems that NGINX is confirmed to run on.
-
-## Windows
-Windows support is tested on Windows XP, Windows Server 2003, Windows 7, Windows 10. [Windows executables](https://nginx.org/en/download.html) can be found on the download page. Note that the current implementation of NGINX for Windows is at the Proof-of-Concept stage and should only be used for development and testing purposes.
-
-## Supported deployment environments
-- Container
-- Public cloud (AWS, Google Cloud Platform, Microsoft Azure)
-- Virtual machine
 
 # Asking questions and reporting issues
 We encourage you to engage with us.
