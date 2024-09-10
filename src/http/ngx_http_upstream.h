@@ -176,6 +176,7 @@ typedef struct {
     ngx_flag_t                       request_buffering;
     ngx_flag_t                       pass_request_headers;
     ngx_flag_t                       pass_request_body;
+    ngx_flag_t                       pass_trailers;
 
     ngx_flag_t                       ignore_client_abort;
     ngx_flag_t                       intercept_errors;
@@ -224,7 +225,6 @@ typedef struct {
     signed                           store:2;
     unsigned                         intercept_404:1;
     unsigned                         change_buffering:1;
-    unsigned                         pass_trailers:1;
     unsigned                         preserve_output:1;
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)

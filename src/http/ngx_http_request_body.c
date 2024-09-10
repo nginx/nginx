@@ -870,7 +870,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 
         for ( ;; ) {
 
-            rc = ngx_http_parse_chunked(r, b, rb->chunked);
+            rc = ngx_http_parse_chunked(r, b, rb->chunked, 0);
 
             if (rc == NGX_OK) {
 
@@ -1131,7 +1131,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                            cl->buf->file_pos,
                            cl->buf->file_last - cl->buf->file_pos);
 
-            rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked);
+            rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked, 0);
 
             if (rc == NGX_OK) {
 
