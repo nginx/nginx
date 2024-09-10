@@ -628,6 +628,12 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             ngx_quic_queue_frame(qc, f);
             break;
 
+        case NGX_QUIC_FT_DATA_BLOCKED:
+            if (qc->streams.send_max_data == f->u.data_blocked.limit) {
+                ngx_queue_insert_tail(&ctx->frames, &f->queue);
+            }
+            break;
+
         case NGX_QUIC_FT_STREAM:
             qs = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
 

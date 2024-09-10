@@ -159,8 +159,8 @@ typedef struct {
     uint64_t                          client_streams_uni;
     uint64_t                          client_streams_bidi;
 
-    ngx_uint_t                        initialized;
-                                                 /* unsigned  initialized:1; */
+    unsigned                          initialized:1;
+    unsigned                          flow_control_blocked:1;
 } ngx_quic_streams_t;
 
 
