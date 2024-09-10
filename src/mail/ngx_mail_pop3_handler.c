@@ -464,6 +464,7 @@ ngx_mail_pop3_apop(ngx_mail_session_t *s, ngx_connection_t *c)
                    "pop3 apop: \"%V\" \"%V\"", &s->login, &s->passwd);
 
     s->auth_method = NGX_MAIL_AUTH_APOP;
+    s->proxy_auth_method = NGX_MAIL_AUTH_APOP;
 
     return NGX_DONE;
 }
