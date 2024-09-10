@@ -117,7 +117,7 @@ ngx_int_t ngx_http_arg(ngx_http_request_t *r, u_char *name, size_t len,
 void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
     ngx_str_t *args);
 ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
-    ngx_http_chunked_t *ctx);
+    ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers);
 
 
 ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);

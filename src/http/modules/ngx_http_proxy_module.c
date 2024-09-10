@@ -138,6 +138,8 @@ typedef struct {
     ngx_chain_t                   *free;
     ngx_chain_t                   *busy;
 
+    ngx_buf_t                     *trailers;
+
     unsigned                       head:1;
     unsigned                       internal_chunked:1;
     unsigned                       header_sent:1;
@@ -163,6 +165,8 @@ static ngx_int_t ngx_http_proxy_non_buffered_copy_filter(void *data,
     ssize_t bytes);
 static ngx_int_t ngx_http_proxy_non_buffered_chunked_filter(void *data,
     ssize_t bytes);
+static ngx_int_t ngx_http_proxy_process_trailer(ngx_http_request_t *r,
+    ngx_buf_t *buf);
 static void ngx_http_proxy_abort_request(ngx_http_request_t *r);
 static void ngx_http_proxy_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
@@ -455,6 +459,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.pass_request_body),
+      NULL },
+
+    { ngx_string("proxy_pass_trailers"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.pass_trailers),
       NULL },
 
     { ngx_string("proxy_buffer_size"),
@@ -2181,11 +2192,12 @@ ngx_http_proxy_copy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 static ngx_int_t
 ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 {
-    ngx_int_t              rc;
-    ngx_buf_t             *b, **prev;
-    ngx_chain_t           *cl;
-    ngx_http_request_t    *r;
-    ngx_http_proxy_ctx_t  *ctx;
+    ngx_int_t                   rc;
+    ngx_buf_t                  *b, **prev;
+    ngx_chain_t                *cl;
+    ngx_http_request_t         *r;
+    ngx_http_proxy_ctx_t       *ctx;
+    ngx_http_proxy_loc_conf_t  *plcf;
 
     if (buf->pos == buf->last) {
         return NGX_OK;
@@ -2216,11 +2228,39 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     }
 
     b = NULL;
+
+    if (ctx->trailers) {
+        rc = ngx_http_proxy_process_trailer(r, buf);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK) {
+
+            /* a whole response has been parsed successfully */
+
+            p->length = 0;
+            r->upstream->keepalive = !r->upstream->headers_in.connection_close;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                              "upstream sent data after trailers");
+                r->upstream->keepalive = 0;
+            }
+        }
+
+        goto free_buf;
+    }
+
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
     prev = &buf->shadow;
 
     for ( ;; ) {
 
-        rc = ngx_http_parse_chunked(r, buf, &ctx->chunked);
+        rc = ngx_http_parse_chunked(r, buf, &ctx->chunked,
+                                    plcf->upstream.pass_trailers);
 
         if (rc == NGX_OK) {
 
@@ -2275,6 +2315,19 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
         if (rc == NGX_DONE) {
 
+            if (plcf->upstream.pass_trailers) {
+                rc = ngx_http_proxy_process_trailer(r, buf);
+
+                if (rc == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
+
+                if (rc == NGX_AGAIN) {
+                    p->length = 1;
+                    break;
+                }
+            }
+
             /* a whole response has been parsed successfully */
 
             p->length = 0;
@@ -2305,6 +2358,8 @@ ngx_http_proxy_chunked_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
 
         return NGX_ERROR;
     }
+
+free_buf:
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, p->log, 0,
                    "http proxy chunked state %ui, length %O",
@@ -2401,11 +2456,14 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
 {
     ngx_http_request_t   *r = data;
 
-    ngx_int_t              rc;
-    ngx_buf_t             *b, *buf;
-    ngx_chain_t           *cl, **ll;
-    ngx_http_upstream_t   *u;
-    ngx_http_proxy_ctx_t  *ctx;
+    ngx_int_t                   rc;
+    ngx_buf_t                  *b, *buf;
+    ngx_chain_t                *cl, **ll;
+    ngx_http_upstream_t        *u;
+    ngx_http_proxy_ctx_t       *ctx;
+    ngx_http_proxy_loc_conf_t  *plcf;
+
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
@@ -2419,13 +2477,38 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
     buf->pos = buf->last;
     buf->last += bytes;
 
+    if (ctx->trailers) {
+        rc = ngx_http_proxy_process_trailer(r, buf);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK) {
+
+            /* a whole response has been parsed successfully */
+
+            r->upstream->keepalive = !u->headers_in.connection_close;
+            u->length = 0;
+
+            if (buf->pos != buf->last) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                              "upstream sent data after trailers");
+                u->keepalive = 0;
+            }
+        }
+
+        return NGX_OK;
+    }
+
     for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) {
         ll = &cl->next;
     }
 
     for ( ;; ) {
 
-        rc = ngx_http_parse_chunked(r, buf, &ctx->chunked);
+        rc = ngx_http_parse_chunked(r, buf, &ctx->chunked,
+                                    plcf->upstream.pass_trailers);
 
         if (rc == NGX_OK) {
 
@@ -2467,6 +2550,19 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
 
         if (rc == NGX_DONE) {
 
+            if (plcf->upstream.pass_trailers) {
+                rc = ngx_http_proxy_process_trailer(r, buf);
+
+                if (rc == NGX_ERROR) {
+                    return NGX_ERROR;
+                }
+
+                if (rc == NGX_AGAIN) {
+                    u->length = 1;
+                    break;
+                }
+            }
+
             /* a whole response has been parsed successfully */
 
             u->keepalive = !u->headers_in.connection_close;
@@ -2494,6 +2590,115 @@ ngx_http_proxy_non_buffered_chunked_filter(void *data, ssize_t bytes)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_process_trailer(ngx_http_request_t *r, ngx_buf_t *buf)
+{
+    size_t                      len;
+    ngx_int_t                   rc;
+    ngx_buf_t                  *b;
+    ngx_table_elt_t            *h;
+    ngx_http_proxy_ctx_t       *ctx;
+    ngx_http_proxy_loc_conf_t  *plcf;
+
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (ctx->trailers == NULL) {
+        ctx->trailers = ngx_create_temp_buf(r->pool,
+                                            plcf->upstream.buffer_size);
+        if (ctx->trailers == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    b = ctx->trailers;
+    len = ngx_min(buf->last - buf->pos, b->end - b->last);
+
+    b->last = ngx_cpymem(b->last, buf->pos, len);
+
+    for ( ;; ) {
+
+        rc = ngx_http_parse_header_line(r, b, 1);
+
+        if (rc == NGX_OK) {
+
+            /* a header line has been parsed successfully */
+
+            h = ngx_list_push(&r->upstream->headers_in.trailers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+
+            h->hash = r->header_hash;
+
+            h->key.len = r->header_name_end - r->header_name_start;
+            h->value.len = r->header_end - r->header_start;
+
+            h->key.data = ngx_pnalloc(r->pool,
+                               h->key.len + 1 + h->value.len + 1 + h->key.len);
+            if (h->key.data == NULL) {
+                h->hash = 0;
+                return NGX_ERROR;
+            }
+
+            h->value.data = h->key.data + h->key.len + 1;
+            h->lowcase_key = h->key.data + h->key.len + 1 + h->value.len + 1;
+
+            ngx_memcpy(h->key.data, r->header_name_start, h->key.len);
+            h->key.data[h->key.len] = '\0';
+            ngx_memcpy(h->value.data, r->header_start, h->value.len);
+            h->value.data[h->value.len] = '\0';
+
+            if (h->key.len == r->lowcase_index) {
+                ngx_memcpy(h->lowcase_key, r->lowcase_header, h->key.len);
+
+            } else {
+                ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
+            }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy trailer: \"%V: %V\"",
+                           &h->key, &h->value);
+            continue;
+        }
+
+        if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+
+            /* a whole header has been parsed successfully */
+
+            buf->pos += len - (b->last - b->pos);
+
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy trailer done");
+
+            return NGX_OK;
+        }
+
+        if (rc == NGX_AGAIN) {
+            buf->pos += len;
+
+            if (b->last == b->end) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent too big trailers");
+                return NGX_ERROR;
+            }
+
+            return NGX_AGAIN;
+        }
+
+        /* rc == NGX_HTTP_PARSE_INVALID_HEADER */
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent invalid trailer: \"%*s\\x%02xd...\"",
+                      r->header_end - r->header_name_start,
+                      r->header_name_start, *r->header_end);
+
+        return NGX_ERROR;
+    }
 }
 
 
@@ -3379,6 +3584,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
+    conf->upstream.pass_trailers = NGX_CONF_UNSET;
 
 #if (NGX_HTTP_CACHE)
     conf->upstream.cache = NGX_CONF_UNSET;
@@ -3720,6 +3926,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.pass_request_headers, 1);
     ngx_conf_merge_value(conf->upstream.pass_request_body,
                               prev->upstream.pass_request_body, 1);
+
+    ngx_conf_merge_value(conf->upstream.pass_trailers,
+                              prev->upstream.pass_trailers, 0);
 
     ngx_conf_merge_value(conf->upstream.intercept_errors,
                               prev->upstream.intercept_errors, 0);
