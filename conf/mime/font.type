@@ -1,0 +1,9 @@
+# Auto-generated from https://www.iana.org/assignments/media-types/font.csv
+types {
+    font/collection collection;
+    font/otf otf;
+    font/sfnt sfnt;
+    font/ttf ttf;
+    font/woff woff;
+    font/woff2 woff2;
+}

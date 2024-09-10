@@ -1,0 +1,20 @@
+# Auto-generated from https://www.iana.org/assignments/media-types/multipart.csv
+types {
+    multipart/alternative alternative;
+    multipart/appledouble appledouble;
+    multipart/byteranges byteranges;
+    multipart/digest digest;
+    multipart/encrypted encrypted;
+    multipart/example example;
+    multipart/form-data form-data;
+    multipart/header-set header-set;
+    multipart/mixed mixed;
+    multipart/multilingual multilingual;
+    multipart/parallel parallel;
+    multipart/related related;
+    multipart/report report;
+    multipart/signed signed;
+    multipart/vnd.bint.med-plus vnd.bint.med-plus;
+    multipart/voice-message voice-message;
+    multipart/x-mixed-replace x-mixed-replace;
+}

@@ -1,0 +1,25 @@
+# Auto-generated from https://www.iana.org/assignments/media-types/message.csv
+types {
+    message/bhttp bhttp;
+    message/CPIM CPIM;
+    message/delivery-status delivery-status;
+    message/disposition-notification disposition-notification;
+    message/example example;
+    message/external-body external-body;
+    message/feedback-report feedback-report;
+    message/global global;
+    message/global-delivery-status global-delivery-status;
+    message/global-disposition-notification global-disposition-notification;
+    message/global-headers global-headers;
+    message/http http;
+    message/imdn+xml imdn+xml;
+    message/mls mls;
+    message/ohttp-req ohttp-req;
+    message/ohttp-res ohttp-res;
+    message/partial partial;
+    message/rfc822 rfc822;
+    message/sip sip;
+    message/sipfrag sipfrag;
+    message/tracking-status tracking-status;
+    message/vnd.wfa.wsc vnd.wfa.wsc;
+}

@@ -1,0 +1,44 @@
+# Auto-generated from https://www.iana.org/assignments/media-types/model.csv
+types {
+    model/3mf 3mf;
+    model/e57 e57;
+    model/example example;
+    model/gltf-binary gltf-binary;
+    model/gltf+json gltf+json;
+    model/JT JT;
+    model/iges iges;
+    model/mesh mesh;
+    model/mtl mtl;
+    model/obj obj;
+    model/prc prc;
+    model/step step;
+    model/step+xml step+xml;
+    model/step+zip step+zip;
+    model/step-xml+zip step-xml+zip;
+    model/stl stl;
+    model/u3d u3d;
+    model/vnd.bary vnd.bary;
+    model/vnd.cld vnd.cld;
+    model/vnd.collada+xml vnd.collada+xml;
+    model/vnd.dwf vnd.dwf;
+    model/vnd.flatland.3dml vnd.flatland.3dml;
+    model/vnd.gdl vnd.gdl;
+    model/vnd.gs-gdl vnd.gs-gdl;
+    model/vnd.gtw vnd.gtw;
+    model/vnd.moml+xml vnd.moml+xml;
+    model/vnd.mts vnd.mts;
+    model/vnd.opengex vnd.opengex;
+    model/vnd.parasolid.transmit.binary vnd.parasolid.transmit.binary;
+    model/vnd.parasolid.transmit.text vnd.parasolid.transmit.text;
+    model/vnd.pytha.pyox vnd.pytha.pyox;
+    model/vnd.rosette.annotated-data-model vnd.rosette.annotated-data-model;
+    model/vnd.sap.vds vnd.sap.vds;
+    model/vnd.usda vnd.usda;
+    model/vnd.usdz+zip vnd.usdz+zip;
+    model/vnd.valve.source.compiled-map vnd.valve.source.compiled-map;
+    model/vnd.vtu vnd.vtu;
+    model/vrml vrml;
+    model/x3d-vrml x3d-vrml;
+    model/x3d+fastinfoset x3d+fastinfoset;
+    model/x3d+xml x3d+xml;
+}

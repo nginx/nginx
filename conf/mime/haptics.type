@@ -1,0 +1,6 @@
+# Auto-generated from https://www.iana.org/assignments/media-types/haptics.csv
+types {
+    haptics/ivs ivs;
+    haptics/hjif hjif;
+    haptics/hmpg hmpg;
+}
