@@ -19,9 +19,9 @@ types {
     image/png                                        png;
     image/svg+xml                                    svg svgz;
     image/tiff                                       tif tiff;
+    image/vnd.microsoft.icon                         ico;
     image/vnd.wap.wbmp                               wbmp;
     image/webp                                       webp;
-    image/x-icon                                     ico;
     image/x-jng                                      jng;
     image/x-ms-bmp                                   bmp;
 
