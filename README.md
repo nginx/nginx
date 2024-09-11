@@ -51,15 +51,7 @@ NGINX is installed software with binary packages available for all major operati
 ## Modules
 NGINX is comprised of individual modules, each extending core functionality by providing additional, configurable features. See "Modules reference" at the bottom of [nginx documentation](https://nginx.org/en/docs/) for a complete list of official modules.
 
-NGINX modules can be built and distributed as static or dynamic modules. Static modules are defined at build-time, compiled, and distributed in the resulting binaries. See [Dynamic Modules](#dynamic-modules) for more information on how they work, as well as, how to obtain, install, and configure them.
-
-> [!TIP]
-> You can issue the following command to see which static modules your NGINX binaries were built with:
-```bash
-sudo nginx -V
-```
-> See [Configuring the build](#configuring-the-build) for information on how to include specific Static modules into your nginx build.
-
+NGINX supports static and dynamic modules. Static modules are defined at build-time and compiled into the resulting binaries. See [Dynamic Modules](#dynamic-modules) for more information on how they work, as well as, how to obtain, install, and configure them.
 
 ## Configurations
 NGINX is highly flexible and configurable. Provisioning the software is achieved via text-based config file(s) organized in functional sections called "Contexts", accepting a vast amount of configuration parameters called "[Directives](https://nginx.org/en/docs/dirindex.html)". See [Configuration File's Structure](https://nginx.org/en/docs/beginners_guide.html#conf_structure) for a comprehensive definition of Directives and Contexts.
@@ -105,7 +97,7 @@ For more information on installing NGINX on FreeBSD system, visit https://nginx.
 Windows executables for mainline and stable releases can be found on the main [NGINX download page](https://nginx.org/en/download.html). Note that the current implementation of NGINX for Windows is at the Proof-of-Concept stage and should only be used for development and testing purposes. For additional information, please see [nginx for Windows](https://nginx.org/en/docs/windows.html).
 
 ## Dynamic modules
-NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike Static modules, dynamically built modules can be downloaded, installed, and configured after the core NGINX binaries have been built. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
+NGINX version 1.9.11 added support for [Dynamic Modules](https://nginx.org/en/docs/ngx_core_module.html#load_module). Unlike standard, Static modules, which must be complied into NGINX binaries at build-time, Dynamic modules can be downloaded, installed, and configured after the core NGINX binaries have been built. [Official dynamic module binaries](https://nginx.org/en/linux_packages.html#dynmodules) are available from the same package repository as the core NGINX binaries described in previous steps.
 
 > [!TIP]
 > [NGINX JavaScript (njs)](https://github.com/nginx/njs), is a popular NGINX dynamic module that enables the extension of core NGINX functionality using familiar JavaScript syntax.
