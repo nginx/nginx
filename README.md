@@ -64,7 +64,7 @@ Rather than running in a single, monolithic process, NGINX is architected to sca
 - A "master" process that maintains worker processes, as well as, reads and evaluates configuration files.
 - One or more "worker" processes that process data (eg. HTTP requests).
 
-The number of [worker processes](https://nginx.org/en/docs/ngx_core_module.html#worker_processes) is defined in the configuration file and may be fixed for a given configuration or automatically adjusted to the number of available CPU cores. In most cases, the latter option optimally balances load across available system resources, as NGINX is designed to efficiently distribute work across all worker processes.
+The number of [worker processes](https://nginx.org/en/docs/ngx_core_module.html#worker_processes) is typically set to the number of CPU cores on the system. In most cases, this optimally balances load across available system resources, as NGINX is designed to efficiently distribute work across all available worker processes.
 
 > [!TIP]
 > Processes synchronize data through shared memory. For this reason, many NGINX directives require the allocation of shared memory zones. As an example, when configuring [rate limiting](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req), connecting clients must be tracked in a [common memory zone](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req_zone) so all worker processes can know how many times a particular client has accessed the server in a span of time.
