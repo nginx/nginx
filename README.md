@@ -87,10 +87,13 @@ NGINX binaries are built and distributed in two versions: stable and mainline. Y
 > Stable binaries are built from the various stable branches and mainline binaries are built from the [master](https://github.com/nginx/nginx/tree/master) branch maintained in this repository.
 
 ## Linux binary installation process
-The NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to your system's package manager. Follow [these steps](https://nginx.org/en/linux_packages.html) to download, verify, and install NGINX binaries using the package manager appropriate for your Linux distribution.
+The NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to your system's package manager.
 
 ### Upgrades
 Future upgrades to the latest version can be managed using the same package manager without the need to manually download and verify binaries.
+
+### Installation instructions
+Once a repository has been added and verified, follow [these steps](https://nginx.org/en/linux_packages.html) to install NGINX binaries using the package manager native to your Linux distribution.
 
 ## FreeBSD installation process
 For more information on installing NGINX on FreeBSD system, visit https://nginx.org/en/docs/install.html
