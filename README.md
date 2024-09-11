@@ -89,6 +89,9 @@ NGINX binaries are built and distributed in two versions: stable and mainline. Y
 ## Linux binary installation process
 The NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to your system's package manager.
 
+### GPG keys
+GPG signing keys are used to verify the authenticity of packages. Read more [important details](https://nginx.org/en/linux_packages.html#signatures) on our GPG/PGP keys.
+
 ### Upgrades
 Future upgrades to the latest version can be managed using the same package manager without the need to manually download and verify binaries.
 
