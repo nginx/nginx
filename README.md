@@ -75,9 +75,6 @@ Follow these steps to download and install precompiled NGINX binaries. You may a
 ## Stable and Mainline binaries
 NGINX binaries are built and distributed in two versions: stable and mainline. You'll need to [decide which is appropriate for your purposes](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/#choosing-between-a-stable-or-a-mainline-version).
 
-> [!TIP]
-> Stable binaries are built from the various stable branches and mainline binaries are built from the [master](https://github.com/nginx/nginx/tree/master) branch maintained in this repository.
-
 ## Linux binary installation process
 The NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to your system's package manager.
 
