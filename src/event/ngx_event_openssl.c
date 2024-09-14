@@ -5034,6 +5034,27 @@ ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *pattern)
 #endif
 
 
+
+ngx_int_t
+ngx_ssl_get_custom_extension(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{    
+    SSL *ssl = c->ssl->connection;
+    if (ssl == NULL) {
+        return NGX_ERROR;
+    }
+
+    const char * extension_data;
+    extension_data = (const char *)SSL_get_ex_data(ssl, 0);
+    if (extension_data == NULL){
+        extension_data = "";
+    }
+    s->data = (u_char *)extension_data;
+    s->len = strlen(extension_data);
+
+    return NGX_OK;
+}
+
+
 ngx_int_t
 ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
