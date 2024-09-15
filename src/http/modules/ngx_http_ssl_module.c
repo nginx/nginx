@@ -661,21 +661,22 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     return sscf;
 }
 
-/* Callback to parse the custom extension data */
-int parse_custom_extension_callback(SSL *ssl, unsigned int ext_type, unsigned int context,
+
+static int
+parse_custom_extension_callback(SSL *ssl, unsigned int ext_type, unsigned int context,
                         const unsigned char *in, size_t inlen, X509 *x,
                         size_t chainidx, int *al, void *parse_arg) {
-
     char *extension_data = malloc(inlen + 1);
     if (extension_data == NULL) {
         return 0;
     }
     memcpy(extension_data, in, inlen);
     extension_data[inlen] = '\0';
-
-    SSL_set_ex_data(ssl, 0, extension_data);
+    SSL_set_ex_data(ssl, ngx_ssl_custom_extension_index, extension_data);
+    
     return 1;
 }
+
 
 static char *
 ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
@@ -768,12 +769,12 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
-  
+    
     if(conf->custom_extension_type != NGX_CONF_UNSET_UINT){
         SSL_CTX_add_custom_ext(
             conf->ssl.ctx,
             conf->custom_extension_type,
-            SSL_EXT_CLIENT_HELLO,
+            SSL_EXT_CLIENT_HELLO,    
             NULL,
             NULL,
             NULL,
