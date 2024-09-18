@@ -11,6 +11,7 @@
 
 
 #if defined OPENSSL_IS_BORINGSSL                                              \
+    || defined OPENSSL_IS_AWSLC                                               \
     || defined LIBRESSL_VERSION_NUMBER                                        \
     || NGX_QUIC_OPENSSL_COMPAT
 #define NGX_QUIC_BORINGSSL_API   1
@@ -583,7 +584,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-#ifdef OPENSSL_IS_BORINGSSL
+#if defined(OPENSSL_IS_BORINGSSL) || defined(OPENSSL_IS_AWSLC)
     if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic SSL_set_quic_early_data_context() failed");
