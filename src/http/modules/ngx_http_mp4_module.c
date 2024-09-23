@@ -3176,7 +3176,10 @@ ngx_http_mp4_crop_stsc_data(ngx_http_mp4_file_t *mp4,
 
         start_sample -= n;
 
-        prev_samples = samples;
+        if (next_chunk > chunk) {
+            prev_samples = samples;
+        }
+
         chunk = next_chunk;
         samples = ngx_mp4_get_32value(entry->samples);
         id = ngx_mp4_get_32value(entry->id);
