@@ -25,6 +25,6 @@ clean:
 	@rm -f $(RESULT) *.o
 
 debug: $(PROGNAME).o
-	llvm-objdump -S -no-show-raw-insn $<
+	llvm-objdump -S --no-show-raw-insn $<
 
 .DELETE_ON_ERROR:
