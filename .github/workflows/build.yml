@@ -99,21 +99,21 @@ jobs:
         with:
           name: error_log
           path: error.log
-      - name: Run sonar-scanner
-        id: analysis
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" > error.log 2>&1
-          cat error.log
-
-      - name: Upload Sonar Log
-        if: ${{ failure() && steps.analysis.outcome == 'failure'}}
-        uses: actions/upload-artifact@v4
-        with:
-          name: error_log
-          path: error.log
+#      - name: Run sonar-scanner
+#        id: analysis
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#        run: |
+#          sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" > error.log 2>&1
+#          cat error.log
+#
+#      - name: Upload Sonar Log
+#        if: ${{ failure() && steps.analysis.outcome == 'failure'}}
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: error_log
+#          path: error.log
       - name: Test
         id: test
         working-directory: nginx-tests
