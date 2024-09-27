@@ -6,3 +6,5 @@ on:
 jobs:
   buildbot:
     uses: ./.github/workflows/check-pr.yml
+  sonarbot:
+    uses: ./.github/workflows/sonar.yml
