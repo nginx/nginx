@@ -138,5 +138,5 @@ jobs:
       uses: ./.github/workflows/acr.yml
       secrets: inherit
       with:
-        name: error_log
-        path: error.log
+        artifact: error_log
+        filename: error.log
