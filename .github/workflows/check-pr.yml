@@ -1,10 +1,96 @@
 name: check-pr
 
 on:
-  pull_request:
+  workflow_call:
 
 jobs:
-  check-pr:
-    uses: nginx/ci-self-hosted/.github/workflows/nginx-check-pr.yml@main
-  buildbot:
-    uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@main
+  build-and-test:
+    runs-on: [ ubuntu-22.04 ]
+    steps:
+      - name: checkout v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+
+      - name: Check out nginx tests
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          repository: nginx/nginx-tests
+          path: nginx-tests
+
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install \
+            libedit-dev \
+            libgd-dev \
+            libgeoip-dev \
+            libpcre2-dev \
+            libperl-dev \
+            libssl-dev \
+            libxml2-dev \
+            libxslt1-dev \
+            zlib1g-dev \
+            ffmpeg \
+            libcache-memcached-perl \
+            libcryptx-perl \
+            libgd-perl \
+            libio-socket-ssl-perl \
+            libtest-harness-perl \
+            libprotocol-websocket-perl \
+            libscgi-perl \
+            uwsgi \
+            uwsgi-plugin-python3
+
+      - name: Configure and build
+        run: |
+          mkdir -p t
+          export DEB_BUILD_MAINT_OPTIONS="hardening=+all"
+          export DEB_CFLAGS_MAINT_APPEND="-Wp,-D_FORTIFY_SOURCE=2 -fPIC"
+          export DEB_LDFLAGS_MAINT_APPEND=""-Wl,--as-needed""
+          auto/configure \
+            --prefix=/tmp \
+            --with-http_ssl_module \
+            --with-http_realip_module \
+            --with-http_addition_module \
+            --with-http_sub_module \
+            --with-http_dav_module \
+            --with-http_flv_module \
+            --with-http_mp4_module \
+            --with-http_gunzip_module \
+            --with-http_gzip_static_module \
+            --with-http_random_index_module \
+            --with-http_secure_link_module \
+            --with-http_stub_status_module \
+            --with-mail \
+            --with-mail_ssl_module \
+            --with-select_module \
+            --with-poll_module \
+            --with-http_auth_request_module \
+            --with-http_v2_module \
+            --with-http_slice_module \
+            --with-stream \
+            --with-stream_ssl_module \
+            --with-stream_ssl_preread_module \
+            --with-stream_realip_module \
+            --with-threads \
+            --with-compat \
+            --with-cpp_test_module \
+            --with-http_perl_module \
+            --with-http_xslt_module \
+            --with-http_image_filter_module \
+            --with-http_degradation_module \
+            --with-http_v3_module \
+            --with-http_geoip_module \
+            --with-stream_geoip_module \
+            --with-cc-opt="$(dpkg-buildflags --get CFLAGS)" \
+            --with-ld-opt="$(dpkg-buildflags --get LDFLAGS)" \
+          || cat objs/autoconf.err
+          make -j$(nproc) -k || make
+
+      - name: Test
+        working-directory: nginx-tests
+        run: |
+          prove -v -j$(nproc) --state=save ../t . || prove -v --state=failed
+        env:
+          TEST_NGINX_BINARY: "${{ github.workspace }}/objs/nginx"
+          TEST_NGINX_VERBOSE: 1
+          PERL5LIB: "${{ github.workspace }}/nginx-tests/lib"
