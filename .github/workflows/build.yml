@@ -131,8 +131,8 @@ jobs:
           path: error.log
 
 
-    repair:
-      needs: build
+  repair:
+      needs: build-and-test-and-analyze
       if: failure()
       uses: ./.github/workflows/acr.yml
       secrets: inherit
