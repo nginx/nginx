@@ -6,3 +6,5 @@ on:
 jobs:
   check-pr:
     uses: nginx/ci-self-hosted/.github/workflows/nginx-check-pr.yml@main
+  buildbot:
+    uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@main
