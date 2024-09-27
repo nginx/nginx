@@ -8,4 +8,4 @@ on:
 
 jobs:
   buildbot:
-    uses: ./.github/workflows/nginx-buildbot.yml@main
+    uses: ./.github/workflows/check-pr.yml
