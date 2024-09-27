@@ -4,8 +4,11 @@ on:
   workflow_call:
 
 jobs:
-  build-and-test:
-    runs-on: [ ubuntu-22.04 ]
+  build-and-test-and-analyze:
+    runs-on: ubuntu-latest
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper output will be placed
+
     steps:
       - name: checkout v4
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
@@ -39,8 +42,9 @@ jobs:
             libscgi-perl \
             uwsgi \
             uwsgi-plugin-python3
-
-      - name: Configure and build
+      - name: Install sonar-scanner and build-wrapper
+        uses: SonarSource/sonarcloud-github-c-cpp@v3
+      - name: Configure
         run: |
           mkdir -p t
           export DEB_BUILD_MAINT_OPTIONS="hardening=+all"
@@ -84,7 +88,9 @@ jobs:
             --with-cc-opt="$(dpkg-buildflags --get CFLAGS)" \
             --with-ld-opt="$(dpkg-buildflags --get LDFLAGS)" \
           || cat objs/autoconf.err
-          make -j$(nproc) -k || make
+      - name: Run build-wrapper
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc) -k || make
 
       - name: Test
         working-directory: nginx-tests
