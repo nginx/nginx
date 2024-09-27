@@ -106,6 +106,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" > error.log 2>&1
+          cat error.log
 
       - name: Upload Sonar Log
         if: ${{ failure() && steps.analysis.outcome == 'failure'}}
@@ -137,5 +138,5 @@ jobs:
       uses: ./.github/workflows/acr.yml
       secrets: inherit
       with:
-        artifact: build_log
-        filename: build.log
+        name: error_log
+        path: error.log
