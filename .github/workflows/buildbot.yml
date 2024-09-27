@@ -1,10 +1,7 @@
 name: buildbot
 
 on:
-  push:
-    branches:
-      - master
-      - 'stable-1.*'
+  pull_request:
 
 jobs:
   buildbot:
