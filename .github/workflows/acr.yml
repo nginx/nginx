@@ -1,0 +1,33 @@
+name: AutoCodeRover
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        description: 'artifact name to download'
+        required: true
+        type: string
+      filename:
+        description: 'filename to the issue description'
+        required: true
+        type: string
+jobs:
+  get_issue:
+    name: Load Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Issue Description
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+      - shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACR_TOKEN: ${{ secrets.ACR_TOKEN }}
+          ACR_HOST: ${{ secrets.ACR_HOST }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID }}
+          PAT_ID: ${{ secrets.PAT_ID }}
+          DESCRIPTION: "test.c: In function ‘bad’: test.c:15:1: error: expected expression before ‘}’"
+
+
+        run: |
+          curl --header "acr-auth-token: $ACR_TOKEN" --insecure -d '{"agent" : "GitHub Action", "github_token_id": "'"$PAT_ID"'", "project_id": "'"$PROJECT_ID"'", "language": "c", "description": "'" $(echo $(cat build.log)) "'", "type": "bug fix" , "branch": "${{ github.head_ref }}", "commit": "${{ github.head_ref }}" }' -X POST "$ACR_HOST/ci/github/run"

@@ -89,14 +89,53 @@ jobs:
             --with-ld-opt="$(dpkg-buildflags --get LDFLAGS)" \
           || cat objs/autoconf.err
       - name: Run build-wrapper
+        id: build
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc) -k || make
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc) -k || make > error.log 2>&1
 
+      - name: Upload Build Log
+        if: ${{ failure() && steps.build.outcome == 'failure'}}
+        uses: actions/upload-artifact@v4
+        with:
+          name: error_log
+          path: error.log
+      - name: Run sonar-scanner
+        id: analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.compile-commands="${{ env.BUILD_WRAPPER_OUT_DIR }}/compile_commands.json" > error.log 2>&1
+
+      - name: Upload Sonar Log
+        if: ${{ failure() && steps.analysis.outcome == 'failure'}}
+        uses: actions/upload-artifact@v4
+        with:
+          name: error_log
+          path: error.log
       - name: Test
+        id: test
         working-directory: nginx-tests
         run: |
-          prove -v -j$(nproc) --state=save ../t . || prove -v --state=failed
+          prove -v -j$(nproc) --state=save ../t . || prove -v --state=failed > error.log 2>&1
         env:
           TEST_NGINX_BINARY: "${{ github.workspace }}/objs/nginx"
           TEST_NGINX_VERBOSE: 1
           PERL5LIB: "${{ github.workspace }}/nginx-tests/lib"
+
+      - name: Upload Test Log
+        if: ${{ failure() && steps.test.outcome == 'failure'}}
+        uses: actions/upload-artifact@v4
+        with:
+          name: error_log
+          path: error.log
+
+
+    repair:
+      needs: build
+      if: failure()
+      uses: ./.github/workflows/acr.yml
+      secrets: inherit
+      with:
+        artifact: build_log
+        filename: build.log
