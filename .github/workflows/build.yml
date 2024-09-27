@@ -91,7 +91,7 @@ jobs:
       - name: Run build-wrapper
         id: build
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc) -k || make > error.log 2>&1
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -j$(nproc) -k || make 2> error.log 
 
       - name: Upload Build Log
         if: ${{ failure() && steps.build.outcome == 'failure'}}
