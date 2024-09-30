@@ -631,13 +631,12 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         case NGX_QUIC_FT_STREAM:
             qs = ngx_quic_find_stream(&qc->streams.tree, f->u.stream.stream_id);
 
-            if (qs) {
-                if (qs->send_state == NGX_QUIC_STREAM_SEND_RESET_SENT
-                    || qs->send_state == NGX_QUIC_STREAM_SEND_RESET_RECVD)
-                {
-                    ngx_quic_free_frame(c, f);
-                    break;
-                }
+            if (qs == NULL
+                || qs->send_state == NGX_QUIC_STREAM_SEND_RESET_SENT
+                || qs->send_state == NGX_QUIC_STREAM_SEND_RESET_RECVD)
+            {
+                ngx_quic_free_frame(c, f);
+                break;
             }
 
             /* fall through */
