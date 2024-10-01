@@ -5,6 +5,71 @@
 <change_log title="nginx">
 
 
+<changes ver="1.27.2" date="2024-10-02">
+
+<change type="feature">
+<para lang="ru">
+SSL-сертификаты, секретные ключи и списки CRL теперь кешируются
+на старте или во время переконфигурации.
+</para>
+<para lang="en">
+SSL certificates, secret keys, and CRLs are now cached
+on start or during reconfiguration.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+проверка клиентских сертификатов с помощью OCSP в модуле stream.
+</para>
+<para lang="en">
+client certificate validation with OCSP in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка OCSP stapling в модуле stream.
+</para>
+<para lang="en">
+OCSP stapling support in the stream module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива proxy_pass_trailers в модуле ngx_http_proxy_module.
+</para>
+<para lang="en">
+the "proxy_pass_trailers" directive in the ngx_http_proxy_module.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_client_certificate теперь поддерживает сертификаты
+с дополнительными данными.
+</para>
+<para lang="en">
+the "ssl_client_certificate" directive now supports certificates
+with auxiliary information.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь наличие директивы ssl_client_certificate не обязательно
+для проверки клиентских SSL-сертификатов.
+</para>
+<para lang="en">
+now the "ssl_client_certificate" directive is not required
+for client SSL certificates verification.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.27.1" date="2024-08-14">
 
 <change type="security">
