@@ -29,10 +29,10 @@ static uint64_t ngx_quic_parse_pn(u_char **pos, ngx_int_t len, u_char *mask,
     uint64_t *largest_pn);
 
 static ngx_int_t ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out,
-    u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
+    const u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 #ifndef OPENSSL_IS_BORINGSSL
 static ngx_int_t ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out,
-    u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
+    const u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 #endif
 
 static ngx_int_t ngx_quic_crypto_hp_init(const EVP_CIPHER *cipher,
@@ -441,7 +441,7 @@ ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher, ngx_quic_secret_t *s,
 
 
 static ngx_int_t
-ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
+ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out, const u_char *nonce,
     ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
 #ifdef OPENSSL_IS_BORINGSSL
@@ -461,7 +461,7 @@ ngx_quic_crypto_open(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
 
 
 ngx_int_t
-ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
+ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out, const u_char *nonce,
     ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
 #ifdef OPENSSL_IS_BORINGSSL
@@ -483,8 +483,8 @@ ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
 #ifndef OPENSSL_IS_BORINGSSL
 
 static ngx_int_t
-ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out, u_char *nonce,
-    ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
+ngx_quic_crypto_common(ngx_quic_secret_t *s, ngx_str_t *out,
+    const u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log)
 {
     int                     len, enc;
     ngx_quic_crypto_ctx_t  *ctx;
