@@ -2877,7 +2877,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.store_lengths = NULL;
      *     conf->upstream.store_values = NULL;
      *
-     *     conf->index.len = { 0, NULL };
+     *     conf->index = { 0, NULL };
      */
 
     conf->upstream.store = NGX_CONF_UNSET;
