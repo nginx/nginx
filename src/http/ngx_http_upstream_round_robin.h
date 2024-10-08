@@ -14,7 +14,24 @@
 #include <ngx_http.h>
 
 
+typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 typedef struct ngx_http_upstream_rr_peer_s   ngx_http_upstream_rr_peer_t;
+
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+
+typedef struct {
+    ngx_event_t                     event;         /* must be first */
+    ngx_uint_t                      worker;
+    ngx_str_t                       name;
+    ngx_str_t                       service;
+    time_t                          valid;
+    ngx_http_upstream_rr_peers_t   *peers;
+    ngx_http_upstream_rr_peer_t    *peer;
+} ngx_http_upstream_host_t;
+
+#endif
+
 
 struct ngx_http_upstream_rr_peer_s {
     struct sockaddr                *sockaddr;
@@ -46,17 +63,19 @@ struct ngx_http_upstream_rr_peer_s {
 #endif
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
+    unsigned                        zombie:1;
+
     ngx_atomic_t                    lock;
+    ngx_uint_t                      refs;
+    ngx_http_upstream_host_t       *host;
 #endif
 
     ngx_http_upstream_rr_peer_t    *next;
 
-    NGX_COMPAT_BEGIN(32)
+    NGX_COMPAT_BEGIN(15)
     NGX_COMPAT_END
 };
 
-
-typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 
 struct ngx_http_upstream_rr_peers_s {
     ngx_uint_t                      number;
@@ -78,6 +97,11 @@ struct ngx_http_upstream_rr_peers_s {
     ngx_http_upstream_rr_peers_t   *next;
 
     ngx_http_upstream_rr_peer_t    *peer;
+
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ngx_uint_t                     *config;
+    ngx_http_upstream_rr_peer_t    *resolve;
+#endif
 };
 
 
@@ -114,6 +138,65 @@ struct ngx_http_upstream_rr_peers_s {
         ngx_rwlock_unlock(&peer->lock);                                       \
     }
 
+
+#define ngx_http_upstream_rr_peer_ref(peers, peer)                            \
+    (peer)->refs++;
+
+
+static ngx_inline void
+ngx_http_upstream_rr_peer_free_locked(ngx_http_upstream_rr_peers_t *peers,
+    ngx_http_upstream_rr_peer_t *peer)
+{
+    if (peer->refs) {
+        peer->zombie = 1;
+        return;
+    }
+
+    ngx_slab_free_locked(peers->shpool, peer->sockaddr);
+    ngx_slab_free_locked(peers->shpool, peer->name.data);
+
+    if (peer->server.data) {
+        ngx_slab_free_locked(peers->shpool, peer->server.data);
+    }
+
+#if (NGX_HTTP_SSL)
+    if (peer->ssl_session) {
+        ngx_slab_free_locked(peers->shpool, peer->ssl_session);
+    }
+#endif
+
+    ngx_slab_free_locked(peers->shpool, peer);
+}
+
+
+static ngx_inline void
+ngx_http_upstream_rr_peer_free(ngx_http_upstream_rr_peers_t *peers,
+    ngx_http_upstream_rr_peer_t *peer)
+{
+    ngx_shmtx_lock(&peers->shpool->mutex);
+    ngx_http_upstream_rr_peer_free_locked(peers, peer);
+    ngx_shmtx_unlock(&peers->shpool->mutex);
+}
+
+
+static ngx_inline ngx_int_t
+ngx_http_upstream_rr_peer_unref(ngx_http_upstream_rr_peers_t *peers,
+    ngx_http_upstream_rr_peer_t *peer)
+{
+    peer->refs--;
+
+    if (peers->shpool == NULL) {
+        return NGX_OK;
+    }
+
+    if (peer->refs == 0 && peer->zombie) {
+        ngx_http_upstream_rr_peer_free(peers, peer);
+        return NGX_DONE;
+    }
+
+    return NGX_OK;
+}
+
 #else
 
 #define ngx_http_upstream_rr_peers_rlock(peers)
@@ -121,6 +204,8 @@ struct ngx_http_upstream_rr_peers_s {
 #define ngx_http_upstream_rr_peers_unlock(peers)
 #define ngx_http_upstream_rr_peer_lock(peers, peer)
 #define ngx_http_upstream_rr_peer_unlock(peers, peer)
+#define ngx_http_upstream_rr_peer_ref(peers, peer)
+#define ngx_http_upstream_rr_peer_unref(peers, peer)  NGX_OK
 
 #endif
 
