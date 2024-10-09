@@ -90,6 +90,11 @@ struct ngx_ssl_s {
     SSL_CTX                    *ctx;
     ngx_log_t                  *log;
     size_t                      buffer_size;
+
+    ngx_array_t                 certs;
+
+    ngx_rbtree_t                staple_rbtree;
+    ngx_rbtree_node_t           staple_sentinel;
 };
 
 
@@ -188,6 +193,12 @@ typedef struct {
 #define NGX_SSL_BUFSIZE  16384
 
 
+#define NGX_SSL_CACHE_CERT  0
+#define NGX_SSL_CACHE_PKEY  1
+#define NGX_SSL_CACHE_CRL   2
+#define NGX_SSL_CACHE_CA    3
+
+
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
 
@@ -218,6 +229,11 @@ ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
+
+void *ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
+    ngx_str_t *path, void *data);
+void *ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index,
+    char **err, ngx_str_t *path, void *data);
 
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
@@ -330,10 +346,8 @@ extern int  ngx_ssl_server_conf_index;
 extern int  ngx_ssl_session_cache_index;
 extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
-extern int  ngx_ssl_certificate_index;
-extern int  ngx_ssl_next_certificate_index;
+extern int  ngx_ssl_index;
 extern int  ngx_ssl_certificate_name_index;
-extern int  ngx_ssl_stapling_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

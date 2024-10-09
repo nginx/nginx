@@ -1307,10 +1307,11 @@ fi
 
 if [ $USE_OPENSSL = YES ]; then
     ngx_module_type=CORE
-    ngx_module_name=ngx_openssl_module
+    ngx_module_name="ngx_openssl_module ngx_openssl_cache_module"
     ngx_module_incs=
     ngx_module_deps=src/event/ngx_event_openssl.h
     ngx_module_srcs="src/event/ngx_event_openssl.c
+                     src/event/ngx_event_openssl_cache.c
                      src/event/ngx_event_openssl_stapling.c"
     ngx_module_libs=
     ngx_module_link=YES
