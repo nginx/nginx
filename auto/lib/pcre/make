@@ -36,7 +36,8 @@ if [ $PCRE_LIBRARY = PCRE2 ]; then
                        pcre2_valid_utf.c \
                        pcre2_xclass.c"
 
-        ngx_pcre_test="pcre2_convert.c \
+        ngx_pcre_test="pcre2_chkdint.c \
+                       pcre2_convert.c \
                        pcre2_extuni.c \
                        pcre2_find_bracket.c \
                        pcre2_script_run.c \
