@@ -965,7 +965,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-#if !defined (OPENSSL_IS_BORINGSSL)
+#if !defined (OPENSSL_IS_BORINGSSL) && !defined (OPENSSL_IS_AWSLC)
     /* OpenSSL provides read keys for an application level before it's ready */
 
     if (pkt->level == ssl_encryption_application && !c->ssl->handshaked) {
