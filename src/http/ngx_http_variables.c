@@ -93,6 +93,8 @@ static ngx_int_t ngx_http_variable_body_bytes_sent(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_pipe(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_auto_redirect(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_body(ngx_http_request_t *r,
@@ -282,6 +284,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       0, 0, 0 },
 
     { ngx_string("pipe"), NULL, ngx_http_variable_pipe,
+      0, 0, 0 },
+
+    { ngx_string("request_auto_redirect"), NULL,
+      ngx_http_variable_request_auto_redirect,
       0, 0, 0 },
 
     { ngx_string("request_completion"), NULL,
@@ -2085,6 +2091,20 @@ ngx_http_variable_set_limit_rate(ngx_http_request_t *r,
 
     r->limit_rate = s;
     r->limit_rate_set = 1;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_auto_redirect(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->request_auto_redirect) {
+        *v = ngx_http_variable_true_value;
+        return NGX_OK;
+    }
+
+    *v = ngx_http_variable_null_value;
+    return NGX_OK;
 }
 
 
