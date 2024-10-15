@@ -277,6 +277,8 @@ ngx_ssl_session_t *ngx_ssl_get0_session(ngx_connection_t *c);
 ngx_int_t ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name);
 
 
+ngx_int_t ngx_ssl_get_custom_extension(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 ngx_int_t ngx_ssl_get_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_cipher_name(ngx_connection_t *c, ngx_pool_t *pool,
@@ -348,6 +350,8 @@ extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
 extern int  ngx_ssl_index;
 extern int  ngx_ssl_certificate_name_index;
+extern int  ngx_ssl_stapling_index;
+extern int  ngx_ssl_custom_extension_index;
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */
