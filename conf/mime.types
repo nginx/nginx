@@ -31,6 +31,7 @@ types {
     application/java-archive                         jar war ear;
     application/json                                 json;
     application/mac-binhex40                         hqx;
+    application/manifest+json                        webmanifest;
     application/msword                               doc;
     application/pdf                                  pdf;
     application/postscript                           ps eps ai;
