@@ -36,6 +36,8 @@ static ngx_int_t ngx_http_ssl_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
 static ngx_int_t ngx_http_ssl_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_ssl_add_variable(ngx_conf_t *cf, ngx_http_variable_t  *v);
+
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
@@ -43,6 +45,7 @@ static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
     ngx_http_ssl_srv_conf_t *conf);
 
+static char *ngx_conf_set_custom_extension(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_ssl_session_cache(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -288,6 +291,13 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, reject_handshake),
+      NULL },
+
+    { ngx_string("ssl_custom_extension"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_conf_set_custom_extension,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, custom_extension_type),
       NULL },
 
       ngx_null_command
@@ -584,6 +594,23 @@ ngx_http_ssl_add_variables(ngx_conf_t *cf)
 }
 
 
+static ngx_int_t
+ngx_http_ssl_add_variable(ngx_conf_t *cf, ngx_http_variable_t  *v)
+{
+    ngx_http_variable_t  *var;
+
+    var = ngx_http_add_variable(cf, &v->name, v->flags);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+
+    var->get_handler = v->get_handler;
+    var->data = v->data;
+
+    return NGX_OK;
+}
+
+
 static void *
 ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
 {
@@ -629,8 +656,25 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->ocsp_cache_zone = NGX_CONF_UNSET_PTR;
     sscf->stapling = NGX_CONF_UNSET;
     sscf->stapling_verify = NGX_CONF_UNSET;
+    sscf->custom_extension_type = NGX_CONF_UNSET_UINT;
 
     return sscf;
+}
+
+
+static int
+parse_custom_extension_callback(SSL *ssl, unsigned int ext_type, unsigned int context,
+                        const unsigned char *in, size_t inlen, X509 *x,
+                        size_t chainidx, int *al, void *parse_arg) {
+    char *extension_data = malloc(inlen + 1);
+    if (extension_data == NULL) {
+        return 0;
+    }
+    memcpy(extension_data, in, inlen);
+    extension_data[inlen] = '\0';
+    SSL_set_ex_data(ssl, ngx_ssl_custom_extension_index, extension_data);
+    
+    return 1;
 }
 
 
@@ -725,6 +769,19 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
+    
+    if(conf->custom_extension_type != NGX_CONF_UNSET_UINT){
+        SSL_CTX_add_custom_ext(
+            conf->ssl.ctx,
+            conf->custom_extension_type,
+            SSL_EXT_CLIENT_HELLO,    
+            NULL,
+            NULL,
+            NULL,
+            parse_custom_extension_callback,
+            NULL
+        );
+    }
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
@@ -983,6 +1040,42 @@ found:
     }
 
     return NGX_OK;
+}
+
+
+static char *
+ngx_conf_set_custom_extension(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+    ngx_int_t   *extension_type;
+    ngx_str_t   var_name, *value;
+
+    extension_type = (ngx_int_t *) (p + cmd->offset);
+    
+    if (*extension_type != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    *extension_type = ngx_atoi(value[1].data, value[1].len);
+    if (*extension_type == NGX_ERROR) {
+        return "invalid number";
+    }
+
+    var_name = value[2];
+
+    ngx_http_variable_t  var = { 
+        var_name,
+        NULL,
+        ngx_http_ssl_variable,
+        (uintptr_t) ngx_ssl_get_custom_extension,
+        NGX_HTTP_VAR_CHANGEABLE,
+        0
+    };
+    ngx_http_ssl_add_variable(cf, &var);
+
+    return NGX_CONF_OK;
 }
 
 
