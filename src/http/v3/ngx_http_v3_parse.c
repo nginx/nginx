@@ -217,9 +217,7 @@ ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
 
             st->value += (uint64_t) (ch & 0x7f) << st->shift;
 
-            if (st->shift == 56
-                && ((ch & 0x80) || (st->value & 0xc000000000000000)))
-            {
+            if (st->shift == 21) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "client exceeded integer size limit");
                 return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
