@@ -3221,6 +3221,12 @@ found:
         return NGX_ERROR;
     }
 
+    if (chunk == 0) {
+        ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                      "zero chunk in \"%s\"", mp4->file.name.data);
+        return NGX_ERROR;
+    }
+
     target_chunk = chunk - 1;
     target_chunk += start_sample / samples;
     chunk_samples = start_sample % samples;
