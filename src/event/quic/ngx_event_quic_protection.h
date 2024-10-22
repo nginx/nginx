@@ -111,7 +111,7 @@ ngx_int_t ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers);
 ngx_int_t ngx_quic_crypto_init(const ngx_quic_cipher_t *cipher,
     ngx_quic_secret_t *s, ngx_quic_md_t *key, ngx_int_t enc, ngx_log_t *log);
 ngx_int_t ngx_quic_crypto_seal(ngx_quic_secret_t *s, ngx_str_t *out,
-    u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
+    const u_char *nonce, ngx_str_t *in, ngx_str_t *ad, ngx_log_t *log);
 void ngx_quic_crypto_cleanup(ngx_quic_secret_t *s);
 ngx_int_t ngx_quic_hkdf_expand(ngx_quic_hkdf_t *hkdf, const EVP_MD *digest,
     ngx_log_t *log);
