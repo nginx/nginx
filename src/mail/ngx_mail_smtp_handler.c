@@ -820,6 +820,7 @@ ngx_mail_smtp_rcpt(ngx_mail_session_t *s, ngx_connection_t *c)
                    "smtp rcpt to:\"%V\"", &s->smtp_to);
 
     s->auth_method = NGX_MAIL_AUTH_NONE;
+    s->proxy_auth_method = NGX_MAIL_AUTH_NONE;
 
     return NGX_DONE;
 }
