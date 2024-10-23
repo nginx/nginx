@@ -1019,12 +1019,39 @@ ngx_mail_proxy_read_response(ngx_mail_session_t *s, ngx_uint_t state)
             break;
 
         case ngx_imap_passwd:
+
+            if (ngx_strncmp(p, s->tag.data, s->tag.len) != 0) {
+                /* as per RFC 3501, 6.2.3 LOGIN Command */
+
+                if (b->last - b->pos < 12) {
+                    return NGX_AGAIN;
+                }
+
+                if (ngx_strncmp(p, "* CAPABILITY", 12) == 0) {
+                    p += 12;
+
+                    while (p < b->last - 1) {
+                        if (p[0] == CR && p[1] == LF) {
+                            p += (sizeof(CRLF) - 1);
+                            break;
+                        }
+
+                        p++;
+                    }
+
+                    if (b->last - p < 4) {
+                        return NGX_AGAIN;
+                    }
+                }
+            }
+
             if (ngx_strncmp(p, s->tag.data, s->tag.len) == 0) {
                 p += s->tag.len;
                 if (p[0] == 'O' && p[1] == 'K') {
                     return NGX_OK;
                 }
             }
+
             break;
         }
 
