@@ -763,7 +763,20 @@ ngx_conf_read_token(ngx_conf_t *cf)
                     return NGX_ERROR;
                 }
 
-                word->data = ngx_pnalloc(cf->pool, b->pos - 1 - start + 1);
+                /*
+                 * If no custom handler is set, the first argument is the
+                 * directive name. Since the directive name is not stored
+                 * in the modules' configuration structures, it's safe to
+                 * allocate memory for it using the temporary pool.
+                 */
+                if (cf->handler == NULL && cf->args->nelts == 1) {
+                    word->data = ngx_pnalloc(cf->temp_pool,
+                                             b->pos - 1 - start + 1);
+                } else {
+                    word->data = ngx_pnalloc(cf->pool,
+                                             b->pos - 1 - start + 1);
+                }
+
                 if (word->data == NULL) {
                     return NGX_ERROR;
                 }
