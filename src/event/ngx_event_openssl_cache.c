@@ -138,6 +138,8 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     ngx_ssl_cache_type_t  *type;
     ngx_ssl_cache_node_t  *cn;
 
+    *err = NULL;
+
     if (ngx_ssl_cache_init_key(cf->pool, index, path, &id) != NGX_OK) {
         return NULL;
     }
@@ -182,6 +184,8 @@ ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index, char **err,
     ngx_str_t *path, void *data)
 {
     ngx_ssl_cache_key_t  id;
+
+    *err = NULL;
 
     if (ngx_ssl_cache_init_key(pool, index, path, &id) != NGX_OK) {
         return NULL;
