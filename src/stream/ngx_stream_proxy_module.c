@@ -1324,7 +1324,7 @@ ngx_stream_proxy_ssl_certificate(ngx_stream_session_t *s)
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
                    "stream upstream ssl key: \"%s\"", key.data);
 
-    if (ngx_ssl_connection_certificate(c, c->pool, &cert, &key,
+    if (ngx_ssl_connection_certificate(c, c->pool, &cert, &key, NULL,
                                        pscf->ssl_passwords)
         != NGX_OK)
     {

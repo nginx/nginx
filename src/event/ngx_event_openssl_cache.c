@@ -46,21 +46,31 @@ typedef struct {
 
 typedef struct {
     ngx_rbtree_node_t           node;
+    ngx_queue_t                 queue;
     ngx_ssl_cache_key_t         id;
     ngx_ssl_cache_type_t       *type;
     void                       *value;
+
+    time_t                      created;
+    time_t                      accessed;
 
     time_t                      mtime;
     ngx_file_uniq_t             uniq;
 } ngx_ssl_cache_node_t;
 
 
-typedef struct {
+struct ngx_ssl_cache_s {
     ngx_rbtree_t                rbtree;
     ngx_rbtree_node_t           sentinel;
+    ngx_queue_t                 expire_queue;
 
     ngx_flag_t                  inheritable;
-} ngx_ssl_cache_t;
+
+    ngx_uint_t                  current;
+    ngx_uint_t                  max;
+    time_t                      valid;
+    time_t                      inactive;
+};
 
 
 typedef struct {
@@ -73,6 +83,8 @@ static ngx_int_t ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index,
     ngx_str_t *path, ngx_ssl_cache_key_t *id);
 static ngx_ssl_cache_node_t *ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache,
     ngx_ssl_cache_type_t *type, ngx_ssl_cache_key_t *id, uint32_t hash);
+static void ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_uint_t n,
+    ngx_log_t *log);
 
 static void *ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err,
     void *data);
@@ -101,6 +113,8 @@ static char *ngx_openssl_cache_init_conf(ngx_cycle_t *cycle, void *conf);
 static void ngx_ssl_cache_cleanup(void *data);
 static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
+static void ngx_ssl_cache_node_free(ngx_rbtree_t *rbtree,
+    ngx_ssl_cache_node_t *cn);
 
 
 static ngx_command_t  ngx_openssl_cache_commands[] = {
@@ -260,6 +274,8 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
 
     ngx_cpystrn(cn->id.data, id.data, id.len + 1);
 
+    ngx_queue_init(&cn->queue);
+
     ngx_rbtree_insert(&cache->rbtree, &cn->node);
 
     return type->ref(err, cn->value);
@@ -267,10 +283,15 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
 
 
 void *
-ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index, char **err,
-    ngx_str_t *path, void *data)
+ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
+    ngx_uint_t index, char **err, ngx_str_t *path, void *data)
 {
-    ngx_ssl_cache_key_t  id;
+    void                  *value;
+    time_t                 now;
+    uint32_t               hash;
+    ngx_ssl_cache_key_t    id;
+    ngx_ssl_cache_type_t  *type;
+    ngx_ssl_cache_node_t  *cn;
 
     *err = NULL;
 
@@ -278,7 +299,89 @@ ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index, char **err,
         return NULL;
     }
 
-    return ngx_ssl_cache_types[index].create(&id, err, &data);
+    type = &ngx_ssl_cache_types[index];
+
+    if (cache == NULL) {
+        return type->create(&id, err, &data);
+    }
+
+    now = ngx_time();
+
+    hash = ngx_murmur_hash2(id.data, id.len);
+
+    cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
+
+    if (cn != NULL) {
+        ngx_queue_remove(&cn->queue);
+
+        if (id.type == NGX_SSL_CACHE_DATA) {
+            goto found;
+        }
+
+        if (now - cn->created > cache->valid) {
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, pool->log, 0,
+                           "update cached ssl object: %s", cn->id.data);
+
+            type->free(cn->value);
+
+            value = type->create(&id, err, &data);
+
+            if (value == NULL || data == NGX_SSL_CACHE_DISABLED) {
+                ngx_rbtree_delete(&cache->rbtree, &cn->node);
+
+                cache->current--;
+
+                ngx_free(cn);
+
+                return value;
+            }
+
+            cn->value = value;
+            cn->created = now;
+        }
+
+        goto found;
+    }
+
+    value = type->create(&id, err, &data);
+
+    if (value == NULL || data == NGX_SSL_CACHE_DISABLED) {
+        return value;
+    }
+
+    cn = ngx_alloc(sizeof(ngx_ssl_cache_node_t) + id.len + 1, pool->log);
+    if (cn == NULL) {
+        type->free(value);
+        return NULL;
+    }
+
+    cn->node.key = hash;
+    cn->id.data = (u_char *)(cn + 1);
+    cn->id.len = id.len;
+    cn->id.type = id.type;
+    cn->type = type;
+    cn->value = value;
+    cn->created = now;
+
+    ngx_cpystrn(cn->id.data, id.data, id.len + 1);
+
+    ngx_ssl_cache_expire(cache, 1, pool->log);
+
+    if (cache->current >= cache->max) {
+        ngx_ssl_cache_expire(cache, 0, pool->log);
+    }
+
+    ngx_rbtree_insert(&cache->rbtree, &cn->node);
+
+    cache->current++;
+
+found:
+
+    cn->accessed = now;
+
+    ngx_queue_insert_head(&cache->expire_queue, &cn->queue);
+
+    return type->ref(err, cn->value);
 }
 
 
@@ -362,6 +465,37 @@ ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache, ngx_ssl_cache_type_t *type,
     }
 
     return NULL;
+}
+
+
+static void
+ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_uint_t n,
+    ngx_log_t *log)
+{
+    time_t                 now;
+    ngx_queue_t           *q;
+    ngx_ssl_cache_node_t  *cn;
+
+    now = ngx_time();
+
+    while (n < 3) {
+
+        if (ngx_queue_empty(&cache->expire_queue)) {
+            return;
+        }
+
+        q = ngx_queue_last(&cache->expire_queue);
+
+        cn = ngx_queue_data(q, ngx_ssl_cache_node_t, queue);
+
+        if (n++ != 0 && now - cn->accessed <= cache->inactive) {
+            return;
+        }
+
+        ngx_ssl_cache_node_free(&cache->rbtree, cn);
+
+        cache->current--;
+    }
 }
 
 
@@ -822,26 +956,14 @@ ngx_ssl_cache_create_bio(ngx_ssl_cache_key_t *id, char **err)
 static void *
 ngx_openssl_cache_create_conf(ngx_cycle_t *cycle)
 {
-    ngx_ssl_cache_t     *cache;
-    ngx_pool_cleanup_t  *cln;
+    ngx_ssl_cache_t  *cache;
 
-    cache = ngx_pcalloc(cycle->pool, sizeof(ngx_ssl_cache_t));
+    cache = ngx_ssl_cache_init(cycle->pool, 0, 0, 0);
     if (cache == NULL) {
         return NULL;
     }
 
     cache->inheritable = NGX_CONF_UNSET;
-
-    cln = ngx_pool_cleanup_add(cycle->pool, 0);
-    if (cln == NULL) {
-        return NULL;
-    }
-
-    cln->handler = ngx_ssl_cache_cleanup;
-    cln->data = cache;
-
-    ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
-                    ngx_ssl_cache_node_insert);
 
     return cache;
 }
@@ -855,6 +977,39 @@ ngx_openssl_cache_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(cache->inheritable, 1);
 
     return NGX_CONF_OK;
+}
+
+
+ngx_ssl_cache_t *
+ngx_ssl_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t valid,
+    time_t inactive)
+{
+    ngx_ssl_cache_t     *cache;
+    ngx_pool_cleanup_t  *cln;
+
+    cache = ngx_pcalloc(pool, sizeof(ngx_ssl_cache_t));
+    if (cache == NULL) {
+        return NULL;
+    }
+
+    ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
+                    ngx_ssl_cache_node_insert);
+
+    ngx_queue_init(&cache->expire_queue);
+
+    cache->max = max;
+    cache->valid = valid;
+    cache->inactive = inactive;
+
+    cln = ngx_pool_cleanup_add(pool, 0);
+    if (cln == NULL) {
+        return NULL;
+    }
+
+    cln->handler = ngx_ssl_cache_cleanup;
+    cln->data = cache;
+
+    return cache;
 }
 
 
@@ -873,12 +1028,47 @@ ngx_ssl_cache_cleanup(void *data)
         return;
     }
 
-    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
-         node;
-         node = ngx_rbtree_next(tree, node))
-    {
+    node = ngx_rbtree_min(tree->root, tree->sentinel);
+
+    while (node != NULL) {
         cn = ngx_rbtree_data(node, ngx_ssl_cache_node_t, node);
-        cn->type->free(cn->value);
+        node = ngx_rbtree_next(tree, node);
+
+        ngx_ssl_cache_node_free(tree, cn);
+
+        if (cache->max) {
+            cache->current--;
+        }
+    }
+
+    if (cache->current) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      "%ui items still left in ssl cache",
+                      cache->current);
+    }
+
+    if (!ngx_queue_empty(&cache->expire_queue)) {
+        ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                      "queue still is not empty in ssl cache");
+
+    }
+}
+
+
+static void
+ngx_ssl_cache_node_free(ngx_rbtree_t *rbtree, ngx_ssl_cache_node_t *cn)
+{
+    cn->type->free(cn->value);
+
+    ngx_rbtree_delete(rbtree, &cn->node);
+
+    if (!ngx_queue_empty(&cn->queue)) {
+        ngx_queue_remove(&cn->queue);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ngx_cycle->log, 0,
+                       "delete cached ssl object: %s", cn->id.data);
+
+        ngx_free(cn);
     }
 }
 

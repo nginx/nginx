@@ -562,15 +562,16 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 
 ngx_int_t
 ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
-    ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords)
+    ngx_str_t *cert, ngx_str_t *key, ngx_ssl_cache_t *cache,
+    ngx_array_t *passwords)
 {
     char            *err;
     X509            *x509;
     EVP_PKEY        *pkey;
     STACK_OF(X509)  *chain;
 
-    chain = ngx_ssl_cache_connection_fetch(pool, NGX_SSL_CACHE_CERT, &err,
-                                           cert, NULL);
+    chain = ngx_ssl_cache_connection_fetch(cache, pool, NGX_SSL_CACHE_CERT,
+                                           &err, cert, NULL);
     if (chain == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
@@ -610,8 +611,8 @@ ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
 
 #endif
 
-    pkey = ngx_ssl_cache_connection_fetch(pool, NGX_SSL_CACHE_PKEY, &err,
-                                          key, passwords);
+    pkey = ngx_ssl_cache_connection_fetch(cache, pool, NGX_SSL_CACHE_PKEY,
+                                          &err, key, passwords);
     if (pkey == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
