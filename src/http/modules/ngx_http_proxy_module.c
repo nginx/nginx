@@ -226,6 +226,8 @@ static char *ngx_http_proxy_cache_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 #endif
 #if (NGX_HTTP_SSL)
+static char *ngx_http_proxy_ssl_certificate_cache(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 static char *ngx_http_proxy_ssl_password_file(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 #endif
@@ -773,6 +775,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_http_set_complex_value_zero_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.ssl_certificate_key),
+      NULL },
+
+    { ngx_string("proxy_ssl_certificate_cache"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+      ngx_http_proxy_ssl_certificate_cache,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("proxy_ssl_password_file"),
@@ -3613,6 +3622,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.ssl_verify = NGX_CONF_UNSET;
     conf->upstream.ssl_certificate = NGX_CONF_UNSET_PTR;
     conf->upstream.ssl_certificate_key = NGX_CONF_UNSET_PTR;
+    conf->upstream.ssl_certificate_cache = NGX_CONF_UNSET_PTR;
     conf->upstream.ssl_passwords = NGX_CONF_UNSET_PTR;
     conf->ssl_verify_depth = NGX_CONF_UNSET_UINT;
     conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
@@ -3964,6 +3974,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.ssl_certificate, NULL);
     ngx_conf_merge_ptr_value(conf->upstream.ssl_certificate_key,
                               prev->upstream.ssl_certificate_key, NULL);
+    ngx_conf_merge_ptr_value(conf->upstream.ssl_certificate_cache,
+                              prev->upstream.ssl_certificate_cache, NULL);
     ngx_conf_merge_ptr_value(conf->upstream.ssl_passwords,
                               prev->upstream.ssl_passwords, NULL);
 
@@ -5073,6 +5085,100 @@ ngx_http_proxy_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 #if (NGX_HTTP_SSL)
+
+static char *
+ngx_http_proxy_ssl_certificate_cache(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_http_proxy_loc_conf_t *plcf = conf;
+
+    time_t       inactive, valid;
+    ngx_str_t   *value, s;
+    ngx_int_t    max;
+    ngx_uint_t   i;
+
+    if (plcf->upstream.ssl_certificate_cache != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    max = 0;
+    inactive = 10;
+    valid = 60;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "max=", 4) == 0) {
+
+            max = ngx_atoi(value[i].data + 4, value[i].len - 4);
+            if (max <= 0) {
+                goto failed;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "inactive=", 9) == 0) {
+
+            s.len = value[i].len - 9;
+            s.data = value[i].data + 9;
+
+            inactive = ngx_parse_time(&s, 1);
+            if (inactive == (time_t) NGX_ERROR) {
+                goto failed;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "valid=", 6) == 0) {
+
+            s.len = value[i].len - 6;
+            s.data = value[i].data + 6;
+
+            valid = ngx_parse_time(&s, 1);
+            if (valid == (time_t) NGX_ERROR) {
+                goto failed;
+            }
+
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "off") == 0) {
+
+            plcf->upstream.ssl_certificate_cache = NULL;
+
+            continue;
+        }
+
+    failed:
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[i]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (plcf->upstream.ssl_certificate_cache == NULL) {
+        return NGX_CONF_OK;
+    }
+
+    if (max == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"proxy_ssl_certificate_cache\" must have "
+                           "the \"max\" parameter");
+        return NGX_CONF_ERROR;
+    }
+
+    plcf->upstream.ssl_certificate_cache = ngx_ssl_cache_init(cf->pool, max,
+                                                              valid, inactive);
+    if (plcf->upstream.ssl_certificate_cache == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
 
 static char *
 ngx_http_proxy_ssl_password_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
