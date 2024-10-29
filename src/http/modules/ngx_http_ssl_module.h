@@ -38,6 +38,8 @@ typedef struct {
     ngx_array_t                    *certificate_values;
     ngx_array_t                    *certificate_key_values;
 
+    ngx_ssl_cache_t                *certificate_cache;
+
     ngx_str_t                       dhparam;
     ngx_str_t                       ecdh_curve;
     ngx_str_t                       client_certificate;
