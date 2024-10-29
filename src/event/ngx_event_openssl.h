@@ -83,7 +83,8 @@
 #endif
 
 
-typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
+typedef struct ngx_ssl_cache_s  ngx_ssl_cache_t;
+typedef struct ngx_ssl_ocsp_s   ngx_ssl_ocsp_t;
 
 
 struct ngx_ssl_s {
@@ -207,7 +208,8 @@ ngx_int_t ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl,
 ngx_int_t ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords);
 ngx_int_t ngx_ssl_connection_certificate(ngx_connection_t *c, ngx_pool_t *pool,
-    ngx_str_t *cert, ngx_str_t *key, ngx_array_t *passwords);
+    ngx_str_t *cert, ngx_str_t *key, ngx_ssl_cache_t *cache,
+    ngx_array_t *passwords);
 
 ngx_int_t ngx_ssl_ciphers(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *ciphers,
     ngx_uint_t prefer_server_ciphers);
@@ -230,10 +232,12 @@ ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 
+ngx_ssl_cache_t *ngx_ssl_cache_init(ngx_pool_t *pool, ngx_uint_t max,
+    time_t valid, time_t inactive);
 void *ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     ngx_str_t *path, void *data);
-void *ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index,
-    char **err, ngx_str_t *path, void *data);
+void *ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
+    ngx_uint_t index, char **err, ngx_str_t *path, void *data);
 
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
