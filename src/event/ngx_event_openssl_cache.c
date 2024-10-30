@@ -133,6 +133,7 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     ngx_str_t *path, void *data)
 {
     uint32_t               hash;
+    ngx_array_t           *passwords;
     ngx_ssl_cache_t       *cache;
     ngx_ssl_cache_key_t    id;
     ngx_ssl_cache_type_t  *type;
@@ -142,10 +143,19 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
         return NULL;
     }
 
+    type = &ngx_ssl_cache_types[index];
+
+    if (index == NGX_SSL_CACHE_PKEY && data != NULL) {
+        passwords = data;
+
+        if (passwords->nelts != 0) {
+            return type->create(&id, err, data);
+        }
+    }
+
     cache = (ngx_ssl_cache_t *) ngx_get_conf(cf->cycle->conf_ctx,
                                              ngx_openssl_cache_module);
 
-    type = &ngx_ssl_cache_types[index];
     hash = ngx_murmur_hash2(id.data, id.len);
 
     cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
