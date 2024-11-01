@@ -2799,7 +2799,7 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
     }
 
     if (!ngx_terminate
-         && !ngx_exiting
+         && (!ngx_exiting || clcf->keepalive_during_shutdown)
          && r->keepalive
          && clcf->keepalive_timeout > 0)
     {
@@ -3300,7 +3300,10 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
-    c->idle = 1;
+    if (!clcf->keepalive_during_shutdown) {
+        c->idle = 1;
+    }
+
     ngx_reusable_connection(c, 1);
 
     ngx_add_timer(rev, clcf->keepalive_timeout);
