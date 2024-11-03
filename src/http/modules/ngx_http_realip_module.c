@@ -10,18 +10,20 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_REALIP_XREALIP  0
-#define NGX_HTTP_REALIP_XFWD     1
-#define NGX_HTTP_REALIP_HEADER   2
-#define NGX_HTTP_REALIP_PROXY    3
+#define NGX_HTTP_REALIP_XREALIP   0
+#define NGX_HTTP_REALIP_XFWD      1
+#define NGX_HTTP_REALIP_HEADER    2
+#define NGX_HTTP_REALIP_PROXY     3
+#define NGX_HTTP_REALIP_VARIABLE  4
 
 
 typedef struct {
-    ngx_array_t       *from;     /* array of ngx_cidr_t */
-    ngx_uint_t         type;
-    ngx_uint_t         hash;
-    ngx_str_t          header;
-    ngx_flag_t         recursive;
+    ngx_array_t                 *from;     /* array of ngx_cidr_t */
+    ngx_uint_t                   type;
+    ngx_uint_t                   hash;
+    ngx_str_t                    header;
+    ngx_flag_t                   recursive;
+    ngx_http_complex_value_t    *source_cv;
 } ngx_http_realip_loc_conf_t;
 
 
@@ -131,6 +133,7 @@ ngx_http_realip_handler(ngx_http_request_t *r)
 {
     u_char                      *p;
     size_t                       len;
+    ngx_str_t                    source;
     ngx_str_t                   *value;
     ngx_uint_t                   i, hash;
     ngx_addr_t                   addr;
@@ -184,6 +187,21 @@ ngx_http_realip_handler(ngx_http_request_t *r)
         }
 
         value = &r->connection->proxy_protocol->src_addr;
+        xfwd = NULL;
+
+        break;
+
+    case NGX_HTTP_REALIP_VARIABLE:
+
+        if (ngx_http_complex_value(r, rlcf->source_cv, &source) != NGX_OK) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        if (source.len == 0) {
+            return NGX_DECLINED;
+        }
+
+        value = &source;
         xfwd = NULL;
 
         break;
@@ -418,7 +436,8 @@ ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_realip_loc_conf_t *rlcf = conf;
 
-    ngx_str_t  *value;
+    ngx_str_t                         *value;
+    ngx_http_compile_complex_value_t   ccv;
 
     if (rlcf->type != NGX_CONF_UNSET_UINT) {
         return "is duplicate";
@@ -438,6 +457,31 @@ ngx_http_realip(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strcmp(value[1].data, "proxy_protocol") == 0) {
         rlcf->type = NGX_HTTP_REALIP_PROXY;
+        return NGX_CONF_OK;
+    }
+
+    /*
+    * ${} style variables are required, as '{' and '}' are not valid header
+    * field name characters.
+    */
+
+    if (ngx_strncmp(value[1].data, "${", 2) == 0) {
+        rlcf->source_cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+        if (rlcf->source_cv == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.complex_value = rlcf->source_cv;
+        ccv.value = &value[1];
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        rlcf->type = NGX_HTTP_REALIP_VARIABLE;
         return NGX_CONF_OK;
     }
 
@@ -465,6 +509,7 @@ ngx_http_realip_create_loc_conf(ngx_conf_t *cf)
      *     conf->from = NULL;
      *     conf->hash = 0;
      *     conf->header = { 0, NULL };
+     *     conf->source_cv = NULL;
      */
 
     conf->type = NGX_CONF_UNSET_UINT;
@@ -490,6 +535,10 @@ ngx_http_realip_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->header.len == 0) {
         conf->hash = prev->hash;
         conf->header = prev->header;
+    }
+
+    if (conf->source_cv == NULL) {
+        conf->source_cv = prev->source_cv;
     }
 
     return NGX_CONF_OK;
