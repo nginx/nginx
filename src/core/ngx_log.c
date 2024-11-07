@@ -8,7 +8,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+ngx_uint_t NGX_MAX_ERROR_STR = 2048; 
 
+static char *ngx_set_error_log_buffer_size(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_error_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_log_set_levels(ngx_conf_t *cf, ngx_log_t *log);
 static void ngx_log_insert(ngx_log_t *log, ngx_log_t *new_log);
@@ -30,8 +32,13 @@ typedef struct {
 
 #endif
 
-
-static ngx_command_t  ngx_errlog_commands[] = {
+static ngx_command_t ngx_errlog_commands[] = {
+    { ngx_string("error_log_buffer_size"),
+      NGX_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_set_error_log_buffer_size,
+      0,
+      0,
+      NULL },
 
     { ngx_string("error_log"),
       NGX_MAIN_CONF|NGX_CONF_1MORE,
@@ -40,16 +47,20 @@ static ngx_command_t  ngx_errlog_commands[] = {
       0,
       NULL },
 
-      ngx_null_command
+    ngx_null_command
 };
 
+static ngx_int_t ngx_errlog_init(ngx_cycle_t *cycle) {
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                  "Error log buffer size is %ui", NGX_MAX_ERROR_STR);
+    return NGX_OK;
+}
 
 static ngx_core_module_t  ngx_errlog_module_ctx = {
     ngx_string("errlog"),
     NULL,
     NULL
 };
-
 
 ngx_module_t  ngx_errlog_module = {
     NGX_MODULE_V1,
@@ -58,7 +69,7 @@ ngx_module_t  ngx_errlog_module = {
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL,                                  /* init process */
+    ngx_errlog_init,                       /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
@@ -89,8 +100,28 @@ static const char *debug_levels[] = {
     "debug_http", "debug_mail", "debug_stream"
 };
 
+static char *
+ngx_set_error_log_buffer_size(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_str_t *value = cf->args->elts;
+    ngx_uint_t size = ngx_atoi(value[1].data, value[1].len);
+
+    if (size == (ngx_uint_t) NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "Invalid size for error log buffer: \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    NGX_MAX_ERROR_STR = size;
+
+    ngx_log_error(NGX_LOG_NOTICE, cf->log, 0,
+                  "Changed the default value of the error log buffer size to %ui", NGX_MAX_ERROR_STR);
+
+    return NGX_CONF_OK;
+}
 
 #if (NGX_HAVE_VARIADIC_MACROS)
+
+
 
 void
 ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
