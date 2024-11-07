@@ -111,17 +111,22 @@ ngx_set_error_log_buffer_size(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         return NGX_CONF_ERROR;
     }
 
+    if (size < 2048) {
+        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                      "Error log buffer size too small, using default minimum of 2 KB");
+        size = 2048;
+    }
+
     NGX_MAX_ERROR_STR = size;
 
     ngx_log_error(NGX_LOG_NOTICE, cf->log, 0,
-                  "Changed the default value of the error log buffer size to %ui", NGX_MAX_ERROR_STR);
+                  "Changed the error log buffer size to %ui", NGX_MAX_ERROR_STR);
 
     return NGX_CONF_OK;
 }
 
+
 #if (NGX_HAVE_VARIADIC_MACROS)
-
-
 
 void
 ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
