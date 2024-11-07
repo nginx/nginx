@@ -168,7 +168,13 @@ typedef struct {
     size_t                            in_flight;
     size_t                            window;
     size_t                            ssthresh;
+    size_t                            w_max;
+    size_t                            w_est;
+    size_t                            w_prior;
+    size_t                            mtu;
     ngx_msec_t                        recovery_start;
+    ngx_msec_t                        idle_start;
+    ngx_msec_t                        k;
     ngx_uint_t                        idle; /* unsigned  idle:1; */
 } ngx_quic_congestion_t;
 
