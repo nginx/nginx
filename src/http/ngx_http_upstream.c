@@ -5241,7 +5241,8 @@ ngx_http_upstream_process_transfer_encoding(ngx_http_request_t *r,
 
     if (u->headers_in.transfer_encoding 
         && u->headers_in.transfer_encoding->value.len == h->value.len
-        && ngx_strncasecmp(u->headers_in.transfer_encoding->value.data, h->value.data, h->value.len) == 0) 
+        && ngx_strncasecmp(u->headers_in.transfer_encoding->value.data, 
+                           h->value.data, h->value.len) == 0) 
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent duplicate header line: \"%V: %V\", "
