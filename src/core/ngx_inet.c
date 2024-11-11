@@ -639,7 +639,11 @@ ngx_parse_addr_port(ngx_pool_t *pool, ngx_addr_t *addr, u_char *text,
 
         p = ngx_strlchr(text, last, ']');
 
-        if (p == NULL || p == last - 1 || *++p != ':') {
+        if (p == last - 1) {
+            return ngx_parse_addr(pool, addr, text + 1, len - 2);
+        }
+
+        if (p == NULL || *++p != ':') {
             return NGX_DECLINED;
         }
 
