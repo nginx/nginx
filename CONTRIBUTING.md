@@ -1,5 +1,3 @@
-# Contributing Guidelines
-
 The following is a set of guidelines for contributing to nginx project.
 We really appreciate that you are considering contributing!
 
