@@ -416,10 +416,6 @@ ngx_log_init(u_char *prefix, u_char *error_log)
                                     NGX_FILE_CREATE_OR_OPEN,
                                     file_mode);
 
-    ngx_log_file.fd = ngx_open_file(name, NGX_FILE_APPEND,
-                                    NGX_FILE_CREATE_OR_OPEN,
-                                    NGX_FILE_DEFAULT_ACCESS);
-
     if (ngx_log_file.fd == NGX_INVALID_FILE) {
         ngx_log_stderr(ngx_errno,
                        "[alert] could not open error log file: "
