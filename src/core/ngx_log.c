@@ -373,6 +373,49 @@ ngx_log_init(u_char *prefix, u_char *error_log)
         }
     }
 
+    char *custom_mode = getenv("NGX_LOG_FILE_MODE");
+    mode_t file_mode = NGX_FILE_DEFAULT_ACCESS;
+
+    if (custom_mode != NULL) {
+        int valid = 1;
+
+        /* Check if all characters are valid octal digits (0-7) */
+        for (const char *p = custom_mode; *p; p++) {
+            if (!isdigit(*p) || *p > '7') {
+                valid = 0;
+                break;
+            }
+        }
+
+        /* Only proceed with strtol if the mode string is valid */
+        if (valid) {
+            errno = 0;
+            long mode = strtol(custom_mode, NULL, 8);
+
+            /* Check for strtol errors and range (mode should be non-zero and <= 0755) */
+            if (errno == 0 && mode > 0 && mode <= 0755) {
+                file_mode = (mode_t)mode;
+            }
+        }
+        /* Fallback to NGX_FILE_DEFAULT_ACCESS if file_mode is invalid */
+        if (!valid) {
+            file_mode = NGX_FILE_DEFAULT_ACCESS;
+            /* log alert */
+            ngx_log_stderr(ngx_errno,
+                           "[alert] invalid file mode: \"%s\". Using default mode: %o",
+                            custom_mode, NGX_FILE_DEFAULT_ACCESS);
+        }
+    } else {
+        /* If the environment variable is not set or is empty, fallback to default */
+        ngx_log_stderr(ngx_errno,
+            "[alert] NGX_LOG_FILE_MODE not set or is empty. Using default mode: %o",
+            NGX_FILE_DEFAULT_ACCESS);
+    }
+
+    ngx_log_file.fd = ngx_open_file(name, NGX_FILE_APPEND,
+                                    NGX_FILE_CREATE_OR_OPEN,
+                                    file_mode);
+
     ngx_log_file.fd = ngx_open_file(name, NGX_FILE_APPEND,
                                     NGX_FILE_CREATE_OR_OPEN,
                                     NGX_FILE_DEFAULT_ACCESS);
