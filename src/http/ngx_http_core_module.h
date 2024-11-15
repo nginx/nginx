@@ -430,6 +430,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_http_complex_value_t  *disable_symlinks_from;
 #endif
 
+    ngx_array_t  *early_hints;             /* early_hints */
+
     ngx_array_t  *error_pages;             /* error_page */
 
     ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
