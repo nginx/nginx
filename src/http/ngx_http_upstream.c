@@ -48,6 +48,9 @@ static void ngx_http_upstream_send_request_handler(ngx_http_request_t *r,
 static void ngx_http_upstream_read_request_handler(ngx_http_request_t *r);
 static void ngx_http_upstream_process_header(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+static void ngx_http_upstream_early_hints_writer(ngx_http_request_t *r);
 static ngx_int_t ngx_http_upstream_test_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
@@ -2530,6 +2533,20 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             continue;
         }
 
+        if (rc == NGX_OK
+            && u->headers_in.status_n == NGX_HTTP_EARLY_HINTS)
+        {
+            rc = ngx_http_upstream_process_early_hints(r, u);
+
+            if (rc == NGX_OK) {
+                rc = u->process_header(r);
+
+                if (rc == NGX_AGAIN) {
+                    continue;
+                }
+            }
+        }
+
         break;
     }
 
@@ -2564,6 +2581,152 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     ngx_http_upstream_send_response(r, u);
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    u_char            *p;
+    ngx_uint_t         i;
+    ngx_list_part_t   *part;
+    ngx_table_elt_t   *h, *ho;
+    ngx_connection_t  *c;
+
+    c = r->connection;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
+
+    if (u->conf->pass_early_hints) {
+
+        u->early_hints_length += u->buffer.pos - u->buffer.start;
+
+        if (u->early_hints_length <= (off_t) u->conf->buffer_size) {
+
+            part = &u->headers_in.headers.part;
+            h = part->elts;
+
+            for (i = 0; /* void */; i++) {
+
+                if (i >= part->nelts) {
+                    if (part->next == NULL) {
+                        break;
+                    }
+
+                    part = part->next;
+                    h = part->elts;
+                    i = 0;
+                }
+
+                if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
+                                  h[i].lowcase_key, h[i].key.len))
+                {
+                    continue;
+                }
+
+                ho = ngx_list_push(&r->headers_out.headers);
+                if (ho == NULL) {
+                    return NGX_ERROR;
+                }
+
+                *ho = h[i];
+            }
+
+            if (ngx_http_send_early_hints(r) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (c->buffered) {
+                if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+
+                r->write_event_handler = ngx_http_upstream_early_hints_writer;
+            }
+
+        } else {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "upstream sent too big early hints");
+        }
+    }
+
+    if (u->reinit_request(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_clean_header(r);
+
+    ngx_memzero(&u->headers_in, sizeof(ngx_http_upstream_headers_in_t));
+    u->headers_in.content_length_n = -1;
+    u->headers_in.last_modified_time = -1;
+
+    if (ngx_list_init(&u->headers_in.headers, r->pool, 8,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    if (ngx_list_init(&u->headers_in.trailers, r->pool, 2,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    p = u->buffer.pos;
+
+    u->buffer.pos = u->buffer.start;
+
+#if (NGX_HTTP_CACHE)
+
+    if (r->cache) {
+        u->buffer.pos += r->cache->header_start;
+    }
+
+#endif
+
+    u->buffer.last = ngx_movemem(u->buffer.pos, p, u->buffer.last - p);
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_upstream_early_hints_writer(ngx_http_request_t *r)
+{
+    ngx_connection_t     *c;
+    ngx_http_upstream_t  *u;
+
+    c = r->connection;
+    u = r->upstream;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream early hints writer");
+
+    c->log->action = "sending early hints to client";
+
+    if (ngx_http_write_filter(r, NULL) == NGX_ERROR) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    if (!c->buffered) {
+        if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
+            r->write_event_handler =
+                                  ngx_http_upstream_wr_check_broken_connection;
+
+        } else {
+            r->write_event_handler = ngx_http_request_empty_handler;
+        }
+    }
+
+    if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+    }
 }
 
 

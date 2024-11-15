@@ -213,6 +213,7 @@ struct ngx_http_v2_stream_s {
 
     ngx_pool_t                      *pool;
 
+    unsigned                         initialized:1;
     unsigned                         waiting:1;
     unsigned                         blocked:1;
     unsigned                         exhausted:1;
