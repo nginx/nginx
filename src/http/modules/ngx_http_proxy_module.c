@@ -1888,6 +1888,13 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
                    u->headers_in.status_n, &u->headers_in.status_line);
 
     if (ctx->status.http_version < NGX_HTTP_VERSION_11) {
+
+        if (ctx->status.code == NGX_HTTP_EARLY_HINTS) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent HTTP/1.0 response with early hints");
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
         u->headers_in.connection_close = 1;
     }
 
@@ -1949,6 +1956,14 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
             }
 
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy header: \"%V: %V\"",
+                           &h->key, &h->value);
+
+            if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+                continue;
+            }
+
             hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                h->lowcase_key, h->key.len);
 
@@ -1960,10 +1975,6 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 }
             }
 
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy header: \"%V: %V\"",
-                           &h->key, &h->value);
-
             continue;
         }
 
@@ -1973,6 +1984,10 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy header done");
+
+            if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+                return NGX_OK;
+            }
 
             /*
              * if no "Server" and "Date" in header line,
@@ -3628,10 +3643,10 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
 #endif
 
-    /* "proxy_cyclic_temp_file" is disabled */
+    /* the hardcoded values */
     conf->upstream.cyclic_temp_file = 0;
-
     conf->upstream.change_buffering = 1;
+    conf->upstream.pass_early_hints = 1;
 
     conf->headers_source = NGX_CONF_UNSET_PTR;
 

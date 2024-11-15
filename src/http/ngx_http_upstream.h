@@ -185,6 +185,7 @@ typedef struct {
     ngx_flag_t                       pass_request_headers;
     ngx_flag_t                       pass_request_body;
     ngx_flag_t                       pass_trailers;
+    ngx_flag_t                       pass_early_hints;
 
     ngx_flag_t                       ignore_client_abort;
     ngx_flag_t                       intercept_errors;
@@ -354,6 +355,7 @@ struct ngx_http_upstream_s {
 
     ngx_buf_t                        buffer;
     off_t                            length;
+    off_t                            early_hints_length;
 
     ngx_chain_t                     *out_bufs;
     ngx_chain_t                     *busy_bufs;
