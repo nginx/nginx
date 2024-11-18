@@ -651,16 +651,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->early_data, prev->early_data, 0);
     ngx_conf_merge_value(conf->reject_handshake, prev->reject_handshake, 0);
 
-#ifndef SSL_OP_NO_TLSv1_2
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
-                         (NGX_CONF_BITMASK_SET
-                          |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
-                          |NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3));
-#else
-    ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
-                         (NGX_CONF_BITMASK_SET
-                          |NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3));
-#endif
+                         (NGX_CONF_BITMASK_SET|NGX_SSL_DEFAULT_PROTOCOLS));
 
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                          NGX_SSL_BUFSIZE);
