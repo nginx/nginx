@@ -187,6 +187,13 @@ typedef struct {
 #define NGX_SSL_TLSv1_3  0x0040
 
 
+#if (defined SSL_OP_NO_TLSv1_2 || defined SSL_OP_NO_TLSv1_3)
+#define NGX_SSL_DEFAULT_PROTOCOLS  (NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3)
+#else
+#define NGX_SSL_DEFAULT_PROTOCOLS  (NGX_SSL_TLSv1|NGX_SSL_TLSv1_1)
+#endif
+
+
 #define NGX_SSL_BUFFER   1
 #define NGX_SSL_CLIENT   2
 
