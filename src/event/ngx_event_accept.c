@@ -20,6 +20,7 @@ static void ngx_close_accepted_connection(ngx_connection_t *c);
 void
 ngx_event_accept(ngx_event_t *ev)
 {
+    int                sockval;
     socklen_t          socklen;
     ngx_err_t          err;
     ngx_log_t         *log;
@@ -154,6 +155,75 @@ ngx_event_accept(ngx_event_t *ev)
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
+#endif
+
+#if (NGX_HAVE_KEEPALIVE_TUNABLE) && \
+    !defined(__DragonFly__) && \
+    !defined(__FreeBSD__) && \
+    !defined(__linux__)
+    /*
+     * TCP keepalive options are not inherited from the listening socket
+     * on platforms other than Linux, FreeBSD, or DragonFlyBSD.
+     * We therefore need to set them on the accepted socket explicitly.
+     */
+
+        if (ls->keepidle) {
+            sockval = ls->keepidle;
+
+#if (NGX_KEEPALIVE_FACTOR)
+            sockval *= NGX_KEEPALIVE_FACTOR;
+#endif
+
+#ifdef TCP_KEEPIDLE
+            if (setsockopt(ls->fd, IPPROTO_TCP, TCP_KEEPIDLE,
+                           (const void *) &sockval, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              "setsockopt(TCP_KEEPIDLE, %d) %V failed, ignored",
+                              sockval, &ls->addr_text);
+            }
+#elif defined(TCP_KEEPALIVE)
+            /* The equivalent of TCP_KEEPIDLE on Darwin is TCP_KEEPALIVE. */
+            if (setsockopt(s, IPPROTO_TCP, TCP_KEEPALIVE,
+                           (const void *) &sockval, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              "setsockopt(TCP_KEEPALIVE, %d) %V failed, ignored",
+                              sockval, &ls->addr_text);
+            }
+#endif
+        }
+
+        if (ls->keepintvl) {
+            sockval = ls->keepintvl;
+
+#if (NGX_KEEPALIVE_FACTOR)
+            sockval *= NGX_KEEPALIVE_FACTOR;
+#endif
+
+            if (setsockopt(ls->fd, IPPROTO_TCP, TCP_KEEPINTVL,
+                           (const void *) &sockval, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                             "setsockopt(TCP_KEEPINTVL, %d) %V failed, ignored",
+                             sockval, &ls->addr_text);
+            }
+        }
+
+        if (ls->keepcnt) {
+            if (setsockopt(ls->fd, IPPROTO_TCP, TCP_KEEPCNT,
+                           (const void *) &ls->keepcnt, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              "setsockopt(TCP_KEEPCNT, %d) %V failed, ignored",
+                              ls->keepcnt, &ls->addr_text);
+            }
+        }
+
 #endif
 
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
