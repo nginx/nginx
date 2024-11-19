@@ -523,6 +523,7 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
+#include <ngx_event_tcp.h>
 #include <ngx_event_udp.h>
 
 #if (NGX_WIN32)

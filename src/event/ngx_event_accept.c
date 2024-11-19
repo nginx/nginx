@@ -156,6 +156,26 @@ ngx_event_accept(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_active, 1);
 #endif
 
+#if (NGX_HAVE_KEEPALIVE_TUNABLE) && \
+    !defined(__DragonFly__) && \
+    !defined(__FreeBSD__) && \
+    !defined(__linux__)
+    /*
+     * TCP keepalive options are not inherited from the listening socket
+     * on platforms other than Linux, FreeBSD, or DragonFlyBSD.
+     * We therefore need to set them on the accepted socket explicitly.
+     */
+
+        if (ngx_tcp_keepalive(s, ls->keepidle,
+                              ls->keepintvl, ls->keepcnt) == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                          "ngx_tcp_keepalive(%d, %d, %d, %d) %V failed, ignored",
+                          ls->fd, ls->keepidle, ls->keepintvl, ls->keepcnt,
+                          &ls->addr_text);
+        }
+#endif
+
         c->pool = ngx_create_pool(ls->pool_size, ev->log);
         if (c->pool == NULL) {
             ngx_close_accepted_connection(c);
