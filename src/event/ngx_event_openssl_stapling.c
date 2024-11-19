@@ -58,6 +58,8 @@ typedef struct {
 
     ngx_resolver_t              *resolver;
     ngx_msec_t                   resolver_timeout;
+
+    STACK_OF(X509)              *responder_chain;
 } ngx_ssl_ocsp_conf_t;
 
 
@@ -97,6 +99,7 @@ struct ngx_ssl_ocsp_ctx_s {
     X509                        *cert;
     X509                        *issuer;
     STACK_OF(X509)              *chain;
+    STACK_OF(X509)              *responder_chain;
 
     int                          status;
     time_t                       valid;
@@ -867,6 +870,42 @@ ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
 
 
 ngx_int_t
+ngx_ssl_ocsp_responder_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_str_t *file)
+{
+    char                 *err;
+    STACK_OF(X509)       *chain;
+    ngx_ssl_ocsp_conf_t  *ocf;
+
+    if (file->len == 0) {
+        return NGX_OK;
+    }
+
+    /* the OCSP configuration created by ngx_ssl_ocsp() */
+
+    ocf = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_ocsp_index);
+    if (ocf == NULL) {
+        return NGX_OK;
+    }
+
+    chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CERT, &err, file, NULL);
+    if (chain == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load OCSP responder certificate \"%s\": %s",
+                          file->data, err);
+        }
+
+        return NGX_ERROR;
+    }
+
+    ocf->responder_chain = chain;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_ocsp_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_resolver_t *resolver, ngx_msec_t resolver_timeout)
 {
@@ -1047,6 +1086,7 @@ ngx_ssl_ocsp_validate_next(ngx_connection_t *c)
         ctx->cert = sk_X509_value(ocsp->certs, ocsp->ncert);
         ctx->issuer = sk_X509_value(ocsp->certs, ocsp->ncert + 1);
         ctx->chain = ocsp->certs;
+        ctx->responder_chain = ocf->responder_chain;
 
         ctx->resolver = ocf->resolver;
         ctx->resolver_timeout = ocf->resolver_timeout;
@@ -2419,7 +2459,20 @@ ngx_ssl_ocsp_verify(ngx_ssl_ocsp_ctx_t *ctx)
         goto error;
     }
 
-    if (OCSP_basic_verify(basic, ctx->chain, store, ctx->flags) != 1) {
+    if (ctx->responder_chain) {
+
+        /* trusted responder certificates, see ssl_ocsp_responder_certificate */
+
+        if (OCSP_basic_verify(basic, ctx->responder_chain, store,
+                              ctx->flags | OCSP_TRUSTOTHER)
+            != 1)
+        {
+            ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
+                          "OCSP_basic_verify() failed");
+            goto error;
+        }
+
+    } else if (OCSP_basic_verify(basic, ctx->chain, store, ctx->flags) != 1) {
         ngx_ssl_error(NGX_LOG_ERR, ctx->log, 0,
                       "OCSP_basic_verify() failed");
         goto error;
@@ -2795,6 +2848,14 @@ ngx_ssl_ocsp(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *responder,
 ngx_int_t
 ngx_ssl_ocsp_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_resolver_t *resolver, ngx_msec_t resolver_timeout)
+{
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_ocsp_responder_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    ngx_str_t *file)
 {
     return NGX_OK;
 }
