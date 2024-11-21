@@ -3781,6 +3781,11 @@ ngx_http_fastcgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
+    if (value[1].len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "empty path");
+        return NGX_CONF_ERROR;
+    }
+
 #if (NGX_HTTP_CACHE)
     if (flcf->upstream.cache > 0) {
         return "is incompatible with \"fastcgi_cache\"";
