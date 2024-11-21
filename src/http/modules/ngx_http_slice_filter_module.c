@@ -165,8 +165,8 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
 
     if (cr.start != ctx->start || cr.end != end) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "unexpected range in slice response: %O-%O",
-                      cr.start, cr.end);
+                      "unexpected range in slice response: %O-%O, "
+                      "expected: %O-%O", cr.start, cr.end, ctx->start, end);
         return NGX_ERROR;
     }
 
