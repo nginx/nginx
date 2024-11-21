@@ -21,6 +21,9 @@ typedef struct {
     ngx_flag_t       reject_handshake;
 
     ngx_ssl_t        ssl;
+#if (NGX_SSL_DTLS)
+    ngx_ssl_t        ssl_udp;
+#endif
 
     ngx_uint_t       protocols;
 

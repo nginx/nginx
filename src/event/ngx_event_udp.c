@@ -13,8 +13,6 @@
 #if !(NGX_WIN32)
 
 static void ngx_close_accepted_udp_connection(ngx_connection_t *c);
-static ssize_t ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf,
-    size_t size);
 static ngx_int_t ngx_insert_udp_connection(ngx_connection_t *c);
 static ngx_connection_t *ngx_lookup_udp_connection(ngx_listening_t *ls,
     struct sockaddr *sockaddr, socklen_t socklen,
@@ -365,7 +363,7 @@ ngx_close_accepted_udp_connection(ngx_connection_t *c)
 }
 
 
-static ssize_t
+ssize_t
 ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf, size_t size)
 {
     ssize_t     n;

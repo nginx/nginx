@@ -403,6 +403,7 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
 {
     long                        rc;
     X509                       *cert;
+    ngx_ssl_t                  *ssl;
     ngx_int_t                   rv;
     ngx_connection_t           *c;
     ngx_stream_ssl_srv_conf_t  *sscf;
@@ -418,7 +419,16 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
     if (c->ssl == NULL) {
         c->log->action = "SSL handshaking";
 
-        rv = ngx_stream_ssl_init_connection(&sscf->ssl, c);
+#if (NGX_SSL_DTLS)
+        if (c->type == SOCK_DGRAM) {
+            ssl = &sscf->ssl_udp;
+        } else
+#endif
+        {
+            ssl = &sscf->ssl;
+        }
+
+        rv = ngx_stream_ssl_init_connection(ssl, c);
 
         if (rv != NGX_OK) {
             return rv;
@@ -472,7 +482,9 @@ ngx_stream_ssl_init_connection(ngx_ssl_t *ssl, ngx_connection_t *c)
 
     cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
 
-    if (cscf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK) {
+    if (c->type == SOCK_STREAM
+        && cscf->tcp_nodelay && ngx_tcp_nodelay(c) != NGX_OK)
+    {
         return NGX_ERROR;
     }
 
@@ -529,6 +541,7 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
     ngx_int_t                    rc;
     ngx_str_t                    host;
+    ngx_ssl_t                   *ssl;
     const char                  *servername;
     ngx_connection_t            *c;
     ngx_stream_session_t        *s;
@@ -589,8 +602,17 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
-    if (sscf->ssl.ctx) {
-        if (SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx) == NULL) {
+#if (NGX_SSL_DTLS)
+    if (c->type == SOCK_DGRAM) {
+        ssl = &sscf->ssl_udp;
+    } else
+#endif
+    {
+        ssl = &sscf->ssl;
+    }
+
+    if (ssl->ctx) {
+        if (SSL_set_SSL_CTX(ssl_conn, ssl->ctx) == NULL) {
             goto error;
         }
 
@@ -599,18 +621,18 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
          * adjust other things we care about
          */
 
-        SSL_set_verify(ssl_conn, SSL_CTX_get_verify_mode(sscf->ssl.ctx),
-                       SSL_CTX_get_verify_callback(sscf->ssl.ctx));
+        SSL_set_verify(ssl_conn, SSL_CTX_get_verify_mode(ssl->ctx),
+                       SSL_CTX_get_verify_callback(ssl->ctx));
 
-        SSL_set_verify_depth(ssl_conn, SSL_CTX_get_verify_depth(sscf->ssl.ctx));
+        SSL_set_verify_depth(ssl_conn, SSL_CTX_get_verify_depth(ssl->ctx));
 
 #if OPENSSL_VERSION_NUMBER >= 0x009080dfL
         /* only in 0.9.8m+ */
         SSL_clear_options(ssl_conn, SSL_get_options(ssl_conn) &
-                                    ~SSL_CTX_get_options(sscf->ssl.ctx));
+                                    ~SSL_CTX_get_options(ssl->ctx));
 #endif
 
-        SSL_set_options(ssl_conn, SSL_CTX_get_options(sscf->ssl.ctx));
+        SSL_set_options(ssl_conn, SSL_CTX_get_options(ssl->ctx));
 
 #ifdef SSL_OP_NO_RENEGOTIATION
         SSL_set_options(ssl_conn, SSL_OP_NO_RENEGOTIATION);
@@ -942,6 +964,13 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_stream_ssl_set_ssl(cf, conf, prev, &conf->ssl) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
+#if (NGX_SSL_DTLS)
+    conf->ssl_udp.udp = 1;
+    if (ngx_stream_ssl_set_ssl(cf, conf, prev, &conf->ssl_udp) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+#endif
 
     return NGX_CONF_OK;
 }
@@ -1527,6 +1556,15 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
             {
                 return NGX_ERROR;
             }
+
+#if (NGX_SSL_DTLS)
+            if (ngx_ssl_stapling_resolver(cf, &sscf->ssl_udp, cscf->resolver,
+                                          cscf->resolver_timeout)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+#endif
         }
 
         if (sscf->ocsp) {
@@ -1536,6 +1574,15 @@ ngx_stream_ssl_init(ngx_conf_t *cf)
             {
                 return NGX_ERROR;
             }
+
+#if (NGX_SSL_DTLS)
+            if (ngx_ssl_ocsp_resolver(cf, &sscf->ssl_udp, cscf->resolver,
+                                      cscf->resolver_timeout)
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+#endif
         }
     }
 

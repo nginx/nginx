@@ -53,6 +53,9 @@ typedef struct {
     ngx_array_t                     *ssl_conf_commands;
 
     ngx_ssl_t                       *ssl;
+#if (NGX_SSL_DTLS)
+    ngx_ssl_t                       *ssl_udp;
+#endif
 #endif
 
     ngx_stream_upstream_srv_conf_t  *upstream;
@@ -822,9 +825,9 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 
 #if (NGX_STREAM_SSL)
 
-    if (pc->type == SOCK_STREAM && pscf->ssl_enable) {
+    if (pscf->ssl_enable) {
 
-        if (u->proxy_protocol) {
+        if (pc->type == SOCK_STREAM && u->proxy_protocol) {
             if (ngx_stream_proxy_send_proxy_protocol(s) != NGX_OK) {
                 return;
             }
@@ -1068,6 +1071,7 @@ static void
 ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
 {
     ngx_int_t                     rc;
+    ngx_ssl_t                    *ssl;
     ngx_connection_t             *pc;
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
@@ -1078,7 +1082,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
-    if (ngx_ssl_create_connection(pscf->ssl, pc, NGX_SSL_BUFFER|NGX_SSL_CLIENT)
+#if (NGX_SSL_DTLS)
+    if (pc->type == SOCK_DGRAM) {
+        ssl = pscf->ssl_udp;
+    } else
+#endif
+    {
+        ssl = pscf->ssl;
+    }
+
+    if (ngx_ssl_create_connection(ssl, pc, NGX_SSL_BUFFER|NGX_SSL_CLIENT)
         != NGX_OK)
     {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -2092,6 +2105,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
      *     conf->ssl_crl = { 0, NULL };
      *
      *     conf->ssl = NULL;
+     *     conf->ssl_udp = NULL;
      *     conf->upstream = NULL;
      *     conf->upstream_value = NULL;
      */
@@ -2215,6 +2229,13 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         if (ngx_stream_proxy_set_ssl(cf, conf, conf->ssl) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
+
+#if (NGX_SSL_DTLS)
+        conf->ssl_udp->udp = 1;
+        if (ngx_stream_proxy_set_ssl(cf, conf, conf->ssl_udp) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+#endif
     }
 
 #endif
@@ -2245,6 +2266,9 @@ ngx_stream_proxy_merge_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *conf,
     {
         if (prev->ssl) {
             conf->ssl = prev->ssl;
+#if (NGX_SSL_DTLS)
+            conf->ssl_udp = prev->ssl_udp;
+#endif
             return NGX_OK;
         }
 
@@ -2261,6 +2285,15 @@ ngx_stream_proxy_merge_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *conf,
 
     conf->ssl->log = cf->log;
 
+#if (NGX_SSL_DTLS)
+    conf->ssl_udp = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_t));
+    if (conf->ssl_udp == NULL) {
+        return NGX_ERROR;
+    }
+
+    conf->ssl_udp->log = cf->log;
+#endif
+
     /*
      * special handling to preserve conf->ssl
      * in the "stream" section to inherit it to all servers
@@ -2268,6 +2301,9 @@ ngx_stream_proxy_merge_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *conf,
 
     if (preserve) {
         prev->ssl = conf->ssl;
+#if (NGX_SSL_DTLS)
+        prev->ssl_udp = conf->ssl_udp;
+#endif
     }
 
     return NGX_OK;

@@ -1237,7 +1237,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 #endif
 
-#if (NGX_STREAM_SSL)
+#if (NGX_STREAM_SSL && !NGX_SSL_DTLS)
         if (lsopt.ssl) {
             return "\"ssl\" parameter is incompatible with \"udp\"";
         }
