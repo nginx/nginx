@@ -391,6 +391,7 @@ SSL_set_quic_method(SSL *ssl, const SSL_QUIC_METHOD *quic_method)
 
     wbio = BIO_new(BIO_s_null());
     if (wbio == NULL) {
+        BIO_free(rbio);
         return 0;
     }
 
