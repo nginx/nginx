@@ -43,6 +43,9 @@ static ngx_int_t ngx_stream_ssl_add_variables(ngx_conf_t *cf);
 static void *ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_stream_ssl_set_ssl(ngx_conf_t *cf,
+    ngx_stream_ssl_srv_conf_t *conf, ngx_stream_ssl_srv_conf_t *prev,
+    ngx_ssl_t *ssl);
 
 static ngx_int_t ngx_stream_ssl_compile_certificates(ngx_conf_t *cf,
     ngx_stream_ssl_srv_conf_t *conf);
@@ -869,8 +872,6 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_stream_ssl_srv_conf_t *prev = parent;
     ngx_stream_ssl_srv_conf_t *conf = child;
 
-    ngx_pool_cleanup_t  *cln;
-
     ngx_conf_merge_msec_value(conf->handshake_timeout,
                          prev->handshake_timeout, 60000);
 
@@ -921,8 +922,6 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->stapling_responder,
                          prev->stapling_responder, "");
 
-    conf->ssl.log = cf->log;
-
     if (conf->certificates) {
 
         if (conf->certificate_keys == NULL
@@ -940,40 +939,56 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_OK;
     }
 
-    if (ngx_ssl_create(&conf->ssl, conf->protocols, NULL) != NGX_OK) {
+    if (ngx_stream_ssl_set_ssl(cf, conf, prev, &conf->ssl) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_set_ssl(ngx_conf_t *cf, ngx_stream_ssl_srv_conf_t *conf,
+    ngx_stream_ssl_srv_conf_t *prev, ngx_ssl_t *ssl)
+{
+    ngx_pool_cleanup_t  *cln;
+
+    ssl->log = cf->log;
+
+    if (ngx_ssl_create(ssl, conf->protocols, NULL) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
-        ngx_ssl_cleanup_ctx(&conf->ssl);
-        return NGX_CONF_ERROR;
+        ngx_ssl_cleanup_ctx(ssl);
+        return NGX_ERROR;
     }
 
     cln->handler = ngx_ssl_cleanup_ctx;
-    cln->data = &conf->ssl;
+    cln->data = ssl;
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-    SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
+    SSL_CTX_set_tlsext_servername_callback(ssl->ctx,
                                            ngx_stream_ssl_servername);
 #endif
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
     if (conf->alpn.len) {
-        SSL_CTX_set_alpn_select_cb(conf->ssl.ctx, ngx_stream_ssl_alpn_select,
+        SSL_CTX_set_alpn_select_cb(ssl->ctx, ngx_stream_ssl_alpn_select,
                                    &conf->alpn);
     }
 #endif
 
-    if (ngx_ssl_ciphers(cf, &conf->ssl, &conf->ciphers,
+    if (ngx_ssl_ciphers(cf, ssl, &conf->ciphers,
                         conf->prefer_server_ciphers)
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     if (ngx_stream_ssl_compile_certificates(cf, conf) != NGX_OK) {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     if (conf->certificate_values) {
@@ -982,25 +997,25 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         /* install callback to lookup certificates */
 
-        SSL_CTX_set_cert_cb(conf->ssl.ctx, ngx_stream_ssl_certificate, conf);
+        SSL_CTX_set_cert_cb(ssl->ctx, ngx_stream_ssl_certificate, conf);
 
 #else
         ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                       "variables in "
                       "\"ssl_certificate\" and \"ssl_certificate_key\" "
                       "directives are not supported on this platform");
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
 #endif
 
     } else if (conf->certificates) {
 
         /* configure certificates */
 
-        if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
+        if (ngx_ssl_certificates(cf, ssl, conf->certificates,
                                  conf->certificate_keys, conf->passwords)
             != NGX_OK)
         {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
     }
 
@@ -1013,28 +1028,28 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no ssl_client_certificate or "
                           "ssl_trusted_certificate for ssl_verify_client");
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
-        if (ngx_ssl_client_certificate(cf, &conf->ssl,
+        if (ngx_ssl_client_certificate(cf, ssl,
                                        &conf->client_certificate,
                                        conf->verify_depth)
             != NGX_OK)
         {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
     }
 
-    if (ngx_ssl_trusted_certificate(cf, &conf->ssl,
+    if (ngx_ssl_trusted_certificate(cf, ssl,
                                     &conf->trusted_certificate,
                                     conf->verify_depth)
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
-    if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
-        return NGX_CONF_ERROR;
+    if (ngx_ssl_crl(cf, ssl, &conf->crl) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     if (conf->ocsp) {
@@ -1043,23 +1058,23 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "\"ssl_ocsp\" is incompatible with "
                           "\"ssl_verify_client optional_no_ca\"");
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
-        if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp,
+        if (ngx_ssl_ocsp(cf, ssl, &conf->ocsp_responder, conf->ocsp,
                          conf->ocsp_cache_zone)
             != NGX_OK)
         {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
     }
 
-    if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
-        return NGX_CONF_ERROR;
+    if (ngx_ssl_dhparam(cf, ssl, &conf->dhparam) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    if (ngx_ssl_ecdh_curve(cf, &conf->ssl, &conf->ecdh_curve) != NGX_OK) {
-        return NGX_CONF_ERROR;
+    if (ngx_ssl_ecdh_curve(cf, ssl, &conf->ecdh_curve) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     ngx_conf_merge_value(conf->builtin_session_cache,
@@ -1069,12 +1084,12 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->shm_zone = prev->shm_zone;
     }
 
-    if (ngx_ssl_session_cache(&conf->ssl, &ngx_stream_ssl_sess_id_ctx,
+    if (ngx_ssl_session_cache(ssl, &ngx_stream_ssl_sess_id_ctx,
                               conf->certificates, conf->builtin_session_cache,
                               conf->shm_zone, conf->session_timeout)
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     ngx_conf_merge_value(conf->session_tickets,
@@ -1082,35 +1097,35 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
 #ifdef SSL_OP_NO_TICKET
     if (!conf->session_tickets) {
-        SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_NO_TICKET);
+        SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TICKET);
     }
 #endif
 
     ngx_conf_merge_ptr_value(conf->session_ticket_keys,
                          prev->session_ticket_keys, NULL);
 
-    if (ngx_ssl_session_ticket_keys(cf, &conf->ssl, conf->session_ticket_keys)
+    if (ngx_ssl_session_ticket_keys(cf, ssl, conf->session_ticket_keys)
         != NGX_OK)
     {
-        return NGX_CONF_ERROR;
+        return NGX_ERROR;
     }
 
     if (conf->stapling) {
 
-        if (ngx_ssl_stapling(cf, &conf->ssl, &conf->stapling_file,
+        if (ngx_ssl_stapling(cf, ssl, &conf->stapling_file,
                              &conf->stapling_responder, conf->stapling_verify)
             != NGX_OK)
         {
-            return NGX_CONF_ERROR;
+            return NGX_ERROR;
         }
 
     }
 
-    if (ngx_ssl_conf_commands(cf, &conf->ssl, conf->conf_commands) != NGX_OK) {
-        return NGX_CONF_ERROR;
+    if (ngx_ssl_conf_commands(cf, ssl, conf->conf_commands) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    return NGX_CONF_OK;
+    return NGX_OK;
 }
 
 
