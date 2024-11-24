@@ -1289,20 +1289,23 @@ ngx_ssl_passwords_cleanup(void *data)
 ngx_int_t
 ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 {
-    BIO  *bio;
+    BIO        *bio;
+    ngx_str_t   path;
 
     if (file->len == 0) {
         return NGX_OK;
     }
 
-    if (ngx_conf_full_name(cf->cycle, file, 1) != NGX_OK) {
+    path = *file;
+
+    if (ngx_conf_full_name(cf->cycle, &path, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    bio = BIO_new_file((char *) file->data, "r");
+    bio = BIO_new_file((char *) path.data, "r");
     if (bio == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "BIO_new_file(\"%s\") failed", file->data);
+                      "BIO_new_file(\"%s\") failed", path.data);
         return NGX_ERROR;
     }
 
@@ -1313,14 +1316,14 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
     if (dh == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "PEM_read_bio_DHparams(\"%s\") failed", file->data);
+                      "PEM_read_bio_DHparams(\"%s\") failed", path.data);
         BIO_free(bio);
         return NGX_ERROR;
     }
 
     if (SSL_CTX_set_tmp_dh(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set_tmp_dh(\"%s\") failed", file->data);
+                      "SSL_CTX_set_tmp_dh(\"%s\") failed", path.data);
         DH_free(dh);
         BIO_free(bio);
         return NGX_ERROR;
@@ -1340,14 +1343,14 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     dh = PEM_read_bio_Parameters(bio, NULL);
     if (dh == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "PEM_read_bio_Parameters(\"%s\") failed", file->data);
+                      "PEM_read_bio_Parameters(\"%s\") failed", path.data);
         BIO_free(bio);
         return NGX_ERROR;
     }
 
     if (SSL_CTX_set0_tmp_dh_pkey(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set0_tmp_dh_pkey(\"%s\") failed", file->data);
+                      "SSL_CTX_set0_tmp_dh_pkey(\"%s\") failed", path.data);
 #if (OPENSSL_VERSION_NUMBER >= 0x3000001fL)
         EVP_PKEY_free(dh);
 #endif
@@ -1485,6 +1488,7 @@ ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *commands)
     {
     int            type;
     u_char        *key, *value;
+    ngx_str_t      file;
     ngx_uint_t     i;
     ngx_keyval_t  *cmd;
     SSL_CONF_CTX  *cctx;
@@ -1509,15 +1513,16 @@ ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *commands)
 
         key = cmd[i].key.data;
         type = SSL_CONF_cmd_value_type(cctx, (char *) key);
+        file = cmd[i].value;
 
         if (type == SSL_CONF_TYPE_FILE || type == SSL_CONF_TYPE_DIR) {
-            if (ngx_conf_full_name(cf->cycle, &cmd[i].value, 1) != NGX_OK) {
+            if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
                 SSL_CONF_CTX_free(cctx);
                 return NGX_ERROR;
             }
         }
 
-        value = cmd[i].value.data;
+        value = file.data;
 
         if (SSL_CONF_cmd(cctx, (char *) key, (char *) value) <= 0) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -4342,13 +4347,13 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
     path = paths->elts;
     for (i = 0; i < paths->nelts; i++) {
 
-        if (ngx_conf_full_name(cf->cycle, &path[i], 1) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
         ngx_memzero(&file, sizeof(ngx_file_t));
         file.name = path[i];
         file.log = cf->log;
+
+        if (ngx_conf_full_name(cf->cycle, &file.name, 1) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
         file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                                 NGX_FILE_OPEN, 0);
