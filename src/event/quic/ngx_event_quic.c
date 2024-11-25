@@ -1029,7 +1029,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
          * After receiving a 1-RTT packet, servers MUST discard
          * 0-RTT keys within a short time
          */
-        ngx_quic_discard_ctx(c, ssl_encryption_early_data);
+        ngx_quic_keys_discard(qc->keys, ssl_encryption_early_data);
     }
 
     if (qc->closing) {
