@@ -5,6 +5,99 @@
 <change_log title="nginx">
 
 
+<changes ver="1.27.3" date="2024-11-26">
+
+<change type="feature">
+<para lang="ru">
+директива server в блоке upstream поддерживает
+параметр resolve.
+</para>
+<para lang="en">
+the "server" directive in the "upstream" block supports
+the "resolve" parameter.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директивы resolver и resolver_timeout в блоке upstream.
+</para>
+<para lang="en">
+the "resolver" and "resolver_timeout" directives in the "upstream" block.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка SmarterMail-специфичного режима
+IMAP LOGIN с нетегированным ответом CAPABILITY
+в почтовом прокси-сервере.
+</para>
+<para lang="en">
+SmarterMail specific mode support
+for IMAP LOGIN with untagged CAPABILITY response
+in the mail proxy module.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь протоколы TLSv1 и TLSv1.1 по умолчанию запрещены.
+</para>
+<para lang="en">
+now TLSv1 and TLSv1.1 protocols are disabled by default.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+IPv6-адрес в квадратных скобках без порта теперь можно указывать
+в директивах proxy_bind, fastcgi_bind, grpc_bind, memcached_bind,
+scgi_bind и uwsgi_bind,
+а также как адрес клиента в модуле ngx_http_realip_module.
+</para>
+<para lang="en">
+an IPv6 address in square brackets and no port can be specified
+in the "proxy_bind", "fastcgi_bind", "grpc_bind", "memcached_bind",
+"scgi_bind", and "uwsgi_bind" directives,
+and as client address in ngx_http_realip_module.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Nils Bars.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Nils Bars.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+параметр so_keepalive директивы listen
+мог работать некорректно на DragonFly BSD.
+</para>
+<para lang="en">
+the "so_keepalive" parameter of the "listen" directive
+might be handled incorrectly on DragonFly BSD.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директиве proxy_store.
+</para>
+<para lang="en">
+in the "proxy_store" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.27.2" date="2024-10-02">
 
 <change type="feature">
