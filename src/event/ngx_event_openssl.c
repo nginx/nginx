@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+#ifdef SSL_R_ECH_REJECTED
+#include <openssl/hpke.h>
+#endif
+
 
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
@@ -18,6 +22,17 @@ typedef struct {
 } ngx_openssl_conf_t;
 
 
+#ifdef OSSL_ECH_CURRENT_VERSION
+static ngx_int_t ngx_ssl_echconfig(ngx_conf_t *cf, ngx_ssl_t *ssl,
+    OSSL_ECHSTORE *es, ngx_str_t *conf, ngx_str_t *key, ngx_array_t *passwords,
+    ngx_uint_t for_retry);
+#elif defined (SSL_R_ECH_REJECTED)
+static ngx_int_t
+ngx_ssl_echconfig(ngx_conf_t *cf, ngx_ssl_t *ssl, SSL_ECH_KEYS *keys,
+    ngx_str_t *conf, ngx_str_t *key, ngx_uint_t for_retry);
+static ngx_int_t ngx_ssl_echconfig_read(ngx_conf_t *cf, ngx_str_t *file,
+    ngx_str_t *value);
+#endif
 static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
@@ -657,6 +672,304 @@ retry:
 
     return NGX_OK;
 }
+
+
+#ifdef OSSL_ECH_CURRENT_VERSION
+
+/* OpenSSL */
+
+ngx_int_t
+ngx_ssl_echconfigs(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *confs,
+    ngx_array_t *keys, ngx_array_t *passwords, ngx_uint_t for_retry)
+{
+    ngx_str_t      *conf, *key;
+    ngx_uint_t      i;
+    OSSL_ECHSTORE  *es;
+
+    es = OSSL_ECHSTORE_new(NULL, NULL);
+    if (es == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "OSSL_ECHSTORE_new() failed");
+        return NGX_ERROR;
+    }
+
+    conf = confs->elts;
+    key = keys->elts;
+
+    for (i = 0; i < confs->nelts; i++) {
+
+        if (ngx_ssl_echconfig(cf, ssl, es, &conf[i], &key[i], passwords,
+                              for_retry)
+            != NGX_OK)
+        {
+            OSSL_ECHSTORE_free(es);
+            return NGX_ERROR;
+        }
+    }
+
+    if (SSL_CTX_set1_echstore(ssl->ctx, es) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set1_echstore() failed");
+        OSSL_ECHSTORE_free(es);
+        return NGX_ERROR;
+    }
+
+    OSSL_ECHSTORE_free(es);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_echconfig(ngx_conf_t *cf, ngx_ssl_t *ssl, OSSL_ECHSTORE *es,
+    ngx_str_t *conf, ngx_str_t *key, ngx_array_t *passwords,
+    ngx_uint_t for_retry)
+{
+    BIO       *bio;
+    char      *err;
+    EVP_PKEY  *pkey;
+
+    pkey = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_PKEY, &err, key, passwords);
+    if (pkey == NULL) {
+        if (err != NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "cannot load certificate key \"%s\": %s",
+                          key->data, err);
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (ngx_strncmp(conf->data, "data:", sizeof("data:") - 1) == 0) {
+        bio = BIO_new_mem_buf(conf->data + sizeof("data:") - 1,
+                              conf->len - (sizeof("data:") - 1));
+
+        if (bio == NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "BIO_new_mem_buf(\"%V\") failed", conf);
+            EVP_PKEY_free(pkey);
+            return NGX_ERROR;
+        }
+
+    } else {
+        if (ngx_get_full_name(cf->pool, (ngx_str_t *) &ngx_cycle->conf_prefix,
+                              conf)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        bio = BIO_new_file((char *) conf->data, "r");
+        if (bio == NULL) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "BIO_new_file(\"%V\") failed", conf);
+            EVP_PKEY_free(pkey);
+            return NGX_ERROR;
+        }
+    }
+
+    if (OSSL_ECHSTORE_set1_key_and_read_pem(es, pkey, bio, for_retry) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "OSSL_ECHSTORE_set1_key_and_read_pem(\"%V\") failed",
+                      conf);
+        BIO_free(bio);
+        EVP_PKEY_free(pkey);
+        return NGX_ERROR;
+    }
+
+    BIO_free(bio);
+    EVP_PKEY_free(pkey);
+
+    return NGX_OK;
+}
+
+#elif defined (SSL_R_ECH_REJECTED)
+
+/* BoringSSL */
+
+ngx_int_t
+ngx_ssl_echconfigs(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *confs,
+    ngx_array_t *keys, ngx_array_t *passwords, ngx_uint_t for_retry)
+{
+    ngx_str_t     *conf, *key;
+    ngx_uint_t     i;
+    SSL_ECH_KEYS  *ech_keys;
+
+    ech_keys = SSL_ECH_KEYS_new();
+    if (keys == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_ECH_KEYS_new() failed");
+        return NGX_ERROR;
+    }
+
+    conf = confs->elts;
+    key = keys->elts;
+
+    for (i = 0; i < confs->nelts; i++) {
+
+        if (ngx_ssl_echconfig(cf, ssl, ech_keys, &conf[i], &key[i], for_retry)
+            != NGX_OK)
+        {
+            SSL_ECH_KEYS_free(ech_keys);
+            return NGX_ERROR;
+        }
+    }
+
+    if (SSL_CTX_set1_ech_keys(ssl->ctx, ech_keys) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set1_ech_keys() failed");
+        SSL_ECH_KEYS_free(ech_keys);
+        return NGX_ERROR;
+    }
+
+    SSL_ECH_KEYS_free(ech_keys);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_echconfig(ngx_conf_t *cf, ngx_ssl_t *ssl, SSL_ECH_KEYS *keys,
+    ngx_str_t *conf, ngx_str_t *key, ngx_uint_t for_retry)
+{
+    u_char        *conf_data, *key_data;
+    size_t         conf_len, key_len;
+    ngx_str_t      value;
+    EVP_HPKE_KEY  *hpke_key;
+
+    if (ngx_strncmp(conf->data, "data:", sizeof("data:") - 1) == 0) {
+        conf_data = conf->data + sizeof("data:") - 1;
+        conf_len = conf->len - sizeof("data:") - 1;
+
+    } else {
+        if (ngx_ssl_echconfig_read(cf, conf, &value) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        conf_data = value.data;
+        conf_len = value.len;
+    }
+
+    if (ngx_strncmp(key->data, "data:", sizeof("data:") - 1) == 0) {
+        key_data = key->data + sizeof("data:") - 1;
+        key_len = key->len - sizeof("data:") - 1;
+
+    } else {
+        if (ngx_ssl_echconfig_read(cf, key, &value) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        key_data = value.data;
+        key_len = value.len;
+    }
+
+    hpke_key = EVP_HPKE_KEY_new();
+    if (hpke_key == NULL) {
+        ngx_explicit_memzero(key_data, key_len);
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "EVP_HPKE_KEY_new() failed");
+        return NGX_ERROR;
+    }
+
+    if (EVP_HPKE_KEY_init(hpke_key, EVP_hpke_x25519_hkdf_sha256(),
+                          key_data, key_len) == 0)
+    {
+        ngx_explicit_memzero(key_data, key_len);
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "EVP_HPKE_KEY_init() failed");
+        EVP_HPKE_KEY_free(hpke_key);
+        return NGX_ERROR;
+    }
+
+    ngx_explicit_memzero(key->data, key->len);
+
+    if (SSL_ECH_KEYS_add(keys, for_retry, conf_data, conf_len, hpke_key) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "SSL_ECH_KEYS_add() failed");
+        EVP_HPKE_KEY_free(hpke_key);
+        return NGX_ERROR;
+    }
+
+    EVP_HPKE_KEY_free(hpke_key);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_ssl_echconfig_read(ngx_conf_t *cf, ngx_str_t *name, ngx_str_t *value)
+{
+    u_char           *p;
+    size_t            size;
+    ssize_t           n;
+    ngx_file_t        file;
+    ngx_file_info_t   fi;
+
+    if (ngx_get_full_name(cf->pool, (ngx_str_t *) &ngx_cycle->conf_prefix, name)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    ngx_memzero(&file, sizeof(ngx_file_t));
+    file.name = *name;
+    file.log = cf->log;
+
+    file.fd = ngx_open_file(name->data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+    if (file.fd == NGX_INVALID_FILE) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno,
+                           ngx_open_file_n " \"%V\" failed", name);
+        return NGX_ERROR;
+    }
+
+    if (ngx_fd_info(file.fd, &fi) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_fd_info_n " \"%V\" failed", name);
+        goto failed;
+    }
+
+    size = ngx_file_size(&fi);
+
+    p = ngx_pnalloc(cf->pool, size);
+    if (p == NULL) {
+        goto failed;
+    }
+
+    n = ngx_read_file(&file, p, size, 0);
+
+    if (n == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_read_file_n " \"%V\" failed", &file.name);
+        goto failed;
+    }
+
+    if ((size_t) n != size) {
+        ngx_explicit_memzero(p, size);
+
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, 0,
+                           ngx_read_file_n " \"%V\" returned only "
+                           "%z bytes instead of %uz", &file.name, n, size);
+        goto failed;
+    }
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                      ngx_close_file_n " \"%V\" failed", &file.name);
+    }
+
+    value->data = p;
+    value->len = size;
+
+    return NGX_OK;
+
+failed:
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ALERT, cf->log, ngx_errno,
+                      ngx_close_file_n " \"%V\" failed", &file.name);
+    }
+
+    return NGX_ERROR;
+}
+
+#endif
 
 
 ngx_int_t
