@@ -63,6 +63,10 @@
 
 #endif
 
+#if (!defined OPENSSL_IS_BORINGSSL && !defined OPENSSL_NO_DTLS  \
+     && !NGX_WIN32 && OPENSSL_VERSION_NUMBER >= 0x10100000L)
+#define NGX_SSL_DTLS            1
+#endif
 
 #define ngx_ssl_session_t       SSL_SESSION
 #define ngx_ssl_conn_t          SSL
@@ -95,6 +99,10 @@ struct ngx_ssl_s {
 
     ngx_rbtree_t                staple_rbtree;
     ngx_rbtree_node_t           staple_sentinel;
+
+#if (NGX_SSL_DTLS)
+    ngx_uint_t                  udp; /* unsigned  udp:1; */
+#endif
 };
 
 
@@ -128,6 +136,7 @@ struct ngx_ssl_connection_s {
     unsigned                    shutdown_without_free:1;
     unsigned                    handshake_buffer_set:1;
     unsigned                    session_timeout_set:1;
+    unsigned                    try_listen:1;
     unsigned                    try_early_data:1;
     unsigned                    in_early:1;
     unsigned                    in_ocsp:1;
