@@ -371,6 +371,7 @@ failed:
 static ngx_quic_sock_group_t *
 ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
 {
+    int                     detach;
     ngx_quic_bpf_conf_t    *bcf, *old_bcf;
     ngx_quic_sock_group_t  *grp, *ogrp;
 
@@ -390,6 +391,24 @@ ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     ogrp = ngx_quic_bpf_find_group(old_bcf, ls);
     if (ogrp == NULL) {
         return ngx_quic_bpf_create_group(cycle, ls);
+    }
+
+    if (!bcf->enabled) {
+        detach = 0;
+
+        if (setsockopt(ls->fd, SOL_SOCKET, SO_DETACH_REUSEPORT_BPF,
+                       &detach, sizeof(int))
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                        "quic bpf setsockopt(SO_DETACH_REUSEPORT_BPF) failed");
+        }
+
+        if (ogrp->map_fd != -1) {
+            ngx_quic_bpf_close(cycle->log, ogrp->map_fd, "map");
+        }
+
+        return NULL;
     }
 
     grp = ngx_quic_bpf_alloc_group(cycle, ls->sockaddr, ls->socklen);
@@ -418,6 +437,7 @@ ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
 static ngx_int_t
 ngx_quic_bpf_group_add_socket(ngx_cycle_t *cycle,  ngx_listening_t *ls)
 {
+    int                     progfd;
     uint64_t                cookie;
     ngx_quic_bpf_conf_t    *bcf;
     ngx_quic_sock_group_t  *grp;
@@ -432,6 +452,31 @@ ngx_quic_bpf_group_add_socket(ngx_cycle_t *cycle,  ngx_listening_t *ls)
         }
 
         return NGX_ERROR;
+    }
+
+    if (grp->unused) {
+
+        ngx_bpf_program_link(&ngx_quic_reuseport_helper,
+                             "ngx_quic_sockmap", grp->map_fd);
+
+        progfd = ngx_bpf_load_program(cycle->log, &ngx_quic_reuseport_helper);
+        if (progfd < 0) {
+            return NGX_ERROR;
+        }
+
+        if (setsockopt(ls->fd, SOL_SOCKET, SO_ATTACH_REUSEPORT_EBPF,
+                       &progfd, sizeof(int))
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                        "quic bpf setsockopt(SO_ATTACH_REUSEPORT_EBPF) failed");
+
+            ngx_quic_bpf_close(cycle->log, progfd, "program");
+
+            return NGX_ERROR;
+        }
+
+        ngx_quic_bpf_close(cycle->log, progfd, "program");
     }
 
     grp->unused = 0;
