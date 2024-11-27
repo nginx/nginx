@@ -772,6 +772,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             value *= NGX_KEEPALIVE_FACTOR;
 #endif
 
+#ifdef TCP_KEEPIDLE
             if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_KEEPIDLE,
                            (const void *) &value, sizeof(int))
                 == -1)
@@ -780,6 +781,17 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
                               "setsockopt(TCP_KEEPIDLE, %d) %V failed, ignored",
                               value, &ls[i].addr_text);
             }
+#elif defined(TCP_KEEPALIVE)
+            /* The equivalent of TCP_KEEPIDLE on Darwin is TCP_KEEPALIVE. */
+            if (setsockopt(ls[i].fd, IPPROTO_TCP, TCP_KEEPALIVE,
+                           (const void *) &value, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                              "setsockopt(TCP_KEEPALIVE, %d) %V failed, ignored",
+                              value, &ls[i].addr_text);
+            }
+#endif
         }
 
         if (ls[i].keepintvl) {
