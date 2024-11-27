@@ -5,7 +5,7 @@
 
     cat << END                                            >> $NGX_MAKEFILE
 
-$NGX_LIBATOMIC/src/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
+$NGX_LIBATOMIC/src/.libs/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
 	cd $NGX_LIBATOMIC && \$(MAKE)
 
 $NGX_LIBATOMIC/Makefile:	$NGX_MAKEFILE
