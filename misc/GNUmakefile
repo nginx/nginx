@@ -93,6 +93,9 @@ zip: export
 
 	mv $(TEMP)/$(NGINX)/LICENSE $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/README.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CODE_OF_CONDUCT.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CONTRIBUTING.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/SECURITY.md $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 
 	rm -r $(TEMP)/$(NGINX)/docs
