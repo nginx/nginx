@@ -201,6 +201,16 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 
     while (node) {
         qs = (ngx_quic_stream_t *) node;
+
+        if (qs->destroyed) {
+            if (tree->root == tree->sentinel) {
+                return NGX_OK;
+            }
+
+            node = ngx_rbtree_min(tree->root, tree->sentinel);
+            continue;
+        }
+
         node = ngx_rbtree_next(tree, node);
         sc = qs->connection;
 
@@ -1150,6 +1160,8 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
     ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
+
+    qs->destroyed = 1;
 
     if (qc->closing) {
         /* schedule handler call to continue ngx_quic_close_connection() */
