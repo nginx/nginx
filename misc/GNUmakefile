@@ -15,12 +15,22 @@ release: export
 
 	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
 
+	mkdir -p $(TEMP)/$(NGINX)/docs.new
+
+	mv $(TEMP)/$(NGINX)/LICENSE $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/README.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CODE_OF_CONDUCT.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CONTRIBUTING.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/SECURITY.md $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/man $(TEMP)/$(NGINX)
 
-	$(MAKE) -f docs/GNUmakefile changes
-
 	rm -r $(TEMP)/$(NGINX)/docs
+	mv $(TEMP)/$(NGINX)/docs.new $(TEMP)/$(NGINX)/docs
+
+	$(MAKE) -f docs/GNUmakefile changes
+	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
+
 	rm -r $(TEMP)/$(NGINX)/misc
 
 	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
@@ -93,6 +103,9 @@ zip: export
 
 	mv $(TEMP)/$(NGINX)/LICENSE $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/README.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CODE_OF_CONDUCT.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/CONTRIBUTING.md $(TEMP)/$(NGINX)/docs.new
+	mv $(TEMP)/$(NGINX)/SECURITY.md $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 
 	rm -r $(TEMP)/$(NGINX)/docs
