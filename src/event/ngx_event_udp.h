@@ -56,6 +56,7 @@ ngx_int_t ngx_get_srcaddr_cmsg(struct cmsghdr *cmsg,
 
 void ngx_event_recvmsg(ngx_event_t *ev);
 ssize_t ngx_sendmsg(ngx_connection_t *c, struct msghdr *msg, int flags);
+ssize_t ngx_udp_shared_recv(ngx_connection_t *c, u_char *buf, size_t size);
 void ngx_udp_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 #endif
