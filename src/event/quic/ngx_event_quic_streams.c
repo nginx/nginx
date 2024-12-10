@@ -174,7 +174,7 @@ ngx_int_t
 ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 {
     ngx_pool_t         *pool;
-    ngx_queue_t        *q;
+    ngx_queue_t        *q, posted_events;
     ngx_rbtree_t       *tree;
     ngx_connection_t   *sc;
     ngx_rbtree_node_t  *node;
@@ -197,6 +197,8 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
         return NGX_OK;
     }
 
+    ngx_queue_init(&posted_events);
+
     node = ngx_rbtree_min(tree->root, tree->sentinel);
 
     while (node) {
@@ -213,14 +215,20 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
         }
 
         sc->read->error = 1;
+        sc->read->ready = 1;
         sc->write->error = 1;
-
-        ngx_quic_set_event(sc->read);
-        ngx_quic_set_event(sc->write);
+        sc->write->ready = 1;
 
         sc->close = 1;
-        sc->read->handler(sc->read);
+
+        if (sc->read->posted) {
+            ngx_delete_posted_event(sc->read);
+        }
+
+        ngx_post_event(sc->read, &posted_events);
     }
+
+    ngx_event_process_posted((ngx_cycle_t *) ngx_cycle, &posted_events);
 
     if (tree->root == tree->sentinel) {
         return NGX_OK;
