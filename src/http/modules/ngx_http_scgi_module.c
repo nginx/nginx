@@ -1154,7 +1154,7 @@ ngx_http_scgi_process_header(ngx_http_request_t *r)
 
                 u->headers_in.status_n = status;
 
-                if (status_line->len > 3) {
+                if (status_line->len > 3 && status_line->data[3] == ' ') {
                     u->headers_in.status_line = *status_line;
                 }
 
