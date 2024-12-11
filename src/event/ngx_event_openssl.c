@@ -130,6 +130,16 @@ int  ngx_ssl_ticket_keys_index;
 int  ngx_ssl_ocsp_index;
 int  ngx_ssl_index;
 int  ngx_ssl_certificate_name_index;
+int  ngx_ssl_stapling_index;
+int  ngx_ssl_custom_extension_index;
+
+
+void free_custom_extension_data(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int idx, long argl, void *argp) {
+    char *extension_data = (char *)ptr;
+    if (extension_data) {
+        free(extension_data);
+    }
+}
 
 
 ngx_int_t
@@ -214,6 +224,13 @@ ngx_ssl_init(ngx_log_t *log)
     }
     }
 #endif
+
+    ngx_ssl_custom_extension_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, free_custom_extension_data);
+
+    if (ngx_ssl_custom_extension_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "SSL_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
 
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
@@ -4909,6 +4926,26 @@ ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *pattern)
 }
 
 #endif
+
+
+ngx_int_t
+ngx_ssl_get_custom_extension(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{    
+    SSL *ssl = c->ssl->connection;
+    if (ssl == NULL) {
+        return NGX_ERROR;
+    }
+
+    const char * extension_data;
+    extension_data = (const char *)SSL_get_ex_data(ssl, ngx_ssl_custom_extension_index);
+    if (extension_data == NULL){
+        extension_data = "";
+    }
+    s->data = (u_char *)extension_data;
+    s->len = strlen(extension_data);
+
+    return NGX_OK;
+}
 
 
 ngx_int_t

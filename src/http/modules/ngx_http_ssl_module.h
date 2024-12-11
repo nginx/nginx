@@ -62,6 +62,7 @@ typedef struct {
     ngx_flag_t                      stapling_verify;
     ngx_str_t                       stapling_file;
     ngx_str_t                       stapling_responder;
+    ngx_uint_t                      custom_extension_type;
 } ngx_http_ssl_srv_conf_t;
 
 
