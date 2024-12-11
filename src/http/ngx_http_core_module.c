@@ -523,6 +523,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, keepalive_disable),
       &ngx_http_core_keepalive_disable },
 
+    { ngx_string("keepalive_during_shutdown"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, keepalive_during_shutdown),
+      NULL },
+
     { ngx_string("satisfy"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
@@ -3607,6 +3614,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->keepalive_timeout = NGX_CONF_UNSET_MSEC;
     clcf->keepalive_header = NGX_CONF_UNSET;
     clcf->keepalive_requests = NGX_CONF_UNSET_UINT;
+    clcf->keepalive_during_shutdown = NGX_CONF_UNSET;
     clcf->lingering_close = NGX_CONF_UNSET_UINT;
     clcf->lingering_time = NGX_CONF_UNSET_MSEC;
     clcf->lingering_timeout = NGX_CONF_UNSET_MSEC;
@@ -3897,6 +3905,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->chunked_transfer_encoding,
                               prev->chunked_transfer_encoding, 1);
     ngx_conf_merge_value(conf->etag, prev->etag, 1);
+    ngx_conf_merge_value(conf->keepalive_during_shutdown,
+                              prev->keepalive_during_shutdown, 0);
 
     ngx_conf_merge_uint_value(conf->server_tokens, prev->server_tokens,
                               NGX_HTTP_SERVER_TOKENS_ON);
