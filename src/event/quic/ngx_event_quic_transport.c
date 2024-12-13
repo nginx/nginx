@@ -295,6 +295,11 @@ ngx_quic_parse_packet(ngx_quic_header_t *pkt)
         return NGX_ERROR;
     }
 
+    if (pkt->version == 0) {
+        /* version negotiation */
+        return NGX_ERROR;
+    }
+
     if (!ngx_quic_supported_version(pkt->version)) {
         return NGX_ABORT;
     }
