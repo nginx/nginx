@@ -83,6 +83,7 @@ types {
     audio/ogg                                        ogg;
     audio/x-m4a                                      m4a;
     audio/x-realaudio                                ra;
+    audio/x-wav                                      wav;
 
     video/3gpp                                       3gpp 3gp;
     video/mp2t                                       ts;
