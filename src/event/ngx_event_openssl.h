@@ -38,6 +38,9 @@
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
 #endif
+#if (OPENSSL_VERSION_NUMBER >= 0x30200000L)
+#include <openssl/provider.h>
+#endif
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
