@@ -13,6 +13,8 @@
 #define NGX_SSL_CACHE_DATA    1
 #define NGX_SSL_CACHE_ENGINE  2
 
+#define NGX_SSL_CACHE_DISABLED  (ngx_array_t *) (uintptr_t) -1
+
 
 #define ngx_ssl_cache_get_conf(cycle)                                         \
     (ngx_ssl_cache_t *) ngx_get_conf(cycle->conf_ctx, ngx_openssl_cache_module)
@@ -59,6 +61,13 @@ typedef struct {
 
     ngx_flag_t                  inheritable;
 } ngx_ssl_cache_t;
+
+
+typedef struct {
+    ngx_str_t                  *pwd;
+    unsigned                    encrypted:1;
+    unsigned                    empty:1;
+} ngx_ssl_cache_pwd_t;
 
 
 static ngx_int_t ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index,
@@ -226,9 +235,13 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     }
 
     if (value == NULL) {
-        value = type->create(&id, err, data);
+        value = type->create(&id, err, &data);
         if (value == NULL) {
             return NULL;
+        }
+
+        if (data == NGX_SSL_CACHE_DISABLED) {
+            return value;
         }
     }
 
@@ -267,7 +280,7 @@ ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index, char **err,
         return NULL;
     }
 
-    return ngx_ssl_cache_types[index].create(&id, err, data);
+    return ngx_ssl_cache_types[index].create(&id, err, &data);
 }
 
 
@@ -470,13 +483,13 @@ ngx_ssl_cache_cert_ref(char **err, void *data)
 static void *
 ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
 {
-    ngx_array_t  *passwords = data;
+    ngx_array_t  **passwords = data;
 
-    BIO              *bio;
-    EVP_PKEY         *pkey;
-    ngx_str_t        *pwd;
-    ngx_uint_t        tries;
-    pem_password_cb  *cb;
+    BIO                  *bio;
+    EVP_PKEY             *pkey;
+    ngx_uint_t            tries;
+    pem_password_cb      *cb;
+    ngx_ssl_cache_pwd_t   cb_data;
 
     if (id->type == NGX_SSL_CACHE_ENGINE) {
 
@@ -529,20 +542,23 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
         return NULL;
     }
 
-    if (passwords) {
-        tries = passwords->nelts;
-        pwd = passwords->elts;
-        cb = ngx_ssl_cache_pkey_password_callback;
+    cb = ngx_ssl_cache_pkey_password_callback;
+    cb_data.encrypted = 0;
+
+    if (*passwords) {
+        tries = (*passwords)->nelts;
+        cb_data.pwd = (*passwords)->elts;
+        cb_data.empty = (cb_data.pwd == NULL);
 
     } else {
         tries = 1;
-        pwd = NULL;
-        cb = NULL;
+        cb_data.pwd = NULL;
+        cb_data.empty = 0;
     }
 
     for ( ;; ) {
 
-        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, &cb_data);
         if (pkey != NULL) {
             break;
         }
@@ -550,13 +566,17 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
         if (tries-- > 1) {
             ERR_clear_error();
             (void) BIO_reset(bio);
-            pwd++;
+            cb_data.pwd++;
             continue;
         }
 
         *err = "PEM_read_bio_PrivateKey() failed";
         BIO_free(bio);
         return NULL;
+    }
+
+    if (cb_data.encrypted) {
+        *passwords = NGX_SSL_CACHE_DISABLED;
     }
 
     BIO_free(bio);
@@ -569,7 +589,9 @@ static int
 ngx_ssl_cache_pkey_password_callback(char *buf, int size, int rwflag,
     void *userdata)
 {
-    ngx_str_t  *pwd = userdata;
+    ngx_ssl_cache_pwd_t  *data = userdata;
+
+    ngx_str_t  *pwd;
 
     if (rwflag) {
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
@@ -578,8 +600,16 @@ ngx_ssl_cache_pkey_password_callback(char *buf, int size, int rwflag,
         return 0;
     }
 
+    data->encrypted = 1;
+
+    pwd = data->pwd;
+
     if (pwd == NULL) {
-        return 0;
+        if (data->empty) {
+            return 0;
+        }
+
+        return PEM_def_callback(buf, size, rwflag, NULL);
     }
 
     if (pwd->len > (size_t) size) {
