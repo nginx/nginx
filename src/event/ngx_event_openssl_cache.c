@@ -84,7 +84,8 @@ static ngx_int_t ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index,
     ngx_str_t *path, ngx_ssl_cache_key_t *id);
 static ngx_ssl_cache_node_t *ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache,
     ngx_ssl_cache_type_t *type, ngx_ssl_cache_key_t *id, uint32_t hash);
-static void ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_log_t *log);
+static void ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_uint_t n,
+    ngx_log_t *log);
 
 static void *ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err,
     void *data);
@@ -380,8 +381,10 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
 
     ngx_cpystrn(cn->id.data, id.data, id.len + 1);
 
+    ngx_ssl_cache_expire(cache, 1, pool->log);
+
     if (cache->current >= cache->max) {
-        ngx_ssl_cache_expire(cache, pool->log);
+        ngx_ssl_cache_expire(cache, 0, pool->log);
     }
 
     ngx_rbtree_insert(&cache->rbtree, &cn->node);
@@ -494,16 +497,16 @@ ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache, ngx_ssl_cache_type_t *type,
 
 
 static void
-ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_log_t *log)
+ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_uint_t n,
+    ngx_log_t *log)
 {
     time_t                 now;
-    ngx_uint_t             n;
     ngx_queue_t           *q;
     ngx_ssl_cache_node_t  *cn;
 
     now = ngx_time();
 
-    for (n = 0; n < 3; n++) {
+    while (n < 3) {
 
         if (ngx_queue_empty(&cache->expire_queue)) {
             return;
@@ -513,7 +516,7 @@ ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_log_t *log)
 
         cn = ngx_queue_data(q, ngx_ssl_cache_node_t, queue);
 
-        if (n != 0 && now - cn->accessed <= cache->inactive) {
+        if (n++ != 0 && now - cn->accessed <= cache->inactive) {
             return;
         }
 
