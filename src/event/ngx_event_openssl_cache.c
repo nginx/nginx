@@ -14,6 +14,14 @@
 #define NGX_SSL_CACHE_ENGINE  2
 
 
+#define ngx_ssl_cache_get_conf(cycle)                                         \
+    (ngx_ssl_cache_t *) ngx_get_conf(cycle->conf_ctx, ngx_openssl_cache_module)
+
+#define ngx_ssl_cache_get_old_conf(cycle)                                     \
+    cycle->old_cycle->conf_ctx ? ngx_ssl_cache_get_conf(cycle->old_cycle)     \
+                               : NULL
+
+
 typedef struct {
     unsigned                    type:2;
     unsigned                    len:30;
@@ -39,12 +47,17 @@ typedef struct {
     ngx_ssl_cache_key_t         id;
     ngx_ssl_cache_type_t       *type;
     void                       *value;
+
+    time_t                      mtime;
+    ngx_file_uniq_t             uniq;
 } ngx_ssl_cache_node_t;
 
 
 typedef struct {
     ngx_rbtree_t                rbtree;
     ngx_rbtree_node_t           sentinel;
+
+    ngx_flag_t                  inheritable;
 } ngx_ssl_cache_t;
 
 
@@ -76,22 +89,36 @@ static void *ngx_ssl_cache_ca_create(ngx_ssl_cache_key_t *id, char **err,
 static BIO *ngx_ssl_cache_create_bio(ngx_ssl_cache_key_t *id, char **err);
 
 static void *ngx_openssl_cache_create_conf(ngx_cycle_t *cycle);
+static char *ngx_openssl_cache_init_conf(ngx_cycle_t *cycle, void *conf);
 static void ngx_ssl_cache_cleanup(void *data);
 static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
 
+static ngx_command_t  ngx_openssl_cache_commands[] = {
+
+    { ngx_string("ssl_object_cache_inheritable"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_ssl_cache_t, inheritable),
+      NULL },
+
+      ngx_null_command
+};
+
+
 static ngx_core_module_t  ngx_openssl_cache_module_ctx = {
     ngx_string("openssl_cache"),
     ngx_openssl_cache_create_conf,
-    NULL
+    ngx_openssl_cache_init_conf
 };
 
 
 ngx_module_t  ngx_openssl_cache_module = {
     NGX_MODULE_V1,
     &ngx_openssl_cache_module_ctx,         /* module context */
-    NULL,                                  /* module directives */
+    ngx_openssl_cache_commands,            /* module directives */
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
@@ -132,8 +159,13 @@ void *
 ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     ngx_str_t *path, void *data)
 {
+    void                  *value;
+    time_t                 mtime;
     uint32_t               hash;
-    ngx_ssl_cache_t       *cache;
+    ngx_int_t              rc;
+    ngx_file_uniq_t        uniq;
+    ngx_file_info_t        fi;
+    ngx_ssl_cache_t       *cache, *old_cache;
     ngx_ssl_cache_key_t    id;
     ngx_ssl_cache_type_t  *type;
     ngx_ssl_cache_node_t  *cn;
@@ -151,12 +183,60 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     hash = ngx_murmur_hash2(id.data, id.len);
 
     cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
+
     if (cn != NULL) {
         return type->ref(err, cn->value);
     }
 
+    value = NULL;
+
+    if (id.type == NGX_SSL_CACHE_PATH
+        && (rc = ngx_file_info(id.data, &fi)) != NGX_FILE_ERROR)
+    {
+        mtime = ngx_file_mtime(&fi);
+        uniq = ngx_file_uniq(&fi);
+
+    } else {
+        rc = NGX_FILE_ERROR;
+        mtime = 0;
+        uniq = 0;
+    }
+
+    /* try to use a reference from the old cycle */
+
+    old_cache = ngx_ssl_cache_get_old_conf(cf->cycle);
+
+    if (old_cache && old_cache->inheritable) {
+        cn = ngx_ssl_cache_lookup(old_cache, type, &id, hash);
+
+        if (cn != NULL) {
+            switch (id.type) {
+
+            case NGX_SSL_CACHE_DATA:
+                value = type->ref(err, cn->value);
+                break;
+
+            default:
+                if (rc != NGX_FILE_ERROR
+                    && uniq == cn->uniq && mtime == cn->mtime)
+                {
+                    value = type->ref(err, cn->value);
+                }
+                break;
+            }
+        }
+    }
+
+    if (value == NULL) {
+        value = type->create(&id, err, data);
+        if (value == NULL) {
+            return NULL;
+        }
+    }
+
     cn = ngx_palloc(cf->pool, sizeof(ngx_ssl_cache_node_t) + id.len + 1);
     if (cn == NULL) {
+        type->free(value);
         return NULL;
     }
 
@@ -165,13 +245,11 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     cn->id.len = id.len;
     cn->id.type = id.type;
     cn->type = type;
+    cn->value = value;
+    cn->mtime = mtime;
+    cn->uniq = uniq;
 
     ngx_cpystrn(cn->id.data, id.data, id.len + 1);
-
-    cn->value = type->create(&id, err, data);
-    if (cn->value == NULL) {
-        return NULL;
-    }
 
     ngx_rbtree_insert(&cache->rbtree, &cn->node);
 
@@ -729,6 +807,8 @@ ngx_openssl_cache_create_conf(ngx_cycle_t *cycle)
         return NULL;
     }
 
+    cache->inheritable = NGX_CONF_UNSET;
+
     cln = ngx_pool_cleanup_add(cycle->pool, 0);
     if (cln == NULL) {
         return NULL;
@@ -741,6 +821,17 @@ ngx_openssl_cache_create_conf(ngx_cycle_t *cycle)
                     ngx_ssl_cache_node_insert);
 
     return cache;
+}
+
+
+static char *
+ngx_openssl_cache_init_conf(ngx_cycle_t *cycle, void *conf)
+{
+    ngx_ssl_cache_t *cache = conf;
+
+    ngx_conf_init_value(cache->inheritable, 1);
+
+    return NGX_CONF_OK;
 }
 
 
