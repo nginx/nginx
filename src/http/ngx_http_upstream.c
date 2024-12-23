@@ -2019,6 +2019,7 @@ ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
                    "http upstream ssl key: \"%s\"", key.data);
 
     if (ngx_ssl_connection_certificate(c, r->pool, &cert, &key,
+                                       u->conf->ssl_certificate_cache,
                                        u->conf->ssl_passwords)
         != NGX_OK)
     {
