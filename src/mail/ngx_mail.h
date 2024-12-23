@@ -212,6 +212,7 @@ typedef struct {
     unsigned                starttls:1;
     unsigned                esmtp:1;
     unsigned                auth_method:3;
+    unsigned                proxy_auth_method:3;
     unsigned                auth_wait:1;
 
     ngx_str_t               login;
