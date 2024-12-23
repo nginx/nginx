@@ -69,8 +69,7 @@ limiting, or buffer size configurations, or applying changes is impractical.
 Availability issues excluded from the security release process:
 - Local file content or upstream response content resulting only in worker
 process termination.
-- Issues with experimental features which result only in worker process
-termination.
+- Issues with experimental features which result only in availability impact.
 
 ## Trusted Configurations and Misconfigurations
 
