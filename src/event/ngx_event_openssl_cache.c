@@ -76,7 +76,6 @@ struct ngx_ssl_cache_s {
 typedef struct {
     ngx_str_t                  *pwd;
     unsigned                    encrypted:1;
-    unsigned                    empty:1;
 } ngx_ssl_cache_pwd_t;
 
 
@@ -649,7 +648,7 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
     EVP_PKEY             *pkey;
     ngx_uint_t            tries;
     pem_password_cb      *cb;
-    ngx_ssl_cache_pwd_t   cb_data;
+    ngx_ssl_cache_pwd_t   cb_data, *pwd;
 
     if (id->type == NGX_SSL_CACHE_ENGINE) {
 
@@ -702,23 +701,23 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
         return NULL;
     }
 
-    cb = ngx_ssl_cache_pkey_password_callback;
     cb_data.encrypted = 0;
 
     if (*passwords) {
+        cb = ngx_ssl_cache_pkey_password_callback;
         tries = (*passwords)->nelts;
         cb_data.pwd = (*passwords)->elts;
-        cb_data.empty = (cb_data.pwd == NULL);
+        pwd = &cb_data;
 
     } else {
         tries = 1;
-        cb_data.pwd = NULL;
-        cb_data.empty = 0;
+        pwd = NULL;
+        cb = NULL;
     }
 
     for ( ;; ) {
 
-        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, &cb_data);
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, cb, pwd);
         if (pkey != NULL) {
             break;
         }
@@ -765,11 +764,7 @@ ngx_ssl_cache_pkey_password_callback(char *buf, int size, int rwflag,
     pwd = data->pwd;
 
     if (pwd == NULL) {
-        if (data->empty) {
-            return 0;
-        }
-
-        return PEM_def_callback(buf, size, rwflag, NULL);
+        return 0;
     }
 
     if (pwd->len > (size_t) size) {
