@@ -183,6 +183,7 @@ ngx_module_t  ngx_core_module = {
 static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
+static ngx_uint_t   ngx_service = 0;
 static u_char      *ngx_prefix;
 static u_char      *ngx_error_log;
 static u_char      *ngx_conf_file;
@@ -386,6 +387,57 @@ main(int argc, char *const *argv)
 
     return 0;
 }
+
+
+#ifdef NGX_WIN32
+static ngx_int_t
+ngx_install_windows_service()
+{
+	wchar_t nginx_path[1024];
+	wchar_t nginx_service_command[1124];
+	SC_HANDLE ScManagerHandle = NULL;
+	SC_HANDLE NginxServiceHandle = NULL;
+
+	if (GetModuleFileNameW(NULL, nginx_path, 1024) == 1024) {
+		ngx_log_stderr(0, "GetModuleFileNameW() buffer to small for nginx path", ngx_errno);
+	}
+	printf("GetModuleFileNameW: %ls\n", nginx_path);
+
+	swprintf_s(nginx_service_command, 1124, L"%ls -w", nginx_path);
+	printf("ServicePath: %ls\n", nginx_service_command);
+
+	ScManagerHandle = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
+	if (ScManagerHandle == NULL) {
+		ngx_log_stderr(0, "OpenSCManagerW failed: errno == %d", ngx_errno);
+	}
+
+	//"nginx" as service name is hardcoded is ngx_service : use a define ?
+	NginxServiceHandle = CreateServiceW(ScManagerHandle,
+											L"nginx",
+											L"Nginx server service",
+											SERVICE_ALL_ACCESS,
+											SERVICE_WIN32_OWN_PROCESS,
+											SERVICE_DEMAND_START, // Auto-start ? let user change it manually in windows interface ?
+											SERVICE_ERROR_NORMAL,
+											nginx_service_command,
+											NULL,
+											NULL,
+											NULL,
+											NULL, //L"NT AUTHORITY\\NetworkService",
+											NULL);
+
+	if (NginxServiceHandle == NULL) {
+		ngx_log_stderr(0, "CreateServiceW failed: errno == %d", ngx_errno);
+		CloseServiceHandle(ScManagerHandle);
+	} else {
+		printf("Service created !\n");
+	}
+
+	CloseServiceHandle(NginxServiceHandle);
+	CloseServiceHandle(ScManagerHandle);
+	return 0;
+}
+#endif
 
 
 static void
@@ -929,6 +981,20 @@ ngx_get_options(int argc, char *const *argv)
                 ngx_log_stderr(0, "invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
 
+			#ifdef NGX_WIN32
+			case 'i':
+				// TODO: remove this option if not a Windows build ?
+				ngx_install_windows_service();
+				exit(0); // Do something else ?
+
+			case 'w':
+				// Run as windows service
+				myprintf("Running as service\n");
+				ngx_service = 1; // Error if other options (like -s) is provided ?
+				goto next;
+
+			#endif
+
             default:
                 ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));
                 return NGX_ERROR;
@@ -1085,6 +1151,12 @@ ngx_process_options(ngx_cycle_t *cycle)
     if (ngx_test_config) {
         cycle->log->log_level = NGX_LOG_INFO;
     }
+
+	#if NGX_WIN32
+	if (ngx_service) {
+		cycle->service = 1;
+	}
+	#endif
 
     return NGX_OK;
 }
