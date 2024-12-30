@@ -393,18 +393,17 @@ main(int argc, char *const *argv)
 static ngx_int_t
 ngx_install_windows_service()
 {
-	wchar_t nginx_path[1024];
-	wchar_t nginx_service_command[1124];
+    wchar_t *install_commandline = NULL;
+	wchar_t *i_opt_ptr = NULL;
 	SC_HANDLE ScManagerHandle = NULL;
 	SC_HANDLE NginxServiceHandle = NULL;
 
-	if (GetModuleFileNameW(NULL, nginx_path, 1024) == 1024) {
-		ngx_log_stderr(0, "GetModuleFileNameW() buffer to small for nginx path", ngx_errno);
-	}
-	printf("GetModuleFileNameW: %ls\n", nginx_path);
-
-	swprintf_s(nginx_service_command, 1124, L"%ls -w", nginx_path);
-	printf("ServicePath: %ls\n", nginx_service_command);
+    // Replace install commandline by service run commandline by
+    // replacing the -i (install) option to a -w (windows service mode)
+    install_commandline = _wcsdup(GetCommandLineW());
+    i_opt_ptr = wcsstr(install_commandline, L" -i");
+    i_opt_ptr[2] = 'w';
+    printf("Installing NGINX service with commandline: %ls\n", install_commandline);
 
 	ScManagerHandle = OpenSCManagerW(NULL, NULL, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
 	if (ScManagerHandle == NULL) {
@@ -419,11 +418,11 @@ ngx_install_windows_service()
 											SERVICE_WIN32_OWN_PROCESS,
 											SERVICE_DEMAND_START, // Auto-start ? let user change it manually in windows interface ?
 											SERVICE_ERROR_NORMAL,
-											nginx_service_command,
+											install_commandline,
 											NULL,
 											NULL,
 											NULL,
-											NULL, //L"NT AUTHORITY\\NetworkService",
+											NULL, //L"NT AUTHORITY\\NetworkService", ?
 											NULL);
 
 	if (NginxServiceHandle == NULL) {
@@ -989,7 +988,6 @@ ngx_get_options(int argc, char *const *argv)
 
 			case 'w':
 				// Run as windows service
-				myprintf("Running as service\n");
 				ngx_service = 1; // Error if other options (like -s) is provided ?
 				goto next;
 
