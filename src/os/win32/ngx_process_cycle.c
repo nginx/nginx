@@ -121,13 +121,13 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
 
     ngx_close_listening_sockets(cycle);
 
-	if (cycle->service){
+    if (cycle->service){
         // Create only if this thread does not already exists ?
-		if (ngx_create_thread(&servicetid, ngx_service_thread, NULL, cycle->log) != 0) {
+        if (ngx_create_thread(&servicetid, ngx_service_thread, NULL, cycle->log) != 0) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "Creating ngx_service_thread failed");
-			exit(2);
-		}
-	}
+            exit(2);
+        }
+    }
 
     if (ngx_start_worker_processes(cycle, NGX_PROCESS_RESPAWN) == 0) {
         exit(2);

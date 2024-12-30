@@ -101,7 +101,7 @@ service_main(DWORD dwNumServicesArgs, LPSTR *lpServiceArgVectors)
 
 int report_service_stop_status(DWORD dwCurrentState)
 {
-	SERVICE_STATUS         status;
+    SERVICE_STATUS         status;
 
     status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
     status.dwCurrentState = dwCurrentState;
@@ -128,24 +128,24 @@ service_handler(DWORD control, DWORD type, void *data, void *ctx)
     // case SERVICE_CONTROL_INTERROGATE:
     //     status = NGX_IOCP_INTERROGATE;
     //     break;
-	//
+    //
     case SERVICE_CONTROL_STOP:
-		report_service_stop_status(SERVICE_STOP_PENDING);
-		if (SetEvent(ngx_stop_event) == 0) {
+        report_service_stop_status(SERVICE_STOP_PENDING);
+        if (SetEvent(ngx_stop_event) == 0) {
             ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_errno,
                       "SetEvent(ngx_stop_event) failed");
-		}
-		report_service_stop_status(SERVICE_STOPPED);
+        }
+        report_service_stop_status(SERVICE_STOPPED);
         break;
-	//
+    //
     // case SERVICE_CONTROL_PARAMCHANGE:
     //     status = NGX_IOCP_RECONFIGURE;
     //     break;
-	//
+    //
     // case NGX_SERVICE_CONTROL_SHUTDOWN:
     //     status = NGX_IOCP_REOPEN;
     //     break;
-	//
+    //
     // case NGX_SERVICE_CONTROL_REOPEN:
     //     status = NGX_IOCP_REOPEN;
     //     break;
@@ -153,5 +153,5 @@ service_handler(DWORD control, DWORD type, void *data, void *ctx)
     default:
         return ERROR_CALL_NOT_IMPLEMENTED;
     }
-	return 0;
+    return 0;
 }
