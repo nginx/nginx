@@ -153,5 +153,5 @@ service_handler(DWORD control, DWORD type, void *data, void *ctx)
     default:
         return ERROR_CALL_NOT_IMPLEMENTED;
     }
-    return 0;
+    return NO_ERROR;
 }

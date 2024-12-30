@@ -980,18 +980,17 @@ ngx_get_options(int argc, char *const *argv)
                 ngx_log_stderr(0, "invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
 
-            #ifdef NGX_WIN32
+#ifdef NGX_WIN32
             case 'i':
-                // TODO: remove this option if not a Windows build ?
                 ngx_install_windows_service();
                 exit(0); // Do something else ?
 
             case 'w':
                 // Run as windows service
-                ngx_service = 1; // Error if other options (like -s) is provided ?
+                ngx_service = 1;
                 goto next;
 
-            #endif
+#endif
 
             default:
                 ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));
@@ -1150,11 +1149,11 @@ ngx_process_options(ngx_cycle_t *cycle)
         cycle->log->log_level = NGX_LOG_INFO;
     }
 
-    #if NGX_WIN32
+#if NGX_WIN32
     if (ngx_service) {
         cycle->service = 1;
     }
-    #endif
+#endif
 
     return NGX_OK;
 }
