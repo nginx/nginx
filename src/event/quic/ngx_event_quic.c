@@ -312,7 +312,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
                                     ngx_max(2 * NGX_QUIC_MIN_INITIAL_SIZE,
                                             14720));
     qc->congestion.ssthresh = (size_t) -1;
-    qc->congestion.recovery_start = ngx_current_msec;
+    qc->congestion.recovery_start = ngx_current_msec - 1;
 
     if (pkt->validated && pkt->retried) {
         qc->tp.retry_scid.len = pkt->dcid.len;
