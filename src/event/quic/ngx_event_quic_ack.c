@@ -354,6 +354,14 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
         goto done;
     }
 
+    if (cg->idle) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic congestion ack idle t:%M win:%uz if:%uz",
+                       now, cg->window, cg->in_flight);
+
+        goto done;
+    }
+
     if (cg->window < cg->ssthresh) {
         cg->window += f->plen;
 
@@ -374,6 +382,22 @@ done:
     if (blocked && cg->in_flight < cg->window) {
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
+}
+
+
+void
+ngx_quic_congestion_idle(ngx_connection_t *c, ngx_uint_t idle)
+{
+    ngx_quic_congestion_t  *cg;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic congestion idle:%ui", idle);
+
+    cg->idle = idle;
 }
 
 
