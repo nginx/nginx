@@ -169,6 +169,7 @@ typedef struct {
     size_t                            window;
     size_t                            ssthresh;
     ngx_msec_t                        recovery_start;
+    ngx_uint_t                        idle; /* unsigned  idle:1; */
 } ngx_quic_congestion_t;
 
 

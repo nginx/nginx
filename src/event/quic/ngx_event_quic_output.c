@@ -196,7 +196,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
 static void
 ngx_quic_commit_send(ngx_connection_t *c)
 {
-    ngx_uint_t              i;
+    ngx_uint_t              i, idle;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_send_ctx_t    *ctx;
@@ -206,8 +206,14 @@ ngx_quic_commit_send(ngx_connection_t *c)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    idle = 1;
+
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
         ctx = &qc->send_ctx[i];
+
+        if (!ngx_queue_empty(&ctx->frames)) {
+            idle = 0;
+        }
 
         while (!ngx_queue_empty(&ctx->sending)) {
 
@@ -229,6 +235,8 @@ ngx_quic_commit_send(ngx_connection_t *c)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic congestion send if:%uz", cg->in_flight);
+
+    ngx_quic_congestion_idle(c, idle);
 }
 
 
@@ -257,6 +265,8 @@ ngx_quic_revert_send(ngx_connection_t *c, uint64_t pnum[NGX_QUIC_SEND_CTX_LAST])
 
         ctx->pnum = pnum[i];
     }
+
+    ngx_quic_congestion_idle(c, 1);
 }
 
 
