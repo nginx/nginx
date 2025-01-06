@@ -755,6 +755,14 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
         goto done;
     }
 
+    if (f->ignore_loss) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic congestion lost ignore t:%M win:%uz if:%uz",
+                       now, cg->window, cg->in_flight);
+
+        goto done;
+    }
+
     cg->recovery_start = now;
     cg->window /= 2;
 
