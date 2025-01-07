@@ -70,7 +70,7 @@ ngx_http_v3_keepalive_handler(ngx_event_t *ev)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 keepalive handler");
 
-    ngx_http_v3_finalize_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+    ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
                                     "keepalive timeout");
 }
 
