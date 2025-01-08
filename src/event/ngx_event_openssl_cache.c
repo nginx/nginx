@@ -289,12 +289,16 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
     void                  *value;
     time_t                 now;
     uint32_t               hash;
+    ngx_uint_t             invalidate;
     ngx_file_info_t        fi;
     ngx_ssl_cache_key_t    id;
     ngx_ssl_cache_type_t  *type;
     ngx_ssl_cache_node_t  *cn;
 
     *err = NULL;
+
+    invalidate = index & NGX_SSL_CACHE_INVALIDATE;
+    index &= ~NGX_SSL_CACHE_INVALIDATE;
 
     if (ngx_ssl_cache_init_key(pool, index, path, &id) != NGX_OK) {
         return NULL;
@@ -319,7 +323,7 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
             goto found;
         }
 
-        if (now - cn->created <= cache->valid) {
+        if (!invalidate && now - cn->created <= cache->valid) {
             goto found;
         }
 
@@ -329,7 +333,8 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
 
             if (ngx_file_info(id.data, &fi) != NGX_FILE_ERROR) {
 
-                if (ngx_file_uniq(&fi) == cn->uniq
+                if (!invalidate
+                    && ngx_file_uniq(&fi) == cn->uniq
                     && ngx_file_mtime(&fi) == cn->mtime)
                 {
                     break;

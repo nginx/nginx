@@ -206,6 +206,8 @@ typedef struct {
 #define NGX_SSL_CACHE_CRL   2
 #define NGX_SSL_CACHE_CA    3
 
+#define NGX_SSL_CACHE_INVALIDATE  0x80000000
+
 
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
