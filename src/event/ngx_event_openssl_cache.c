@@ -199,6 +199,10 @@ static ngx_int_t
 ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
     ngx_ssl_cache_key_t *id)
 {
+    ngx_str_t  file;
+
+    file = *path;
+
     if (index <= NGX_SSL_CACHE_PKEY
         && ngx_strncmp(path->data, "data:", sizeof("data:") - 1) == 0)
     {
@@ -210,7 +214,8 @@ ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
         id->type = NGX_SSL_CACHE_ENGINE;
 
     } else {
-        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
+        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix,
+                              &file)
             != NGX_OK)
         {
             return NGX_ERROR;
@@ -219,8 +224,8 @@ ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
         id->type = NGX_SSL_CACHE_PATH;
     }
 
-    id->len = path->len;
-    id->data = path->data;
+    id->len = file.len;
+    id->data = file.data;
 
     return NGX_OK;
 }

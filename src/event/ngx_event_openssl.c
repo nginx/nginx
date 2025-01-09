@@ -11,10 +11,16 @@
 
 
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
+#define NGX_SSL_COOKIE_SECRET_LENGTH  32
 
 
 typedef struct {
-    ngx_uint_t  engine;   /* unsigned  engine:1; */
+    ngx_uint_t   engine;   /* unsigned  engine:1; */
+
+#if (NGX_SSL_DTLS)
+    u_char       cookie_secret[NGX_SSL_COOKIE_SECRET_LENGTH];
+    BIO_METHOD  *method;
+#endif
 } ngx_openssl_conf_t;
 
 
@@ -81,6 +87,17 @@ static time_t ngx_ssl_parse_time(
     const
 #endif
     ASN1_TIME *asn1time, ngx_log_t *log);
+
+#if (NGX_SSL_DTLS)
+static ngx_int_t ngx_ssl_try_listen(ngx_connection_t *c);
+static int ngx_ssl_shared_send(BIO *b, const char *in, int inl);
+static int ngx_ssl_shared_recv(BIO *b, char *out, int outl);
+static long ngx_ssl_shared_ctrl(BIO *b, int cmd, long num, void *ptr);
+static int ngx_ssl_generate_cookie(SSL *ssl, unsigned char *cookie,
+    unsigned int *cookie_len);
+static int ngx_ssl_verify_cookie(SSL *ssl, const unsigned char *cookie,
+    unsigned int cookie_len);
+#endif
 
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -276,7 +293,18 @@ ngx_ssl_init(ngx_log_t *log)
 ngx_int_t
 ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
 {
-    ssl->ctx = SSL_CTX_new(SSLv23_method());
+    const SSL_METHOD  *method;
+
+#if (NGX_SSL_DTLS)
+    if (ssl->udp) {
+        method = DTLS_method();
+    } else
+#endif
+    {
+        method = SSLv23_method();
+    }
+
+    ssl->ctx = SSL_CTX_new(method);
 
     if (ssl->ctx == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "SSL_CTX_new() failed");
@@ -409,6 +437,11 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
 
     SSL_CTX_set_info_callback(ssl->ctx, ngx_ssl_info_callback);
+
+#if (NGX_SSL_DTLS)
+    SSL_CTX_set_cookie_generate_cb(ssl->ctx, ngx_ssl_generate_cookie);
+    SSL_CTX_set_cookie_verify_cb(ssl->ctx, ngx_ssl_verify_cookie);
+#endif
 
     return NGX_OK;
 }
@@ -1289,20 +1322,23 @@ ngx_ssl_passwords_cleanup(void *data)
 ngx_int_t
 ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 {
-    BIO  *bio;
+    BIO        *bio;
+    ngx_str_t   path;
 
     if (file->len == 0) {
         return NGX_OK;
     }
 
-    if (ngx_conf_full_name(cf->cycle, file, 1) != NGX_OK) {
+    path = *file;
+
+    if (ngx_conf_full_name(cf->cycle, &path, 1) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    bio = BIO_new_file((char *) file->data, "r");
+    bio = BIO_new_file((char *) path.data, "r");
     if (bio == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "BIO_new_file(\"%s\") failed", file->data);
+                      "BIO_new_file(\"%s\") failed", path.data);
         return NGX_ERROR;
     }
 
@@ -1313,14 +1349,14 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
     if (dh == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "PEM_read_bio_DHparams(\"%s\") failed", file->data);
+                      "PEM_read_bio_DHparams(\"%s\") failed", path.data);
         BIO_free(bio);
         return NGX_ERROR;
     }
 
     if (SSL_CTX_set_tmp_dh(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set_tmp_dh(\"%s\") failed", file->data);
+                      "SSL_CTX_set_tmp_dh(\"%s\") failed", path.data);
         DH_free(dh);
         BIO_free(bio);
         return NGX_ERROR;
@@ -1340,14 +1376,14 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
     dh = PEM_read_bio_Parameters(bio, NULL);
     if (dh == NULL) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "PEM_read_bio_Parameters(\"%s\") failed", file->data);
+                      "PEM_read_bio_Parameters(\"%s\") failed", path.data);
         BIO_free(bio);
         return NGX_ERROR;
     }
 
     if (SSL_CTX_set0_tmp_dh_pkey(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set0_tmp_dh_pkey(\"%s\") failed", file->data);
+                      "SSL_CTX_set0_tmp_dh_pkey(\"%s\") failed", path.data);
 #if (OPENSSL_VERSION_NUMBER >= 0x3000001fL)
         EVP_PKEY_free(dh);
 #endif
@@ -1485,6 +1521,7 @@ ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *commands)
     {
     int            type;
     u_char        *key, *value;
+    ngx_str_t      file;
     ngx_uint_t     i;
     ngx_keyval_t  *cmd;
     SSL_CONF_CTX  *cctx;
@@ -1509,15 +1546,16 @@ ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *commands)
 
         key = cmd[i].key.data;
         type = SSL_CONF_cmd_value_type(cctx, (char *) key);
+        file = cmd[i].value;
 
         if (type == SSL_CONF_TYPE_FILE || type == SSL_CONF_TYPE_DIR) {
-            if (ngx_conf_full_name(cf->cycle, &cmd[i].value, 1) != NGX_OK) {
+            if (ngx_conf_full_name(cf->cycle, &file, 1) != NGX_OK) {
                 SSL_CONF_CTX_free(cctx);
                 return NGX_ERROR;
             }
         }
 
-        value = cmd[i].value.data;
+        value = file.data;
 
         if (SSL_CONF_cmd(cctx, (char *) key, (char *) value) <= 0) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -1610,6 +1648,28 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
+#if (NGX_SSL_DTLS)
+    if (c->shared) {
+        BIO                 *bio;
+        ngx_openssl_conf_t  *oscf;
+
+        sc->try_listen = 1;
+
+        oscf = (ngx_openssl_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                                   ngx_openssl_module);
+
+        bio = BIO_new(oscf->method);
+        if (bio == NULL) {
+            return NGX_ERROR;
+        }
+
+        BIO_set_app_data(bio, c);
+        BIO_set_init(bio, 1);
+
+        SSL_set_bio(sc->connection, bio, bio);
+
+    } else
+#endif
     if (SSL_set_fd(sc->connection, c->fd) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_fd() failed");
         return NGX_ERROR;
@@ -1682,6 +1742,12 @@ ngx_ssl_handshake(ngx_connection_t *c)
     int        n, sslerr;
     ngx_err_t  err;
     ngx_int_t  rc;
+
+#if (NGX_SSL_DTLS)
+    if (c->ssl->try_listen) {
+        return ngx_ssl_try_listen(c);
+    }
+#endif
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (c->ssl->try_early_data) {
@@ -4342,13 +4408,13 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
     path = paths->elts;
     for (i = 0; i < paths->nelts; i++) {
 
-        if (ngx_conf_full_name(cf->cycle, &path[i], 1) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
         ngx_memzero(&file, sizeof(ngx_file_t));
         file.name = path[i];
         file.log = cf->log;
+
+        if (ngx_conf_full_name(cf->cycle, &file.name, 1) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
         file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                                 NGX_FILE_OPEN, 0);
@@ -5863,6 +5929,227 @@ ngx_ssl_parse_time(
 }
 
 
+#if (NGX_SSL_DTLS)
+
+static ngx_int_t
+ngx_ssl_try_listen(ngx_connection_t *c)
+{
+    int                      n, sslerr;
+    BIO                     *rbio;
+    ngx_err_t                err;
+#ifdef LIBRESSL_VERSION_NUMBER
+    static ngx_sockaddr_t    speer;
+    static struct sockaddr  *peer;
+#else
+    static BIO_ADDR         *peer;
+#endif
+
+    if (peer == NULL) {
+#ifdef LIBRESSL_VERSION_NUMBER
+        peer = &speer.sockaddr;
+#else
+        peer = BIO_ADDR_new();
+
+        if (peer == NULL) {
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_ADDR_new() failed");
+            return NGX_ERROR;
+        }
+#endif
+    }
+
+    n = DTLSv1_listen(c->ssl->connection, peer);
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "DTLSv1_listen: %d", n);
+
+    if (n > 0) {
+        c->ssl->try_listen = 0;
+        return ngx_ssl_handshake(c);
+    }
+
+    if (n == 0) {
+        return NGX_ERROR;
+    }
+
+    /* n < 0 */
+
+    rbio = SSL_get_rbio(c->ssl->connection);
+    if (rbio && BIO_should_retry(rbio)) {
+        return NGX_ERROR;
+    }
+
+    sslerr = SSL_get_error(c->ssl->connection, n);
+
+    err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+
+    c->read->error = 1;
+
+    ngx_ssl_connection_error(c, sslerr, err, "DTLSv1_listen() failed");
+
+    return NGX_ERROR;
+}
+
+
+static int
+ngx_ssl_shared_send(BIO *b, const char *in, int inl)
+{
+    ssize_t            n;
+    ngx_connection_t  *c;
+
+    c = BIO_get_app_data(b);
+
+    BIO_clear_retry_flags(b);
+
+    n = ngx_udp_send(c, (u_char *) in, inl);
+
+    if (n == NGX_ERROR) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "ssl shared send failed");
+        return -1;
+    }
+
+    if (n == NGX_AGAIN) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "ssl shared send not ready");
+        BIO_set_retry_write(b);
+        return -1;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "ssl shared send n:%z", n);
+
+    return n;
+}
+
+
+static int
+ngx_ssl_shared_recv(BIO *b, char *out, int outl)
+{
+    ssize_t            n;
+    ngx_buf_t         *bb;
+    ngx_connection_t  *c;
+
+    c = BIO_get_app_data(b);
+
+    n = 0;
+
+    if (out) {
+        BIO_clear_retry_flags(b);
+
+        bb = c->buffer;
+
+        if (bb && bb->pos != bb->last) {
+            /* TODO move to ngx_udp_shared_recv() */
+
+            n = ngx_min(outl, bb->last - bb->pos);
+            ngx_memcpy(out, bb->pos, n);
+            bb->pos = bb->last;
+
+            goto done;
+        }
+
+        n = ngx_udp_shared_recv(c, (u_char *) out, outl);
+
+        if (n == NGX_ERROR) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "ssl shared recv failed");
+            return -1;
+        }
+
+        if (n == NGX_AGAIN) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "ssl shared recv not ready");
+            BIO_set_retry_read(b);
+            return -1;
+        }
+    }
+
+done:
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "ssl shared recv n:%z", n);
+
+    return n;
+}
+
+
+static long
+ngx_ssl_shared_ctrl(BIO *b, int cmd, long num, void *ptr)
+{
+    long               ret;
+#if (NGX_DEBUG)
+    ngx_connection_t  *c;
+
+    c = BIO_get_app_data(b);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "ssl shared ctrl c:%d n:%l", cmd, num);
+#endif
+
+    switch (cmd) {
+    case BIO_CTRL_DGRAM_QUERY_MTU:
+    case BIO_CTRL_DGRAM_GET_MTU:
+    case BIO_CTRL_DGRAM_GET_FALLBACK_MTU:
+        /* TODO MTU discovery */
+        ret = 1200;
+        break;
+    case BIO_CTRL_FLUSH:
+        ret = 1;
+        break;
+    default:
+        ret = 0;
+        break;
+    }
+
+    return ret;
+}
+
+
+static int
+ngx_ssl_generate_cookie(SSL *ssl, unsigned char *cookie,
+    unsigned int *cookie_len)
+{
+    ngx_connection_t    *c;
+    ngx_openssl_conf_t  *oscf;
+
+    c = ngx_ssl_get_connection(ssl);
+
+    oscf = (ngx_openssl_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                               ngx_openssl_module);
+
+    /* SHA256_DIGEST_LENGTH <= DTLS1_COOKIE_LENGTH */
+
+    if (HMAC(EVP_sha256(), oscf->cookie_secret, NGX_SSL_COOKIE_SECRET_LENGTH,
+             (u_char *) c->sockaddr, c->socklen, cookie, cookie_len)
+        == NULL)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+
+static int
+ngx_ssl_verify_cookie(SSL *ssl, const unsigned char *cookie,
+    unsigned int cookie_len)
+{
+    unsigned int  ocookie_len;
+    u_char        ocookie[DTLS1_COOKIE_LENGTH];
+
+    if (ngx_ssl_generate_cookie(ssl, ocookie, &ocookie_len) == 0) {
+        return 0;
+    }
+
+    if (cookie_len != ocookie_len
+        || ngx_memcmp(cookie, ocookie, cookie_len) != 0)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+#endif
+
+
 static void *
 ngx_openssl_create_conf(ngx_cycle_t *cycle)
 {
@@ -5878,6 +6165,23 @@ ngx_openssl_create_conf(ngx_cycle_t *cycle)
      *
      *     oscf->engine = 0;
      */
+
+#if (NGX_SSL_DTLS)
+
+    if (!RAND_bytes(oscf->cookie_secret, NGX_SSL_COOKIE_SECRET_LENGTH)) {
+        return NULL;
+    }
+
+    oscf->method = BIO_meth_new(BIO_TYPE_DGRAM, "nginx dgram wrapper");
+    if (oscf->method == NULL) {
+        return NULL;
+    }
+
+    BIO_meth_set_write(oscf->method, ngx_ssl_shared_send);
+    BIO_meth_set_read(oscf->method, ngx_ssl_shared_recv);
+    BIO_meth_set_ctrl(oscf->method, ngx_ssl_shared_ctrl);
+
+#endif
 
     return oscf;
 }
