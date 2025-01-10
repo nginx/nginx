@@ -699,6 +699,8 @@ static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     ngx_int_t worker = (intptr_t) data;
+    ngx_core_conf_t *ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                                       ngx_core_module);
 
     ngx_process = NGX_PROCESS_WORKER;
     ngx_worker = worker;
@@ -735,7 +737,11 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
                 ngx_exiting = 1;
                 ngx_set_shutdown_timer(cycle);
                 ngx_close_listening_sockets(cycle);
-                ngx_close_idle_connections(cycle);
+                if (ccf->shutdown_close_idle_connections) {
+                    ngx_close_idle_connections(cycle);
+                } else {
+                    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "shutdown_close_idle_connections is not set, not closing idle connections, waiting for connections to close by keepalive_timeout or last response with connection: close");
+                }
                 ngx_event_process_posted(cycle, &ngx_posted_events);
             }
         }

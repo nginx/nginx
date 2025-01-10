@@ -89,7 +89,7 @@ struct ngx_cycle_s {
 typedef struct {
     ngx_flag_t                daemon;
     ngx_flag_t                master;
-
+    ngx_flag_t                shutdown_close_idle_connections;
     ngx_msec_t                timer_resolution;
     ngx_msec_t                shutdown_timeout;
 
@@ -118,7 +118,7 @@ typedef struct {
     ngx_array_t               env;
     char                    **environment;
 
-    ngx_uint_t                transparent;  /* unsigned  transparent:1; */
+    ngx_uint_t                transparent;  /* unsigned  transparent:1; */  
 } ngx_core_conf_t;
 
 
