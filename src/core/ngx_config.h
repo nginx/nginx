@@ -94,7 +94,7 @@ typedef intptr_t        ngx_flag_t;
 
 
 #ifndef NGX_ALIGNMENT
-#define NGX_ALIGNMENT   sizeof(unsigned long)    /* platform word */
+#define NGX_ALIGNMENT   sizeof(uintptr_t)    /* platform word */
 #endif
 
 #define ngx_align(d, a)     (((d) + (a - 1)) & ~(a - 1))
