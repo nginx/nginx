@@ -5302,6 +5302,18 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     ngx_pool_cleanup_t  *cln;
 
     if (plcf->upstream.ssl->ctx) {
+        if (plcf->upstream.ssl_certificate
+            && plcf->upstream.ssl_certificate->value.len
+            && (plcf->upstream.ssl_certificate->lengths
+                || plcf->upstream.ssl_certificate_key->lengths))
+        {
+            plcf->upstream.ssl_passwords =
+                  ngx_ssl_preserve_passwords(cf, plcf->upstream.ssl_passwords);
+            if (plcf->upstream.ssl_passwords == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
         return NGX_OK;
     }
 
