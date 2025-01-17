@@ -3,14 +3,19 @@
 # Copyright (C) Nginx, Inc.
 
 
+    case $NGX_LIBATOMIC in
+        /*) ngx_prefix="$NGX_LIBATOMIC/build" ;;
+        *)  ngx_prefix="$PWD/$NGX_LIBATOMIC/build" ;;
+    esac
+
     cat << END                                            >> $NGX_MAKEFILE
 
-$NGX_LIBATOMIC/src/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
-	cd $NGX_LIBATOMIC && \$(MAKE)
+$NGX_LIBATOMIC/build/lib/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
+	cd $NGX_LIBATOMIC && \$(MAKE) && \$(MAKE) install
 
 $NGX_LIBATOMIC/Makefile:	$NGX_MAKEFILE
 	cd $NGX_LIBATOMIC \\
 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
-	&& ./configure
+	&& ./configure --prefix=$ngx_prefix
 
 END
