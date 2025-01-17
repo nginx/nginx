@@ -7,8 +7,8 @@ if [ $NGX_LIBATOMIC != YES ]; then
 
     have=NGX_HAVE_LIBATOMIC . auto/have
     CORE_INCS="$CORE_INCS $NGX_LIBATOMIC/src"
-    LINK_DEPS="$LINK_DEPS $NGX_LIBATOMIC/src/libatomic_ops.a"
-    CORE_LIBS="$CORE_LIBS $NGX_LIBATOMIC/src/libatomic_ops.a"
+    LINK_DEPS="$LINK_DEPS $NGX_LIBATOMIC/build/lib/libatomic_ops.a"
+    CORE_LIBS="$CORE_LIBS $NGX_LIBATOMIC/build/lib/libatomic_ops.a"
 
 else
 
