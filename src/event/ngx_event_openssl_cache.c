@@ -122,6 +122,8 @@ static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
 static void ngx_ssl_cache_node_free(ngx_rbtree_t *rbtree,
     ngx_ssl_cache_node_t *cn);
 
+static ngx_int_t ngx_openssl_cache_init_worker(ngx_cycle_t *cycle);
+
 
 static ngx_command_t  ngx_openssl_cache_commands[] = {
 
@@ -150,7 +152,7 @@ ngx_module_t  ngx_openssl_cache_module = {
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL,                                  /* init process */
+    ngx_openssl_cache_init_worker,         /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
@@ -1232,4 +1234,21 @@ ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     node->left = sentinel;
     node->right = sentinel;
     ngx_rbt_red(node);
+}
+
+
+static ngx_int_t
+ngx_openssl_cache_init_worker(ngx_cycle_t *cycle)
+{
+#ifdef ERR_R_OSSL_STORE_LIB
+
+    if (ngx_process != NGX_PROCESS_WORKER) {
+        return NGX_OK;
+    }
+
+    UI_set_default_method(UI_null());
+
+#endif
+
+    return NGX_OK;
 }
