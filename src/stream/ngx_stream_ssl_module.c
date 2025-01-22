@@ -589,11 +589,34 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         goto done;
     }
 
+    sscf = ngx_stream_get_module_srv_conf(cscf->ctx, ngx_stream_ssl_module);
+
+#if (defined TLS1_3_VERSION                                                   \
+     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL)
+
+    /*
+     * SSL_SESSION_get0_hostname() is only available in OpenSSL 1.1.1+,
+     * but servername being negotiated in every TLSv1.3 handshake
+     * is only returned in OpenSSL 1.1.1+ as well
+     */
+
+    if (sscf->verify) {
+        const char  *hostname;
+
+        hostname = SSL_SESSION_get0_hostname(SSL_get0_session(ssl_conn));
+
+        if (hostname != NULL && ngx_strcmp(hostname, servername) != 0) {
+            c->ssl->handshake_rejected = 1;
+            *ad = SSL_AD_ACCESS_DENIED;
+            return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
+    }
+
+#endif
+
     s->srv_conf = cscf->ctx->srv_conf;
 
     ngx_set_connection_log(c, cscf->error_log);
-
-    sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
 
     if (sscf->ssl.ctx) {
         if (SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx) == NULL) {
