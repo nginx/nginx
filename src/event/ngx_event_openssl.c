@@ -1249,24 +1249,16 @@ cleanup:
 }
 
 
-ngx_array_t *
+ngx_int_t
 ngx_ssl_preserve_passwords(ngx_conf_t *cf, ngx_array_t *passwords)
 {
     ngx_str_t           *opwd, *pwd;
     ngx_uint_t           i;
     ngx_array_t          opwds;
     ngx_pool_cleanup_t  *cln;
-    static ngx_array_t   empty_passwords;
 
-    if (passwords == NULL) {
-
-        /*
-         * If there are no passwords, an empty array is used
-         * to make sure OpenSSL's default password callback
-         * won't block on reading from stdin.
-         */
-
-        return &empty_passwords;
+    if (passwords == NULL || passwords->pool == cf->pool) {
+        return NGX_OK;
     }
 
     /*
@@ -1275,21 +1267,17 @@ ngx_ssl_preserve_passwords(ngx_conf_t *cf, ngx_array_t *passwords)
      * runtime they have to be copied to the configuration pool.
      */
 
-    if (passwords->pool == cf->pool || passwords == &empty_passwords) {
-        return passwords;
-    }
-
     opwds = *passwords;
 
     if (ngx_array_init(passwords, cf->pool, opwds.nelts, sizeof(ngx_str_t))
         != NGX_OK)
     {
-        return NULL;
+        return NGX_ERROR;
     }
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {
-        return NULL;
+        return NGX_ERROR;
     }
 
     cln->handler = ngx_ssl_passwords_cleanup;
@@ -1301,7 +1289,7 @@ ngx_ssl_preserve_passwords(ngx_conf_t *cf, ngx_array_t *passwords)
 
         pwd = ngx_array_push(passwords);
         if (pwd == NULL) {
-            return NULL;
+            return NGX_ERROR;
         }
 
         pwd->len = opwd[i].len;
@@ -1309,13 +1297,13 @@ ngx_ssl_preserve_passwords(ngx_conf_t *cf, ngx_array_t *passwords)
 
         if (pwd->data == NULL) {
             passwords->nelts--;
-            return NULL;
+            return NGX_ERROR;
         }
 
         ngx_memcpy(pwd->data, opwd[i].data, opwd[i].len);
     }
 
-    return passwords;
+    return NGX_OK;
 }
 
 

@@ -5080,9 +5080,9 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
         if (glcf->upstream.ssl_certificate->lengths
             || glcf->upstream.ssl_certificate_key->lengths)
         {
-            glcf->upstream.ssl_passwords =
-                  ngx_ssl_preserve_passwords(cf, glcf->upstream.ssl_passwords);
-            if (glcf->upstream.ssl_passwords == NULL) {
+            if (ngx_ssl_preserve_passwords(cf, glcf->upstream.ssl_passwords)
+                != NGX_OK)
+            {
                 return NGX_ERROR;
             }
 
