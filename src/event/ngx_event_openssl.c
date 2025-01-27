@@ -128,6 +128,7 @@ int  ngx_ssl_ticket_keys_index;
 int  ngx_ssl_ocsp_index;
 int  ngx_ssl_index;
 int  ngx_ssl_certificate_name_index;
+int  ngx_ssl_client_hello_arg_index;
 
 
 u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
@@ -267,6 +268,14 @@ ngx_ssl_init(ngx_log_t *log)
 
     if (ngx_ssl_certificate_name_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_client_hello_arg_index = SSL_CTX_get_ex_new_index(0, NULL, NULL,
+                                                              NULL, NULL);
+    if (ngx_ssl_client_hello_arg_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
+                      "SSL_CTX_get_ex_new_index() failed");
         return NGX_ERROR;
     }
 
@@ -1643,6 +1652,82 @@ ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     return 0;
 }
+
+
+void
+ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
+    ngx_ssl_client_hello_arg *cb)
+{
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+
+    SSL_CTX_set_client_hello_cb(ssl_ctx, ngx_ssl_client_hello_callback, NULL);
+    SSL_CTX_set_ex_data(ssl_ctx, ngx_ssl_client_hello_arg_index, cb);
+
+#endif
+}
+
+
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+
+int
+ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
+{
+    u_char                    *p;
+    size_t                     len;
+    ngx_int_t                  rc;
+    ngx_str_t                  host;
+    ngx_connection_t          *c;
+    ngx_ssl_client_hello_arg  *cb;
+
+    c = ngx_ssl_get_connection(ssl_conn);
+    cb = SSL_CTX_get_ex_data(c->ssl->session_ctx,
+                             ngx_ssl_client_hello_arg_index);
+
+    if (SSL_client_hello_get0_ext(ssl_conn, TLSEXT_TYPE_server_name,
+                                  (const unsigned char **) &p, &len)
+        == 0)
+    {
+        ngx_str_null(&host);
+        goto done;
+    }
+
+    /*
+     * RFC 6066 mandates non-zero HostName length, we follow OpenSSL.
+     * No more than one ServerName is expected.
+     */
+
+    if (len < 5
+        || (size_t) (p[0] << 8) + p[1] + 2 != len
+        || p[2] != TLSEXT_NAMETYPE_host_name
+        || (size_t) (p[3] << 8) + p[4] + 2 + 3 != len)
+    {
+        *ad = SSL_AD_DECODE_ERROR;
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+    len -= 5;
+    p += 5;
+
+    if (len > TLSEXT_MAXLEN_host_name || ngx_strlchr(p, p + len, '\0')) {
+        *ad = SSL_AD_UNRECOGNIZED_NAME;
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+    host.len = len;
+    host.data = p;
+
+done:
+
+    rc = cb->servername(ssl_conn, ad, &host);
+
+    if (rc == SSL_TLSEXT_ERR_ALERT_FATAL) {
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+    return SSL_CLIENT_HELLO_SUCCESS;
+}
+
+#endif
 
 
 ngx_int_t

@@ -749,6 +749,10 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->data = &conf->ssl;
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+    {
+    static ngx_ssl_client_hello_arg cb = { ngx_http_ssl_servername };
+
+    ngx_ssl_set_client_hello_callback(conf->ssl.ctx, &cb);
 
     if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
                                                ngx_http_ssl_servername)
@@ -759,7 +763,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             "dynamically to an OpenSSL library which has no tlsext support, "
             "therefore SNI is not available");
     }
-
+    }
 #endif
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
