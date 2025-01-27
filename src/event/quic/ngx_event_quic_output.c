@@ -411,7 +411,7 @@ ngx_quic_send_segments(ngx_connection_t *c, u_char *buf, size_t len,
     ngx_memzero(msg_control, sizeof(msg_control));
 
     iov.iov_len = len;
-    iov.iov_base = buf;
+    iov.iov_base = (void *) buf;
 
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
@@ -699,7 +699,7 @@ ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     ngx_memzero(&msg, sizeof(struct msghdr));
 
     iov.iov_len = len;
-    iov.iov_base = buf;
+    iov.iov_base = (void *) buf;
 
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
