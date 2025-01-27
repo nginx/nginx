@@ -151,6 +151,7 @@ struct ngx_ssl_connection_s {
     unsigned                    in_ocsp:1;
     unsigned                    early_preread:1;
     unsigned                    write_blocked:1;
+    unsigned                    sni_accepted:1;
 };
 
 
@@ -195,6 +196,13 @@ typedef struct {
     ngx_ssl_ticket_key_t        ticket_keys[3];
     time_t                      fail_time;
 } ngx_ssl_session_cache_t;
+
+
+typedef int (*ngx_ssl_servername_pt)(ngx_ssl_conn_t *, int *, void *);
+
+typedef struct {
+    ngx_ssl_servername_pt       servername;
+} ngx_ssl_client_hello_arg;
 
 
 #define NGX_SSL_SSLv2    0x0002
@@ -285,6 +293,12 @@ ngx_int_t ngx_ssl_session_cache(ngx_ssl_t *ssl, ngx_str_t *sess_ctx,
 ngx_int_t ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_array_t *paths);
 ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
+
+void ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
+    ngx_ssl_client_hello_arg *cb);
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+int ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
+#endif
 
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
     ngx_uint_t flags);
@@ -382,6 +396,7 @@ extern int  ngx_ssl_ticket_keys_index;
 extern int  ngx_ssl_ocsp_index;
 extern int  ngx_ssl_index;
 extern int  ngx_ssl_certificate_name_index;
+extern int  ngx_ssl_client_hello_arg_index;
 
 
 extern u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
