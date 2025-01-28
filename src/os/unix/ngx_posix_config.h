@@ -21,10 +21,13 @@
 #endif
 
 
-#if (NGX_GNU_HURD)
+#if defined(NGX_GNU_HURD) || defined(__GLIBC__)
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE             /* accept4() */
 #endif
+#endif
+
+#if (NGX_GNU_HURD)
 #define _FILE_OFFSET_BITS       64
 #endif
 
