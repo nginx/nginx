@@ -46,6 +46,7 @@
 
 static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c);
 static void ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
+static ngx_uint_t ngx_quic_queue_empty(ngx_connection_t *c);
 static void ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t pnum);
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
@@ -230,6 +231,29 @@ ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic congestion send if:%uz", cg->in_flight);
+
+    ngx_quic_congestion_idle(c, ngx_quic_queue_empty(c));
+}
+
+
+static ngx_uint_t
+ngx_quic_queue_empty(ngx_connection_t *c)
+{
+    ngx_uint_t              i;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ctx = &qc->send_ctx[i];
+
+        if (!ngx_queue_empty(&ctx->frames)) {
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 
@@ -247,6 +271,8 @@ ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     ctx->pnum = pnum;
+
+    ngx_quic_congestion_idle(c, 1);
 }
 
 
