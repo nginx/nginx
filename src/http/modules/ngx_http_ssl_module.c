@@ -988,8 +988,7 @@ found:
         }
     }
 
-    conf->passwords = ngx_ssl_preserve_passwords(cf, conf->passwords);
-    if (conf->passwords == NULL) {
+    if (ngx_ssl_preserve_passwords(cf, conf->passwords) != NGX_OK) {
         return NGX_ERROR;
     }
 

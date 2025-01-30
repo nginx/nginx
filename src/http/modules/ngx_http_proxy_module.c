@@ -5340,9 +5340,9 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
         if (plcf->upstream.ssl_certificate->lengths
             || plcf->upstream.ssl_certificate_key->lengths)
         {
-            plcf->upstream.ssl_passwords =
-                  ngx_ssl_preserve_passwords(cf, plcf->upstream.ssl_passwords);
-            if (plcf->upstream.ssl_passwords == NULL) {
+            if (ngx_ssl_preserve_passwords(cf, plcf->upstream.ssl_passwords)
+                != NGX_OK)
+            {
                 return NGX_ERROR;
             }
 
