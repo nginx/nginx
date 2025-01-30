@@ -2799,6 +2799,13 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
         r->lingering_close = 1;
     }
 
+    if (r->keepalive
+        && clcf->keepalive_min_timeout > 0)
+    {
+        ngx_http_set_keepalive(r);
+        return;
+    }
+
     if (!ngx_terminate
          && !ngx_exiting
          && r->keepalive
@@ -3301,10 +3308,22 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
-    c->idle = 1;
-    ngx_reusable_connection(c, 1);
+    if (clcf->keepalive_min_timeout == 0) {
+        c->idle = 1;
+        ngx_reusable_connection(c, 1);
+    }
 
-    ngx_add_timer(rev, clcf->keepalive_timeout);
+    if (clcf->keepalive_min_timeout > 0
+        && clcf->keepalive_timeout > clcf->keepalive_min_timeout)
+    {
+        hc->keepalive_timeout = clcf->keepalive_timeout
+                                - clcf->keepalive_min_timeout;
+
+    } else {
+        hc->keepalive_timeout = 0;
+    }
+
+    ngx_add_timer(rev, clcf->keepalive_timeout - hc->keepalive_timeout);
 
     if (rev->ready) {
         ngx_post_event(rev, &ngx_posted_events);
@@ -3315,14 +3334,31 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 static void
 ngx_http_keepalive_handler(ngx_event_t *rev)
 {
-    size_t             size;
-    ssize_t            n;
-    ngx_buf_t         *b;
-    ngx_connection_t  *c;
+    size_t                  size;
+    ssize_t                 n;
+    ngx_buf_t              *b;
+    ngx_connection_t       *c;
+    ngx_http_connection_t  *hc;
 
     c = rev->data;
+    hc = c->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http keepalive handler");
+
+    if (!ngx_terminate
+         && !ngx_exiting
+         && rev->timedout
+         && hc->keepalive_timeout > 0)
+    {
+        c->idle = 1;
+        ngx_reusable_connection(c, 1);
+
+        ngx_add_timer(rev, hc->keepalive_timeout);
+
+        hc->keepalive_timeout = 0;
+        rev->timedout = 0;
+        return;
+    }
 
     if (rev->timedout || c->close) {
         ngx_http_close_connection(c);
