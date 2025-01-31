@@ -12,6 +12,7 @@
 
 
 static ngx_int_t ngx_http_header_filter_init(ngx_conf_t *cf);
+static ngx_int_t ngx_http_early_hints_filter(ngx_http_request_t *r);
 static ngx_int_t ngx_http_header_filter(ngx_http_request_t *r);
 
 
@@ -49,6 +50,9 @@ ngx_module_t  ngx_http_header_filter_module = {
 static u_char ngx_http_server_string[] = "Server: nginx" CRLF;
 static u_char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
 static u_char ngx_http_server_build_string[] = "Server: " NGINX_VER_BUILD CRLF;
+
+static ngx_str_t ngx_http_early_hints_status_line
+    = ngx_string("103 Early Hints");
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -626,9 +630,112 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
 
 static ngx_int_t
+ngx_http_early_hints_filter(ngx_http_request_t *r)
+{
+    size_t            len;
+    ngx_buf_t        *b;
+    ngx_uint_t        i;
+    ngx_chain_t       out;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header;
+
+    if (r->header_sent || r != r->main) {
+        return NGX_OK;
+    }
+
+    len = 0;
+
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        len += header[i].key.len + sizeof(": ") - 1 + header[i].value.len
+               + sizeof(CRLF) - 1;
+    }
+
+    if (len == 0) {
+        return NGX_OK;
+    }
+
+    len += sizeof("HTTP/1.x ") - 1
+           + ngx_http_early_hints_status_line.len + sizeof(CRLF) - 1
+           /* the end of the header */
+           + sizeof(CRLF) - 1;
+
+    b = ngx_create_temp_buf(r->pool, len);
+    if (b == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* "HTTP/1.x" and status line */
+    b->last = ngx_cpymem(b->last, "HTTP/1.1 ", sizeof("HTTP/1.x ") - 1);
+
+    b->last = ngx_copy(b->last, ngx_http_early_hints_status_line.data,
+                       ngx_http_early_hints_status_line.len);
+
+    *b->last++ = CR; *b->last++ = LF;
+
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
+        *b->last++ = ':'; *b->last++ = ' ';
+
+        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+        *b->last++ = CR; *b->last++ = LF;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "%*s", (size_t) (b->last - b->pos), b->pos);
+
+    /* the end of HTTP early hints */
+    *b->last++ = CR; *b->last++ = LF;
+
+    b->flush = 1;
+
+    out.buf = b;
+    out.next = NULL;
+
+    return ngx_http_write_filter(r, &out);
+}
+
+
+static ngx_int_t
 ngx_http_header_filter_init(ngx_conf_t *cf)
 {
     ngx_http_top_header_filter = ngx_http_header_filter;
+    ngx_http_top_early_hints_filter = ngx_http_early_hints_filter;
 
     return NGX_OK;
 }

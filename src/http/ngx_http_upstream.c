@@ -35,6 +35,8 @@ static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_event_t *ev);
+static ngx_int_t ngx_http_upstream_send_early_hints(ngx_http_request_t *r);
+static void ngx_http_upstream_early_hints_writer(ngx_http_request_t *r);
 static void ngx_http_upstream_connect(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
@@ -711,6 +713,12 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     cln->handler = ngx_http_upstream_cleanup;
     cln->data = r;
     u->cleanup = &cln->handler;
+
+    if (ngx_http_upstream_send_early_hints(r) != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
 
     if (u->resolved == NULL) {
 
@@ -1542,6 +1550,128 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     if (u->peer.connection == NULL) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_CLIENT_CLOSED_REQUEST);
+    }
+}
+
+
+static ngx_int_t
+ngx_http_upstream_send_early_hints(ngx_http_request_t *r)
+{
+    ngx_int_t                  rc;
+    ngx_connection_t          *c;
+    ngx_http_upstream_t       *u;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    if (r != r->main) {
+        return NGX_OK;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    switch (ngx_http_test_predicates(r, clcf->early_hints)) {
+
+    case NGX_ERROR:
+        return NGX_ERROR;
+
+    case NGX_OK:
+        return NGX_OK;
+
+    default: /* NGX_DECLINED */
+        break;
+    }
+
+    c = r->connection;
+
+    r->headers_out.status = NGX_HTTP_EARLY_HINTS;
+
+    rc = ngx_http_send_header(r);
+
+    ngx_http_clean_header(r);
+
+    if (c->error) {
+        ngx_post_event(c->write, &ngx_posted_events);
+        return NGX_OK;
+    }
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    u = r->upstream;
+
+    if (u->peer.connection) {
+
+        if (u->reinit_request(r) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&u->headers_in, sizeof(ngx_http_upstream_headers_in_t));
+        u->headers_in.content_length_n = -1;
+        u->headers_in.last_modified_time = -1;
+
+        if (ngx_list_init(&u->headers_in.headers, r->pool, 8,
+                          sizeof(ngx_table_elt_t))
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (c->buffered) {
+        r->write_event_handler = ngx_http_upstream_early_hints_writer;
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_upstream_early_hints_writer(ngx_http_request_t *r)
+{
+    ngx_int_t             rc;
+    ngx_connection_t     *c;
+    ngx_http_upstream_t  *u;
+
+    c = r->connection;
+    u = r->upstream;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream early hints writer");
+
+    c->log->action = "sending early hints to client";
+
+    rc = ngx_http_write_filter(r, NULL);
+
+    if (rc == NGX_ERROR && !c->error) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    if (c->error || !c->buffered) {
+
+        if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
+
+            if (c->error) {
+                ngx_http_upstream_wr_check_broken_connection(r);
+                return;
+            }
+
+            r->write_event_handler =
+                                  ngx_http_upstream_wr_check_broken_connection;
+
+        } else {
+            r->write_event_handler = ngx_http_request_empty_handler;
+        }
+    }
+
+    if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 }
 
@@ -2560,6 +2690,19 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
+        return;
+    }
+
+    if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+
+        if (ngx_http_upstream_send_early_hints(r) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        ngx_post_event(c->read, &ngx_posted_events);
+
         return;
     }
 
