@@ -6921,6 +6921,61 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
 }
 
 
+#if (NGX_HTTP_SSL)
+
+ngx_int_t
+ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
+    ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev)
+{
+    ngx_uint_t  preserve;
+
+    ngx_conf_merge_ptr_value(conf->ssl_passwords, prev->ssl_passwords, NULL);
+
+    if (conf->ssl_certificate == NULL
+        || conf->ssl_certificate->value.len == 0
+        || conf->ssl_certificate_key == NULL)
+    {
+        return NGX_OK;
+    }
+
+    if (conf->ssl_certificate->lengths == NULL
+        && conf->ssl_certificate_key->lengths == NULL)
+    {
+        if (conf->ssl_passwords && conf->ssl_passwords->pool == NULL) {
+            /* un-preserve empty password list */
+            conf->ssl_passwords = NULL;
+        }
+
+        return NGX_OK;
+    }
+
+    if (conf->ssl_passwords && conf->ssl_passwords->pool != cf->temp_pool) {
+        /* already preserved */
+        return NGX_OK;
+    }
+
+    preserve = (conf->ssl_passwords == prev->ssl_passwords) ? 1 : 0;
+
+    conf->ssl_passwords = ngx_ssl_preserve_passwords(cf, conf->ssl_passwords);
+    if (conf->ssl_passwords == NULL) {
+        return NGX_ERROR;
+    }
+
+    /*
+     * special handling to keep a preserved ssl_passwords copy
+     * in the previous configuration to inherit it to all children
+     */
+
+    if (preserve) {
+        prev->ssl_passwords = conf->ssl_passwords;
+    }
+
+    return NGX_OK;
+}
+
+#endif
+
+
 static void *
 ngx_http_upstream_create_main_conf(ngx_conf_t *cf)
 {

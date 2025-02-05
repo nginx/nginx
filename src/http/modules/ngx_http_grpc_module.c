@@ -4509,8 +4509,13 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.ssl_certificate_key, NULL);
     ngx_conf_merge_ptr_value(conf->upstream.ssl_certificate_cache,
                               prev->upstream.ssl_certificate_cache, NULL);
-    ngx_conf_merge_ptr_value(conf->upstream.ssl_passwords,
-                              prev->upstream.ssl_passwords, NULL);
+
+    if (ngx_http_upstream_merge_ssl_passwords(cf, &conf->upstream,
+                                              &prev->upstream)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
     ngx_conf_merge_ptr_value(conf->ssl_conf_commands,
                               prev->ssl_conf_commands, NULL);
@@ -5077,16 +5082,9 @@ ngx_http_grpc_set_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *glcf)
             return NGX_ERROR;
         }
 
-        if (glcf->upstream.ssl_certificate->lengths
-            || glcf->upstream.ssl_certificate_key->lengths)
+        if (glcf->upstream.ssl_certificate->lengths == NULL
+            && glcf->upstream.ssl_certificate_key->lengths == NULL)
         {
-            glcf->upstream.ssl_passwords =
-                  ngx_ssl_preserve_passwords(cf, glcf->upstream.ssl_passwords);
-            if (glcf->upstream.ssl_passwords == NULL) {
-                return NGX_ERROR;
-            }
-
-        } else {
             if (ngx_ssl_certificate(cf, glcf->upstream.ssl,
                                     &glcf->upstream.ssl_certificate->value,
                                     &glcf->upstream.ssl_certificate_key->value,
