@@ -5,6 +5,87 @@
 <change_log title="nginx">
 
 
+<changes ver="1.26.3" date="2025-02-05">
+
+<change type="security">
+<para lang="ru">
+недостаточная проверка в обработке виртуальных серверов
+при использовании SNI в TLSv1.3 позволяла повторно использовать
+SSL-сессию в контексте другого виртуального сервера,
+чтобы обойти проверку клиентских SSL-сертификатов (CVE-2025-23419).
+</para>
+<para lang="en">
+insufficient check in virtual servers handling with TLSv1.3 SNI
+allowed to reuse SSL sessions in a different virtual server,
+to bypass client SSL certificates verification (CVE-2025-23419).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Nils Bars.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Nils Bars.
+</para>
+</change>
+
+<change type="workaround">
+<para lang="ru">
+при использовании zlib-ng
+в логах появлялись сообщения "gzip filter failed to use preallocated memory".
+</para>
+<para lang="en">
+"gzip filter failed to use preallocated memory" alerts appeared in logs
+when using zlib-ng.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не мог собрать библиотеку libatomic из исходных текстов,
+если использовался параметр --with-libatomic=DIR.
+</para>
+<para lang="en">
+nginx could not build libatomic library using the library sources
+if the --with-libatomic=DIR option was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь nginx игнорирует пакеты согласования версий QUIC от клиентов.
+</para>
+<para lang="en">
+nginx now ignores QUIC version negotiation packets from clients.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris 10 и более ранних
+с модулем ngx_http_v3_module.
+</para>
+<para lang="en">
+nginx could not be built on Solaris 10 and earlier
+with the ngx_http_v3_module.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в HTTP/3.
+</para>
+<para lang="en">
+Bugfixes in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.26.2" date="2024-08-14">
 
 <change type="security">
