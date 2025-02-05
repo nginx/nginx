@@ -136,8 +136,8 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         0x9a, 0xe6, 0xa4, 0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a
     };
 
-    client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].client;
-    server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].server;
+    client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].read;
+    server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].write;
 
     /*
      * RFC 9001, section 5.  Packet Protection
@@ -673,8 +673,8 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
     ngx_quic_secret_t   *peer_secret;
     ngx_quic_ciphers_t   ciphers;
 
-    peer_secret = is_write ? &keys->secrets[level].server
-                           : &keys->secrets[level].client;
+    peer_secret = is_write ? &keys->secrets[level].write
+                           : &keys->secrets[level].read;
 
     keys->cipher = SSL_CIPHER_get_id(cipher);
 
@@ -732,35 +732,35 @@ ngx_quic_keys_available(ngx_quic_keys_t *keys, ngx_uint_t level,
     ngx_uint_t is_write)
 {
     if (is_write == 0) {
-        return keys->secrets[level].client.ctx != NULL;
+        return keys->secrets[level].read.ctx != NULL;
     }
 
-    return keys->secrets[level].server.ctx != NULL;
+    return keys->secrets[level].write.ctx != NULL;
 }
 
 
 void
 ngx_quic_keys_discard(ngx_quic_keys_t *keys, ngx_uint_t level)
 {
-    ngx_quic_secret_t  *client, *server;
+    ngx_quic_secret_t  *read, *write;
 
-    client = &keys->secrets[level].client;
-    server = &keys->secrets[level].server;
+    read = &keys->secrets[level].read;
+    write = &keys->secrets[level].write;
 
-    ngx_quic_crypto_cleanup(client);
-    ngx_quic_crypto_cleanup(server);
+    ngx_quic_crypto_cleanup(read);
+    ngx_quic_crypto_cleanup(write);
 
-    ngx_quic_crypto_hp_cleanup(client);
-    ngx_quic_crypto_hp_cleanup(server);
+    ngx_quic_crypto_hp_cleanup(read);
+    ngx_quic_crypto_hp_cleanup(write);
 
-    if (client->secret.len) {
-        ngx_explicit_memzero(client->secret.data, client->secret.len);
-        client->secret.len = 0;
+    if (read->secret.len) {
+        ngx_explicit_memzero(read->secret.data, read->secret.len);
+        read->secret.len = 0;
     }
 
-    if (server->secret.len) {
-        ngx_explicit_memzero(server->secret.data, server->secret.len);
-        server->secret.len = 0;
+    if (write->secret.len) {
+        ngx_explicit_memzero(write->secret.data, write->secret.len);
+        write->secret.len = 0;
     }
 }
 
@@ -773,8 +773,8 @@ ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys)
     current = &keys->secrets[NGX_QUIC_ENCRYPTION_APPLICATION];
     next = &keys->next_key;
 
-    ngx_quic_crypto_cleanup(&current->client);
-    ngx_quic_crypto_cleanup(&current->server);
+    ngx_quic_crypto_cleanup(&current->read);
+    ngx_quic_crypto_cleanup(&current->write);
 
     tmp = *current;
     *current = *next;
@@ -787,7 +787,7 @@ ngx_quic_keys_update(ngx_event_t *ev)
 {
     ngx_int_t               key_len;
     ngx_uint_t              i;
-    ngx_quic_md_t           client_key, server_key;
+    ngx_quic_md_t           read_key, write_key;
     ngx_quic_hkdf_t         seq[6];
     ngx_quic_keys_t        *keys;
     ngx_connection_t       *c;
@@ -812,31 +812,31 @@ ngx_quic_keys_update(ngx_event_t *ev)
         goto failed;
     }
 
-    client_key.len = key_len;
-    server_key.len = key_len;
+    read_key.len = key_len;
+    write_key.len = key_len;
 
-    next->client.secret.len = current->client.secret.len;
-    next->client.iv.len = NGX_QUIC_IV_LEN;
-    next->client.hp = current->client.hp;
-    next->client.hp_ctx = current->client.hp_ctx;
+    next->read.secret.len = current->read.secret.len;
+    next->read.iv.len = NGX_QUIC_IV_LEN;
+    next->read.hp = current->read.hp;
+    next->read.hp_ctx = current->read.hp_ctx;
 
-    next->server.secret.len = current->server.secret.len;
-    next->server.iv.len = NGX_QUIC_IV_LEN;
-    next->server.hp = current->server.hp;
-    next->server.hp_ctx = current->server.hp_ctx;
+    next->write.secret.len = current->write.secret.len;
+    next->write.iv.len = NGX_QUIC_IV_LEN;
+    next->write.hp = current->write.hp;
+    next->write.hp_ctx = current->write.hp_ctx;
 
     ngx_quic_hkdf_set(&seq[0], "tls13 quic ku",
-                      &next->client.secret, &current->client.secret);
+                      &next->read.secret, &current->read.secret);
     ngx_quic_hkdf_set(&seq[1], "tls13 quic key",
-                      &client_key, &next->client.secret);
+                      &read_key, &next->read.secret);
     ngx_quic_hkdf_set(&seq[2], "tls13 quic iv",
-                      &next->client.iv, &next->client.secret);
+                      &next->read.iv, &next->read.secret);
     ngx_quic_hkdf_set(&seq[3], "tls13 quic ku",
-                      &next->server.secret, &current->server.secret);
+                      &next->write.secret, &current->write.secret);
     ngx_quic_hkdf_set(&seq[4], "tls13 quic key",
-                      &server_key, &next->server.secret);
+                      &write_key, &next->write.secret);
     ngx_quic_hkdf_set(&seq[5], "tls13 quic iv",
-                      &next->server.iv, &next->server.secret);
+                      &next->write.iv, &next->write.secret);
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
         if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->log) != NGX_OK) {
@@ -844,28 +844,28 @@ ngx_quic_keys_update(ngx_event_t *ev)
         }
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, &next->client, &client_key, 0, c->log)
+    if (ngx_quic_crypto_init(ciphers.c, &next->read, &read_key, 0, c->log)
         == NGX_ERROR)
     {
         goto failed;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, &next->server, &server_key, 1, c->log)
+    if (ngx_quic_crypto_init(ciphers.c, &next->write, &write_key, 1, c->log)
         == NGX_ERROR)
     {
         goto failed;
     }
 
-    ngx_explicit_memzero(current->client.secret.data,
-                         current->client.secret.len);
-    ngx_explicit_memzero(current->server.secret.data,
-                         current->server.secret.len);
+    ngx_explicit_memzero(current->read.secret.data,
+                         current->read.secret.len);
+    ngx_explicit_memzero(current->write.secret.data,
+                         current->write.secret.len);
 
-    current->client.secret.len = 0;
-    current->server.secret.len = 0;
+    current->read.secret.len = 0;
+    current->write.secret.len = 0;
 
-    ngx_explicit_memzero(client_key.data, client_key.len);
-    ngx_explicit_memzero(server_key.data, server_key.len);
+    ngx_explicit_memzero(read_key.data, read_key.len);
+    ngx_explicit_memzero(write_key.data, write_key.len);
 
     return;
 
@@ -887,19 +887,19 @@ ngx_quic_keys_cleanup(ngx_quic_keys_t *keys)
 
     next = &keys->next_key;
 
-    ngx_quic_crypto_cleanup(&next->client);
-    ngx_quic_crypto_cleanup(&next->server);
+    ngx_quic_crypto_cleanup(&next->read);
+    ngx_quic_crypto_cleanup(&next->write);
 
-    if (next->client.secret.len) {
-        ngx_explicit_memzero(next->client.secret.data,
-                             next->client.secret.len);
-        next->client.secret.len = 0;
+    if (next->read.secret.len) {
+        ngx_explicit_memzero(next->read.secret.data,
+                             next->read.secret.len);
+        next->read.secret.len = 0;
     }
 
-    if (next->server.secret.len) {
-        ngx_explicit_memzero(next->server.secret.data,
-                             next->server.secret.len);
-        next->server.secret.len = 0;
+    if (next->write.secret.len) {
+        ngx_explicit_memzero(next->write.secret.data,
+                             next->write.secret.len);
+        next->write.secret.len = 0;
     }
 }
 
@@ -924,7 +924,7 @@ ngx_quic_create_packet(ngx_quic_header_t *pkt, ngx_str_t *res)
                    "quic ad len:%uz %xV", ad.len, &ad);
 #endif
 
-    secret = &pkt->keys->secrets[pkt->level].server;
+    secret = &pkt->keys->secrets[pkt->level].write;
 
     ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), pkt->number);
@@ -1137,7 +1137,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
     ngx_quic_secret_t  *secret;
     uint8_t             nonce[NGX_QUIC_IV_LEN], mask[NGX_QUIC_HP_LEN];
 
-    secret = &pkt->keys->secrets[pkt->level].client;
+    secret = &pkt->keys->secrets[pkt->level].read;
 
     p = pkt->raw->pos;
     len = pkt->data + pkt->len - p;
@@ -1169,8 +1169,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
         key_phase = (pkt->flags & NGX_QUIC_PKT_KPHASE) != 0;
 
         if (key_phase != pkt->key_phase) {
-            if (pkt->keys->next_key.client.ctx != NULL) {
-                secret = &pkt->keys->next_key.client;
+            if (pkt->keys->next_key.read.ctx != NULL) {
+                secret = &pkt->keys->next_key.read;
                 pkt->key_update = 1;
 
             } else {

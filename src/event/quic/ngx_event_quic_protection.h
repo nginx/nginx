@@ -55,8 +55,8 @@ typedef struct {
 
 
 typedef struct {
-    ngx_quic_secret_t         client;
-    ngx_quic_secret_t         server;
+    ngx_quic_secret_t         read;
+    ngx_quic_secret_t         write;
 } ngx_quic_secrets_t;
 
 
