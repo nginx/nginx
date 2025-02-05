@@ -187,8 +187,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         qc->tp.max_idle_timeout = ctp->max_idle_timeout;
     }
 
-    qc->streams.server_max_streams_bidi = ctp->initial_max_streams_bidi;
-    qc->streams.server_max_streams_uni = ctp->initial_max_streams_uni;
+    qc->streams.local_max_streams_bidi = ctp->initial_max_streams_bidi;
+    qc->streams.local_max_streams_uni = ctp->initial_max_streams_uni;
 
     ngx_memcpy(&qc->ctp, ctp, sizeof(ngx_quic_tp_t));
 
@@ -308,8 +308,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->streams.recv_max_data = qc->tp.initial_max_data;
     qc->streams.recv_window = qc->streams.recv_max_data;
 
-    qc->streams.client_max_streams_uni = qc->tp.initial_max_streams_uni;
-    qc->streams.client_max_streams_bidi = qc->tp.initial_max_streams_bidi;
+    qc->streams.remote_max_streams_uni = qc->tp.initial_max_streams_uni;
+    qc->streams.remote_max_streams_bidi = qc->tp.initial_max_streams_bidi;
 
     qc->congestion.window = ngx_min(10 * NGX_QUIC_MIN_INITIAL_SIZE,
                                     ngx_max(2 * NGX_QUIC_MIN_INITIAL_SIZE,
