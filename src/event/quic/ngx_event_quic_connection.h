@@ -156,15 +156,15 @@ typedef struct {
     uint64_t                          send_offset;
     uint64_t                          send_max_data;
 
-    uint64_t                          server_max_streams_uni;
-    uint64_t                          server_max_streams_bidi;
-    uint64_t                          server_streams_uni;
-    uint64_t                          server_streams_bidi;
+    uint64_t                          local_max_streams_uni;
+    uint64_t                          local_max_streams_bidi;
+    uint64_t                          local_streams_uni;
+    uint64_t                          local_streams_bidi;
 
-    uint64_t                          client_max_streams_uni;
-    uint64_t                          client_max_streams_bidi;
-    uint64_t                          client_streams_uni;
-    uint64_t                          client_streams_bidi;
+    uint64_t                          remote_max_streams_uni;
+    uint64_t                          remote_max_streams_bidi;
+    uint64_t                          remote_streams_uni;
+    uint64_t                          remote_streams_bidi;
 
     ngx_uint_t                        initialized;
                                                  /* unsigned  initialized:1; */

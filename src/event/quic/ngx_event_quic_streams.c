@@ -58,47 +58,47 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
     }
 
     if (bidi) {
-        if (qc->streams.server_streams_bidi
-            >= qc->streams.server_max_streams_bidi)
+        if (qc->streams.local_streams_bidi
+            >= qc->streams.local_max_streams_bidi)
         {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic too many server bidi streams:%uL",
-                           qc->streams.server_streams_bidi);
+                           "quic too many local bidi streams:%uL",
+                           qc->streams.local_streams_bidi);
             return NULL;
         }
 
-        id = (qc->streams.server_streams_bidi << 2)
+        id = (qc->streams.local_streams_bidi << 2)
              | NGX_QUIC_STREAM_SERVER_INITIATED;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic creating server bidi stream"
+                       "quic creating local bidi stream"
                        " streams:%uL max:%uL id:0x%xL",
-                       qc->streams.server_streams_bidi,
-                       qc->streams.server_max_streams_bidi, id);
+                       qc->streams.local_streams_bidi,
+                       qc->streams.local_max_streams_bidi, id);
 
-        qc->streams.server_streams_bidi++;
+        qc->streams.local_streams_bidi++;
 
     } else {
-        if (qc->streams.server_streams_uni
-            >= qc->streams.server_max_streams_uni)
+        if (qc->streams.local_streams_uni
+            >= qc->streams.local_max_streams_uni)
         {
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic too many server uni streams:%uL",
-                           qc->streams.server_streams_uni);
+                           "quic too many local uni streams:%uL",
+                           qc->streams.local_streams_uni);
             return NULL;
         }
 
-        id = (qc->streams.server_streams_uni << 2)
+        id = (qc->streams.local_streams_uni << 2)
              | NGX_QUIC_STREAM_SERVER_INITIATED
              | NGX_QUIC_STREAM_UNIDIRECTIONAL;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic creating server uni stream"
+                       "quic creating local uni stream"
                        " streams:%uL max:%uL id:0x%xL",
-                       qc->streams.server_streams_uni,
-                       qc->streams.server_max_streams_uni, id);
+                       qc->streams.local_streams_uni,
+                       qc->streams.local_max_streams_uni, id);
 
-        qc->streams.server_streams_uni++;
+        qc->streams.local_streams_uni++;
     }
 
     qs = ngx_quic_create_stream(pc, id);
@@ -404,7 +404,7 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
 
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
-            if ((id >> 2) < qc->streams.server_streams_uni) {
+            if ((id >> 2) < qc->streams.local_streams_uni) {
                 return NGX_QUIC_STREAM_GONE;
             }
 
@@ -412,23 +412,23 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
             return NULL;
         }
 
-        if ((id >> 2) < qc->streams.client_streams_uni) {
+        if ((id >> 2) < qc->streams.remote_streams_uni) {
             return NGX_QUIC_STREAM_GONE;
         }
 
-        if ((id >> 2) >= qc->streams.client_max_streams_uni) {
+        if ((id >> 2) >= qc->streams.remote_max_streams_uni) {
             qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
             return NULL;
         }
 
-        min_id = (qc->streams.client_streams_uni << 2)
+        min_id = (qc->streams.remote_streams_uni << 2)
                  | NGX_QUIC_STREAM_UNIDIRECTIONAL;
-        qc->streams.client_streams_uni = (id >> 2) + 1;
+        qc->streams.remote_streams_uni = (id >> 2) + 1;
 
     } else {
 
         if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
-            if ((id >> 2) < qc->streams.server_streams_bidi) {
+            if ((id >> 2) < qc->streams.local_streams_bidi) {
                 return NGX_QUIC_STREAM_GONE;
             }
 
@@ -436,17 +436,17 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
             return NULL;
         }
 
-        if ((id >> 2) < qc->streams.client_streams_bidi) {
+        if ((id >> 2) < qc->streams.remote_streams_bidi) {
             return NGX_QUIC_STREAM_GONE;
         }
 
-        if ((id >> 2) >= qc->streams.client_max_streams_bidi) {
+        if ((id >> 2) >= qc->streams.remote_max_streams_bidi) {
             qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
             return NULL;
         }
 
-        min_id = (qc->streams.client_streams_bidi << 2);
-        qc->streams.client_streams_bidi = (id >> 2) + 1;
+        min_id = (qc->streams.remote_streams_bidi << 2);
+        qc->streams.remote_streams_bidi = (id >> 2) + 1;
     }
 
     /*
@@ -1184,11 +1184,11 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
         frame->type = NGX_QUIC_FT_MAX_STREAMS;
 
         if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
-            frame->u.max_streams.limit = ++qc->streams.client_max_streams_uni;
+            frame->u.max_streams.limit = ++qc->streams.remote_max_streams_uni;
             frame->u.max_streams.bidi = 0;
 
         } else {
-            frame->u.max_streams.limit = ++qc->streams.client_max_streams_bidi;
+            frame->u.max_streams.limit = ++qc->streams.remote_max_streams_bidi;
             frame->u.max_streams.bidi = 1;
         }
 
@@ -1567,16 +1567,16 @@ ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     if (f->bidi) {
-        if (qc->streams.server_max_streams_bidi < f->limit) {
-            qc->streams.server_max_streams_bidi = f->limit;
+        if (qc->streams.local_max_streams_bidi < f->limit) {
+            qc->streams.local_max_streams_bidi = f->limit;
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic max_streams_bidi:%uL", f->limit);
         }
 
     } else {
-        if (qc->streams.server_max_streams_uni < f->limit) {
-            qc->streams.server_max_streams_uni = f->limit;
+        if (qc->streams.local_max_streams_uni < f->limit) {
+            qc->streams.local_max_streams_uni = f->limit;
 
             ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic max_streams_uni:%uL", f->limit);
