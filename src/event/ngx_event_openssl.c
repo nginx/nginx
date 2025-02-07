@@ -5732,18 +5732,27 @@ ngx_ssl_print_time(
 
         l = tm->length;
         v = (char *)tm->data;
-        f = NULL;
-        f_len = 0;
 
-        if (tm->length > 15 && v[14] == period) {
-            f = &v[15];
-            while(15 + f_len < l && ngx_ascii_is_digit(f[f_len]))
-                ++f_len;
-        }
-        BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02d.%.*sZ",
+        if (tm->type == V_ASN1_GENERALIZEDTIME) {
+            f = NULL;
+            f_len = 0;
+            if (tm->length > 15 && v[14] == period) {
+                f = &v[15];
+                while(15 + f_len < l && ngx_ascii_is_digit(f[f_len]))
+                    ++f_len;
+            }
+            if (f_len > 0) {
+                BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02d.%.*sZ",
+                     stm.tm_year + 1900, stm.tm_mon + 1,
+                     stm.tm_mday, stm.tm_hour,
+                     stm.tm_min, stm.tm_sec, f_len, f);
+                return NGX_OK;
+            }
+         }
+         BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02dZ",
              stm.tm_year + 1900, stm.tm_mon + 1,
              stm.tm_mday, stm.tm_hour,
-             stm.tm_min, stm.tm_sec, f_len, f);
+             stm.tm_min, stm.tm_sec);
     } else {
         ASN1_TIME_print(bio, tm);
     }
