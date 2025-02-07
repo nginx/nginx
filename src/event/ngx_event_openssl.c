@@ -5755,6 +5755,40 @@ ngx_ssl_get_client_v_start(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     return NGX_OK;
 }
 
+ngx_int_t
+ngx_ssl_print_time(BIO *bio, ASN1_TIME *tm, long flag)
+{
+    ngx_int_t ret;
+    struct tm stm;
+    const char period = 0x2E;
+    int l, f_len;
+    char *v, *f;
+ 
+    ret = ASN1_TIME_to_tm(tm, &stm);
+    if (ret != NGX_OK) {
+        return ret;
+    }
+
+    l = tm->length;
+    v = (char *)tm->data;
+    f = NULL;
+    f_len = 0;
+
+    if (tm->length > 15 && v[14] == period) {
+        f = &v[15];
+        while(15 + f_len < l && ngx_ascii_is_digit(f[f_len]))
+            ++f_len;
+    }
+    if (flag) {
+        BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02d.%.*sZ",
+             stm.tm_year + 1900, stm.tm_mon + 1,
+             stm.tm_mday, stm.tm_hour,
+             stm.tm_min, stm.tm_sec, f_len, f);
+    } else {
+        ASN1_TIME_print(bio, tm);
+    }
+    return NGX_OK;
+}
 
 ngx_int_t
 ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
