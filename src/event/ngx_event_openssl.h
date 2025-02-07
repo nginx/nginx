@@ -333,6 +333,10 @@ ngx_int_t ngx_ssl_get_client_v_start(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_v_start_iso8601(ngx_connection_t *c,
+    ngx_pool_t *pool, ngx_str_t *s);
+ngx_int_t ngx_ssl_get_client_v_end_iso8601(ngx_connection_t *c,
+    ngx_pool_t *pool, ngx_str_t *s);
 ngx_int_t ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 
