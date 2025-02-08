@@ -7,14 +7,12 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 
+#include <ngx_event_quic_connection.h>
 
 #define NGX_QUIC_BPF_VARNAME  "NGINX_BPF_MAPS"
 #define NGX_QUIC_BPF_VARSEP    ';'
 #define NGX_QUIC_BPF_ADDRSEP   '#'
 
-
-#define ngx_quic_bpf_get_conf(cycle)                                          \
-    (ngx_quic_bpf_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_quic_bpf_module)
 
 #define ngx_quic_bpf_get_old_conf(cycle)                                      \
     cycle->old_cycle->conf_ctx ? ngx_quic_bpf_get_conf(cycle->old_cycle)      \
@@ -27,18 +25,12 @@
 typedef struct {
     ngx_queue_t           queue;
     int                   map_fd;
+    int                   sock_cnt;
 
     struct sockaddr      *sockaddr;
     socklen_t             socklen;
     ngx_uint_t            unused;     /* unsigned  unused:1; */
 } ngx_quic_sock_group_t;
-
-
-typedef struct {
-    ngx_flag_t            enabled;
-    ngx_uint_t            map_size;
-    ngx_queue_t           groups;     /* of ngx_quic_sock_group_t */
-} ngx_quic_bpf_conf_t;
 
 
 static void *ngx_quic_bpf_create_conf(ngx_cycle_t *cycle);
@@ -114,6 +106,7 @@ ngx_quic_bpf_create_conf(ngx_cycle_t *cycle)
 
     bcf->enabled = NGX_CONF_UNSET;
     bcf->map_size = NGX_CONF_UNSET_UINT;
+    bcf->worker_map_fd = -1;
 
     ngx_queue_init(&bcf->groups);
 
@@ -219,6 +212,10 @@ ngx_quic_bpf_cleanup(void *data)
 
         ngx_quic_bpf_close(ngx_cycle->log, grp->map_fd, "map");
     }
+
+    if (bcf->worker_map_fd != -1) {
+        ngx_quic_bpf_close(ngx_cycle->log, bcf->worker_map_fd, "worker map");
+    }
 }
 
 
@@ -303,6 +300,7 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
         return NULL;
     }
 
+    // create BPF_MAP_TYPE_SOCKHASH with key len 64bit, need kernel >= 5.7
     grp->map_fd = ngx_bpf_map_create(cycle->log, BPF_MAP_TYPE_SOCKHASH,
                                      sizeof(uint64_t), sizeof(uint64_t),
                                      bcf->map_size, 0);
@@ -329,6 +327,9 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
 
     ngx_bpf_program_link(&ngx_quic_reuseport_helper,
                          "ngx_quic_sockmap", grp->map_fd);
+    
+    ngx_bpf_program_link(&ngx_quic_reuseport_helper,
+                         "ngx_worker_map", bcf->worker_map_fd);
 
     progfd = ngx_bpf_load_program(cycle->log, &ngx_quic_reuseport_helper);
     if (progfd < 0) {
@@ -448,12 +449,21 @@ ngx_quic_bpf_group_add_socket(ngx_cycle_t *cycle,  ngx_listening_t *ls)
         return NGX_ERROR;
     }
 
+    /* map[magic_cid] = socket; for use in kernel helper */
+    uint64_t tmp_key = REDIRECT_WORKER_CID_MAGIC + grp->sock_cnt;
+    if (ngx_bpf_map_update(grp->map_fd, &tmp_key, &ls->fd, BPF_ANY) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "quic bpf failed to update socket map key=%xL", tmp_key);
+        return NGX_ERROR;
+    }
+
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                  "quic bpf sockmap fd:%d add socket:%d cookie:0x%xL worker:%ui",
                  grp->map_fd, ls->fd, cookie, ls->worker);
 
     /* do not inherit this socket */
     ls->ignore = 1;
+    grp->sock_cnt++;
 
     return NGX_OK;
 }

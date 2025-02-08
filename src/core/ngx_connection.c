@@ -1111,7 +1111,15 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_QUIC)
         if (ls[i].quic) {
-            continue;
+#if (NGX_HAVE_REUSEPORT)
+            if (ls[i].reuseport) {
+                // close quic reuseport fd unrelated to current worker
+                if (ngx_process == NGX_PROCESS_WORKER && ls[i].worker == ngx_worker) {
+                    continue;
+                }
+            } else
+#endif
+                continue;
         }
 #endif
 

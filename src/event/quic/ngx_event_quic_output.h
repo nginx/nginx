@@ -24,7 +24,7 @@ ngx_int_t ngx_quic_send_early_cc(ngx_connection_t *c,
     ngx_quic_header_t *inpkt, ngx_uint_t err, const char *reason);
 
 ngx_int_t ngx_quic_send_retry(ngx_connection_t *c,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt, ngx_uint_t redirect_worker);
 ngx_int_t ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path);
 
 ngx_int_t ngx_quic_send_ack(ngx_connection_t *c,
