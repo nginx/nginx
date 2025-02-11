@@ -2327,6 +2327,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
     ngx_connection_t              *c;
     ngx_http_request_t            *sr;
     ngx_http_core_srv_conf_t      *cscf;
+    ngx_http_posted_request_t     *posted;
     ngx_http_postponed_request_t  *pr, *p;
 
     if (r->subrequests == 0) {
@@ -2377,6 +2378,11 @@ ngx_http_subrequest(ngx_http_request_t *r,
                       sizeof(ngx_table_elt_t))
         != NGX_OK)
     {
+        return NGX_ERROR;
+    }
+
+    posted = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
+    if (posted == NULL) {
         return NGX_ERROR;
     }
 
@@ -2438,10 +2444,6 @@ ngx_http_subrequest(ngx_http_request_t *r,
     }
 
     if (!sr->background) {
-        if (c->data == r && r->postponed == NULL) {
-            c->data = sr;
-        }
-
         pr = ngx_palloc(r->pool, sizeof(ngx_http_postponed_request_t));
         if (pr == NULL) {
             return NGX_ERROR;
@@ -2450,6 +2452,10 @@ ngx_http_subrequest(ngx_http_request_t *r,
         pr->request = sr;
         pr->out = NULL;
         pr->next = NULL;
+
+        if (c->data == r && r->postponed == NULL) {
+            c->data = sr;
+        }
 
         if (r->postponed) {
             for (p = r->postponed; p->next; p = p->next) { /* void */ }
@@ -2498,7 +2504,7 @@ ngx_http_subrequest(ngx_http_request_t *r,
         ngx_http_update_location_config(sr);
     }
 
-    return ngx_http_post_request(sr, NULL);
+    return ngx_http_post_request(sr, posted);
 }
 
 
