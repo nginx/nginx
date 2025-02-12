@@ -67,7 +67,7 @@ syn match ngxListenComment '#.*$'
 syn keyword ngxListenOptions contained
     \ default_server ssl quic proxy_protocol
     \ setfib fastopen backlog rcvbuf sndbuf accept_filter deferred bind
-    \ ipv6only reuseport so_keepalive
+    \ ipv6only reuseport so_keepalive bind_device
     \ nextgroup=@ngxListenParams skipwhite skipempty
 syn keyword ngxListenOptionsDeprecated contained
     \ http2

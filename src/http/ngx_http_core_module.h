@@ -103,6 +103,9 @@ typedef struct {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     char                      *accept_filter;
 #endif
+#if (NGX_HAVE_BINDTODEVICE)
+    const char                *bind_device;
+#endif
 } ngx_http_listen_opt_t;
 
 

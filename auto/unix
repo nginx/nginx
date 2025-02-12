@@ -354,6 +354,16 @@ ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_BINDANY, NULL, 0)"
 . auto/feature
 
 
+ngx_feature="SO_BINDTODEVICE"
+ngx_feature_name="NGX_HAVE_BINDTODEVICE"
+ngx_feature_run=no
+ngx_feature_incs="#include <sys/socket.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="setsockopt(0, SOL_SOCKET, SO_BINDTODEVICE, NULL, 0)"
+. auto/feature
+
+
 # Linux transparent proxying
 
 ngx_feature="IP_TRANSPARENT"

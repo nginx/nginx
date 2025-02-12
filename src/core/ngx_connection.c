@@ -8,6 +8,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#if (NGX_HAVE_BINDTODEVICE)
+#include <net/if.h>
+#endif
 
 
 ngx_os_io_t  ngx_io;
@@ -149,6 +152,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #endif
 #if (NGX_HAVE_REUSEPORT)
     int                        reuseport;
+#endif
+#if (NGX_HAVE_BINDTODEVICE)
+    char                       bind_device[IFNAMSIZ];
 #endif
 
     ls = cycle->listening.elts;
@@ -397,6 +403,39 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         ls[i].deferred_accept = 1;
 #endif
+
+#if (NGX_HAVE_BINDTODEVICE)
+
+        ngx_memzero(&bind_device, sizeof(bind_device));
+        olen = sizeof(bind_device);
+
+        if (getsockopt(ls[i].fd, SOL_SOCKET, SO_BINDTODEVICE, bind_device, &olen)
+            == -1)
+        {
+            err = ngx_socket_errno;
+
+            if (err == NGX_EINVAL) {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
+                          "getsockopt(SO_BINDTODEVICE) for %V failed, ignored",
+                          &ls[i].addr_text);
+            continue;
+        }
+
+        if (bind_device[0] == '\0') {
+            continue;
+        }
+
+        ls[i].bind_device = ngx_palloc(cycle->pool, IFNAMSIZ);
+        if (ls[i].bind_device == NULL) {
+            return NGX_ERROR;
+        }
+
+        (void) ngx_cpystrn((u_char *) ls[i].bind_device,
+                           (u_char *) bind_device, IFNAMSIZ);
+#endif
     }
 
     return NGX_OK;
@@ -494,6 +533,17 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                               ngx_socket_n " %V failed", &ls[i].addr_text);
                 return NGX_ERROR;
             }
+
+#if (NGX_HAVE_BINDTODEVICE)
+            if (ls[i].bind_device) {
+                if (setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE,
+                    ls[i].bind_device, ngx_strlen(ls[i].bind_device)) == -1) {
+                    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                                "setsockopt(SO_BINDTODEVICE, %s) %V failed, ignored",
+                                ls[i].bind_device, &ls[i].addr_text);
+                }
+            }
+#endif
 
             if (ls[i].type != SOCK_DGRAM || !ngx_test_config) {
 
