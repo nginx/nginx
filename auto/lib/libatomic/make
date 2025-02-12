@@ -11,10 +11,10 @@
     cat << END                                            >> $NGX_MAKEFILE
 
 $NGX_LIBATOMIC/build/lib/libatomic_ops.a:	$NGX_LIBATOMIC/Makefile
-	cd $NGX_LIBATOMIC && \$(MAKE) && \$(MAKE) install
+	+cd $NGX_LIBATOMIC && \$(MAKE) && \$(MAKE) install
 
 $NGX_LIBATOMIC/Makefile:	$NGX_MAKEFILE
-	cd $NGX_LIBATOMIC \\
+	+cd $NGX_LIBATOMIC \\
 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
 	&& ./configure --prefix=$ngx_prefix
 

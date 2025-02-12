@@ -8,7 +8,7 @@ if [ $USE_PERL != NO ]; then
     cat << END                                                >> $NGX_MAKEFILE
 
 install_perl_modules:
-	cd $NGX_OBJS/src/http/modules/perl && \$(MAKE) install
+	+cd $NGX_OBJS/src/http/modules/perl && \$(MAKE) install
 END
 
     NGX_INSTALL_PERL_MODULES=install_perl_modules
@@ -199,13 +199,13 @@ done
 cat << END >> Makefile
 
 build:
-	\$(MAKE) -f $NGX_MAKEFILE
+	+\$(MAKE) -f $NGX_MAKEFILE
 
 install:
-	\$(MAKE) -f $NGX_MAKEFILE install
+	+\$(MAKE) -f $NGX_MAKEFILE install
 
 modules:
-	\$(MAKE) -f $NGX_MAKEFILE modules
+	+\$(MAKE) -f $NGX_MAKEFILE modules
 
 upgrade:
 	$NGX_SBIN_PATH -t

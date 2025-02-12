@@ -12,7 +12,7 @@ $NGX_OBJS/$ngx_perl_module: \\
 		\$(CORE_DEPS) \$(HTTP_DEPS) \\
 		src/http/modules/perl/ngx_http_perl_module.h \\
 		$NGX_OBJS/src/http/modules/perl/Makefile
-	cd $NGX_OBJS/src/http/modules/perl && \$(MAKE)
+	+cd $NGX_OBJS/src/http/modules/perl && \$(MAKE)
 
 	rm -rf $NGX_OBJS/install_perl
 

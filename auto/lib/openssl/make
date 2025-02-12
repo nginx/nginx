@@ -22,7 +22,7 @@ case "$CC" in
         cat << END                                            >> $NGX_MAKEFILE
 
 $OPENSSL/openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
-	\$(MAKE) -f auto/lib/openssl/makefile.msvc			\
+	+\$(MAKE) -f auto/lib/openssl/makefile.msvc			\
 		OPENSSL="$OPENSSL" OPENSSL_OPT="$OPENSSL_OPT"		\
 		OPENSSL_TARGET="$OPENSSL_TARGET"
 
@@ -47,7 +47,7 @@ END
 
 `echo "$OPENSSL\\openssl\\include\\openssl\\ssl.h:	$NGX_MAKEFILE"	\
 	| sed -e "s/\//$ngx_regex_dirsep/g"`
-	\$(MAKE) -f auto/lib/openssl/makefile.bcc $ngx_opt
+	+\$(MAKE) -f auto/lib/openssl/makefile.bcc $ngx_opt
 
 END
 
@@ -62,7 +62,7 @@ END
         cat << END                                            >> $NGX_MAKEFILE
 
 $OPENSSL/.openssl/include/openssl/ssl.h:	$NGX_MAKEFILE
-	cd $OPENSSL \\
+	+cd $OPENSSL \\
 	&& if [ -f Makefile ]; then \$(MAKE) clean; fi \\
 	&& ./config --prefix=$ngx_prefix no-shared no-threads $OPENSSL_OPT \\
 	&& \$(MAKE) \\

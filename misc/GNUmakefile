@@ -18,7 +18,7 @@ release: export
 	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
 	mv $(TEMP)/$(NGINX)/docs/man $(TEMP)/$(NGINX)
 
-	$(MAKE) -f docs/GNUmakefile changes
+	+$(MAKE) -f docs/GNUmakefile changes
 
 	rm -r $(TEMP)/$(NGINX)/docs
 	rm -r $(TEMP)/$(NGINX)/misc
@@ -35,7 +35,7 @@ RELEASE:
 	git commit -m nginx-$(VER)-RELEASE
 	git tag -m "release-$(VER) tag" release-$(VER)
 
-	$(MAKE) -f misc/GNUmakefile release
+	+$(MAKE) -f misc/GNUmakefile release
 
 
 win32:
@@ -103,7 +103,7 @@ zip: export
 
 	cp -p $(OBJS)/nginx.exe $(TEMP)/$(NGINX)
 
-	$(MAKE) -f docs/GNUmakefile changes
+	+$(MAKE) -f docs/GNUmakefile changes
 	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
 
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE.txt			\
