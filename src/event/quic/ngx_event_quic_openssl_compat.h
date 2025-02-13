@@ -8,6 +8,7 @@
 #define _NGX_EVENT_QUIC_OPENSSL_COMPAT_H_INCLUDED_
 
 #if defined SSL_R_MISSING_QUIC_TRANSPORT_PARAMETERS_EXTENSION                 \
+    || defined OSSL_RECORD_PROTECTION_LEVEL_NONE                              \
     || defined LIBRESSL_VERSION_NUMBER
 #undef NGX_QUIC_OPENSSL_COMPAT
 #else

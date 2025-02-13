@@ -31,6 +31,12 @@ typedef struct ngx_quic_socket_s      ngx_quic_socket_t;
 typedef struct ngx_quic_path_s        ngx_quic_path_t;
 typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
+
+#ifdef OSSL_RECORD_PROTECTION_LEVEL_NONE
+#define NGX_QUIC_OPENSSL_API                 1
+#endif
+
+
 #if (NGX_QUIC_OPENSSL_COMPAT)
 #include <ngx_event_quic_openssl_compat.h>
 #endif
@@ -300,6 +306,11 @@ struct ngx_quic_connection_s {
     unsigned                          key_phase:1;
     unsigned                          validated:1;
     unsigned                          client_tp_done:1;
+
+#if (NGX_QUIC_OPENSSL_API)
+    unsigned                          read_level:2;
+    unsigned                          write_level:2;
+#endif
 };
 
 
