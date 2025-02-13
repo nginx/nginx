@@ -147,10 +147,16 @@ else
 
             if [ $USE_OPENSSL_QUIC = YES ]; then
 
-                ngx_feature="OpenSSL QUIC support"
+                ngx_feature="OpenSSL QUIC API"
                 ngx_feature_name="NGX_QUIC"
-                ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
+                ngx_feature_test="SSL_set_quic_tls_cbs(NULL, NULL, NULL)"
                 . auto/feature
+
+                if [ $ngx_found = no ]; then
+                    ngx_feature="BoringSSL-like QUIC API"
+                    ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
+                    . auto/feature
+                fi
 
                 if [ $ngx_found = no ]; then
                     ngx_feature="OpenSSL QUIC compatibility"
