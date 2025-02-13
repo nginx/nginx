@@ -211,24 +211,6 @@ ngx_ssl_init(ngx_log_t *log)
 
 #endif
 
-#ifndef SSL_OP_NO_COMPRESSION
-    {
-    /*
-     * Disable gzip compression in OpenSSL prior to 1.0.0 version,
-     * this saves about 522K per connection.
-     */
-    int                  n;
-    STACK_OF(SSL_COMP)  *ssl_comp_methods;
-
-    ssl_comp_methods = SSL_COMP_get_compression_methods();
-    n = sk_SSL_COMP_num(ssl_comp_methods);
-
-    while (n--) {
-        (void) sk_SSL_COMP_pop(ssl_comp_methods);
-    }
-    }
-#endif
-
     ngx_ssl_connection_index = SSL_get_ex_new_index(0, NULL, NULL, NULL, NULL);
 
     if (ngx_ssl_connection_index == -1) {
@@ -365,13 +347,12 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS);
 #endif
 
+    /* not needed since OpenSSL 1.0.1r and 1.0.2f */
     SSL_CTX_set_options(ssl->ctx, SSL_OP_SINGLE_DH_USE);
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
-    /* only in 0.9.8m+ */
     SSL_CTX_clear_options(ssl->ctx,
-                          SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
-#endif
+                          SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1
+                          |SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_2);
 
     if (!(protocols & NGX_SSL_SSLv2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_SSLv2);
@@ -382,18 +363,12 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     if (!(protocols & NGX_SSL_TLSv1)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1);
     }
-#ifdef SSL_OP_NO_TLSv1_1
-    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     if (!(protocols & NGX_SSL_TLSv1_1)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_1);
     }
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
-    SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     if (!(protocols & NGX_SSL_TLSv1_2)) {
         SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TLSv1_2);
     }
-#endif
 #ifdef SSL_OP_NO_TLSv1_3
     SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TLSv1_3);
     if (!(protocols & NGX_SSL_TLSv1_3)) {
@@ -411,9 +386,7 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_max_proto_version(ssl->ctx, TLS1_3_VERSION);
 #endif
 
-#ifdef SSL_OP_NO_COMPRESSION
     SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_COMPRESSION);
-#endif
 
 #ifdef SSL_OP_NO_TX_CERTIFICATE_COMPRESSION
     SSL_CTX_set_options(ssl->ctx, SSL_OP_NO_TX_CERTIFICATE_COMPRESSION);
@@ -432,13 +405,9 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     SSL_CTX_set_options(ssl->ctx, SSL_OP_IGNORE_UNEXPECTED_EOF);
 #endif
 
-#ifdef SSL_MODE_RELEASE_BUFFERS
     SSL_CTX_set_mode(ssl->ctx, SSL_MODE_RELEASE_BUFFERS);
-#endif
 
-#ifdef SSL_MODE_NO_AUTO_CHAIN
     SSL_CTX_set_mode(ssl->ctx, SSL_MODE_NO_AUTO_CHAIN);
-#endif
 
     SSL_CTX_set_read_ahead(ssl->ctx, 1);
 
@@ -2492,11 +2461,8 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
 void
 ngx_ssl_handshake_log(ngx_connection_t *c)
 {
-    char         buf[129], *s, *d;
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-    const
-#endif
-    SSL_CIPHER  *cipher;
+    char               buf[129], *s, *d;
+    const SSL_CIPHER  *cipher;
 
     if (!(c->log->log_level & NGX_LOG_DEBUG_EVENT)) {
         return;
@@ -3883,9 +3849,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_LENGTH_TOO_SHORT
             || n == SSL_R_LENGTH_TOO_SHORT                           /*  160 */
 #endif
-#ifdef SSL_R_NO_RENEGOTIATION
             || n == SSL_R_NO_RENEGOTIATION                           /*  182 */
-#endif
 #ifdef SSL_R_NO_CIPHERS_PASSED
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
 #endif
@@ -3905,12 +3869,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_TOO_MANY_WARNING_ALERTS
             || n == SSL_R_TOO_MANY_WARNING_ALERTS                    /*  220 */
 #endif
-#ifdef SSL_R_CLIENTHELLO_TLSEXT
             || n == SSL_R_CLIENTHELLO_TLSEXT                         /*  226 */
-#endif
-#ifdef SSL_R_PARSE_TLSEXT
             || n == SSL_R_PARSE_TLSEXT                               /*  227 */
-#endif
 #ifdef SSL_R_CALLBACK_FAILED
             || n == SSL_R_CALLBACK_FAILED                            /*  234 */
 #endif
@@ -3963,9 +3923,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #elif (defined SSL_R_TLS_SESSION_ID_TOO_LONG)
             || n == SSL_R_TLS_SESSION_ID_TOO_LONG                    /*  300 */
 #endif
-#ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
-#endif
 #ifdef SSL_R_RECORD_LAYER_FAILURE
             || n == SSL_R_RECORD_LAYER_FAILURE                       /*  313 */
 #endif
@@ -3974,15 +3932,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_RENEGOTIATION_ENCODING_ERR                 /*  336 */
             || n == SSL_R_RENEGOTIATION_MISMATCH                     /*  337 */
 #endif
-#ifdef SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED
             || n == SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED       /*  338 */
-#endif
-#ifdef SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING
             || n == SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING           /*  345 */
-#endif
-#ifdef SSL_R_INAPPROPRIATE_FALLBACK
             || n == SSL_R_INAPPROPRIATE_FALLBACK                     /*  373 */
-#endif
 #ifdef SSL_R_NO_SHARED_SIGNATURE_ALGORITHMS
             || n == SSL_R_NO_SHARED_SIGNATURE_ALGORITHMS             /*  376 */
 #endif
@@ -4997,14 +4949,10 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
             return -1;
         }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
         if (HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) != 1) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
             return -1;
         }
-#else
-        HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL);
-#endif
 
         ngx_memcpy(name, key[0].name, 16);
 
@@ -5040,14 +4988,10 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
             size = 32;
         }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
         if (HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) != 1) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
             return -1;
         }
-#else
-        HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL);
-#endif
 
         if (EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) != 1) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
@@ -5838,8 +5782,6 @@ ngx_ssl_get_early_data(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 ngx_int_t
 ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
     size_t       len;
     const char  *name;
 
@@ -5858,8 +5800,6 @@ ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
         return NGX_OK;
     }
-
-#endif
 
     s->len = 0;
     return NGX_OK;
