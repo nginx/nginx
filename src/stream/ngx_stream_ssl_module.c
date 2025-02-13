@@ -22,10 +22,8 @@ static ngx_int_t ngx_stream_ssl_handler(ngx_stream_session_t *s);
 static ngx_int_t ngx_stream_ssl_init_connection(ngx_ssl_t *ssl,
     ngx_connection_t *c);
 static void ngx_stream_ssl_handshake_handler(ngx_connection_t *c);
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 static int ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad,
     void *arg);
-#endif
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 static int ngx_stream_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
     const unsigned char **out, unsigned char *outlen,
@@ -528,8 +526,6 @@ ngx_stream_ssl_handshake_handler(ngx_connection_t *c)
 }
 
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
 static int
 ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
@@ -633,11 +629,8 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
         SSL_set_verify_depth(ssl_conn, SSL_CTX_get_verify_depth(sscf->ssl.ctx));
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
-        /* only in 0.9.8m+ */
         SSL_clear_options(ssl_conn, SSL_get_options(ssl_conn) &
                                     ~SSL_CTX_get_options(sscf->ssl.ctx));
-#endif
 
         SSL_set_options(ssl_conn, SSL_CTX_get_options(sscf->ssl.ctx));
 
@@ -663,8 +656,6 @@ error:
     *ad = SSL_AD_INTERNAL_ERROR;
     return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
-
-#endif
 
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
@@ -990,10 +981,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
     SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
                                            ngx_stream_ssl_servername);
-#endif
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
     if (conf->alpn.len) {
@@ -1117,11 +1106,9 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->session_tickets,
                          prev->session_tickets, 1);
 
-#ifdef SSL_OP_NO_TICKET
     if (!conf->session_tickets) {
         SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_NO_TICKET);
     }
-#endif
 
     ngx_conf_merge_ptr_value(conf->session_ticket_keys,
                          prev->session_ticket_keys, NULL);

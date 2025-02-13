@@ -247,12 +247,7 @@ ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
     SSL_CTX_select_current_cert(ssl->ctx, cert);
 #endif
 
-#ifdef SSL_CTRL_GET_EXTRA_CHAIN_CERTS
-    /* OpenSSL 1.0.1+ */
     SSL_CTX_get_extra_chain_certs(ssl->ctx, &staple->chain);
-#else
-    staple->chain = ssl->ctx->extra_certs;
-#endif
 
     staple->ssl_ctx = ssl->ctx;
     staple->timeout = 60000;
@@ -468,11 +463,7 @@ ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
             return NGX_DECLINED;
         }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
         s = sk_OPENSSL_STRING_value(aia, 0);
-#else
-        s = sk_value(aia, 0);
-#endif
         if (s == NULL) {
             ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
                           "\"ssl_stapling\" ignored, "
@@ -1175,11 +1166,7 @@ ngx_ssl_ocsp_responder(ngx_connection_t *c, ngx_ssl_ocsp_ctx_t *ctx)
         return NGX_ERROR;
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
     s = sk_OPENSSL_STRING_value(aia, 0);
-#else
-    s = sk_value(aia, 0);
-#endif
     if (s == NULL) {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "no OCSP responder URL in certificate");

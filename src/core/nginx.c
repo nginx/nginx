@@ -444,11 +444,7 @@ ngx_show_version_info(void)
             ngx_write_stderr((char *) (uintptr_t) ngx_ssl_version());
             ngx_write_stderr(")" NGX_LINEFEED);
         }
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
         ngx_write_stderr("TLS SNI support enabled" NGX_LINEFEED);
-#else
-        ngx_write_stderr("TLS SNI support disabled" NGX_LINEFEED);
-#endif
 #endif
 
         ngx_write_stderr("configure arguments:" NGX_CONFIGURE NGX_LINEFEED);

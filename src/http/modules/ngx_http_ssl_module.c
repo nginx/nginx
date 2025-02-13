@@ -737,19 +737,8 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
-    if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
-                                               ngx_http_ssl_servername)
-        == 0)
-    {
-        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
-            "nginx was built with SNI support, however, now it is linked "
-            "dynamically to an OpenSSL library which has no tlsext support, "
-            "therefore SNI is not available");
-    }
-
-#endif
+    SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
+                                           ngx_http_ssl_servername);
 
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
     SSL_CTX_set_alpn_select_cb(conf->ssl.ctx, ngx_http_ssl_alpn_select, NULL);
@@ -871,11 +860,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->session_tickets, prev->session_tickets, 1);
 
-#ifdef SSL_OP_NO_TICKET
     if (!conf->session_tickets) {
         SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_NO_TICKET);
     }
-#endif
 
     ngx_conf_merge_ptr_value(conf->session_ticket_keys,
                          prev->session_ticket_keys, NULL);

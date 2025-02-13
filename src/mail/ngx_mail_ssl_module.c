@@ -505,11 +505,9 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->session_tickets,
                          prev->session_tickets, 1);
 
-#ifdef SSL_OP_NO_TICKET
     if (!conf->session_tickets) {
         SSL_CTX_set_options(conf->ssl.ctx, SSL_OP_NO_TICKET);
     }
-#endif
 
     ngx_conf_merge_ptr_value(conf->session_ticket_keys,
                          prev->session_ticket_keys, NULL);

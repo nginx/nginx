@@ -1942,8 +1942,6 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
         goto done;
     }
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
     /* as per RFC 6066, literal IPv4 and IPv6 addresses are not permitted */
 
     if (name.len == 0 || *name.data == '[') {
@@ -1979,8 +1977,6 @@ ngx_http_upstream_ssl_name(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "SSL_set_tlsext_host_name(\"%s\") failed", name.data);
         return NGX_ERROR;
     }
-
-#endif
 
 done:
 

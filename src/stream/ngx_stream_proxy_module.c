@@ -1347,8 +1347,6 @@ ngx_stream_proxy_ssl_name(ngx_stream_session_t *s)
         goto done;
     }
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
     /* as per RFC 6066, literal IPv4 and IPv6 addresses are not permitted */
 
     if (name.len == 0 || *name.data == '[') {
@@ -1384,8 +1382,6 @@ ngx_stream_proxy_ssl_name(ngx_stream_session_t *s)
                       "SSL_set_tlsext_host_name(\"%s\") failed", name.data);
         return NGX_ERROR;
     }
-
-#endif
 
 done:
 
