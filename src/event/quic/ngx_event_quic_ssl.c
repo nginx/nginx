@@ -18,6 +18,23 @@
 #define NGX_QUIC_MAX_BUFFERED    65535
 
 
+#if (NGX_QUIC_OPENSSL_API)
+
+static int ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char *data, size_t len, size_t *consumed, void *arg);
+static int ngx_quic_cbs_recv_rcd(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **data, size_t *bytes_read, void *arg);
+static int ngx_quic_cbs_release_rcd(ngx_ssl_conn_t *ssl_conn,
+    size_t bytes_read, void *arg);
+static int ngx_quic_cbs_yield_secret(ngx_ssl_conn_t *ssl_conn, uint32_t level,
+    int direction, const unsigned char *secret, size_t secret_len, void *arg);
+static int ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char *params, size_t params_len, void *arg);
+static int ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert,
+    void *arg);
+
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
+
 static ngx_inline ngx_uint_t ngx_quic_map_encryption_level(
     enum ssl_encryption_level_t ssl_level);
 
@@ -39,9 +56,270 @@ static int ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 static int ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn);
 static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t ssl_level, uint8_t alert);
+
+#endif
+
 static ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
-static ngx_int_t ngx_quic_crypto_provide(ngx_connection_t *c, ngx_chain_t *out,
-    ngx_uint_t level);
+static ngx_int_t ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level);
+
+
+#if (NGX_QUIC_OPENSSL_API)
+
+static int
+ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char *data, size_t len, size_t *consumed, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    ngx_chain_t            *out;
+    unsigned int            alpn_len;
+    ngx_quic_frame_t       *frame;
+    const unsigned char    *alpn_data;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_send len:%uz", len);
+
+    qc = ngx_quic_get_connection(c);
+
+    *consumed = 0;
+
+    SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
+
+    if (alpn_len == 0) {
+        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
+        qc->error_reason = "missing ALPN extension";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "quic missing ALPN extension");
+        return 1;
+    }
+
+    if (!qc->client_tp_done) {
+        /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
+        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
+        qc->error_reason = "missing transport parameters";
+
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "missing transport parameters");
+        return 1;
+    }
+
+    ctx = ngx_quic_get_send_ctx(qc, qc->write_level);
+
+    out = ngx_quic_copy_buffer(c, (u_char *) data, len);
+    if (out == NGX_CHAIN_ERROR) {
+        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        return 1;
+    }
+
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        return 1;
+    }
+
+    frame->data = out;
+    frame->level = qc->write_level;
+    frame->type = NGX_QUIC_FT_CRYPTO;
+    frame->u.crypto.offset = ctx->crypto_sent;
+    frame->u.crypto.length = len;
+
+    ctx->crypto_sent += len;
+    *consumed = len;
+
+    ngx_quic_queue_frame(qc, frame);
+
+    return 1;
+}
+
+
+static int
+ngx_quic_cbs_recv_rcd(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char **data, size_t *bytes_read, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    ngx_buf_t              *b;
+    ngx_chain_t            *cl;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_recv_rcd");
+
+    qc = ngx_quic_get_connection(c);
+    ctx = ngx_quic_get_send_ctx(qc, qc->read_level);
+
+    for (cl = ctx->crypto.chain; cl; cl = cl->next) {
+        b = cl->buf;
+
+        if (b->sync) {
+            /* hole */
+
+            *bytes_read = 0;
+
+            break;
+        }
+
+        *data = b->pos;
+        *bytes_read = b->last - b->pos;
+
+        break;
+    }
+
+    return 1;
+}
+
+
+static int
+ngx_quic_cbs_release_rcd(ngx_ssl_conn_t *ssl_conn, size_t bytes_read, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    ngx_chain_t            *cl;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_release_rcd len:%uz", bytes_read);
+
+    qc = ngx_quic_get_connection(c);
+    ctx = ngx_quic_get_send_ctx(qc, qc->read_level);
+
+    cl = ngx_quic_read_buffer(c, &ctx->crypto, bytes_read);
+    if (cl == NGX_CHAIN_ERROR) {
+        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        return 1;
+    }
+
+    ngx_quic_free_chain(c, cl);
+
+    return 1;
+}
+
+
+static int
+ngx_quic_cbs_yield_secret(ngx_ssl_conn_t *ssl_conn, uint32_t ssl_level,
+    int direction, const unsigned char *secret, size_t secret_len, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    ngx_uint_t              level;
+    const SSL_CIPHER       *cipher;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_yield_secret() level:%uD", ssl_level);
+#ifdef NGX_QUIC_DEBUG_CRYPTO
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic %s secret len:%uz %*xs",
+                   direction ? "write" : "read", secret_len,
+                   secret_len, secret);
+#endif
+
+    qc = ngx_quic_get_connection(c);
+    cipher = SSL_get_current_cipher(ssl_conn);
+
+    switch (ssl_level) {
+    case OSSL_RECORD_PROTECTION_LEVEL_NONE:
+        level = NGX_QUIC_ENCRYPTION_INITIAL;
+        break;
+    case OSSL_RECORD_PROTECTION_LEVEL_EARLY:
+        level = NGX_QUIC_ENCRYPTION_EARLY_DATA;
+        break;
+    case OSSL_RECORD_PROTECTION_LEVEL_HANDSHAKE:
+        level = NGX_QUIC_ENCRYPTION_HANDSHAKE;
+        break;
+    default: /* OSSL_RECORD_PROTECTION_LEVEL_APPLICATION */
+        level = NGX_QUIC_ENCRYPTION_APPLICATION;
+        break;
+    }
+
+    if (ngx_quic_keys_set_encryption_secret(c->log, direction, qc->keys, level,
+                                            cipher, secret, secret_len)
+        != NGX_OK)
+    {
+        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        return 1;
+    }
+
+    if (direction) {
+        qc->write_level = level;
+
+    } else {
+        qc->read_level = level;
+    }
+
+    return 1;
+}
+
+
+static int
+ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
+    const unsigned char *params, size_t params_len, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    u_char                 *p, *end;
+    ngx_quic_tp_t           ctp;
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_got_transport_params() len:%uz",
+                   params_len);
+
+    qc = ngx_quic_get_connection(c);
+
+    /* defaults for parameters not sent by client */
+    ngx_memcpy(&ctp, &qc->ctp, sizeof(ngx_quic_tp_t));
+
+    p = (u_char *) params;
+    end = p + params_len;
+
+    if (ngx_quic_parse_transport_params(p, end, &ctp, c->log) != NGX_OK) {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "failed to process transport parameters";
+
+        return 1;
+    }
+
+    if (ngx_quic_apply_transport_params(c, &ctp) != NGX_OK) {
+        return 1;
+    }
+
+    qc->client_tp_done = 1;
+
+    return 1;
+}
+
+
+static int
+ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert, void *arg)
+{
+    ngx_connection_t  *c = arg;
+
+    ngx_quic_connection_t  *qc;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic ngx_quic_cbs_alert() alert:%d", (int) alert);
+
+    /* already closed on regular shutdown */
+
+    qc = ngx_quic_get_connection(c);
+    if (qc == NULL) {
+        return 1;
+    }
+
+    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
+    qc->error_reason = "handshake failed";
+
+    return 1;
+}
+
+
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
 
 static ngx_inline ngx_uint_t
@@ -340,13 +618,14 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     return 1;
 }
 
+#endif
+
 
 ngx_int_t
 ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     ngx_quic_frame_t *frame)
 {
     uint64_t                  last;
-    ngx_chain_t              *cl;
     ngx_quic_send_ctx_t      *ctx;
     ngx_quic_connection_t    *qc;
     ngx_quic_crypto_frame_t  *f;
@@ -385,41 +664,18 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
-    if (f->offset == ctx->crypto.offset) {
-        if (ngx_quic_crypto_provide(c, frame->data, pkt->level) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_quic_handshake(c) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        ngx_quic_skip_buffer(c, &ctx->crypto, last);
-
-    } else {
-        if (ngx_quic_write_buffer(c, &ctx->crypto, frame->data, f->length,
-                                  f->offset)
-            == NGX_CHAIN_ERROR)
-        {
-            return NGX_ERROR;
-        }
+    if (ngx_quic_write_buffer(c, &ctx->crypto, frame->data, f->length,
+                              f->offset)
+        == NGX_CHAIN_ERROR)
+    {
+        return NGX_ERROR;
     }
 
-    cl = ngx_quic_read_buffer(c, &ctx->crypto, (uint64_t) -1);
-
-    if (cl) {
-        if (ngx_quic_crypto_provide(c, cl, pkt->level) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_quic_handshake(c) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        ngx_quic_free_chain(c, cl);
+    if (ngx_quic_crypto_provide(c, pkt->level) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    return NGX_OK;
+    return ngx_quic_handshake(c);
 }
 
 
@@ -528,12 +784,23 @@ ngx_quic_handshake(ngx_connection_t *c)
 
 
 static ngx_int_t
-ngx_quic_crypto_provide(ngx_connection_t *c, ngx_chain_t *out,
-    ngx_uint_t level)
+ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level)
 {
+#if (NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API)
+
     ngx_buf_t                    *b;
-    ngx_chain_t                  *cl;
+    ngx_chain_t                  *out, *cl;
+    ngx_quic_send_ctx_t          *ctx;
+    ngx_quic_connection_t        *qc;
     enum ssl_encryption_level_t   ssl_level;
+
+    qc = ngx_quic_get_connection(c);
+    ctx = ngx_quic_get_send_ctx(qc, level);
+
+    out = ngx_quic_read_buffer(c, &ctx->crypto, (uint64_t) -1);
+    if (out == NGX_CHAIN_ERROR) {
+        return NGX_ERROR;
+    }
 
     switch (level) {
     case NGX_QUIC_ENCRYPTION_INITIAL:
@@ -562,6 +829,10 @@ ngx_quic_crypto_provide(ngx_connection_t *c, ngx_chain_t *out,
         }
     }
 
+    ngx_quic_free_chain(c, out);
+
+#endif
+
     return NGX_OK;
 }
 
@@ -569,14 +840,40 @@ ngx_quic_crypto_provide(ngx_connection_t *c, ngx_chain_t *out,
 ngx_int_t
 ngx_quic_init_connection(ngx_connection_t *c)
 {
-    u_char                  *p;
-    size_t                   clen;
-    ssize_t                  len;
-    ngx_str_t                dcid;
-    ngx_ssl_conn_t          *ssl_conn;
-    ngx_quic_socket_t       *qsock;
-    ngx_quic_connection_t   *qc;
-    static SSL_QUIC_METHOD   quic_method;
+    u_char                 *p;
+    size_t                  clen;
+    ssize_t                 len;
+    ngx_str_t               dcid;
+    ngx_ssl_conn_t         *ssl_conn;
+    ngx_quic_socket_t      *qsock;
+    ngx_quic_connection_t  *qc;
+
+#if (NGX_QUIC_OPENSSL_API)
+    static const OSSL_DISPATCH  qtdis[] = {
+
+        { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_SEND,
+          (void (*)(void)) ngx_quic_cbs_send },
+
+        { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_RECV_RCD,
+          (void (*)(void)) ngx_quic_cbs_recv_rcd },
+
+        { OSSL_FUNC_SSL_QUIC_TLS_CRYPTO_RELEASE_RCD,
+          (void (*)(void)) ngx_quic_cbs_release_rcd },
+
+        { OSSL_FUNC_SSL_QUIC_TLS_YIELD_SECRET,
+          (void (*)(void)) ngx_quic_cbs_yield_secret },
+
+        { OSSL_FUNC_SSL_QUIC_TLS_GOT_TRANSPORT_PARAMS,
+          (void (*)(void)) ngx_quic_cbs_got_transport_params },
+
+        { OSSL_FUNC_SSL_QUIC_TLS_ALERT,
+          (void (*)(void)) ngx_quic_cbs_alert },
+
+        { 0, NULL }
+    };
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
+    static SSL_QUIC_METHOD  quic_method;
+#endif
 
     qc = ngx_quic_get_connection(c);
 
@@ -587,6 +884,20 @@ ngx_quic_init_connection(ngx_connection_t *c)
     c->ssl->no_wait_shutdown = 1;
 
     ssl_conn = c->ssl->connection;
+
+#if (NGX_QUIC_OPENSSL_API)
+
+    if (SSL_set_quic_tls_cbs(ssl_conn, qtdis, c) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                      "quic SSL_set_quic_tls_cbs() failed");
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
+        SSL_set_quic_tls_early_data_enabled(ssl_conn, 1);
+    }
+
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
     if (!quic_method.send_alert) {
 #if (NGX_QUIC_BORINGSSL_API)
@@ -610,6 +921,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
     if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
         SSL_set_quic_early_data_enabled(ssl_conn, 1);
     }
+#endif
+
 #endif
 
     qsock = ngx_quic_get_socket(c);
@@ -641,11 +954,19 @@ ngx_quic_init_connection(ngx_connection_t *c)
                    "quic transport parameters len:%uz %*xs", len, len, p);
 #endif
 
+#if (NGX_QUIC_OPENSSL_API)
+    if (SSL_set_quic_tls_transport_params(ssl_conn, p, len) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                      "quic SSL_set_quic_tls_transport_params() failed");
+        return NGX_ERROR;
+    }
+#else
     if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                       "quic SSL_set_quic_transport_params() failed");
         return NGX_ERROR;
     }
+#endif
 
 #ifdef OPENSSL_IS_BORINGSSL
     if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
