@@ -13,6 +13,7 @@
 #define NGX_QUIC_STREAM_GONE     (void *) -1
 
 
+static ngx_uint_t ngx_quic_is_stream_local(ngx_connection_t *c, uint64_t id);
 static ngx_int_t ngx_quic_do_reset_stream(ngx_quic_stream_t *qs,
     ngx_uint_t err);
 static ngx_int_t ngx_quic_shutdown_stream_send(ngx_connection_t *c);
@@ -42,6 +43,13 @@ static ngx_int_t ngx_quic_update_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_max_stream_data(ngx_quic_stream_t *qs);
 static ngx_int_t ngx_quic_update_max_data(ngx_connection_t *c);
 static void ngx_quic_set_event(ngx_event_t *ev);
+
+
+static ngx_uint_t
+ngx_quic_is_stream_local(ngx_connection_t *c, uint64_t id)
+{
+    return (id & NGX_QUIC_STREAM_SERVER_INITIATED) ? 1 : 0;
+}
 
 
 ngx_connection_t *
@@ -405,7 +413,7 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
 
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
 
-        if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+        if (ngx_quic_is_stream_local(c, id)) {
             if ((id >> 2) < qc->streams.local_streams_uni) {
                 return NGX_QUIC_STREAM_GONE;
             }
@@ -429,7 +437,7 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
 
     } else {
 
-        if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+        if (ngx_quic_is_stream_local(c, id)) {
             if ((id >> 2) < qc->streams.local_streams_bidi) {
                 return NGX_QUIC_STREAM_GONE;
             }
@@ -775,7 +783,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     log->connection = sc->number;
 
     if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
-        if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+        if (ngx_quic_is_stream_local(c, id)) {
             qs->send_max_data = qc->ctp.initial_max_stream_data_uni;
             qs->recv_state = NGX_QUIC_STREAM_RECV_DATA_READ;
             qs->send_state = NGX_QUIC_STREAM_SEND_READY;
@@ -787,7 +795,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
         }
 
     } else {
-        if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+        if (ngx_quic_is_stream_local(c, id)) {
             qs->send_max_data = qc->ctp.initial_max_stream_data_bidi_remote;
             qs->recv_max_data = qc->tp.initial_max_stream_data_bidi_local;
 
@@ -1210,16 +1218,7 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
         return NGX_OK;
     }
 
-    if (!pc->reusable && ngx_quic_can_shutdown(pc) == NGX_OK) {
-        ngx_reusable_connection(pc, 1);
-    }
-
-    if (qc->shutdown) {
-        ngx_quic_shutdown_quic(pc);
-        return NGX_OK;
-    }
-
-    if ((qs->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0) {
+    if (!ngx_quic_is_stream_local(pc, qs->id)) {
         frame = ngx_quic_alloc_frame(pc);
         if (frame == NULL) {
             return NGX_ERROR;
@@ -1286,7 +1285,7 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     f = &frame->u.stream;
 
     if ((f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-        && (f->stream_id & NGX_QUIC_STREAM_SERVER_INITIATED))
+        && ngx_quic_is_stream_local(c, f->stream_id))
     {
         qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
@@ -1431,7 +1430,7 @@ ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
+        && ngx_quic_is_stream_local(c, f->id))
     {
         qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
@@ -1461,7 +1460,7 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
+        && !ngx_quic_is_stream_local(c, f->id))
     {
         qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
@@ -1504,7 +1503,7 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
+        && ngx_quic_is_stream_local(c, f->id))
     {
         qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
@@ -1573,7 +1572,7 @@ ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     qc = ngx_quic_get_connection(c);
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
-        && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
+        && !ngx_quic_is_stream_local(c, f->id))
     {
         qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
         return NGX_ERROR;
