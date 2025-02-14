@@ -29,6 +29,8 @@ static ssize_t ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
     size_t size);
+static ssize_t ngx_quic_stream_recv_chain(ngx_connection_t *c,
+    ngx_chain_t *in, off_t limit);
 static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
 static ngx_int_t ngx_quic_stream_flush(ngx_quic_stream_t *qs);
@@ -761,6 +763,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 
     sc->recv = ngx_quic_stream_recv;
     sc->send = ngx_quic_stream_send;
+    sc->recv_chain = ngx_quic_stream_recv_chain;
     sc->send_chain = ngx_quic_stream_send_chain;
 
     sc->read->log = log;
@@ -945,6 +948,48 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
     }
 
     return b.pos - buf;
+}
+
+
+static ssize_t
+ngx_quic_stream_recv_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
+{
+    size_t  len, size;
+    ssize_t  n;
+
+    /* TODO optimize */
+
+    len = 0;
+
+    while (in && limit) {
+        size = in->buf->last - in->buf->pos;
+        if ((off_t) size > limit) {
+            size = limit;
+        }
+
+        n = ngx_quic_stream_recv(c, in->buf->pos, size);
+
+        if (n == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
+        in->buf->pos += n;
+        limit -= n;
+
+        if (in->buf->pos == in->buf->last) {
+            in = in->next;
+        }
+    }
+
+    if (len == 0 && in) {
+        return NGX_AGAIN;
+    }
+
+    return len;
 }
 
 
