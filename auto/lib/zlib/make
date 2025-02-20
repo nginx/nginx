@@ -42,7 +42,7 @@ case "$NGX_PLATFORM" in
             cat << END                                        >> $NGX_MAKEFILE
 
 `echo "$ZLIB/zlib.lib:	$NGX_MAKEFILE" | sed -e "s/\//$ngx_regex_dirsep/g"`
-	\$(MAKE) -f auto/lib/zlib/$ngx_makefile $ngx_opt $ngx_zlib
+	+\$(MAKE) -f auto/lib/zlib/$ngx_makefile $ngx_opt $ngx_zlib
 
 END
 
@@ -51,7 +51,7 @@ END
             cat << END                                        >> $NGX_MAKEFILE
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
-	cd $ZLIB \\
+	+cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& \$(MAKE) -f win32/Makefile.gcc \\
 		CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
@@ -74,7 +74,7 @@ END
                 cat << END                                    >> $NGX_MAKEFILE
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
-	cd $ZLIB \\
+	+cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& cp contrib/asm586/match.S . \\
 	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
@@ -91,7 +91,7 @@ END
                 cat << END                                    >> $NGX_MAKEFILE
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
-	cd $ZLIB \\
+	+cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& cp contrib/asm686/match.S . \\
 	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
@@ -124,7 +124,7 @@ if [ $done = NO ]; then
     cat << END                                                >> $NGX_MAKEFILE
 
 $ZLIB/libz.a:	$NGX_MAKEFILE
-	cd $ZLIB \\
+	+cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
 		./configure \\
