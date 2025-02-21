@@ -310,11 +310,19 @@ ngx_http_log_handler(ngx_http_request_t *r)
         }
 
         if (log[l].syslog_peer) {
-
             /* length of syslog's PRI and HEADER message parts */
-            len += sizeof("<255>Jan 01 00:00:00 ") - 1
-                   + ngx_cycle->hostname.len + 1
-                   + log[l].syslog_peer->tag.len + 2;
+            if (log[l].syslog_peer->is_rfc5424) {
+                u_char pid[32];
+                ngx_sprintf(pid, "%d", ngx_pid);
+                len += sizeof("<255>1 1970-01-01T00:00:00.000Z ") - 1
+                       + ngx_cycle->hostname.len + 1
+                       + sizeof("nginx ") - 1
+                       + ngx_strlen(pid) + 5;
+            } else {
+                len += sizeof("<255>Jan 01 00:00:00 ") - 1
+                       + ngx_cycle->hostname.len + 1
+                       + log[l].syslog_peer->tag.len + 2;
+            }
 
             goto alloc_line;
         }
@@ -367,7 +375,9 @@ ngx_http_log_handler(ngx_http_request_t *r)
         p = line;
 
         if (log[l].syslog_peer) {
-            p = ngx_syslog_add_header(log[l].syslog_peer, line);
+            p = (log[l].syslog_peer->is_rfc5424) ?
+                ngx_syslog_add_header_rfc5424(log[l].syslog_peer, line)
+                : ngx_syslog_add_header(log[l].syslog_peer, line);
         }
 
         for (i = 0; i < log[l].format->ops->nelts; i++) {
