@@ -876,6 +876,7 @@ ngx_http_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
     ngx_http_upstream_rr_peer_t   *peer;
 #if (NGX_HTTP_UPSTREAM_ZONE)
     int                            len;
+    u_char                        *pp;
     const u_char                  *p;
     ngx_http_upstream_rr_peers_t  *peers;
     u_char                         buf[NGX_SSL_MAX_SESSION_SIZE];
@@ -898,12 +899,22 @@ ngx_http_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         len = peer->ssl_session_len;
 
-        ngx_memcpy(buf, peer->ssl_session, len);
+        if (len > NGX_SSL_MAX_SESSION_SIZE) {
+            pp = ngx_pnalloc(pc->connection->pool, len);
+            if (pp == NULL) {
+                return NGX_ERROR;
+            }
+
+        } else  {
+            pp = buf;
+        }
+
+        ngx_memcpy(pp, peer->ssl_session, len);
 
         ngx_http_upstream_rr_peer_unlock(peers, peer);
         ngx_http_upstream_rr_peers_unlock(peers);
 
-        p = buf;
+        p = pp;
         ssl_session = d2i_SSL_SESSION(NULL, &p, len);
 
         rc = ngx_ssl_set_session(pc->connection, ssl_session);
@@ -938,7 +949,7 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     ngx_http_upstream_rr_peer_t   *peer;
 #if (NGX_HTTP_UPSTREAM_ZONE)
     int                            len;
-    u_char                        *p;
+    u_char                        *p, *pp;
     ngx_http_upstream_rr_peers_t  *peers;
     u_char                         buf[NGX_SSL_MAX_SESSION_SIZE];
 #endif
@@ -961,11 +972,26 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         /* do not cache too big session */
 
-        if (len > NGX_SSL_MAX_SESSION_SIZE) {
+        if (len > NGX_SSL_MAX_SESSION_SIZE * 2) {
             return;
         }
 
-        p = buf;
+        /*
+         * Workaround for JDK that sends server certificates in tickets,
+         * see https://github.com/openjdk/jdk/commit/94e1d7530, SSLSessionImpl
+         */
+
+        if (len > NGX_SSL_MAX_SESSION_SIZE) {
+            pp = ngx_pnalloc(pc->connection->pool, len);
+            if (pp == NULL) {
+                return;
+            }
+
+        } else {
+            pp = buf;
+        }
+
+        p = pp;
         (void) i2d_SSL_SESSION(ssl_session, &p);
 
         peer = rrp->current;
@@ -995,7 +1021,7 @@ ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
             peer->ssl_session_len = len;
         }
 
-        ngx_memcpy(peer->ssl_session, buf, len);
+        ngx_memcpy(peer->ssl_session, pp, len);
 
         ngx_http_upstream_rr_peer_unlock(peers, peer);
         ngx_http_upstream_rr_peers_unlock(peers);
