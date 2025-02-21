@@ -911,22 +911,31 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                                           "invalid address validation token");
             } else if (conf->retry) {
                 /* invalid NEW_TOKEN */
-                return ngx_quic_send_retry(c, conf, pkt);
+                return ngx_quic_send_retry(c, conf, pkt, 0);
             }
         }
 
         /* NGX_OK */
 
     } else if (conf->retry) {
-        return ngx_quic_send_retry(c, conf, pkt);
+        return ngx_quic_send_retry(c, conf, pkt, 0);
 
     } else {
         pkt->odcid = pkt->dcid;
     }
 
     if (ngx_terminate || ngx_exiting) {
+#if (NGX_QUIC_BPF)
+        // fix quic request block after reload:
+        // 1. shutingdown worker send retry with magic cid when receive new quic conn
+        // 2. bpf redirect magic cid conn to new worker
+        ngx_quic_bpf_conf_t *bcf = ngx_quic_bpf_get_conf(ngx_cycle);
+        if (bcf->enabled) {
+            return ngx_quic_send_retry(c, conf, pkt, 1);
+        }
+#endif
         if (conf->retry) {
-            return ngx_quic_send_retry(c, conf, pkt);
+            return ngx_quic_send_retry(c, conf, pkt, 0);
         }
 
         return NGX_ERROR;

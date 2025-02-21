@@ -967,7 +967,7 @@ ngx_quic_send_early_cc(ngx_connection_t *c, ngx_quic_header_t *inpkt,
 
 ngx_int_t
 ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
-    ngx_quic_header_t *inpkt)
+    ngx_quic_header_t *inpkt, ngx_uint_t redirect_worker)
 {
     time_t             expires;
     ssize_t            len;
@@ -1002,6 +1002,13 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
     if (RAND_bytes(dcid, NGX_QUIC_SERVER_CID_LEN) != 1) {
         return NGX_ERROR;
     }
+
+#if (NGX_QUIC_BPF)
+    if (redirect_worker) {
+        uint64_t tmp_key = REDIRECT_WORKER_CID_MAGIC + ngx_worker;
+        ngx_quic_dcid_encode_key(dcid, tmp_key);
+    }
+#endif
 
     pkt.scid.len = NGX_QUIC_SERVER_CID_LEN;
     pkt.scid.data = dcid;
