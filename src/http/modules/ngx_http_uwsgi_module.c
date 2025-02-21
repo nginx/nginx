@@ -2650,6 +2650,18 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
     ngx_pool_cleanup_t  *cln;
 
     if (uwcf->upstream.ssl->ctx) {
+        if (uwcf->upstream.ssl_certificate
+            && uwcf->upstream.ssl_certificate->value.len
+            && (uwcf->upstream.ssl_certificate->lengths
+                || uwcf->upstream.ssl_certificate_key->lengths))
+        {
+            uwcf->upstream.ssl_passwords =
+                  ngx_ssl_preserve_passwords(cf, uwcf->upstream.ssl_passwords);
+            if (uwcf->upstream.ssl_passwords == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
         return NGX_OK;
     }
 
