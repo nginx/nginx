@@ -132,6 +132,9 @@ int  ngx_ssl_index;
 int  ngx_ssl_certificate_name_index;
 
 
+u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
+
+
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
@@ -3889,7 +3892,6 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
     ngx_slab_pool_t          *shpool;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
-    u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
 
 #ifdef TLS1_3_VERSION
 
@@ -3916,7 +3918,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
         return 0;
     }
 
-    p = buf;
+    p = ngx_ssl_session_buffer;
     i2d_SSL_SESSION(sess, &p);
 
     session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
@@ -3980,7 +3982,7 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
 #endif
 
-    ngx_memcpy(sess_id->session, buf, len);
+    ngx_memcpy(sess_id->session, ngx_ssl_session_buffer, len);
     ngx_memcpy(sess_id->id, session_id, session_id_length);
 
     hash = ngx_crc32_short(session_id, session_id_length);
@@ -4039,7 +4041,6 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t        *sess;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
-    u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
 
     hash = ngx_crc32_short((u_char *) (uintptr_t) id, (size_t) len);
     *copy = 0;
@@ -4087,11 +4088,11 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
             if (sess_id->expire > ngx_time()) {
                 slen = sess_id->len;
 
-                ngx_memcpy(buf, sess_id->session, slen);
+                ngx_memcpy(ngx_ssl_session_buffer, sess_id->session, slen);
 
                 ngx_shmtx_unlock(&shpool->mutex);
 
-                p = buf;
+                p = ngx_ssl_session_buffer;
                 sess = d2i_SSL_SESSION(NULL, &p, slen);
 
                 return sess;

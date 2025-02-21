@@ -911,7 +911,6 @@ ngx_stream_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
     int                              len;
     const u_char                    *p;
     ngx_stream_upstream_rr_peers_t  *peers;
-    u_char                           buf[NGX_SSL_MAX_SESSION_SIZE];
 #endif
 
     peer = rrp->current;
@@ -931,12 +930,12 @@ ngx_stream_upstream_set_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         len = peer->ssl_session_len;
 
-        ngx_memcpy(buf, peer->ssl_session, len);
+        ngx_memcpy(ngx_ssl_session_buffer, peer->ssl_session, len);
 
         ngx_stream_upstream_rr_peer_unlock(peers, peer);
         ngx_stream_upstream_rr_peers_unlock(peers);
 
-        p = buf;
+        p = ngx_ssl_session_buffer;
         ssl_session = d2i_SSL_SESSION(NULL, &p, len);
 
         rc = ngx_ssl_set_session(pc->connection, ssl_session);
@@ -973,7 +972,6 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     int                              len;
     u_char                          *p;
     ngx_stream_upstream_rr_peers_t  *peers;
-    u_char                           buf[NGX_SSL_MAX_SESSION_SIZE];
 #endif
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
@@ -998,7 +996,7 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
             return;
         }
 
-        p = buf;
+        p = ngx_ssl_session_buffer;
         (void) i2d_SSL_SESSION(ssl_session, &p);
 
         peer = rrp->current;
@@ -1028,7 +1026,7 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
             peer->ssl_session_len = len;
         }
 
-        ngx_memcpy(peer->ssl_session, buf, len);
+        ngx_memcpy(peer->ssl_session, ngx_ssl_session_buffer, len);
 
         ngx_stream_upstream_rr_peer_unlock(peers, peer);
         ngx_stream_upstream_rr_peers_unlock(peers);
