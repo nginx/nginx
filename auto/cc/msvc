@@ -26,6 +26,10 @@ ngx_msvc_ver=`echo $NGX_MSVC_VER | sed -e 's/^\([0-9]*\).*/\1/'`
 
 case "$NGX_MSVC_VER" in
 
+    *ARM64)
+        NGX_MACHINE=arm64
+    ;;
+
     *x64)
         NGX_MACHINE=amd64
     ;;
