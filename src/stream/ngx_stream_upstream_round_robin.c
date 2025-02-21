@@ -1054,8 +1054,6 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "old session: %p", old_ssl_session);
 
-        /* TODO: may block */
-
         ngx_ssl_free_session(old_ssl_session);
     }
 }
