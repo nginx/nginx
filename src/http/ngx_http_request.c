@@ -2550,6 +2550,7 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 
     if (r != r->main && r->post_subrequest) {
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
+        r->post_subrequest = NULL;
     }
 
     if (rc == NGX_ERROR
