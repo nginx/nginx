@@ -1936,6 +1936,13 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->upstream.ssl_passwords,
                               prev->upstream.ssl_passwords, NULL);
 
+    if (ngx_http_upstream_preserve_ssl_passwords(cf, &conf->upstream,
+                                                 &prev->upstream)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_ptr_value(conf->ssl_conf_commands,
                               prev->ssl_conf_commands, NULL);
 
@@ -2685,16 +2692,9 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
             return NGX_ERROR;
         }
 
-        if (uwcf->upstream.ssl_certificate->lengths
-            || uwcf->upstream.ssl_certificate_key->lengths)
+        if (uwcf->upstream.ssl_certificate->lengths == NULL
+            && uwcf->upstream.ssl_certificate_key->lengths == NULL)
         {
-            uwcf->upstream.ssl_passwords =
-                  ngx_ssl_preserve_passwords(cf, uwcf->upstream.ssl_passwords);
-            if (uwcf->upstream.ssl_passwords == NULL) {
-                return NGX_ERROR;
-            }
-
-        } else {
             if (ngx_ssl_certificate(cf, uwcf->upstream.ssl,
                                     &uwcf->upstream.ssl_certificate->value,
                                     &uwcf->upstream.ssl_certificate_key->value,
