@@ -74,6 +74,7 @@
 #define NGX_HTTP_CONTINUE                  100
 #define NGX_HTTP_SWITCHING_PROTOCOLS       101
 #define NGX_HTTP_PROCESSING                102
+#define NGX_HTTP_EARLY_HINTS               103
 
 #define NGX_HTTP_OK                        200
 #define NGX_HTTP_CREATED                   201
