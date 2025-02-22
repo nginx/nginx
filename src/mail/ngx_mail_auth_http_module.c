@@ -1244,6 +1244,7 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
           + sizeof("Client-Host: ") - 1 + s->host.len + sizeof(CRLF) - 1
+          + sizeof("Client-Port: ") - 1 + sizeof("65535") - 1 + sizeof(CRLF) - 1
           + ahcf->header.len
           + sizeof(CRLF) - 1;
 
@@ -1341,6 +1342,9 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     b->last = ngx_copy(b->last, s->connection->addr_text.data,
                        s->connection->addr_text.len);
     *b->last++ = CR; *b->last++ = LF;
+
+    b->last = ngx_sprintf(b->last, "Client-Port: %ui" CRLF,
+                          ngx_inet_get_port(c->sockaddr));
 
     if (s->host.len) {
         b->last = ngx_cpymem(b->last, "Client-Host: ",
