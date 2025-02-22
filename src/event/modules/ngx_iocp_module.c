@@ -235,7 +235,11 @@ static ngx_int_t
 ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                rc;
+#ifdef _WIN64
+    u_int64            key;
+#else
     u_int              key;
+#endif
     u_long             bytes;
     ngx_err_t          err;
     ngx_msec_t         delta;
