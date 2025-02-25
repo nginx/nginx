@@ -142,7 +142,7 @@ struct ngx_ssl_connection_s {
 #define NGX_SSL_DFLT_BUILTIN_SCACHE  -5
 
 
-#define NGX_SSL_MAX_SESSION_SIZE  4096
+#define NGX_SSL_MAX_SESSION_SIZE  8192
 
 typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 
