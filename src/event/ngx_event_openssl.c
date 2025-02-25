@@ -4034,12 +4034,12 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
     const u_char             *p;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
+    ngx_connection_t         *c;
     ngx_rbtree_node_t        *node, *sentinel;
     ngx_ssl_session_t        *sess;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
-    ngx_connection_t         *c;
 
     hash = ngx_crc32_short((u_char *) (uintptr_t) id, (size_t) len);
     *copy = 0;
