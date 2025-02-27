@@ -235,7 +235,11 @@ static ngx_int_t
 ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 {
     int                rc;
+#ifdef _WIN64
+    u_int64            key;
+#else
     u_int              key;
+#endif
     u_long             bytes;
     ngx_err_t          err;
     ngx_msec_t         delta;
@@ -263,8 +267,13 @@ ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         ngx_time_update();
     }
 
+#ifdef _WIN64
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
+                   "iocp: %d b:%d k:%I64u ov:%p", rc, bytes, key, ovlp);
+#else
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "iocp: %d b:%d k:%ui ov:%p", rc, bytes, key, ovlp);
+#endif
 
     if (timer != INFINITE) {
         delta = ngx_current_msec - delta;
