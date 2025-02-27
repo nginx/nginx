@@ -1332,6 +1332,12 @@ ngx_http_charset_map(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
     table = ctx->table;
 
     if (ctx->charset->utf8) {
+        if (value[1].len / 2 > NGX_UTF_LEN - 1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
         p = &table->src2dst[src * NGX_UTF_LEN];
 
         *p++ = (u_char) (value[1].len / 2);
