@@ -92,7 +92,7 @@ typedef struct {
 
 
 ngx_int_t ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys,
-    ngx_str_t *secret, ngx_log_t *log);
+    ngx_str_t *secret, ngx_uint_t is_server, ngx_log_t *log);
 ngx_int_t ngx_quic_keys_set_encryption_secret(ngx_log_t *log,
     ngx_uint_t is_write, ngx_quic_keys_t *keys, ngx_uint_t level,
     const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len);

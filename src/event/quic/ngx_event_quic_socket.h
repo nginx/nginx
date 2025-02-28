@@ -13,7 +13,7 @@
 
 
 ngx_int_t ngx_quic_open_sockets(ngx_connection_t *c,
-    ngx_quic_connection_t *qc, ngx_quic_header_t *pkt);
+    ngx_quic_connection_t *qc, ngx_str_t *scid, ngx_str_t *dcid);
 void ngx_quic_close_sockets(ngx_connection_t *c);
 
 ngx_quic_socket_t *ngx_quic_create_socket(ngx_connection_t *c,

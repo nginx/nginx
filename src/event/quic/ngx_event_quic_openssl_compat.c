@@ -116,6 +116,8 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         return;
     }
 
+    qc = ngx_quic_get_connection(c);
+
     p = (u_char *) line;
 
     for (start = p; *p && *p != ' '; p++);
@@ -129,27 +131,27 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         && ngx_strncmp(start, NGX_QUIC_COMPAT_CLIENT_HANDSHAKE, n) == 0)
     {
         level = ssl_encryption_handshake;
-        write = 0;
+        write = !qc->is_server;
 
     } else if (n == sizeof(NGX_QUIC_COMPAT_SERVER_HANDSHAKE) - 1
                && ngx_strncmp(start, NGX_QUIC_COMPAT_SERVER_HANDSHAKE, n) == 0)
     {
         level = ssl_encryption_handshake;
-        write = 1;
+        write = qc->is_server;
 
     } else if (n == sizeof(NGX_QUIC_COMPAT_CLIENT_APPLICATION) - 1
                && ngx_strncmp(start, NGX_QUIC_COMPAT_CLIENT_APPLICATION, n)
                   == 0)
     {
         level = ssl_encryption_application;
-        write = 0;
+        write = !qc->is_server;
 
     } else if (n == sizeof(NGX_QUIC_COMPAT_SERVER_APPLICATION) - 1
                && ngx_strncmp(start, NGX_QUIC_COMPAT_SERVER_APPLICATION, n)
                    == 0)
     {
         level = ssl_encryption_application;
-        write = 1;
+        write = qc->is_server;
 
     } else {
         return;
@@ -201,7 +203,6 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         }
     }
 
-    qc = ngx_quic_get_connection(c);
     com = qc->compat;
     cipher = SSL_get_current_cipher(ssl);
 

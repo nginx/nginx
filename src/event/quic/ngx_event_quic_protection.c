@@ -119,7 +119,7 @@ ngx_quic_ciphers(ngx_uint_t id, ngx_quic_ciphers_t *ciphers)
 
 ngx_int_t
 ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
-    ngx_log_t *log)
+    ngx_uint_t is_server, ngx_log_t *log)
 {
     size_t               is_len;
     uint8_t              is[SHA256_DIGEST_LENGTH];
@@ -136,8 +136,14 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         0x9a, 0xe6, 0xa4, 0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a
     };
 
-    client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].read;
-    server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].write;
+    if (is_server) {
+        client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].read;
+        server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].write;
+
+    } else {
+        client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].write;
+        server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].read;
+    }
 
     /*
      * RFC 9001, section 5.  Packet Protection
@@ -200,13 +206,13 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         return NGX_ERROR;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, client, &client_key, 0, log)
+    if (ngx_quic_crypto_init(ciphers.c, client, &client_key, !is_server, log)
         == NGX_ERROR)
     {
         return NGX_ERROR;
     }
 
-    if (ngx_quic_crypto_init(ciphers.c, server, &server_key, 1, log)
+    if (ngx_quic_crypto_init(ciphers.c, server, &server_key, is_server, log)
         == NGX_ERROR)
     {
         goto failed;
