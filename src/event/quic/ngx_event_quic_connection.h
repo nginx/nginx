@@ -286,6 +286,9 @@ struct ngx_quic_connection_s {
     const char                       *error_reason;
 
     unsigned                          initialized:1;
+    unsigned                          handshaked:1;
+    unsigned                          is_server:1;
+    unsigned                          scid_set:1;
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
     unsigned                          lingering:1;
@@ -294,7 +297,7 @@ struct ngx_quic_connection_s {
     unsigned                          draining:1;
     unsigned                          key_phase:1;
     unsigned                          validated:1;
-    unsigned                          client_tp_done:1;
+    unsigned                          peer_tp_done:1;
 
 #if (NGX_QUIC_OPENSSL_API)
     unsigned                          read_level:2;
@@ -303,6 +306,7 @@ struct ngx_quic_connection_s {
 };
 
 
+ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b);
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);

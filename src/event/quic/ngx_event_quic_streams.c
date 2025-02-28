@@ -44,7 +44,16 @@ static void ngx_quic_set_event(ngx_event_t *ev);
 static ngx_uint_t
 ngx_quic_is_stream_local(ngx_connection_t *c, uint64_t id)
 {
-    return (id & NGX_QUIC_STREAM_SERVER_INITIATED) ? 1 : 0;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->is_server) {
+        return (id & NGX_QUIC_STREAM_SERVER_INITIATED) ? 1 : 0;
+
+    } else {
+        return (id & NGX_QUIC_STREAM_SERVER_INITIATED) ? 0 : 1;
+    }
 }
 
 
@@ -73,8 +82,11 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
             return NULL;
         }
 
-        id = (qc->streams.local_streams_bidi << 2)
-             | NGX_QUIC_STREAM_SERVER_INITIATED;
+        id = (qc->streams.local_streams_bidi << 2);
+
+        if (qc->is_server) {
+            id |= NGX_QUIC_STREAM_SERVER_INITIATED;
+        }
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic creating local bidi stream"
@@ -95,8 +107,11 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
         }
 
         id = (qc->streams.local_streams_uni << 2)
-             | NGX_QUIC_STREAM_SERVER_INITIATED
              | NGX_QUIC_STREAM_UNIDIRECTIONAL;
+
+        if (qc->is_server) {
+            id |= NGX_QUIC_STREAM_SERVER_INITIATED;
+        }
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic creating local uni stream"
@@ -463,6 +478,11 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
 
         min_id = (qc->streams.remote_streams_uni << 2)
                  | NGX_QUIC_STREAM_UNIDIRECTIONAL;
+
+        if (!qc->is_server) {
+            min_id |= NGX_QUIC_STREAM_SERVER_INITIATED;
+        }
+
         qc->streams.remote_streams_uni = (id >> 2) + 1;
 
     } else {
@@ -486,6 +506,11 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
         }
 
         min_id = (qc->streams.remote_streams_bidi << 2);
+
+        if (!qc->is_server) {
+            min_id |= NGX_QUIC_STREAM_SERVER_INITIATED;
+        }
+
         qc->streams.remote_streams_bidi = (id >> 2) + 1;
     }
 

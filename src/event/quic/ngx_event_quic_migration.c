@@ -313,12 +313,6 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     len = pkt->raw->last - pkt->raw->start;
 
-    if (c->udp->buffer == NULL) {
-        /* first ever packet in connection, path already exists  */
-        path = qc->path;
-        goto update;
-    }
-
     probe = NULL;
 
     for (q = ngx_queue_head(&qc->paths);

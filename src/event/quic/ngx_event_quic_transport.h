@@ -382,7 +382,7 @@ size_t ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
     u_char **start);
 
 ssize_t ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
-    ngx_quic_frame_t *frame);
+    ngx_quic_frame_t *frame, ngx_uint_t is_server);
 ssize_t ngx_quic_create_frame(u_char *p, ngx_quic_frame_t *f);
 
 ssize_t ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start,
@@ -392,9 +392,9 @@ size_t ngx_quic_create_ack_range(u_char *p, uint64_t gap, uint64_t range);
 ngx_int_t ngx_quic_init_transport_params(ngx_quic_tp_t *tp,
     ngx_quic_conf_t *qcf);
 ngx_int_t ngx_quic_parse_transport_params(u_char *p, u_char *end,
-    ngx_quic_tp_t *tp, ngx_log_t *log);
+    ngx_quic_tp_t *tp, ngx_uint_t is_server, ngx_log_t *log);
 ssize_t ngx_quic_create_transport_params(u_char *p, u_char *end,
-    ngx_quic_tp_t *tp, size_t *clen);
+    ngx_quic_tp_t *tp, size_t *clen, ngx_uint_t is_server);
 
 void ngx_quic_dcid_encode_key(u_char *dcid, uint64_t key);
 

@@ -14,10 +14,10 @@ static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
-static void ngx_quic_input_handler(ngx_event_t *rev);
+static void ngx_quic_read_handler(ngx_event_t *rev);
+static void ngx_quic_write_handler(ngx_event_t *wev);
 static void ngx_quic_close_handler(ngx_event_t *ev);
 
-static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_handle_packet(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handle_payload(ngx_connection_t *c,
@@ -209,6 +209,7 @@ ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
     }
 
     qc->conf = conf;
+    qc->is_server = (flags & NGX_SSL_CLIENT) ? 0 : 1;
 
     quic = ngx_palloc(c->pool, sizeof(ngx_quic_t));
     if (quic == NULL) {
@@ -219,8 +220,18 @@ ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
     quic->stream = NULL;
 
     c->quic = quic;
+    c->start_time = ngx_current_msec;
 
-    return NGX_OK;
+    if (qc->is_server) {
+        /* initialize server during handshake to save resources */
+        return NGX_OK;
+    }
+
+    if (ngx_quic_new_connection(c, NULL) == NULL) {
+        return NGX_ERROR;
+    }
+
+    return ngx_quic_init_connection(c, flags);
 }
 
 
@@ -232,7 +243,12 @@ ngx_quic_handshake(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic handshake");
 
-    rc = ngx_quic_handle_datagram(c, c->buffer);
+    if (c->buffer) {
+        rc = ngx_quic_handle_datagram(c, c->buffer);
+
+    } else {
+        rc = ngx_quic_do_handshake(c);
+    }
 
     if (rc != NGX_OK) {
         if (c->ssl) {
@@ -249,19 +265,26 @@ ngx_quic_handshake(ngx_connection_t *c)
 
     ngx_quic_connstate_dbg(c);
 
-    c->read->handler = ngx_quic_input_handler;
+    c->read->handler = ngx_quic_read_handler;
+    c->write->handler = ngx_quic_write_handler;
 
-    return NGX_AGAIN;
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return c->ssl->handshaked ? NGX_OK : NGX_AGAIN;
 }
 
 
 static ngx_quic_connection_t *
 ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
+    ngx_str_t              *secret, scid;
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
     ngx_quic_conf_t        *conf;
     ngx_quic_connection_t  *qc;
+    u_char                  scid_buf[NGX_QUIC_SERVER_CID_LEN];
 
     qc = c->quic->connection;
     conf = qc->conf;
@@ -271,7 +294,45 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NULL;
     }
 
-    qc->version = pkt->version;
+    if (ngx_quic_init_transport_params(&qc->tp, conf) != NGX_OK) {
+        return NULL;
+    }
+
+    if (pkt == NULL) {
+        /* client */
+
+        if (RAND_bytes(scid_buf, NGX_QUIC_SERVER_CID_LEN) != 1) {
+            return NULL;
+        }
+
+        scid.data = scid_buf;
+        scid.len = NGX_QUIC_SERVER_CID_LEN;
+        secret = &scid;
+
+        qc->validated = 1;
+        qc->version = 0x01;
+
+    } else {
+        secret = &pkt->dcid;
+        scid = pkt->scid;
+
+        qc->validated = pkt->validated;
+        qc->version = pkt->version;
+
+        if (pkt->validated && pkt->retried) {
+            qc->tp.retry_scid.len = pkt->dcid.len;
+            qc->tp.retry_scid.data = ngx_pstrdup(c->pool, &pkt->dcid);
+            if (qc->tp.retry_scid.data == NULL) {
+                return NULL;
+            }
+        }
+
+        qc->tp.original_dcid.len = pkt->odcid.len;
+        qc->tp.original_dcid.data = ngx_pstrdup(c->pool, &pkt->odcid);
+        if (qc->tp.original_dcid.data == NULL) {
+            return NULL;
+        }
+    }
 
     ngx_rbtree_init(&qc->streams.tree, &qc->streams.sentinel,
                     ngx_quic_rbtree_insert_stream);
@@ -316,10 +377,6 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     qc->conf = conf;
 
-    if (ngx_quic_init_transport_params(&qc->tp, conf) != NGX_OK) {
-        return NULL;
-    }
-
     ctp = &qc->ctp;
 
     /* defaults to be used before actual client parameters are received */
@@ -348,25 +405,21 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
                       + conf->max_concurrent_streams_bidi)
                      * conf->stream_buffer_size / 2000;
 
-    if (pkt->validated && pkt->retried) {
-        qc->tp.retry_scid.len = pkt->dcid.len;
-        qc->tp.retry_scid.data = ngx_pstrdup(c->pool, &pkt->dcid);
-        if (qc->tp.retry_scid.data == NULL) {
-            return NULL;
-        }
-    }
-
-    if (ngx_quic_keys_set_initial_secret(qc->keys, &pkt->dcid, c->log)
+    if (ngx_quic_keys_set_initial_secret(qc->keys, secret, qc->is_server,
+                                         c->log)
         != NGX_OK)
     {
         return NULL;
     }
 
-    qc->validated = pkt->validated;
-
-    if (ngx_quic_open_sockets(c, qc, pkt) != NGX_OK) {
+    if (ngx_quic_open_sockets(c, qc, &scid, pkt ? &pkt->dcid : NULL) != NGX_OK)
+    {
         ngx_quic_keys_cleanup(qc->keys);
         return NULL;
+    }
+
+    if (qc->validated) {
+        qc->path->validated = 1;
     }
 
     c->idle = 1;
@@ -428,49 +481,58 @@ ngx_quic_handle_stateless_reset(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 
 static void
-ngx_quic_input_handler(ngx_event_t *rev)
+ngx_quic_read_handler(ngx_event_t *rev)
 {
-    ngx_int_t               rc;
-    ngx_buf_t              *b;
-    ngx_connection_t       *c;
-    ngx_quic_connection_t  *qc;
+    ssize_t            n;
+    ngx_buf_t          buf;
+    ngx_connection_t  *c;
+    static u_char      buffer[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic input handler");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, rev->log, 0, "quic read handler");
 
     c = rev->data;
-    qc = ngx_quic_get_connection(c);
 
     c->log->action = "handling quic input";
 
-    if (c->close || rev->timedout) {
-        goto done;
+    while (rev->ready) {
+        n = c->recv(c, buffer, sizeof(buffer));
+
+        if (n <= 0) {
+            break;
+        }
+
+        ngx_memzero(&buf, sizeof(ngx_buf_t));
+
+        buf.pos = buffer;
+        buf.last = buffer + n;
+        buf.start = buf.pos;
+        buf.end = buffer + sizeof(buffer);
+
+        if (ngx_quic_handle_datagram(c, &buf) == NGX_ERROR) {
+            ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                               "datagram handling error");
+            break;
+        }
     }
 
-    b = c->udp->buffer;
-    if (b == NULL) {
-        goto done;
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "socket error");
     }
-
-    rc = ngx_quic_handle_datagram(c, b);
-
-    if (rc == NGX_ERROR) {
-        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
-                           "datagram handling error");
-        goto done;
-    }
-
-    if (rc == NGX_DONE) {
-        goto done;
-    }
-
-    /* rc == NGX_OK */
-
-    qc->send_timer_set = 0;
-    ngx_add_timer(&qc->close, qc->tp.max_idle_timeout);
-
-done:
 
     ngx_quic_end_handler(c);
+}
+
+
+static void
+ngx_quic_write_handler(ngx_event_t *wev)
+{
+    ngx_connection_t  *c;
+
+    c = wev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic write handler");
+
+    ngx_del_event(c->write, NGX_WRITE_EVENT, 0);
 }
 
 
@@ -501,6 +563,11 @@ ngx_quic_shutdown(ngx_connection_t *c)
     ngx_uint_t              i, no_wait;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
+
+    if (c->quic->stream) {
+        /* QUIC stream */
+        return NGX_OK;
+    }
 
     qc = ngx_quic_get_connection(c);
 
@@ -739,7 +806,7 @@ ngx_quic_close_handler(ngx_event_t *ev)
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b)
 {
     size_t                  size;
@@ -754,8 +821,10 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b)
     path = NULL;
 
     size = b->last - b->pos;
-
     p = start = b->pos;
+
+    qc = ngx_quic_get_connection(c);
+    qc->received += size;
 
     while (p < b->last) {
 
@@ -823,10 +892,6 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b)
         return NGX_DONE;
     }
 
-    qc = ngx_quic_get_connection(c);
-
-    qc->received += size;
-
     if ((uint64_t) (c->sent + qc->received) / 8 >
         (qc->streams.sent + qc->streams.recv_last) + 1048576)
     {
@@ -836,6 +901,9 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b)
         qc->error_reason = "QUIC flood detected";
         return NGX_ERROR;
     }
+
+    qc->send_timer_set = 0;
+    ngx_add_timer(&qc->close, qc->tp.max_idle_timeout);
 
     return NGX_OK;
 }
@@ -847,6 +915,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_int_t               rc;
     ngx_quic_conf_t        *conf;
     ngx_quic_socket_t      *qsock;
+    ngx_quic_client_id_t   *cid;
     ngx_quic_connection_t  *qc;
 
     c->log->action = "parsing quic packet";
@@ -911,13 +980,34 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
                 }
             }
 
-            if (ngx_quic_check_csid(qc, pkt) != NGX_OK) {
-                return NGX_DECLINED;
+            if (qc->is_server) {
+                if (ngx_quic_check_csid(qc, pkt) != NGX_OK) {
+                    return NGX_DECLINED;
+                }
             }
-
         }
 
         rc = ngx_quic_handle_payload(c, pkt);
+
+        if (rc == NGX_OK
+            && !qc->is_server
+            && !qc->scid_set
+            && pkt->level == NGX_QUIC_ENCRYPTION_INITIAL)
+        {
+            /* RFC 9000, 7.2. Negotiating Connection IDs
+             *
+             * After processing the first Initial packet, each endpoint sets
+             * the Destination Connection ID field in subsequent packets it
+             * sends to the value of the Source Connection ID field that it
+             * received.
+             */
+
+            qc->scid_set = 1;
+
+            cid = qc->path->cid;
+            ngx_memcpy(cid->id, pkt->scid.data, pkt->scid.len);
+            cid->len = pkt->scid.len;
+        }
 
         if (rc == NGX_DECLINED
             && pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION)
@@ -1076,7 +1166,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     if (c->ssl == NULL) {
-        if (ngx_quic_init_connection(c) != NGX_OK) {
+        if (ngx_quic_init_connection(c, 0) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -1266,7 +1356,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         chain.next = NULL;
         frame.data = &chain;
 
-        len = ngx_quic_parse_frame(pkt, p, end, &frame);
+        len = ngx_quic_parse_frame(pkt, p, end, &frame, qc->is_server);
 
         if (len < 0) {
             qc->error = pkt->error;
@@ -1326,6 +1416,14 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         case NGX_QUIC_FT_PING:
+            break;
+
+        case NGX_QUIC_FT_NEW_TOKEN:
+
+            if (ngx_quic_handle_new_token_frame(c, &frame) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
             break;
 
         case NGX_QUIC_FT_STREAM:
@@ -1460,6 +1558,14 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
                                                            &frame.u.retire_cid)
                 != NGX_OK)
             {
+                return NGX_ERROR;
+            }
+
+            break;
+
+        case NGX_QUIC_FT_HANDSHAKE_DONE:
+
+            if (ngx_quic_handle_handshake_done_frame(c) != NGX_OK) {
                 return NGX_ERROR;
             }
 
