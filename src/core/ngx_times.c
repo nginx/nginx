@@ -360,7 +360,7 @@ ngx_gmtime(time_t t, ngx_tm_t *tp)
      */
 
     /* days since March 1, 1 BC */
-    days = days - (31 + 28) + 719527;
+    days = days + 719527 - (31 + 28);
 
     /*
      * The "days" should be adjusted to 1 only, however, some March 1st's go
