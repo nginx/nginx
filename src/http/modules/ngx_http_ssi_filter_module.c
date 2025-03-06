@@ -2232,11 +2232,29 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 static ngx_int_t
 ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
-    ngx_chain_t  *out;
+    ngx_chain_t        *out;
+    ngx_http_ssi_ctx_t *ctx;
 
     if (rc == NGX_ERROR || r->connection->error || r->request_output) {
         return rc;
     }
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
+
+    if (ctx && ctx->stub_output_done) {
+        return NGX_OK;
+    }
+
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
+    }
+
+    ctx->stub_output_done = 1;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi stub output: \"%V?%V\"", &r->uri, &r->args);
