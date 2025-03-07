@@ -1570,6 +1570,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 
                 } else if (ch == '+') {
                     r->plus_in_uri = 1;
+                } else if (ch == '/') {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
 
                 state = quoted_state;
