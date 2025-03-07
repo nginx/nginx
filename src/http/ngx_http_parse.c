@@ -26,10 +26,10 @@ static uint32_t  usual[] = {
                 /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
     0x7fffffff, /* 0111 1111 1111 1111  1111 1111 1111 1111 */
 
-    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
-    0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+    0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+    0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+    0x00000000  /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 };
 
 
@@ -530,7 +530,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ch < 0x20 || ch >= 0x7f) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 state = sw_check_uri;
@@ -599,7 +599,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ch < 0x20 || ch >= 0x7f) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 break;
@@ -631,7 +631,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->complex_uri = 1;
                 break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ch < 0x20 || ch >= 0x7f) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 break;
@@ -1165,7 +1165,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f || ch == ';') {
+                if (ch <= 0x20 || ch >= 0x7f || ch == ';') {
                     return NGX_ERROR;
                 }
                 state = sw_check_uri;
@@ -1217,7 +1217,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f || ch == ';') {
+                if (ch <= 0x20 || ch >= 0x7f || ch == ';') {
                     return NGX_ERROR;
                 }
                 break;
@@ -1236,7 +1236,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->complex_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f) {
+                if (ch <= 0x20 || ch >= 0x7f) {
                     return NGX_ERROR;
                 }
                 break;
@@ -1621,6 +1621,9 @@ done:
 args:
 
     while (p < r->uri_end) {
+        if (*p <= 0x20 || *p >= 0x7F) {
+            return NGX_HTTP_PARSE_INVALID_REQUEST;
+        }
         if (*p++ != '#') {
             continue;
         }
