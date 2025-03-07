@@ -14,7 +14,7 @@ static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
                 /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
-    0x7fff37d6, /* 0111 1111 1111 1111  0011 0111 1101 0110 */
+    0x7fff37d6, /* 0111 0111 1111 1111  0011 0111 1101 0110 */
 
                 /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
 #if (NGX_WIN32)
@@ -504,6 +504,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->quoted_uri = 1;
                 state = sw_uri;
                 break;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '/':
                 r->complex_uri = 1;
                 state = sw_uri;
@@ -553,6 +557,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_ext = NULL;
                 state = sw_after_slash_in_uri;
                 break;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '.':
                 r->uri_ext = p + 1;
                 break;
@@ -1157,7 +1165,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f) {
+                if (ch <= 0x20 || ch == 0x7f || ch == ';') {
                     return NGX_ERROR;
                 }
                 state = sw_check_uri;
@@ -1209,7 +1217,7 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f) {
+                if (ch <= 0x20 || ch == 0x7f || ch == ';') {
                     return NGX_ERROR;
                 }
                 break;
@@ -1338,10 +1346,18 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto args;
             case '#':
                 goto done;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '.':
                 r->uri_ext = u + 1;
                 *u++ = ch;
                 break;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1376,6 +1392,10 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 state = sw_dot;
                 *u++ = ch;
                 break;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '%':
                 quoted_state = state;
                 state = sw_quoted;
@@ -1429,6 +1449,10 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '#':
                 u--;
                 goto done;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1480,6 +1504,10 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 quoted_state = state;
                 state = sw_quoted;
                 break;
+            case ';':
+                /* Many serves written in Java treat this specially.
+                 * Disallow it. */
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1534,7 +1562,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             if (c >= 'a' && c <= 'f') {
                 ch = (u_char) ((decoded << 4) + (c - 'a') + 10);
 
-                if (ch == '?') {
+                if (ch == '?' || ch == ';') {
                     state = sw_usual;
                     *u++ = ch;
                     ch = *p++;
