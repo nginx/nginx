@@ -45,9 +45,9 @@
 
 
 static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c);
-static void ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx);
-static void ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    uint64_t pnum);
+static void ngx_quic_commit_send(ngx_connection_t *c);
+static void ngx_quic_revert_send(ngx_connection_t *c,
+    uint64_t preserved_pnum[NGX_QUIC_SEND_CTX_LAST]);
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
 static ngx_uint_t ngx_quic_allow_segmentation(ngx_connection_t *c);
 static ngx_int_t ngx_quic_create_segments(ngx_connection_t *c);
@@ -127,6 +127,10 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
     cg = &qc->congestion;
     path = qc->path;
 
+#if (NGX_SUPPRESS_WARN)
+    ngx_memzero(preserved_pnum, sizeof(preserved_pnum));
+#endif
+
     while (cg->in_flight < cg->window) {
 
         p = dst;
@@ -150,12 +154,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
 
             if (min > len) {
                 /* padding can't be applied - avoid sending the packet */
-
-                while (i-- > 0) {
-                    ctx = &qc->send_ctx[i];
-                    ngx_quic_revert_send(c, ctx, preserved_pnum[i]);
-                }
-
+                ngx_quic_revert_send(c, preserved_pnum);
                 return NGX_OK;
             }
 
@@ -180,17 +179,12 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
         }
 
         if (n == NGX_AGAIN) {
-            for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-                ngx_quic_revert_send(c, &qc->send_ctx[i], preserved_pnum[i]);
-            }
-
+            ngx_quic_revert_send(c, preserved_pnum);
             ngx_add_timer(&qc->push, NGX_QUIC_SOCKET_RETRY_DELAY);
             break;
         }
 
-        for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
-            ngx_quic_commit_send(c, &qc->send_ctx[i]);
-        }
+        ngx_quic_commit_send(c);
 
         path->sent += len;
     }
@@ -200,31 +194,36 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
 
 
 static void
-ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
+ngx_quic_commit_send(ngx_connection_t *c)
 {
+    ngx_uint_t              i;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
-
     cg = &qc->congestion;
 
-    while (!ngx_queue_empty(&ctx->sending)) {
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ctx = &qc->send_ctx[i];
 
-        q = ngx_queue_head(&ctx->sending);
-        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        while (!ngx_queue_empty(&ctx->sending)) {
 
-        ngx_queue_remove(q);
+            q = ngx_queue_head(&ctx->sending);
+            f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (f->pkt_need_ack && !qc->closing) {
-            ngx_queue_insert_tail(&ctx->sent, q);
+            ngx_queue_remove(q);
 
-            cg->in_flight += f->plen;
+            if (f->pkt_need_ack && !qc->closing) {
+                ngx_queue_insert_tail(&ctx->sent, q);
 
-        } else {
-            ngx_quic_free_frame(c, f);
+                cg->in_flight += f->plen;
+
+            } else {
+                ngx_quic_free_frame(c, f);
+            }
         }
     }
 
@@ -234,19 +233,30 @@ ngx_quic_commit_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
 
 static void
-ngx_quic_revert_send(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    uint64_t pnum)
+ngx_quic_revert_send(ngx_connection_t *c, uint64_t pnum[NGX_QUIC_SEND_CTX_LAST])
 {
-    ngx_queue_t  *q;
+    ngx_uint_t              i;
+    ngx_queue_t            *q;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
 
-    while (!ngx_queue_empty(&ctx->sending)) {
+    qc = ngx_quic_get_connection(c);
 
-        q = ngx_queue_last(&ctx->sending);
-        ngx_queue_remove(q);
-        ngx_queue_insert_head(&ctx->frames, q);
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ctx = &qc->send_ctx[i];
+
+        if (ngx_queue_empty(&ctx->sending)) {
+            continue;
+        }
+
+        do {
+            q = ngx_queue_last(&ctx->sending);
+            ngx_queue_remove(q);
+            ngx_queue_insert_head(&ctx->frames, q);
+        } while (!ngx_queue_empty(&ctx->sending));
+
+        ctx->pnum = pnum[i];
     }
-
-    ctx->pnum = pnum;
 }
 
 
@@ -311,13 +321,13 @@ ngx_quic_create_segments(ngx_connection_t *c)
     size_t                  len, segsize;
     ssize_t                 n;
     u_char                 *p, *end;
-    uint64_t                preserved_pnum;
-    ngx_uint_t              nseg;
+    ngx_uint_t              nseg, level;
     ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
     static u_char           dst[NGX_QUIC_MAX_UDP_SEGMENT_BUF];
+    static uint64_t         preserved_pnum[NGX_QUIC_SEND_CTX_LAST];
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
@@ -335,7 +345,8 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
     nseg = 0;
 
-    preserved_pnum = ctx->pnum;
+    level = ctx - qc->send_ctx;
+    preserved_pnum[level] = ctx->pnum;
 
     for ( ;; ) {
 
@@ -369,19 +380,18 @@ ngx_quic_create_segments(ngx_connection_t *c)
             }
 
             if (n == NGX_AGAIN) {
-                ngx_quic_revert_send(c, ctx, preserved_pnum);
-
+                ngx_quic_revert_send(c, preserved_pnum);
                 ngx_add_timer(&qc->push, NGX_QUIC_SOCKET_RETRY_DELAY);
                 break;
             }
 
-            ngx_quic_commit_send(c, ctx);
+            ngx_quic_commit_send(c);
 
             path->sent += n;
 
             p = dst;
             nseg = 0;
-            preserved_pnum = ctx->pnum;
+            preserved_pnum[level] = ctx->pnum;
         }
     }
 
