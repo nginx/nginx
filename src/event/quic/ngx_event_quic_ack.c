@@ -449,9 +449,10 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
     now = ngx_current_msec;
     thr = ngx_quic_lost_threshold(qc);
 
-    /* send time of lost packets across all send contexts */
-    oldest = NGX_TIMER_INFINITE;
-    newest = NGX_TIMER_INFINITE;
+#if (NGX_SUPPRESS_WARN)
+    oldest = now;
+    newest = now;
+#endif
 
     nlost = 0;
 
@@ -484,13 +485,17 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                 break;
             }
 
-            if (start->send_time > qc->first_rtt) {
+            if ((ngx_msec_int_t) (start->send_time - qc->first_rtt) > 0) {
 
-                if (oldest == NGX_TIMER_INFINITE || start->send_time < oldest) {
+                if (nlost == 0
+                    || (ngx_msec_int_t) (start->send_time - oldest) < 0)
+                {
                     oldest = start->send_time;
                 }
 
-                if (newest == NGX_TIMER_INFINITE || start->send_time > newest) {
+                if (nlost == 0
+                    || (ngx_msec_int_t) (start->send_time - newest) > 0)
+                {
                     newest = start->send_time;
                 }
 
@@ -511,8 +516,9 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
      * latest ACK frame.
      */
 
-    if (st && nlost >= 2 && (st->newest < oldest || st->oldest > newest)) {
-
+    if (st && nlost >= 2 && ((ngx_msec_int_t) (st->newest - oldest) < 0
+                             || (ngx_msec_int_t) (st->oldest - newest) > 0))
+    {
         if (newest - oldest > ngx_quic_pcg_duration(c)) {
             ngx_quic_persistent_congestion(c);
         }
