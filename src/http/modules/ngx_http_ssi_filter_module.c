@@ -325,6 +325,39 @@ static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 };
 
 
+static ngx_http_ssi_ctx_t *
+ngx_http_ssi_create_ctx(ngx_http_request_t *r)
+{
+    ngx_http_ssi_ctx_t       *ctx;
+    ngx_http_ssi_loc_conf_t  *slcf;
+
+    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
+
+    slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
+
+    ctx->value_len = slcf->value_len;
+    ctx->last_out = &ctx->out;
+
+    ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
+    ctx->output = 1;
+
+    ctx->params.elts = ctx->params_array;
+    ctx->params.size = sizeof(ngx_table_elt_t);
+    ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
+    ctx->params.pool = r->pool;
+
+    ctx->timefmt = ngx_http_ssi_timefmt;
+    ngx_str_set(&ctx->errmsg,
+                "[an error occurred while processing the directive]");
+
+    return ctx;
+}
+
 
 static ngx_int_t
 ngx_http_ssi_header_filter(ngx_http_request_t *r)
@@ -343,28 +376,10 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
 
     mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 
-    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
+    ctx = ngx_http_ssi_create_ctx(r);
     if (ctx == NULL) {
         return NGX_ERROR;
     }
-
-    ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
-
-
-    ctx->value_len = slcf->value_len;
-    ctx->last_out = &ctx->out;
-
-    ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
-    ctx->output = 1;
-
-    ctx->params.elts = ctx->params_array;
-    ctx->params.size = sizeof(ngx_table_elt_t);
-    ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
-    ctx->params.pool = r->pool;
-
-    ctx->timefmt = ngx_http_ssi_timefmt;
-    ngx_str_set(&ctx->errmsg,
-                "[an error occurred while processing the directive]");
 
     r->filter_need_in_memory = 1;
 
@@ -2246,12 +2261,10 @@ ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
     }
 
     if (ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
+        ctx = ngx_http_ssi_create_ctx(r);
         if (ctx == NULL) {
             return NGX_ERROR;
         }
-
-        ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
     }
 
     ctx->stub_output_done = 1;
