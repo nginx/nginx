@@ -1571,6 +1571,27 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
         0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
     };
 
+                    /* not ALPHA, DIGIT, "-", ".", "_", "~", "/" */
+
+    static uint32_t   uri_path[] = {
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+        0xfc001fff, /* 1111 1100 0000 0000  0001 1111 1111 1111 */
+
+                    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+        0x78000001, /* 0111 1000 0000 0000  0000 0000 0000 0001 */
+
+                    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+        0xb8000001, /* 1011 1000 0000 0000  0000 0000 0000 0001 */
+
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff  /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    };
+
+
                     /* " ", "#", """, "%", "'", not allowed */
 
     static uint32_t   html[] = {
@@ -1634,7 +1655,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
                     /* mail_auth is the same as memcached */
 
     static uint32_t  *map[] =
-        { uri, args, uri_component, html, refresh, memcached, memcached };
+        { uri, args, uri_component, html, refresh, memcached, memcached, uri_path };
 
 
     escape = map[type];
