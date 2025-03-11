@@ -2688,9 +2688,9 @@ ngx_http_uwsgi_set_ssl(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *uwcf)
         if (uwcf->upstream.ssl_certificate->lengths
             || uwcf->upstream.ssl_certificate_key->lengths)
         {
-            uwcf->upstream.ssl_passwords =
-                  ngx_ssl_preserve_passwords(cf, uwcf->upstream.ssl_passwords);
-            if (uwcf->upstream.ssl_passwords == NULL) {
+            if (ngx_ssl_preserve_passwords(cf, uwcf->upstream.ssl_passwords)
+                != NGX_OK)
+            {
                 return NGX_ERROR;
             }
 

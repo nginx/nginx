@@ -2421,9 +2421,7 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
         if (pscf->ssl_certificate->lengths
             || pscf->ssl_certificate_key->lengths)
         {
-            pscf->ssl_passwords =
-                           ngx_ssl_preserve_passwords(cf, pscf->ssl_passwords);
-            if (pscf->ssl_passwords == NULL) {
+            if (ngx_ssl_preserve_passwords(cf, pscf->ssl_passwords) != NGX_OK) {
                 return NGX_ERROR;
             }
 
