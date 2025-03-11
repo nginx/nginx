@@ -869,47 +869,91 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 }
 
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
+#if (defined SSL_CLIENT_HELLO_SUCCESS || defined SSL_CTRL_SET_TLSEXT_HOSTNAME)
 
 int
 ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
-    ngx_int_t                  rc;
+    ngx_int_t                  rc, success, error;
     ngx_str_t                  host;
-    const char                *servername;
+    const char                *p;
     ngx_connection_t          *c;
     ngx_http_connection_t     *hc;
     ngx_http_ssl_srv_conf_t   *sscf;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_http_core_srv_conf_t  *cscf;
 
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+    success = SSL_CLIENT_HELLO_SUCCESS;
+    error = SSL_CLIENT_HELLO_ERROR;
+#else
+    success = SSL_TLSEXT_ERR_OK;
+    error = SSL_TLSEXT_ERR_ALERT_FATAL;
+#endif
+
     c = ngx_ssl_get_connection(ssl_conn);
 
     if (c->ssl->handshaked) {
         *ad = SSL_AD_NO_RENEGOTIATION;
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
+        return error;
     }
 
     hc = c->data;
 
-    servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+#ifdef SSL_CLIENT_HELLO_SUCCESS
 
-    if (servername == NULL) {
+    if (SSL_client_hello_get0_ext(ssl_conn, TLSEXT_TYPE_server_name,
+                                  (const unsigned char **) &p, &host.len)
+        == 0)
+    {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "SSL server name: null");
         goto done;
     }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "SSL server name: \"%s\"", servername);
+    /* RFC 6066 mandates non-zero HostName length, we follow OpenSSL */
 
-    host.len = ngx_strlen(servername);
+    if (host.len < 5
+        || (size_t) (p[0] << 8) + p[1] + 2 != host.len
+        || p[2] != TLSEXT_NAMETYPE_host_name
+        || (size_t) (p[3] << 8) + p[4] + 2 + 3 != host.len)
+    {
+        *ad = SSL_AD_DECODE_ERROR;
+        return error;
+    }
+
+    host.len -= 5;
+    host.data = (u_char *) p + 5;
+
+    if (host.len > TLSEXT_MAXLEN_host_name
+        || ngx_strlchr(host.data, host.data + host.len, '\0'))
+    {
+        c->ssl->handshake_rejected = 1;
+        *ad = SSL_AD_UNRECOGNIZED_NAME;
+        return error;
+    }
+
+#else
+
+    p = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+
+    if (p == NULL) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "SSL server name: null");
+        goto done;
+    }
+
+    host.len = ngx_strlen(p);
+    host.data = (u_char *) p;
+
+#endif
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "SSL server name: \"%V\"", &host);
 
     if (host.len == 0) {
         goto done;
     }
-
-    host.data = (u_char *) servername;
 
     rc = ngx_http_validate_host(&host, c->pool, 1);
 
@@ -932,31 +976,6 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         goto done;
     }
 
-    sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
-
-#if (defined TLS1_3_VERSION                                                   \
-     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL)
-
-    /*
-     * SSL_SESSION_get0_hostname() is only available in OpenSSL 1.1.1+,
-     * but servername being negotiated in every TLSv1.3 handshake
-     * is only returned in OpenSSL 1.1.1+ as well
-     */
-
-    if (sscf->verify) {
-        const char  *hostname;
-
-        hostname = SSL_SESSION_get0_hostname(SSL_get0_session(ssl_conn));
-
-        if (hostname != NULL && ngx_strcmp(hostname, servername) != 0) {
-            c->ssl->handshake_rejected = 1;
-            *ad = SSL_AD_ACCESS_DENIED;
-            return SSL_TLSEXT_ERR_ALERT_FATAL;
-        }
-    }
-
-#endif
-
     hc->ssl_servername = ngx_palloc(c->pool, sizeof(ngx_str_t));
     if (hc->ssl_servername == NULL) {
         goto error;
@@ -969,6 +988,8 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
     ngx_set_connection_log(c, clcf->error_log);
+
+    sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
 
     c->ssl->buffer_size = sscf->buffer_size;
 
@@ -1015,15 +1036,15 @@ done:
     if (sscf->reject_handshake) {
         c->ssl->handshake_rejected = 1;
         *ad = SSL_AD_UNRECOGNIZED_NAME;
-        return SSL_TLSEXT_ERR_ALERT_FATAL;
+        return error;
     }
 
-    return SSL_TLSEXT_ERR_OK;
+    return success;
 
 error:
 
     *ad = SSL_AD_INTERNAL_ERROR;
-    return SSL_TLSEXT_ERR_ALERT_FATAL;
+    return error;
 }
 
 #endif
