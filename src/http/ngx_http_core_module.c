@@ -1038,6 +1038,8 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
             ngx_memcpy(p, r->args.data, r->args.len);
         }
 
+        r->request_auto_redirect = 1;
+
         ngx_http_finalize_request(r, NGX_HTTP_MOVED_PERMANENTLY);
         return NGX_OK;
     }
