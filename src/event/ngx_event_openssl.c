@@ -5450,6 +5450,138 @@ failed:
 
 
 ngx_int_t
+ngx_ssl_get_subject_san(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s) {
+
+    int                    n, i, ip_len, max_san_names_to_add = 50;
+    char                   ip_str[INET6_ADDRSTRLEN];
+    unsigned char          *ip_addr;
+    BIO                    *bio;
+    X509                   *cert;
+    GENERAL_NAME           *altname;
+    STACK_OF(GENERAL_NAME) *altnames;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    altnames = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+    if (altnames == NULL) {
+        X509_free(cert);
+        return NGX_OK;
+    }
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
+        GENERAL_NAMES_free(altnames);
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    n = sk_GENERAL_NAME_num(altnames);
+
+    for (i = 0; i < n && i < max_san_names_to_add; i++) {
+        altname = sk_GENERAL_NAME_value(altnames, i);
+
+        if (i > 0) {
+            /* Add comma separator for multiple entries. */
+            BIO_write(bio, ", ", 2);
+        }
+
+        switch (altname->type) {
+
+        case GEN_DNS:
+            BIO_printf(bio, "DNS:%s",
+                       ASN1_STRING_get0_data(altname->d.dNSName));
+            break;
+
+        case GEN_IPADD:
+            ip_addr = ASN1_STRING_get0_data(altname->d.iPAddress);
+            ip_len = ASN1_STRING_length(altname->d.iPAddress);
+
+            if (ip_len == 4) {
+                BIO_printf(bio, "IPV4:%d.%d.%d.%d", ip_addr[0],
+                           ip_addr[1], ip_addr[2], ip_addr[3]);
+
+            } else if (ip_len == 16) {
+                inet_ntop(AF_INET6, ip_addr, ip_str, sizeof(ip_str));
+                BIO_printf(bio, "IPV6:%s", ip_str);
+            }
+
+            break;
+
+        case GEN_URI:
+            BIO_printf(bio, "URI:%s",
+                       ASN1_STRING_get0_data(
+                       altname->d.uniformResourceIdentifier));
+            break;
+
+        case GEN_EMAIL:
+            BIO_printf(bio, "EMAIL:%s",
+                       ASN1_STRING_get0_data(altname->d.rfc822Name));
+            break;
+
+        case GEN_EDIPARTY:
+            if (altname->d.ediPartyName->nameAssigner) {
+                BIO_printf(bio, "EDI_NAME_ASSIGNER:%s",
+                           ASN1_STRING_get0_data(
+                           altname->d.ediPartyName->nameAssigner));
+            }
+
+            BIO_printf(bio, "EDI_PARTY_NAME:%s",
+                       ASN1_STRING_get0_data(
+                       altname->d.ediPartyName->partyName));
+            break;
+
+        case GEN_DIRNAME:
+            BIO_write(bio, "DIR:", 4);
+            if (X509_NAME_print_ex(bio, altname->d.directoryName, 0,
+                                   XN_FLAG_RFC2253) < 0) {
+                ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                              "X509_NAME_print_ex() failed");
+                goto failed;
+            }
+
+            break;
+
+        case GEN_RID:
+            BIO_printf(bio, "REGISTERED_ID:%s",
+                       OBJ_nid2sn(OBJ_obj2nid(altname->d.registeredID)));
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    s->len = BIO_pending(bio);
+    s->data = ngx_pnalloc(pool, s->len);
+    if (s->data == NULL) {
+        goto failed;
+    }
+
+    BIO_read(bio, s->data, s->len);
+
+    BIO_free(bio);
+    GENERAL_NAMES_free(altnames);
+    X509_free(cert);
+
+    return NGX_OK;
+
+failed:
+
+    BIO_free(bio);
+    GENERAL_NAMES_free(altnames);
+    X509_free(cert);
+
+    return NGX_ERROR;
+}
+
+
+ngx_int_t
 ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;
