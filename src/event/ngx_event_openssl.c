@@ -5711,96 +5711,166 @@ ngx_ssl_get_client_verify(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     return NGX_OK;
 }
 
+ngx_int_t
+ngx_ssl_print_time(
+    BIO *bio,
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+    const
+#endif
+    ASN1_TIME *tm, long iso8601_format)
+{
+    ngx_int_t ret;
+    struct tm stm;
+    const char period = 0x2E;
+    int l, f_len;
+    char *v, *f;
+
+    if (iso8601_format) {
+        ret = ASN1_TIME_to_tm(tm, &stm);
+        if (ret != NGX_OK) {
+            return ret;
+        }
+
+        l = tm->length;
+        v = (char *)tm->data;
+
+        if (tm->type == V_ASN1_GENERALIZEDTIME) {
+            f = NULL;
+            f_len = 0;
+            if (tm->length > 15 && v[14] == period) {
+                f = &v[15];
+                while(15 + f_len < l && ngx_ascii_is_digit(f[f_len]))
+                    ++f_len;
+            }
+            if (f_len > 0) {
+                BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02d.%.*sZ",
+                     stm.tm_year + 1900, stm.tm_mon + 1,
+                     stm.tm_mday, stm.tm_hour,
+                     stm.tm_min, stm.tm_sec, f_len, f);
+                return NGX_OK;
+            }
+         }
+         BIO_printf(bio, "%4d-%02d-%02d %02d:%02d:%02dZ",
+             stm.tm_year + 1900, stm.tm_mon + 1,
+             stm.tm_mday, stm.tm_hour,
+             stm.tm_min, stm.tm_sec);
+    } else {
+        ASN1_TIME_print(bio, tm);
+    }
+    return NGX_OK;
+}
+
+ngx_int_t
+ngx_ssl_get_client_v_start_common(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s, long iso8601_format)
+{
+    BIO     *bio;
+    X509    *cert;
+    size_t   len;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+    ngx_ssl_print_time(bio, X509_get0_notBefore(cert), iso8601_format);
+#else
+    ngx_ssl_print_time(bio, X509_get_notBefore(cert), iso8601_format);
+#endif
+
+    len = BIO_pending(bio);
+
+    s->len = len;
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        BIO_free(bio);
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    BIO_read(bio, s->data, len);
+    BIO_free(bio);
+    X509_free(cert);
+
+    return NGX_OK;
+}
+
+ngx_int_t
+ngx_ssl_get_client_v_end_common(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s, long iso8601_format)
+{
+    BIO     *bio;
+    X509    *cert;
+    size_t   len;
+
+    s->len = 0;
+
+    cert = SSL_get_peer_certificate(c->ssl->connection);
+    if (cert == NULL) {
+        return NGX_OK;
+    }
+
+    bio = BIO_new(BIO_s_mem());
+    if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+#if OPENSSL_VERSION_NUMBER > 0x10100000L
+    ngx_ssl_print_time(bio, X509_get0_notAfter(cert), iso8601_format);
+#else
+    ngx_ssl_print_time(bio, X509_get_notAfter(cert), iso8601_format);
+#endif
+
+    len = BIO_pending(bio);
+
+    s->len = len;
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        BIO_free(bio);
+        X509_free(cert);
+        return NGX_ERROR;
+    }
+
+    BIO_read(bio, s->data, len);
+    BIO_free(bio);
+    X509_free(cert);
+
+    return NGX_OK;
+}
 
 ngx_int_t
 ngx_ssl_get_client_v_start(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    BIO     *bio;
-    X509    *cert;
-    size_t   len;
-
-    s->len = 0;
-
-    cert = SSL_get_peer_certificate(c->ssl->connection);
-    if (cert == NULL) {
-        return NGX_OK;
-    }
-
-    bio = BIO_new(BIO_s_mem());
-    if (bio == NULL) {
-        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
-        X509_free(cert);
-        return NGX_ERROR;
-    }
-
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    ASN1_TIME_print(bio, X509_get0_notBefore(cert));
-#else
-    ASN1_TIME_print(bio, X509_get_notBefore(cert));
-#endif
-
-    len = BIO_pending(bio);
-
-    s->len = len;
-    s->data = ngx_pnalloc(pool, len);
-    if (s->data == NULL) {
-        BIO_free(bio);
-        X509_free(cert);
-        return NGX_ERROR;
-    }
-
-    BIO_read(bio, s->data, len);
-    BIO_free(bio);
-    X509_free(cert);
-
-    return NGX_OK;
+    return ngx_ssl_get_client_v_start_common(c, pool, s, 0);
 }
 
+ngx_int_t
+ngx_ssl_get_client_v_start_iso8601(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    return ngx_ssl_get_client_v_start_common(c, pool, s, 1);
+}
 
 ngx_int_t
 ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
-    BIO     *bio;
-    X509    *cert;
-    size_t   len;
-
-    s->len = 0;
-
-    cert = SSL_get_peer_certificate(c->ssl->connection);
-    if (cert == NULL) {
-        return NGX_OK;
-    }
-
-    bio = BIO_new(BIO_s_mem());
-    if (bio == NULL) {
-        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "BIO_new() failed");
-        X509_free(cert);
-        return NGX_ERROR;
-    }
-
-#if OPENSSL_VERSION_NUMBER > 0x10100000L
-    ASN1_TIME_print(bio, X509_get0_notAfter(cert));
-#else
-    ASN1_TIME_print(bio, X509_get_notAfter(cert));
-#endif
-
-    len = BIO_pending(bio);
-
-    s->len = len;
-    s->data = ngx_pnalloc(pool, len);
-    if (s->data == NULL) {
-        BIO_free(bio);
-        X509_free(cert);
-        return NGX_ERROR;
-    }
-
-    BIO_read(bio, s->data, len);
-    BIO_free(bio);
-    X509_free(cert);
-
-    return NGX_OK;
+    return ngx_ssl_get_client_v_end_common(c, pool, s, 0);
 }
 
+ngx_int_t
+ngx_ssl_get_client_v_end_iso8601(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    return ngx_ssl_get_client_v_end_common(c, pool, s, 1);
+}
 
 ngx_int_t
 ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
