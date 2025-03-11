@@ -5848,6 +5848,74 @@ ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 }
 
 
+ngx_int_t
+ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    int         nid;
+    int         rc;
+    const char *sn;
+
+    rc = SSL_get_signature_type_nid(c->ssl->connection, &nid);
+
+    if (rc && nid != NID_undef) {
+        sn = OBJ_nid2sn(nid);
+        if (sn == NULL) {
+            s->len = sizeof("0x0000") - 1;
+
+            s->data = ngx_pnalloc(pool, s->len);
+            if (s->data == NULL) {
+                return NGX_ERROR;
+            }
+
+            ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
+
+            return NGX_OK;
+        }
+
+        s->len = ngx_strlen(sn);
+        s->data = (u_char *) sn;
+        return NGX_OK;
+    }
+
+    s->len = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_peer_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+    int         nid;
+    int         rc;
+    const char *sn;
+
+    rc = SSL_get_peer_signature_type_nid(c->ssl->connection, &nid);
+
+    if (rc && nid != NID_undef) {
+        sn = OBJ_nid2sn(nid);
+        if (sn == NULL) {
+            s->len = sizeof("0x0000") - 1;
+
+            s->data = ngx_pnalloc(pool, s->len);
+            if (s->data == NULL) {
+                return NGX_ERROR;
+            }
+
+            ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
+
+            return NGX_OK;
+        }
+
+        s->len = ngx_strlen(sn);
+        s->data = (u_char *) sn;
+        return NGX_OK;
+    }
+
+    s->len = 0;
+    return NGX_OK;
+}
+
+
 static time_t
 ngx_ssl_parse_time(
 #if OPENSSL_VERSION_NUMBER > 0x10100000L
