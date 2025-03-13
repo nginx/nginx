@@ -1097,6 +1097,7 @@ ngx_int_t
 ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
+    int                        bad;
     u_char                     ch;
     ngx_str_t                  tmp;
     ngx_uint_t                 i;
@@ -1152,6 +1153,37 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
 
             return NGX_ERROR;
         }
+    }
+
+    bad = 0;
+    switch (name->len) {
+#define X(s)                                                \
+    case sizeof("" s) - 1:                                  \
+        bad = memcmp(name->data, s, sizeof(s) - 1) == 0;    \
+        break
+    X("upgrade");
+    X("transfer-encoding");
+    X("proxy-connection");
+    X("proxy-authorization");
+    X("proxy-authenticate");
+#undef X
+    case 10:
+        bad = memcmp(name->data, "connection", 10) == 0
+           || memcmp(name->data, "keep-alive", 10) == 0;
+        break;
+    case 2:
+        /* te: trailiers is allowed, all other te values forbidden */
+        bad = name->data[0] == 't' && name->data[1] == 'e'
+            && !(value->len == 8 && memcmp(value->data, "trailers", 8) == 0);
+        break;
+    }
+
+    if (bad) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent forbidden hop-by-hop header \"%V\" with "
+                      "value: \"%V\"", name, value);
+
+        return NGX_ERROR;
     }
 
     tmp = *value;
