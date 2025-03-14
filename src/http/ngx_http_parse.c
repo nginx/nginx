@@ -852,6 +852,29 @@ done:
     return NGX_OK;
 }
 
+static ngx_int_t
+ngx_http_non_alnum_dash_header_char(u_char ch)
+{
+    switch (ch) {
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '*':
+    case '+':
+    case '.':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+        return 1;
+    default:
+        return 0;
+    }
+}
 
 ngx_int_t
 ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
@@ -915,22 +938,14 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
-                if (ch == '_') {
-                    if (allow_underscores) {
-                        hash = ngx_hash(0, ch);
-                        r->lowcase_header[0] = ch;
-                        i = 1;
-
-                    } else {
-                        hash = 0;
-                        i = 0;
-                        r->invalid_header = 1;
-                    }
-
+                if (ch == '_' && allow_underscores) {
+                    hash = ngx_hash(0, ch);
+                    r->lowcase_header[0] = ch;
+                    i = 1;
                     break;
                 }
 
-                if (ch <= 0x20 || ch == 0x7f || ch == ':') {
+                if (!ngx_http_non_alnum_dash_header_char(ch)) {
                     r->header_end = p;
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
@@ -974,7 +989,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch <= 0x20 || ch == 0x7f) {
+            if (!ngx_http_non_alnum_dash_header_char(ch)) {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
