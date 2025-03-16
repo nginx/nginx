@@ -881,9 +881,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_end = p;
                 state = sw_header_almost_done;
                 break;
-            case LF:
-                r->header_end = p;
-                goto header_done;
             default:
                 state = sw_name;
 
@@ -975,10 +972,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_end = p;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->header_start = p;
-                r->header_end = p;
-                goto done;
             default:
                 if (ch > 0x20 && ch != 0x7f) {
                     r->header_start = p;
@@ -1002,9 +995,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_end = p;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->header_end = p;
-                goto done;
             default:
                 if (ch > 0x20 && ch != 0x7f)
                     break;
@@ -1022,8 +1012,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             case CR:
                 state = sw_almost_done;
                 break;
-            case LF:
-                goto done;
             default:
                 if (ch > 0x20 && ch != 0x7f) {
                     state = sw_value;
@@ -1036,22 +1024,25 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* end of header line */
         case sw_almost_done:
-            switch (ch) {
-            case LF:
-                goto done;
-            default:
+            if (ch != LF) {
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
-            break;
+
+            b->pos = p + 1;
+            r->state = sw_start;
+            r->header_hash = hash;
+            r->lowcase_index = i;
+            return NGX_OK;
 
         /* end of header */
         case sw_header_almost_done:
-            switch (ch) {
-            case LF:
-                goto header_done;
-            default:
+            if (ch != LF) {
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
+
+            b->pos = p + 1;
+            r->state = sw_start;
+            return NGX_HTTP_PARSE_HEADER_DONE;
         }
     }
 
@@ -1061,22 +1052,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
     r->lowcase_index = i;
 
     return NGX_AGAIN;
-
-done:
-
-    b->pos = p + 1;
-    r->state = sw_start;
-    r->header_hash = hash;
-    r->lowcase_index = i;
-
-    return NGX_OK;
-
-header_done:
-
-    b->pos = p + 1;
-    r->state = sw_start;
-
-    return NGX_HTTP_PARSE_HEADER_DONE;
 }
 
 
