@@ -492,10 +492,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->http_minor = 9;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->uri_end = p;
-                r->http_minor = 9;
-                goto done;
             case '.':
                 r->complex_uri = 1;
                 state = sw_uri;
@@ -565,10 +561,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->http_minor = 9;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->uri_end = p;
-                r->http_minor = 9;
-                goto done;
 #if (NGX_WIN32)
             case '\\':
                 r->complex_uri = 1;
@@ -615,10 +607,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->http_minor = 9;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->uri_end = p;
-                r->http_minor = 9;
-                goto done;
             case '#':
                 r->complex_uri = 1;
                 break;
@@ -639,9 +627,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->http_minor = 9;
                 state = sw_almost_done;
                 break;
-            case LF:
-                r->http_minor = 9;
-                goto done;
             case 'H':
                 r->http_protocol.data = p;
                 state = sw_http_H;
@@ -769,8 +754,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             case CR:
                 state = sw_almost_done;
                 break;
-            case LF:
-                goto done;
             default:
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
