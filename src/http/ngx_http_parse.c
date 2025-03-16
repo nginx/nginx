@@ -732,10 +732,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-            if (ch == LF) {
-                goto done;
-            }
-
             if (ch == ' ') {
                 state = sw_spaces_after_digit;
                 break;
@@ -1896,8 +1892,6 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
             case CR:
                 state = sw_almost_done;
                 break;
-            case LF:
-                goto done;
             default:
                 return NGX_ERROR;
             }
@@ -1910,7 +1904,6 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 state = sw_almost_done;
 
                 break;
-            case LF:
                 goto done;
             default:
                 if (ch < 0x20 || ch == 0x7f) {
