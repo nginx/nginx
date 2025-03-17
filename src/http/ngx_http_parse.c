@@ -1295,7 +1295,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             switch (ch) {
 #if (NGX_WIN32)
             case '\\':
-                if (u - 2 >= r->uri.data
+                if (u - r->uri.data >= 2
                     && *(u - 1) == '.' && *(u - 2) != '.')
                 {
                     u--;
@@ -1319,7 +1319,7 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 #endif
             case '/':
 #if (NGX_WIN32)
-                if (u - 2 >= r->uri.data
+                if (u - r->uri.data >= 2
                     && *(u - 1) == '.' && *(u - 2) != '.')
                 {
                     u--;
@@ -1457,13 +1457,12 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '/':
             case '?':
             case '#':
-                u -= 4;
+                u -= 3;
                 for ( ;; ) {
-                    if (u < r->uri.data) {
+                    if (u <= r->uri.data) {
                         return NGX_HTTP_PARSE_INVALID_REQUEST;
                     }
-                    if (*u == '/') {
-                        u++;
+                    if (u[-1] == '/') {
                         break;
                     }
                     u--;
@@ -1561,15 +1560,14 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
         u--;
 
     } else if (state == sw_dot_dot) {
-        u -= 4;
+        u -= 3;
 
         for ( ;; ) {
-            if (u < r->uri.data) {
+            if (u <= r->uri.data) {
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
-            if (*u == '/') {
-                u++;
+            if (u[-1] == '/') {
                 break;
             }
 
