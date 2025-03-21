@@ -875,6 +875,11 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (rv != NGX_CONF_OK) {
             break;
         }
+
+        if(ngx_test_config){
+            ngx_log_stderr(0, "the configuration file %s syntax is ok",
+                file.data);
+        }
     }
 
     ngx_close_glob(&gl);
