@@ -635,6 +635,10 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_ERROR;
     }
 
+    if (name->len && name->data[0] == ':') {
+        return ngx_http_v3_process_pseudo_header(r, name, value);
+    }
+
     if (r->invalid_header) {
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -644,10 +648,6 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
             return NGX_OK;
         }
-    }
-
-    if (name->len && name->data[0] == ':') {
-        return ngx_http_v3_process_pseudo_header(r, name, value);
     }
 
     if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
