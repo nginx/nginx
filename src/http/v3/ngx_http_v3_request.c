@@ -28,31 +28,6 @@ static ngx_int_t ngx_http_v3_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_request_body_filter(ngx_http_request_t *r,
     ngx_chain_t *in);
 
-
-static const struct {
-    ngx_str_t   name;
-    ngx_uint_t  method;
-} ngx_http_v3_methods[] = {
-
-    { ngx_string("GET"),       NGX_HTTP_GET },
-    { ngx_string("POST"),      NGX_HTTP_POST },
-    { ngx_string("HEAD"),      NGX_HTTP_HEAD },
-    { ngx_string("OPTIONS"),   NGX_HTTP_OPTIONS },
-    { ngx_string("PROPFIND"),  NGX_HTTP_PROPFIND },
-    { ngx_string("PUT"),       NGX_HTTP_PUT },
-    { ngx_string("MKCOL"),     NGX_HTTP_MKCOL },
-    { ngx_string("DELETE"),    NGX_HTTP_DELETE },
-    { ngx_string("COPY"),      NGX_HTTP_COPY },
-    { ngx_string("MOVE"),      NGX_HTTP_MOVE },
-    { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
-    { ngx_string("LOCK"),      NGX_HTTP_LOCK },
-    { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
-    { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-    { ngx_string("TRACE"),     NGX_HTTP_TRACE },
-    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT }
-};
-
-
 void
 ngx_http_v3_init_stream(ngx_connection_t *c)
 {
@@ -389,6 +364,14 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
     c->data = r;
     c->requests = (c->quic->id >> 2) + 1;
 
+    if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
+                      sizeof(ngx_table_elt_t))
+        != NGX_OK)
+    {
+        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     cln = ngx_pool_cleanup_add(r->pool, 0);
     if (cln == NULL) {
         ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -694,153 +677,17 @@ static ngx_int_t
 ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
-    u_char      ch, c;
-    ngx_uint_t  i;
-
     if (r->request_line.len) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent out of order pseudo-headers");
-        goto failed;
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
 
-    if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
-
-        if (r->method_name.len) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":method\" header");
-            goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":method\" header");
-            goto failed;
-        }
-
-        r->method_name = *value;
-
-        for (i = 0; i < sizeof(ngx_http_v3_methods)
-                        / sizeof(ngx_http_v3_methods[0]); i++)
-        {
-            if (value->len == ngx_http_v3_methods[i].name.len
-                && ngx_strncmp(value->data,
-                               ngx_http_v3_methods[i].name.data, value->len)
-                   == 0)
-            {
-                r->method = ngx_http_v3_methods[i].method;
-                break;
-            }
-        }
-
-        for (i = 0; i < value->len; i++) {
-            ch = value->data[i];
-
-            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent invalid method: \"%V\"", value);
-                goto failed;
-            }
-        }
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 method \"%V\" %ui", value, r->method);
-        return NGX_OK;
+    if (ngx_http_v23_pseudo_header(r, name, value) != NGX_OK) {
+        return NGX_ERROR;
     }
-
-    if (name->len == 5 && ngx_strncmp(name->data, ":path", 5) == 0) {
-
-        if (r->uri_start) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":path\" header");
-            goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":path\" header");
-            goto failed;
-        }
-
-        r->uri_start = value->data;
-        r->uri_end = value->data + value->len;
-
-        if (ngx_http_parse_uri(r) != NGX_OK) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid \":path\" header: \"%V\"",
-                          value);
-            goto failed;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 path \"%V\"", value);
-        return NGX_OK;
-    }
-
-    if (name->len == 7 && ngx_strncmp(name->data, ":scheme", 7) == 0) {
-
-        if (r->schema.len) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":scheme\" header");
-            goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":scheme\" header");
-            goto failed;
-        }
-
-        for (i = 0; i < value->len; i++) {
-            ch = value->data[i];
-
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'z') {
-                continue;
-            }
-
-            if (((ch >= '0' && ch <= '9')
-                 || ch == '+' || ch == '-' || ch == '.')
-                && i > 0)
-            {
-                continue;
-            }
-
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid \":scheme\" header: \"%V\"",
-                          value);
-            goto failed;
-        }
-
-        r->schema = *value;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 schema \"%V\"", value);
-        return NGX_OK;
-    }
-
-    if (name->len == 10 && ngx_strncmp(name->data, ":authority", 10) == 0) {
-
-        if (r->host_start) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":authority\" header");
-            goto failed;
-        }
-
-        r->host_start = value->data;
-        r->host_end = value->data + value->len;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http3 authority \"%V\"", value);
-        return NGX_OK;
-    }
-
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                  "client sent unknown pseudo-header \"%V\"", name);
-
-failed:
-
-    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-    return NGX_ERROR;
+    return NGX_OK;
 }
 
 
@@ -928,14 +775,6 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         r->headers_in.server = host;
     }
 
-    if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
-                      sizeof(ngx_table_elt_t))
-        != NGX_OK)
-    {
-        ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return NGX_ERROR;
-    }
-
     return NGX_OK;
 
 failed:
@@ -975,38 +814,11 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.server.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client sent neither \":authority\" nor \"Host\" header");
-        goto failed;
+    if (ngx_http_process_request_header(r) != NGX_OK) {
+        return NGX_ERROR;
     }
 
-    if (r->headers_in.host) {
-        if (r->headers_in.host->value.len != r->headers_in.server.len
-            || ngx_memcmp(r->headers_in.host->value.data,
-                          r->headers_in.server.data,
-                          r->headers_in.server.len)
-               != 0)
-        {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent \":authority\" and \"Host\" headers "
-                          "with different values");
-            goto failed;
-        }
-    }
-
-    if (r->headers_in.content_length) {
-        r->headers_in.content_length_n =
-                            ngx_atoof(r->headers_in.content_length->value.data,
-                                      r->headers_in.content_length->value.len);
-
-        if (r->headers_in.content_length_n == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent invalid \"Content-Length\" header");
-            goto failed;
-        }
-
-    } else {
+    if (!r->headers_in.content_length) {
         b = r->header_in;
         n = b->last - b->pos;
 
@@ -1029,24 +841,7 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         }
     }
 
-    if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
-    }
-
-    if (r->method == NGX_HTTP_TRACE) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent TRACE method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
-    }
-
     return NGX_OK;
-
-failed:
-
-    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-    return NGX_ERROR;
 }
 
 
