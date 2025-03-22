@@ -177,6 +177,8 @@ ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 
 
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
+ngx_int_t ngx_http_v23_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
+    ngx_str_t *value);
 ngx_int_t ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value);
 ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
