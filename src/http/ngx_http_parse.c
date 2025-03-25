@@ -1136,15 +1136,29 @@ ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
         r->invalid_header = 1;
     }
 
-    for (i = 0; i != value->len; i++) {
-        ch = value->data[i];
-
-        if (ch == '\0' || ch == LF || ch == CR) {
+    if (value->len > 0) {
+        if (cscf->reject_leading_trailing_whitespace
+            && (value->data[0] == ' ' || value->data[0] == '\t'
+                || value->data[value->len - 1] == ' '
+                || value->data[value->len - 1] == '\t')) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent header \"%V\" with "
-                          "invalid value", name, value);
+                          " leading or trailing space",
+                          name);
 
             return NGX_ERROR;
+        }
+
+        for (i = 0; i != value->len; i++) {
+            ch = value->data[i];
+
+            if (ch == '\0' || ch == LF || ch == CR) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent header \"%V\" with "
+                              "invalid value", name, value);
+
+                return NGX_ERROR;
+            }
         }
     }
 
