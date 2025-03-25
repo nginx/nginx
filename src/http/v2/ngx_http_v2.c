@@ -3258,8 +3258,7 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
             || (ch >= 'A' && ch <= 'Z'))
         {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid header name: \"%V\"",
-                          &header->name);
+                          "client sent invalid header name");
 
             return NGX_ERROR;
         }
@@ -3273,8 +3272,7 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if (ch == '\0' || ch == LF || ch == CR) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent header \"%V\" with "
-                          "invalid value: \"%V\"",
-                          &header->name, &header->value);
+                          "invalid value", &header->name);
 
             return NGX_ERROR;
         }
