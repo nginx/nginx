@@ -1136,8 +1136,7 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
         if (!ngx_http_field_value_char(value->data[i])) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent header \"%V\" with "
-                          "invalid value: \"%V\"",
-                          name, value);
+                          "invalid value", name);
 
             return NGX_ERROR;
         }
@@ -1179,6 +1178,14 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
     if (tmp.data[0] > 0x20 && tmp.data[tmp.len - 1] > 0x20) {
         /* Fast path: nothing to strip. */
         return NGX_OK;
+    }
+
+    if (cscf->reject_leading_trailing_whitespace) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent header \"%V\" with "
+                      "leading or trailing space",
+                      name);
+        return NGX_ERROR;
     }
 
     /*

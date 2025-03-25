@@ -97,7 +97,6 @@ int ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
 int ngx_http_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg);
 #endif
 
-
 ngx_int_t ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b);
 ngx_int_t ngx_http_parse_uri(ngx_http_request_t *r);
 ngx_int_t ngx_http_parse_complex_uri(ngx_http_request_t *r,
