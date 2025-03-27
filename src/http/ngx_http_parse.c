@@ -2296,7 +2296,8 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
         sw_after_data_almost_done,
         sw_trailer,
         sw_trailer_almost_done,
-        sw_trailer_header,
+        sw_trailer_name,
+        sw_trailer_value,
         sw_trailer_header_almost_done
     } state;
 
@@ -2494,7 +2495,11 @@ before_semi:
             case LF:
                 goto done;
             default:
-                state = sw_trailer_header;
+                if (ngx_http_token_char(ch)) {
+                    state = sw_trailer_name;
+                    break;
+                }
+                goto invalid;
             }
             break;
 
@@ -2504,15 +2509,26 @@ before_semi:
             }
             goto invalid;
 
-        case sw_trailer_header:
-            switch (ch) {
-            case CR:
+        case sw_trailer_name:
+            if (ngx_http_token_char(ch)) {
+                break;
+            }
+            if (ch == ':') {
+                state = sw_trailer_value;
+                break;
+            }
+            goto invalid;
+
+        case sw_trailer_value:
+            if (ngx_http_field_value_char(ch)) {
+                break;
+            }
+            if (ch == CR) {
                 state = sw_trailer_header_almost_done;
                 break;
-            case LF:
-                state = sw_trailer;
             }
-            break;
+
+            /* fall through */
 
         case sw_trailer_header_almost_done:
             if (ch == LF) {
@@ -2553,6 +2569,12 @@ data:
     case sw_chunk_extension_name:
         ctx->length = 4 /* =b CR LF */ + min_length;
         break;
+    case sw_trailer_name:
+        ctx->length = 3 /* : LF LF */;
+        break;
+    case sw_trailer_value:
+        ctx->length = 2 /* LF LF */;
+        break;
     case sw_chunk_extension_value_start:
         ctx->length = 3 /* b CR LF */ + min_length;
         break;
@@ -2575,7 +2597,6 @@ data:
     case sw_trailer_almost_done:
         ctx->length = 1 /* LF */;
         break;
-    case sw_trailer_header:
     case sw_trailer_header_almost_done:
         ctx->length = 2 /* LF LF */;
         break;
