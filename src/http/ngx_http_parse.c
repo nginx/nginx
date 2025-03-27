@@ -2497,6 +2497,8 @@ before_semi:
             default:
                 if (ngx_http_token_char(ch)) {
                     state = sw_trailer_name;
+                    r->lowcase_index = 1;
+                    r->lowcase_header[0] = (ch | 0x20);
                     break;
                 }
                 goto invalid;
@@ -2511,9 +2513,28 @@ before_semi:
 
         case sw_trailer_name:
             if (ngx_http_token_char(ch)) {
+                if (r->lowcase_index < NGX_HTTP_LC_HEADER_LEN) {
+                    /* ASCII uppercase letters become the lowercase ones.
+                     * '-' is unchanged. */
+                    r->lowcase_header[r->lowcase_index++] = (ch | 0x20);
+                }
                 break;
             }
             if (ch == ':') {
+                switch (r->lowcase_index) {
+#define X(v)                                                                   \
+                case sizeof(v "") - 1:                                         \
+                    if (memcmp(r->lowcase_header, v, r->lowcase_index) != 0) { \
+                        goto invalid;                                          \
+                    }                                                          \
+                    break
+                X("transfer-encoding");
+                X("content-length");
+                X("upgrade");
+#undef X
+                default:
+                    break;
+                }
                 state = sw_trailer_value;
                 break;
             }
