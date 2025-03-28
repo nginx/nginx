@@ -186,6 +186,7 @@ valid:
                                    ngx_max(2 * NGX_QUIC_MIN_INITIAL_SIZE,
                                            14720));
         qc->congestion.ssthresh = (size_t) -1;
+        qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
         qc->congestion.recovery_start = ngx_current_msec - 1;
 
         ngx_quic_init_rtt(qc);

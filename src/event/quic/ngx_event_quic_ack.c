@@ -383,12 +383,12 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
         w_cubic = ngx_quic_congestion_cubic(c);
 
         if (cg->window < cg->w_prior) {
-            cg->w_est += (uint64_t) qc->path->mtu * f->plen
+            cg->w_est += (uint64_t) cg->mtu * f->plen
                          * 3 * (10 - NGX_QUIC_CUBIC_BETA)
                          / (10 + NGX_QUIC_CUBIC_BETA) / cg->window;
 
         } else {
-            cg->w_est += (uint64_t) qc->path->mtu * f->plen / cg->window;
+            cg->w_est += (uint64_t) cg->mtu * f->plen / cg->window;
         }
 
         if (w_cubic < cg->w_est) {
@@ -401,10 +401,10 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
         } else if (w_cubic > cg->window) {
 
             if (w_cubic >= cg->window * 3 / 2) {
-                cg->window += qc->path->mtu / 2;
+                cg->window += cg->mtu / 2;
 
             } else {
-                cg->window += (uint64_t) qc->path->mtu * (w_cubic - cg->window)
+                cg->window += (uint64_t) cg->mtu * (w_cubic - cg->window)
                               / cg->window;
             }
 
@@ -459,7 +459,7 @@ ngx_quic_congestion_cubic(ngx_connection_t *c)
      *   w_cubic = C * (t_msec / 1000) ^ 3 * mtu + w_max
      */
 
-    cc = 10000000000ll / (int64_t) qc->path->mtu / MGX_QUIC_CUBIC_C;
+    cc = 10000000000ll / (int64_t) cg->mtu / MGX_QUIC_CUBIC_C;
     w = t * t * t / cc + (int64_t) cg->w_max;
 
     if (w > NGX_MAX_SIZE_T_VALUE) {
@@ -687,8 +687,9 @@ ngx_quic_persistent_congestion(ngx_connection_t *c)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    cg->mtu = qc->path->mtu;
     cg->recovery_start = ngx_quic_oldest_sent_packet(c) - 1;
-    cg->window = qc->path->mtu * 2;
+    cg->window = cg->mtu * 2;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic congestion persistent t:%M win:%uz",
@@ -870,13 +871,14 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
         goto done;
     }
 
+    cg->mtu = qc->path->mtu;
     cg->recovery_start = now;
     cg->w_prior = cg->window;
     /* RFC 9438, 4.7. Fast Convergence */
     cg->w_max = (cg->window < cg->w_max)
                 ? cg->window * (10 + NGX_QUIC_CUBIC_BETA) / 20 : cg->window;
     cg->ssthresh = cg->in_flight * NGX_QUIC_CUBIC_BETA / 10;
-    cg->window = ngx_max(cg->ssthresh, qc->path->mtu * 2);
+    cg->window = ngx_max(cg->ssthresh, cg->mtu * 2);
     cg->w_est = cg->window;
     cg->k = now + ngx_quic_congestion_cubic_time(c);
     cg->idle_start = now;
@@ -914,7 +916,7 @@ ngx_quic_congestion_cubic_time(ngx_connection_t *c)
         return 0;
     }
 
-    cc = 10000000000ll / (int64_t) qc->path->mtu / MGX_QUIC_CUBIC_C;
+    cc = 10000000000ll / (int64_t) cg->mtu / MGX_QUIC_CUBIC_C;
     v = (int64_t) (cg->w_max - cg->window) * cc;
 
     /*
