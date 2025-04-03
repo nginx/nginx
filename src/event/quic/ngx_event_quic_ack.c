@@ -12,8 +12,6 @@
 
 #define NGX_QUIC_MAX_ACK_GAP                 2
 
-/* RFC 9002, 6.1.1. Packet Threshold: kPacketThreshold */
-#define NGX_QUIC_PKT_THR                     3 /* packets */
 /* RFC 9002, 6.1.2. Time Threshold: kGranularity */
 #define NGX_QUIC_TIME_GRANULARITY            1 /* ms */
 
@@ -229,7 +227,7 @@ static ngx_int_t
 ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     uint64_t min, uint64_t max, ngx_quic_ack_stat_t *st)
 {
-    ngx_uint_t              found;
+    ngx_uint_t              found, thr;
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
     ngx_quic_connection_t  *qc;
@@ -244,6 +242,18 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     st->max_pn = NGX_TIMER_INFINITE;
     found = 0;
+
+    if (ctx->reorder_pnum >= min && ctx->reorder_pnum <= max) {
+        thr = (ctx->largest_ack - ctx->reorder_pnum) * 2;
+        ctx->reorder_pnum = NGX_QUIC_UNSET_PN;
+
+        if (qc->packet_threshold < thr) {
+            qc->packet_threshold = thr;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic packet reorder thr:%ui", qc->packet_threshold);
+       }
+    }
 
     q = ngx_queue_head(&ctx->sent);
 
@@ -610,10 +620,17 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                            "quic detect_lost pnum:%uL thr:%M wait:%i level:%d",
                            start->pnum, thr, (ngx_int_t) wait, start->level);
 
-            if ((ngx_msec_int_t) wait > 0
-                && ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR)
-            {
-                break;
+            if ((ngx_msec_int_t) wait > 0) {
+                if (ctx->largest_ack - start->pnum < qc->packet_threshold) {
+                    break;
+                }
+
+                if (ctx->reorder_pnum == NGX_QUIC_UNSET_PN
+                    || (ngx_msec_int_t) (ctx->reorder_time + thr - now) < 0)
+                {
+                    ctx->reorder_pnum = start->pnum;
+                    ctx->reorder_time = start->send_time;
+                }
             }
 
             if ((ngx_msec_int_t) (start->send_time - qc->first_rtt) > 0) {
@@ -978,7 +995,8 @@ ngx_quic_set_lost_timer(ngx_connection_t *c)
                             (f->send_time + ngx_quic_lost_threshold(qc) - now);
 
             if (f->pnum <= ctx->largest_ack) {
-                if (w < 0 || ctx->largest_ack - f->pnum >= NGX_QUIC_PKT_THR) {
+                if (w < 0 || ctx->largest_ack - f->pnum >= qc->packet_threshold)
+                {
                     w = 0;
                 }
 

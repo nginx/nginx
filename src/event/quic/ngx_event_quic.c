@@ -255,6 +255,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         qc->send_ctx[i].largest_ack = NGX_QUIC_UNSET_PN;
         qc->send_ctx[i].largest_range = NGX_QUIC_UNSET_PN;
         qc->send_ctx[i].pending_ack = NGX_QUIC_UNSET_PN;
+        qc->send_ctx[i].reorder_pnum = NGX_QUIC_UNSET_PN;
     }
 
     qc->send_ctx[0].level = ssl_encryption_initial;
@@ -307,6 +308,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc->streams.client_max_streams_uni = qc->tp.initial_max_streams_uni;
     qc->streams.client_max_streams_bidi = qc->tp.initial_max_streams_bidi;
+
+    qc->packet_threshold = NGX_QUIC_INITIAL_PKT_THR;
 
     qc->congestion.window = ngx_min(10 * NGX_QUIC_MIN_INITIAL_SIZE,
                                     ngx_max(2 * NGX_QUIC_MIN_INITIAL_SIZE,
