@@ -5040,7 +5040,8 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
 #ifdef SSL_get_negotiated_group
 
-    int  nid;
+    int          nid;
+    const char  *name;
 
     nid = SSL_get_negotiated_group(c->ssl->connection);
 
@@ -5052,14 +5053,24 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
             return NGX_OK;
         }
 
-        s->len = sizeof("0x0000") - 1;
+#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
+        name = SSL_group_to_name(c->ssl->connection, nid);
+#else
+        name = NULL;
+#endif
 
+        s->len = name ? ngx_strlen(name) : sizeof("0x0000") - 1;
         s->data = ngx_pnalloc(pool, s->len);
         if (s->data == NULL) {
             return NGX_ERROR;
         }
 
-        ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
+        if (name) {
+            ngx_memcpy(s->data, name, s->len);
+
+        } else {
+            ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
+        }
 
         return NGX_OK;
     }
@@ -5079,6 +5090,7 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     int         *curves, n, i, nid;
     u_char      *p;
     size_t       len;
+    const char  *name;
 
     n = SSL_get1_curves(c->ssl->connection, NULL);
 
@@ -5099,7 +5111,13 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-            len += sizeof("0x0000") - 1;
+#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
+            name = SSL_group_to_name(c->ssl->connection, nid);
+#else
+            name = NULL;
+#endif
+
+            len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
 
         } else {
             len += ngx_strlen(OBJ_nid2sn(nid));
@@ -5119,7 +5137,14 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-            p = ngx_sprintf(p, "0x%04xd", nid & 0xffff);
+#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
+            name = SSL_group_to_name(c->ssl->connection, nid);
+#else
+            name = NULL;
+#endif
+
+            p = name ? ngx_cpymem(p, name, ngx_strlen(name))
+                     : ngx_sprintf(p, "0x%04xd", nid & 0xffff);
 
         } else {
             p = ngx_sprintf(p, "%s", OBJ_nid2sn(nid));
