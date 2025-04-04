@@ -214,7 +214,7 @@ ngx_quic_alloc_frame(ngx_connection_t *c)
                        "quic reuse frame n:%ui", qc->nframes);
 #endif
 
-    } else if (qc->nframes < 10000) {
+    } else if (qc->nframes < qc->max_frames) {
         frame = ngx_palloc(c->pool, sizeof(ngx_quic_frame_t));
         if (frame == NULL) {
             return NULL;
