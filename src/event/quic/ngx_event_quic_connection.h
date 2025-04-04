@@ -44,9 +44,6 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 /* RFC 9002, 6.2.2.  Handshakes and New Paths: kInitialRtt */
 #define NGX_QUIC_INITIAL_RTT                 333 /* ms */
 
-/* RFC 9002, 6.1.1. Packet Threshold: kPacketThreshold */
-#define NGX_QUIC_INITIAL_PKT_THR             3
-
 #define NGX_QUIC_UNSET_PN                    (uint64_t) -1
 
 #define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
@@ -207,8 +204,6 @@ struct ngx_quic_send_ctx_s {
     uint64_t                          pending_ack; /* non sent ack-eliciting */
     uint64_t                          largest_range;
     uint64_t                          first_range;
-    uint64_t                          reorder_pnum;
-    ngx_msec_t                        reorder_time;
     ngx_msec_t                        largest_received;
     ngx_msec_t                        ack_delay_start;
     ngx_uint_t                        nranges;
@@ -260,7 +255,6 @@ struct ngx_quic_connection_s {
     ngx_msec_t                        rttvar;
 
     ngx_uint_t                        pto_count;
-    ngx_uint_t                        packet_threshold;
 
     ngx_queue_t                       free_frames;
     ngx_buf_t                        *free_bufs;
