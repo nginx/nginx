@@ -1772,8 +1772,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     fc = r->connection;
 
     /* TODO Optimization: validate headers while parsing. */
-    if (ngx_http_v23_validate_header(r, &header->name, &header->value)
-        != NGX_OK) {
+    if (ngx_http_v23_fixup_header(r, &header->name, &header->value) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto error;
     }
