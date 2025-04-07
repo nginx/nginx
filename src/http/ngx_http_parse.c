@@ -10,6 +10,11 @@
 #include <ngx_http.h>
 
 
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+static inline ngx_int_t ngx_isspace(u_char ch);
+#endif
+
+
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
@@ -1009,6 +1014,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 r->header_start = p;
@@ -1033,6 +1039,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 r->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -1053,6 +1060,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
@@ -1128,11 +1136,21 @@ header_done:
 
 
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
+
+
+static inline ngx_int_t
+ngx_isspace(u_char ch)
+{
+    return ch == ' ' || ch == '\t';
+}
+
+
 ngx_int_t
-ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
+ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
     u_char                     ch;
+    ngx_str_t                  tmp;
     ngx_uint_t                 i;
     ngx_http_core_srv_conf_t  *cscf;
 
@@ -1171,6 +1189,11 @@ ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
         r->invalid_header = 1;
     }
 
+    /* Keep subsequent code from having to special-case empty strings. */
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
     for (i = 0; i != value->len; i++) {
         ch = value->data[i];
 
@@ -1184,6 +1207,52 @@ ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
         }
     }
 
+    tmp = *value;
+
+    if (!ngx_isspace(tmp.data[0])
+        && !ngx_isspace(tmp.data[tmp.len - 1])) {
+        /* Fast path: nothing to strip. */
+        return NGX_OK;
+    }
+
+    /*
+     * Strip trailing whitespace.  Do this first so that
+     * if the string is all whitespace, tmp.data is not a
+     * past-the-end pointer, which cannot be safely passed
+     * to memmove().  After the loop, the string is either
+     * empty or ends with a non-whitespace character.
+     */
+    while (tmp.len && ngx_isspace(tmp.data[tmp.len - 1])) {
+        tmp.len--;
+    }
+
+    /* Strip leading whitespace */
+    if (tmp.len && ngx_isspace(tmp.data[0])) {
+        /*
+         * Last loop guaranteed that 'tmp' does not end with whitespace, and
+         * this check guarantees it is not empty and starts with whitespace.
+         * Therefore, 'tmp' must end with a non-whitespace character, and must
+         * be of length at least 2.  This means that it is safe to keep going
+         * until a non-whitespace character is found.
+         */
+        do {
+            tmp.len--;
+            tmp.data++;
+        } while (ngx_isspace(tmp.data[0]));
+
+        /* Move remaining string to start of buffer. */
+        memmove(value->data, tmp.data, tmp.len);
+    }
+
+    /*
+     * NUL-pad the data, so that if it was NUL-terminated before, it stil is.
+     * At least one byte will have been stripped, so value->data + tmp.len
+     * is not a past-the-end pointer.
+     */
+    memset(value->data + tmp.len, '\0', value->len - tmp.len);
+
+    /* Fix up length and return. */
+    value->len = tmp.len;
     return NGX_OK;
 }
 #endif
