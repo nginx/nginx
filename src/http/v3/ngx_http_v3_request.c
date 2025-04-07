@@ -630,7 +630,7 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
     r->v3_parse->header_limit -= len;
 
-    if (ngx_http_v23_validate_header(r, name, value) != NGX_OK) {
+    if (ngx_http_v23_fixup_header(r, name, value) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
