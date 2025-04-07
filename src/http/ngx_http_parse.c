@@ -2221,7 +2221,6 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
         sw_chunk_extension_unquoted_value,
         sw_chunk_extension_almost_done,
         sw_chunk_data,
-        sw_after_data,
         sw_after_data_almost_done,
         sw_trailer,
         sw_trailer_almost_done,
@@ -2230,10 +2229,6 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     } state;
 
     state = ctx->state;
-
-    if (state == sw_chunk_data && ctx->size == 0) {
-        state = sw_after_data;
-    }
 
     rc = NGX_AGAIN;
 
@@ -2328,10 +2323,11 @@ before_semi:
             break;
 
         case sw_chunk_data:
-            rc = NGX_OK;
-            goto data;
+            if (ctx->size != 0) {
+                rc = NGX_OK;
+                goto data;
+            }
 
-        case sw_after_data:
             switch (ch) {
             case CR:
                 state = sw_after_data_almost_done;
@@ -2509,9 +2505,6 @@ data:
         break;
     case sw_chunk_data:
         ctx->length = min_length;
-        break;
-    case sw_after_data:
-        ctx->length = 7 /* CRLF "0" CRLF CRLF */;
         break;
     case sw_after_data_almost_done:
         ctx->length = 6 /* LF "0" CRLF CRLF */;
