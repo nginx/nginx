@@ -1773,7 +1773,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         }
 
         if (rc == NGX_DECLINED) {
-            ngx_log_error(NGX_LOG_INFO, log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
                           "quic %s transport param id:0x%xL, skipped",
                           (id % 31 == 27) ? "reserved" : "unknown", id);
         }
