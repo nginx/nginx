@@ -10,11 +10,6 @@
 #include <ngx_http.h>
 
 
-#if (NGX_HTTP_V2 || NGX_HTTP_V3)
-static inline ngx_int_t ngx_isspace(u_char ch);
-#endif
-
-
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
@@ -992,13 +987,14 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_start = p;
                 r->header_end = p;
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f) {
+                    r->header_start = p;
+                    state = sw_value;
+                    break;
+                }
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
-            default:
-                r->header_start = p;
-                state = sw_value;
-                break;
             }
             break;
 
@@ -1017,7 +1013,9 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             case LF:
                 r->header_end = p;
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f)
+                    break;
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
@@ -1034,12 +1032,13 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f) {
+                    state = sw_value;
+                    break;
+                }
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
-            default:
-                state = sw_value;
-                break;
             }
             break;
 
@@ -1094,13 +1093,6 @@ header_done:
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
 
 
-static inline ngx_int_t
-ngx_isspace(u_char ch)
-{
-    return ch == ' ' || ch == '\t';
-}
-
-
 ngx_int_t
 ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
@@ -1152,7 +1144,7 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
     for (i = 0; i != value->len; i++) {
         ch = value->data[i];
 
-        if (ch == '\0' || ch == LF || ch == CR) {
+        if (ch < 0x20 ? ch != 0x09 : ch == 0x7f) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent header \"%V\" with "
                           "invalid value: \"%V\"",
@@ -1164,8 +1156,7 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
 
     tmp = *value;
 
-    if (!ngx_isspace(tmp.data[0])
-        && !ngx_isspace(tmp.data[tmp.len - 1])) {
+    if (tmp.data[0] > 0x20 && tmp.data[tmp.len - 1] > 0x20) {
         /* Fast path: nothing to strip. */
         return NGX_OK;
     }
@@ -1176,12 +1167,12 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
      * past-the-end pointer (which cannot be safely passed
      * to memmove())
      */
-    while (tmp.len && ngx_isspace(tmp.data[tmp.len - 1])) {
+    while (tmp.len && tmp.data[tmp.len - 1] <= 0x20) {
         tmp.len--;
     }
 
     /* Strip leading whitespace */
-    if (tmp.len && ngx_isspace(tmp.data[0])) {
+    if (tmp.len && tmp.data[0] <= 0x20) {
         /*
          * Last loop guaranteed that 'tmp' does not end with whitespace, so
          * it's safe to keep going until a non-whitespace character is found.
@@ -1189,7 +1180,7 @@ ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
         do {
             tmp.len--;
             tmp.data++;
-        } while (ngx_isspace(tmp.data[0]));
+        } while (tmp.data[0] <= 0x20);
 
         /* Move remaining string to start of buffer. */
         memmove(value->data, tmp.data, tmp.len);
