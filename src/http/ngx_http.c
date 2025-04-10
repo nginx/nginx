@@ -1845,6 +1845,7 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 #endif
 
     ls->type = addr->opt.type;
+    ls->protocol = addr->opt.protocol;
     ls->backlog = addr->opt.backlog;
     ls->rcvbuf = addr->opt.rcvbuf;
     ls->sndbuf = addr->opt.sndbuf;
