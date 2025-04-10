@@ -95,6 +95,7 @@ ngx_module_t  ngx_http_v2_filter_module = {
 
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
+static ngx_http_output_header_filter_pt  ngx_http_next_early_hints_filter;
 
 
 static ngx_int_t
@@ -605,6 +606,184 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
           || (r->headers_out.content_length_n == 0 && !r->expect_trailers);
 
     frame = ngx_http_v2_create_headers_frame(r, start, pos, fin);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_v2_queue_blocked_frame(h2c, frame);
+
+    stream->queued = 1;
+
+    cln = ngx_http_cleanup_add(r, 0);
+    if (cln == NULL) {
+        return NGX_ERROR;
+    }
+
+    cln->handler = ngx_http_v2_filter_cleanup;
+    cln->data = stream;
+
+    fc->send_chain = ngx_http_v2_send_chain;
+    fc->need_last_buf = 1;
+    fc->need_flush_buf = 1;
+
+    return ngx_http_v2_filter_send(fc, stream);
+}
+
+
+static ngx_int_t
+ngx_http_v2_early_hints_filter(ngx_http_request_t *r)
+{
+    u_char                    *pos, *start, *tmp;
+    size_t                     len, tmp_len;
+    ngx_uint_t                 i;
+    ngx_list_part_t           *part;
+    ngx_table_elt_t           *header;
+    ngx_connection_t          *fc;
+    ngx_http_cleanup_t        *cln;
+    ngx_http_v2_stream_t      *stream;
+    ngx_http_v2_out_frame_t   *frame;
+    ngx_http_v2_connection_t  *h2c;
+
+    stream = r->stream;
+
+    if (!stream) {
+        return ngx_http_next_early_hints_filter(r);
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http2 early hints filter");
+
+    if (r->header_sent || r != r->main) {
+        return NGX_OK;
+    }
+
+    fc = r->connection;
+
+    if (fc->error) {
+        return NGX_ERROR;
+    }
+
+    h2c = stream->connection;
+
+    tmp_len = h2c->table_update ? 1 : 0;
+    tmp_len += 1 + ngx_http_v2_literal_size("418");
+
+    len = 0;
+
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+        if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response header name: \"%V\"",
+                          &header[i].key);
+            return NGX_ERROR;
+        }
+
+        if (header[i].value.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response header value: \"%V: %V\"",
+                          &header[i].key, &header[i].value);
+            return NGX_ERROR;
+        }
+
+        len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
+                 + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
+
+        if (header[i].key.len > tmp_len) {
+            tmp_len = header[i].key.len;
+        }
+
+        if (header[i].value.len > tmp_len) {
+            tmp_len = header[i].value.len;
+        }
+    }
+
+    if (len == 0) {
+        return NGX_OK;
+    }
+
+    len += tmp_len;
+
+    tmp = ngx_palloc(r->pool, tmp_len);
+    pos = ngx_pnalloc(r->pool, len);
+
+    if (pos == NULL || tmp == NULL) {
+        return NGX_ERROR;
+    }
+
+    start = pos;
+
+    if (h2c->table_update) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                       "http2 table size update: 0");
+        *pos++ = (1 << 5) | 0;
+        h2c->table_update = 0;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                   "http2 output header: \":status: %03ui\"",
+                   r->headers_out.status);
+
+    *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_STATUS_INDEX);
+    *pos++ = NGX_HTTP_V2_ENCODE_RAW | 3;
+    pos = ngx_sprintf(pos, "%03ui", (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
+
+    part = &r->headers_out.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].hash == 0) {
+            continue;
+        }
+
+#if (NGX_DEBUG)
+        if (fc->log->log_level & NGX_LOG_DEBUG_HTTP) {
+            ngx_strlow(tmp, header[i].key.data, header[i].key.len);
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, fc->log, 0,
+                           "http2 output header: \"%*s: %V\"",
+                           header[i].key.len, tmp, &header[i].value);
+        }
+#endif
+
+        *pos++ = 0;
+
+        pos = ngx_http_v2_write_name(pos, header[i].key.data,
+                                     header[i].key.len, tmp);
+
+        pos = ngx_http_v2_write_value(pos, header[i].value.data,
+                                      header[i].value.len, tmp);
+    }
+
+    frame = ngx_http_v2_create_headers_frame(r, start, pos, 0);
     if (frame == NULL) {
         return NGX_ERROR;
     }
@@ -1565,6 +1744,9 @@ ngx_http_v2_filter_init(ngx_conf_t *cf)
 {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_v2_header_filter;
+
+    ngx_http_next_early_hints_filter = ngx_http_top_early_hints_filter;
+    ngx_http_top_early_hints_filter = ngx_http_v2_early_hints_filter;
 
     return NGX_OK;
 }

@@ -28,7 +28,8 @@ struct ngx_http_header_val_s {
     ngx_str_t                  key;
     ngx_http_set_header_pt     handler;
     ngx_uint_t                 offset;
-    ngx_uint_t                 always;  /* unsigned  always:1 */
+    unsigned                   always:1;
+    unsigned                   early:1;
 };
 
 
@@ -159,6 +160,7 @@ ngx_module_t  ngx_http_headers_filter_module = {
 
 
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
+static ngx_http_output_header_filter_pt  ngx_http_next_early_hints_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
@@ -241,6 +243,42 @@ ngx_http_headers_filter(ngx_http_request_t *r)
     }
 
     return ngx_http_next_header_filter(r);
+}
+
+
+static ngx_int_t
+ngx_http_early_hints_filter(ngx_http_request_t *r)
+{
+    ngx_str_t                 value;
+    ngx_uint_t                i;
+    ngx_http_header_val_t    *h;
+    ngx_http_headers_conf_t  *conf;
+
+    if (r != r->main) {
+        return ngx_http_next_early_hints_filter(r);
+    }
+
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_headers_filter_module);
+
+    if (conf->headers) {
+        h = conf->headers->elts;
+        for (i = 0; i < conf->headers->nelts; i++) {
+
+            if (!h[i].early) {
+                continue;
+            }
+
+            if (ngx_http_complex_value(r, &h[i].value, &value) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            if (h[i].handler(r, &h[i], &value) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return ngx_http_next_early_hints_filter(r);
 }
 
 
@@ -696,6 +734,9 @@ ngx_http_headers_filter_init(ngx_conf_t *cf)
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_headers_filter;
 
+    ngx_http_next_early_hints_filter = ngx_http_top_early_hints_filter;
+    ngx_http_top_early_hints_filter = ngx_http_early_hints_filter;
+
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_trailers_filter;
 
@@ -804,6 +845,7 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     hv->handler = NULL;
     hv->offset = 0;
     hv->always = 0;
+    hv->early = 0;
 
     if (headers == &hcf->headers) {
         hv->handler = ngx_http_add_header;
@@ -840,13 +882,17 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_OK;
     }
 
-    if (ngx_strcmp(value[3].data, "always") != 0) {
+    if (ngx_strcmp(value[3].data, "always") == 0) {
+        hv->always = 1;
+
+    } else if (ngx_strcmp(value[3].data, "early") == 0) {
+        hv->early = 1;
+
+    } else {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[3]);
         return NGX_CONF_ERROR;
     }
-
-    hv->always = 1;
 
     return NGX_CONF_OK;
 }
