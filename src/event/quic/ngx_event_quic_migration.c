@@ -182,11 +182,12 @@ valid:
 
         ngx_memzero(&qc->congestion, sizeof(ngx_quic_congestion_t));
 
-        qc->congestion.window = ngx_min(10 * qc->tp.max_udp_payload_size,
-                                   ngx_max(2 * qc->tp.max_udp_payload_size,
+        qc->congestion.window = ngx_min(10 * NGX_QUIC_MIN_INITIAL_SIZE,
+                                   ngx_max(2 * NGX_QUIC_MIN_INITIAL_SIZE,
                                            14720));
         qc->congestion.ssthresh = (size_t) -1;
-        qc->congestion.recovery_start = ngx_current_msec;
+        qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
+        qc->congestion.recovery_start = ngx_current_msec - 1;
 
         ngx_quic_init_rtt(qc);
     }
@@ -923,6 +924,8 @@ ngx_quic_send_path_mtu_probe(ngx_connection_t *c, ngx_quic_path_t *path)
 
     frame->level = ssl_encryption_application;
     frame->type = NGX_QUIC_FT_PING;
+    frame->ignore_loss = 1;
+    frame->ignore_congestion = 1;
 
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
