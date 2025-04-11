@@ -14,6 +14,11 @@
     + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
     + 32 /* tag */ + 2 /* colon, space */
 
+#define NGX_SYSLOG_RFC5424_MAX_STR                                                    \
+    NGX_MAX_ERROR_STR + sizeof("<255>1 1970-01-01T00:00:00.000Z ") - 1                   \
+    + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
+    + sizeof("nginx ") - 1 /* appname, space */                                \
+    + 32 /* pid */ + 5 /* -, space */
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);
 static ngx_int_t ngx_syslog_init_peer(ngx_syslog_peer_t *peer);
@@ -158,7 +163,6 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "unknown syslog facility \"%s\"", p + 9);
             return NGX_CONF_ERROR;
-
         } else if (ngx_strncmp(p, "severity=", 9) == 0) {
 
             if (peer->severity != NGX_CONF_UNSET_UINT) {
@@ -215,6 +219,9 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
         } else if (len == 10 && ngx_strncmp(p, "nohostname", 10) == 0) {
             peer->nohostname = 1;
 
+        } else if (len == 7 && ngx_strncmp(p, "rfc5424", 7) == 0) {
+            peer->is_rfc5424 = 1;
+
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "unknown syslog parameter \"%s\"", p);
@@ -250,16 +257,31 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
                        peer->hostname, &peer->tag);
 }
 
+u_char *
+ngx_syslog_add_header_rfc5424(ngx_syslog_peer_t *peer, u_char *buf)
+{
+    ngx_uint_t  pri;
+
+    pri = peer->facility * 8 + peer->severity;
+
+    if (peer->nohostname) {
+        return ngx_sprintf(buf, "<%ui>1 %V - nginx %d - - ", pri, &ngx_cached_syslog_rfc5424_time, ngx_log_pid);
+    }
+
+    return ngx_sprintf(buf, "<%ui>1 %V %V nginx %d - - ", pri, &ngx_cached_syslog_rfc5424_time, peer->hostname, ngx_log_pid);
+}
 
 void
 ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
     size_t len)
 {
-    u_char             *p, msg[NGX_SYSLOG_MAX_STR];
     ngx_uint_t          head_len;
     ngx_syslog_peer_t  *peer;
 
     peer = log->wdata;
+
+    int max_len = (peer->is_rfc5424) ? NGX_SYSLOG_RFC5424_MAX_STR : NGX_SYSLOG_MAX_STR;
+    u_char             *p, msg[max_len];
 
     if (peer->busy) {
         return;
@@ -268,13 +290,13 @@ ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
     peer->busy = 1;
     peer->severity = level - 1;
 
-    p = ngx_syslog_add_header(peer, msg);
+    p = (peer->is_rfc5424) ? ngx_syslog_add_header_rfc5424(peer, msg) : ngx_syslog_add_header(peer, msg);
     head_len = p - msg;
 
     len -= NGX_LINEFEED_SIZE;
 
-    if (len > NGX_SYSLOG_MAX_STR - head_len) {
-        len = NGX_SYSLOG_MAX_STR - head_len;
+    if (len > max_len - head_len) {
+        len = max_len - head_len;
     }
 
     p = ngx_snprintf(p, len, "%s", buf);
