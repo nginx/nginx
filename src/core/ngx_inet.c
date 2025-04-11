@@ -688,10 +688,17 @@ ngx_int_t
 ngx_parse_url(ngx_pool_t *pool, ngx_url_t *u)
 {
     u_char  *p;
-    size_t   len;
+    size_t   len, i;
 
     p = u->url.data;
     len = u->url.len;
+
+    for (i = 0; i < len; ++i) {
+        if (p[i] <= 0x20 || p[i] == 0x7F) {
+            u->err = "Control character in URL (possible CRLF injection attack?)";
+            return NGX_ERROR;
+        }
+    }
 
     if (len >= 5 && ngx_strncasecmp(p, (u_char *) "unix:", 5) == 0) {
         return ngx_parse_unix_domain_url(pool, u);
