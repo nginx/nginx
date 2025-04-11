@@ -13,6 +13,10 @@ case "$CC" in
                 OPENSSL_TARGET=VC-WIN64A
             ;;
 
+            arm64)
+                OPENSSL_TARGET=VC-WIN64-ARM
+            ;;
+
             *)
                 OPENSSL_TARGET=VC-WIN32
             ;;
