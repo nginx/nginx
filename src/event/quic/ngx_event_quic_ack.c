@@ -33,7 +33,8 @@ typedef struct {
 } ngx_quic_ack_stat_t;
 
 
-static ngx_inline ngx_msec_t ngx_quic_lost_threshold(ngx_quic_connection_t *qc);
+static ngx_inline ngx_msec_t ngx_quic_time_threshold(ngx_quic_connection_t *qc);
+static uint64_t ngx_quic_packet_threshold(ngx_quic_send_ctx_t *ctx);
 static void ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     enum ssl_encryption_level_t level, ngx_msec_t send_time);
 static ngx_int_t ngx_quic_handle_ack_frame_range(ngx_connection_t *c,
@@ -55,7 +56,7 @@ static void ngx_quic_lost_handler(ngx_event_t *ev);
 
 /* RFC 9002, 6.1.2. Time Threshold: kTimeThreshold, kGranularity */
 static ngx_inline ngx_msec_t
-ngx_quic_lost_threshold(ngx_quic_connection_t *qc)
+ngx_quic_time_threshold(ngx_quic_connection_t *qc)
 {
     ngx_msec_t  thr;
 
@@ -63,6 +64,29 @@ ngx_quic_lost_threshold(ngx_quic_connection_t *qc)
     thr += thr >> 3;
 
     return ngx_max(thr, NGX_QUIC_TIME_GRANULARITY);
+}
+
+
+static uint64_t
+ngx_quic_packet_threshold(ngx_quic_send_ctx_t *ctx)
+{
+    uint64_t           pkt_thr;
+    ngx_queue_t       *q;
+    ngx_quic_frame_t  *f;
+
+    if (ngx_queue_empty(&ctx->sent)) {
+        return NGX_QUIC_PKT_THR;
+    }
+
+    q = ngx_queue_head(&ctx->sent);
+    f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+    pkt_thr = (ctx->pnum - f->pnum) / 2;
+
+    if (pkt_thr <= NGX_QUIC_PKT_THR) {
+        return NGX_QUIC_PKT_THR;
+    }
+
+    return pkt_thr;
 }
 
 
@@ -569,6 +593,7 @@ ngx_quic_drop_ack_ranges(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 static ngx_int_t
 ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
 {
+    uint64_t                pkt_thr;
     ngx_uint_t              i, nlost;
     ngx_msec_t              now, wait, thr, oldest, newest;
     ngx_queue_t            *q;
@@ -578,7 +603,7 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
 
     qc = ngx_quic_get_connection(c);
     now = ngx_current_msec;
-    thr = ngx_quic_lost_threshold(qc);
+    thr = ngx_quic_time_threshold(qc);
 
 #if (NGX_SUPPRESS_WARN)
     oldest = now;
@@ -595,6 +620,8 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
             continue;
         }
 
+        pkt_thr = ngx_quic_packet_threshold(ctx);
+
         while (!ngx_queue_empty(&ctx->sent)) {
 
             q = ngx_queue_head(&ctx->sent);
@@ -606,12 +633,12 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
 
             wait = start->send_time + thr - now;
 
-            ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic detect_lost pnum:%uL thr:%M wait:%i level:%d",
-                           start->pnum, thr, (ngx_int_t) wait, start->level);
+            ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                  "quic detect_lost pnum:%uL thr:%M pthr:%uL wait:%i level:%d",
+                  start->pnum, thr, pkt_thr, (ngx_int_t) wait, start->level);
 
             if ((ngx_msec_int_t) wait > 0
-                && ctx->largest_ack - start->pnum < NGX_QUIC_PKT_THR)
+                && ctx->largest_ack - start->pnum < pkt_thr)
             {
                 break;
             }
@@ -952,6 +979,7 @@ ngx_quic_congestion_cubic_time(ngx_connection_t *c)
 void
 ngx_quic_set_lost_timer(ngx_connection_t *c)
 {
+    uint64_t                pkt_thr;
     ngx_uint_t              i;
     ngx_msec_t              now;
     ngx_queue_t            *q;
@@ -977,10 +1005,12 @@ ngx_quic_set_lost_timer(ngx_connection_t *c)
             q = ngx_queue_head(&ctx->sent);
             f = ngx_queue_data(q, ngx_quic_frame_t, queue);
             w = (ngx_msec_int_t)
-                            (f->send_time + ngx_quic_lost_threshold(qc) - now);
+                            (f->send_time + ngx_quic_time_threshold(qc) - now);
 
             if (f->pnum <= ctx->largest_ack) {
-                if (w < 0 || ctx->largest_ack - f->pnum >= NGX_QUIC_PKT_THR) {
+                pkt_thr = ngx_quic_packet_threshold(ctx);
+
+                if (w < 0 || ctx->largest_ack - f->pnum >= pkt_thr) {
                     w = 0;
                 }
 
