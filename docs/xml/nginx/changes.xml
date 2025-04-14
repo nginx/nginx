@@ -5,6 +5,77 @@
 <change_log title="nginx">
 
 
+<changes ver="1.27.5" date="2025-04-16">
+
+<change type="feature">
+<para lang="ru">
+контроль перегрузки CUBIC в соединениях QUIC.
+</para>
+<para lang="en">
+CUBIC congestion control in QUIC connections.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+ограничение на максимальный размер кешируемых в разделяемой памяти
+SSL-сессий поднято до 8192.
+</para>
+<para lang="en">
+the maximum size limit for SSL sessions cached in shared memory
+has been raised to 8192.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в директивах grpc_ssl_password_file, proxy_ssl_password_file и
+uwsgi_ssl_password_file
+при загрузке SSL-сертификатов и зашифрованных ключей из переменных;
+ошибка появилась в 1.23.1.
+</para>
+<para lang="en">
+in the "grpc_ssl_password_file", "proxy_ssl_password_file", and
+"uwsgi_ssl_password_file" directives
+when loading SSL certificates and encrypted keys from variables;
+the bug had appeared in 1.23.1.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в переменных $ssl_curve и $ssl_curves
+при использовании подключаемых кривых в OpenSSL.
+</para>
+<para lang="en">
+in the $ssl_curve and $ssl_curves variables
+when using pluggable curves in OpenSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался с musl libc.<br/>
+Спасибо Piotr Sikora.
+</para>
+<para lang="en">
+nginx could not be built with musl libc.<br/>
+Thanks to Piotr Sikora.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Улучшения производительности и исправления в HTTP/3.
+</para>
+<para lang="en">
+Performance improvements and bugfixes in HTTP/3.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.27.4" date="2025-02-05">
 
 <change type="security">
