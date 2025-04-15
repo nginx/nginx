@@ -142,4 +142,15 @@ typedef intptr_t        ngx_flag_t;
 #endif
 
 
+#if (NGX_HAVE_GCC_ATTRIBUTE_NONSTRING)
+
+#define NGX_NONSTRING  __attribute__((nonstring))
+
+#else
+
+#define NGX_NONSTRING
+
+#endif
+
+
 #endif /* _NGX_CONFIG_H_INCLUDED_ */

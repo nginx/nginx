@@ -137,7 +137,7 @@ else
 
     esac
 
-    CC_TEST_FLAGS="$CC_TEST_FLAGS $NGX_CC_OPT"
+    CC_TEST_FLAGS="$CC_TEST_FLAGS $NGX_CC_OPT -Werror"
 
 fi
 
@@ -238,6 +238,17 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     ngx_feature_test="if (__builtin_bswap64(0)) return 1"
     . auto/feature
 
+
+    ngx_feature="gcc __attribute__ nonstring"
+    ngx_feature_name=NGX_HAVE_GCC_ATTRIBUTE_NONSTRING
+    ngx_feature_run=no
+    ngx_feature_incs=
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="static const char str[3] __attribute__((nonstring)) =
+                          \"ABC\";
+                      return !!str[0]"
+    . auto/feature
 
 #    ngx_feature="inline"
 #    ngx_feature_name=
