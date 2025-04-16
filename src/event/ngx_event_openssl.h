@@ -19,7 +19,9 @@
 #include <openssl/bn.h>
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
+#ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
+#endif
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
