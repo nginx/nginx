@@ -83,6 +83,17 @@
 #endif
 
 
+#ifdef OPENSSL_NO_DEPRECATED_3_4
+#define SSL_SESSION_get_time(s)      SSL_SESSION_get_time_ex(s)
+#define SSL_SESSION_set_time(s, t)   SSL_SESSION_set_time_ex(s, t)
+#endif
+
+
+#ifdef OPENSSL_NO_DEPRECATED_3_0
+#define EVP_CIPHER_CTX_cipher(c)     EVP_CIPHER_CTX_get0_cipher(c)
+#endif
+
+
 typedef struct ngx_ssl_ocsp_s   ngx_ssl_ocsp_t;
 
 
