@@ -815,16 +815,6 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 {
     if (c->ssl->handshaked) {
 
-        /*
-         * The majority of browsers do not send the "close notify" alert.
-         * Among them are MSIE, old Mozilla, Netscape 4, Konqueror,
-         * and Links.  And what is more, MSIE ignores the server's alert.
-         *
-         * Opera and recent Mozilla send the alert.
-         */
-
-        c->ssl->no_wait_shutdown = 1;
-
 #if (NGX_HTTP_V2                                                              \
      && defined TLSEXT_TYPE_application_layer_protocol_negotiation)
         {
