@@ -1332,7 +1332,7 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
         return NGX_ERROR;
     }
 
-#ifdef SSL_CTX_set_tmp_dh
+#if (defined SSL_CTX_set_tmp_dh && !defined OPENSSL_NO_DH)
     {
     DH  *dh;
 
