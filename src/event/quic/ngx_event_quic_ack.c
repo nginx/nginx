@@ -22,7 +22,7 @@
 
 /* CUBIC parameters x10 */
 #define NGX_QUIC_CUBIC_BETA                  7
-#define MGX_QUIC_CUBIC_C                     4
+#define NGX_QUIC_CUBIC_C                     4
 
 
 /* send time of ACK'ed packets */
@@ -483,7 +483,7 @@ ngx_quic_congestion_cubic(ngx_connection_t *c)
      *   w_cubic = C * (t_msec / 1000) ^ 3 * mtu + w_max
      */
 
-    cc = 10000000000ll / (int64_t) cg->mtu / MGX_QUIC_CUBIC_C;
+    cc = 10000000000ll / (int64_t) cg->mtu / NGX_QUIC_CUBIC_C;
     w = t * t * t / cc + (int64_t) cg->w_max;
 
     if (w > NGX_MAX_SIZE_T_VALUE) {
@@ -945,7 +945,7 @@ ngx_quic_congestion_cubic_time(ngx_connection_t *c)
         return 0;
     }
 
-    cc = 10000000000ll / (int64_t) cg->mtu / MGX_QUIC_CUBIC_C;
+    cc = 10000000000ll / (int64_t) cg->mtu / NGX_QUIC_CUBIC_C;
     v = (int64_t) (cg->w_max - cg->window) * cc;
 
     /*
