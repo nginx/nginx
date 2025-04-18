@@ -3,8 +3,6 @@
 # Copyright (C) Nginx, Inc.
 
 
-case "$NGX_CC_NAME" in
-
     msvc)
         ngx_makefile=makefile.msvc
         ngx_opt="CPU_OPT=\"$CPU_OPT\" LIBC=$LIBC"
