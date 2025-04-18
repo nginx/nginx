@@ -4,9 +4,9 @@
 
 
     ngx_feature="libxslt"
-    ngx_feature_name=
-    ngx_feature_run=no
     ngx_feature_incs="#include <libxml/parser.h>
+    
+    
                       #include <libxml/tree.h>
                       #include <libxslt/xslt.h>
                       #include <libxslt/xsltInternals.h>
