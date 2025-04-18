@@ -4,8 +4,6 @@
 # Copyright (C) Nginx, Inc.
 
 
-LC_ALL=C
-export LC_ALL
 
 . auto/options
 . auto/init
