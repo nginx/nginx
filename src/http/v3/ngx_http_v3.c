@@ -10,7 +10,6 @@
 #include <ngx_http.h>
 
 
-static void ngx_http_v3_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_v3_cleanup_session(void *data);
 
 
@@ -33,10 +32,6 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     h3c->http_connection = hc;
 
     ngx_queue_init(&h3c->blocked);
-
-    h3c->keepalive.log = c->log;
-    h3c->keepalive.data = c;
-    h3c->keepalive.handler = ngx_http_v3_keepalive_handler;
 
     h3c->table.send_insert_count.log = c->log;
     h3c->table.send_insert_count.data = c;
@@ -62,29 +57,11 @@ failed:
 
 
 static void
-ngx_http_v3_keepalive_handler(ngx_event_t *ev)
-{
-    ngx_connection_t  *c;
-
-    c = ev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 keepalive handler");
-
-    ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
-                                    "keepalive timeout");
-}
-
-
-static void
 ngx_http_v3_cleanup_session(void *data)
 {
     ngx_http_v3_session_t  *h3c = data;
 
     ngx_http_v3_cleanup_table(h3c);
-
-    if (h3c->keepalive.timer_set) {
-        ngx_del_timer(&h3c->keepalive);
-    }
 
     if (h3c->table.send_insert_count.posted) {
         ngx_delete_posted_event(&h3c->table.send_insert_count);

@@ -83,7 +83,6 @@ typedef struct {
     ngx_flag_t                     retry;
     ngx_flag_t                     gso_enabled;
     ngx_flag_t                     disable_active_migration;
-    ngx_msec_t                     handshake_timeout;
     ngx_msec_t                     idle_timeout;
     ngx_str_t                      host_key;
     size_t                         stream_buffer_size;
@@ -93,9 +92,6 @@ typedef struct {
     ngx_int_t                      stream_close_code;
     ngx_int_t                      stream_reject_code_uni;
     ngx_int_t                      stream_reject_code_bidi;
-
-    ngx_quic_init_pt               init;
-    ngx_quic_shutdown_pt           shutdown;
 
     u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];
@@ -122,21 +118,21 @@ struct ngx_quic_stream_s {
     ngx_quic_buffer_t              recv;
     ngx_quic_stream_send_state_e   send_state;
     ngx_quic_stream_recv_state_e   recv_state;
-    unsigned                       cancelable:1;
     unsigned                       fin_acked:1;
 };
 
 
 void ngx_quic_recvmsg(ngx_event_t *ev);
-void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
+ngx_int_t ngx_quic_handshake(ngx_connection_t *c, ngx_quic_conf_t *conf);
+ngx_connection_t *ngx_quic_accept_stream(ngx_connection_t *c);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
-void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
+void ngx_quic_set_app_error(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
-void ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
-    const char *reason);
+ngx_uint_t ngx_quic_get_error(ngx_connection_t *c);
+ngx_int_t ngx_quic_shutdown(ngx_connection_t *c);
+void ngx_quic_reject_streams(ngx_connection_t *c);
 ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 ngx_int_t ngx_quic_shutdown_stream(ngx_connection_t *c, int how);
-void ngx_quic_cancelable_stream(ngx_connection_t *c);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,

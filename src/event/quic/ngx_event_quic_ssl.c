@@ -59,7 +59,7 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 #endif
 
-static ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
+static ngx_int_t ngx_quic_do_handshake(ngx_connection_t *c);
 static ngx_int_t ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level);
 
 
@@ -681,14 +681,15 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    return ngx_quic_handshake(c);
+    return ngx_quic_do_handshake(c);
 }
 
 
 static ngx_int_t
-ngx_quic_handshake(ngx_connection_t *c)
+ngx_quic_do_handshake(ngx_connection_t *c)
 {
     int                     n, sslerr;
+    ngx_int_t               rc;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -734,9 +735,7 @@ ngx_quic_handshake(ngx_connection_t *c)
         if (ngx_quic_keys_available(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA, 0)
             && qc->client_tp_done)
         {
-            if (ngx_quic_init_streams(c) != NGX_OK) {
-                return NGX_ERROR;
-            }
+            goto done;
         }
 
         return NGX_OK;
@@ -745,8 +744,6 @@ ngx_quic_handshake(ngx_connection_t *c)
 #if (NGX_DEBUG)
     ngx_ssl_handshake_log(c);
 #endif
-
-    c->ssl->handshaked = 1;
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
@@ -786,9 +783,19 @@ ngx_quic_handshake(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (ngx_quic_init_streams(c) != NGX_OK) {
+done:
+
+    rc = ngx_ssl_ocsp_validate(c);
+
+    if (rc == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    if (rc == NGX_AGAIN) {
+        return NGX_OK;
+    }
+
+    c->ssl->handshaked = 1;
 
     return NGX_OK;
 }
@@ -891,8 +898,6 @@ ngx_quic_init_connection(ngx_connection_t *c)
     if (ngx_ssl_create_connection(qc->conf->ssl, c, 0) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    c->ssl->no_wait_shutdown = 1;
 
     ssl_conn = c->ssl->connection;
 

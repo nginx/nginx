@@ -809,7 +809,8 @@ ngx_quic_keys_update(ngx_event_t *ev)
     key_len = ngx_quic_ciphers(keys->cipher, &ciphers);
 
     if (key_len == NGX_ERROR) {
-        goto failed;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_KEY_UPDATE_ERROR, "key error");
+        goto done;
     }
 
     read_key.len = key_len;
@@ -840,20 +841,23 @@ ngx_quic_keys_update(ngx_event_t *ev)
 
     for (i = 0; i < (sizeof(seq) / sizeof(seq[0])); i++) {
         if (ngx_quic_hkdf_expand(&seq[i], ciphers.d, c->log) != NGX_OK) {
-            goto failed;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_KEY_UPDATE_ERROR, "key error");
+            goto done;
         }
     }
 
     if (ngx_quic_crypto_init(ciphers.c, &next->read, &read_key, 0, c->log)
         == NGX_ERROR)
     {
-        goto failed;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_KEY_UPDATE_ERROR, "key error");
+        goto done;
     }
 
     if (ngx_quic_crypto_init(ciphers.c, &next->write, &write_key, 1, c->log)
         == NGX_ERROR)
     {
-        goto failed;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_KEY_UPDATE_ERROR, "key error");
+        goto done;
     }
 
     ngx_explicit_memzero(current->read.secret.data,
@@ -867,11 +871,9 @@ ngx_quic_keys_update(ngx_event_t *ev)
     ngx_explicit_memzero(read_key.data, read_key.len);
     ngx_explicit_memzero(write_key.data, write_key.len);
 
-    return;
+done:
 
-failed:
-
-    ngx_quic_close_connection(c, NGX_ERROR);
+    ngx_quic_end_handler(c);
 }
 
 
