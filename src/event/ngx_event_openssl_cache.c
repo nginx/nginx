@@ -8,10 +8,16 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+#ifdef ERR_R_OSSL_STORE_LIB
+#include <openssl/store.h>
+#include <openssl/ui.h>
+#endif
+
 
 #define NGX_SSL_CACHE_PATH    0
 #define NGX_SSL_CACHE_DATA    1
 #define NGX_SSL_CACHE_ENGINE  2
+#define NGX_SSL_CACHE_STORE   3
 
 #define NGX_SSL_CACHE_DISABLED  (ngx_array_t *) (uintptr_t) -1
 
@@ -116,6 +122,8 @@ static void ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
 static void ngx_ssl_cache_node_free(ngx_rbtree_t *rbtree,
     ngx_ssl_cache_node_t *cn);
 
+static ngx_int_t ngx_openssl_cache_init_worker(ngx_cycle_t *cycle);
+
 
 static ngx_command_t  ngx_openssl_cache_commands[] = {
 
@@ -144,7 +152,7 @@ ngx_module_t  ngx_openssl_cache_module = {
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
-    NULL,                                  /* init process */
+    ngx_openssl_cache_init_worker,         /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     NULL,                                  /* exit process */
@@ -444,6 +452,11 @@ ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
     {
         id->type = NGX_SSL_CACHE_ENGINE;
 
+    } else if (index == NGX_SSL_CACHE_PKEY
+        && ngx_strncmp(path->data, "store:", sizeof("store:") - 1) == 0)
+    {
+        id->type = NGX_SSL_CACHE_STORE;
+
     } else {
         if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
             != NGX_OK)
@@ -709,6 +722,51 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
 #else
 
         *err = "loading \"engine:...\" certificate keys is not supported";
+        return NULL;
+
+#endif
+    }
+
+    if (id->type == NGX_SSL_CACHE_STORE) {
+
+#ifdef ERR_R_OSSL_STORE_LIB
+
+        u_char           *uri;
+        OSSL_STORE_CTX   *store;
+        OSSL_STORE_INFO  *info;
+
+        uri = id->data + sizeof("store:") - 1;
+
+        store = OSSL_STORE_open((char *) uri, NULL, NULL, NULL, NULL);
+
+        if (store == NULL) {
+            *err = "OSSL_STORE_open() failed";
+            return NULL;
+        }
+
+        pkey = NULL;
+
+        while (pkey == NULL && !OSSL_STORE_eof(store)) {
+            info = OSSL_STORE_load(store);
+
+            if (info == NULL) {
+                continue;
+            }
+
+            if (OSSL_STORE_INFO_get_type(info) == OSSL_STORE_INFO_PKEY) {
+                pkey = OSSL_STORE_INFO_get1_PKEY(info);
+            }
+
+            OSSL_STORE_INFO_free(info);
+        }
+
+        OSSL_STORE_close(store);
+
+        return pkey;
+
+#else
+
+        *err = "loading \"store:...\" certificate keys is not supported";
         return NULL;
 
 #endif
@@ -1156,4 +1214,21 @@ ngx_ssl_cache_node_insert(ngx_rbtree_node_t *temp,
     node->left = sentinel;
     node->right = sentinel;
     ngx_rbt_red(node);
+}
+
+
+static ngx_int_t
+ngx_openssl_cache_init_worker(ngx_cycle_t *cycle)
+{
+#ifdef ERR_R_OSSL_STORE_LIB
+
+    if (ngx_process != NGX_PROCESS_WORKER) {
+        return NGX_OK;
+    }
+
+    UI_set_default_method(UI_null());
+
+#endif
+
+    return NGX_OK;
 }
