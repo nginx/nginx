@@ -354,6 +354,7 @@ struct ngx_http_upstream_s {
 
     ngx_buf_t                        buffer;
     off_t                            length;
+    off_t                            early_hints_length;
 
     ngx_chain_t                     *out_bufs;
     ngx_chain_t                     *busy_bufs;
