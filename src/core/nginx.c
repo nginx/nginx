@@ -132,6 +132,13 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, shutdown_timeout),
       NULL },
 
+    { ngx_string("shutdown_close_idle_connections"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_core_conf_t, shutdown_close_idle_connections),
+      NULL },  
+
     { ngx_string("working_directory"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
@@ -1115,6 +1122,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
     ccf->master = NGX_CONF_UNSET;
     ccf->timer_resolution = NGX_CONF_UNSET_MSEC;
     ccf->shutdown_timeout = NGX_CONF_UNSET_MSEC;
+    ccf->shutdown_close_idle_connections = NGX_CONF_UNSET;
 
     ccf->worker_processes = NGX_CONF_UNSET;
     ccf->debug_points = NGX_CONF_UNSET;
@@ -1144,6 +1152,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
     ngx_conf_init_msec_value(ccf->shutdown_timeout, 0);
+    ngx_conf_init_value(ccf->shutdown_close_idle_connections, 1);
 
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
