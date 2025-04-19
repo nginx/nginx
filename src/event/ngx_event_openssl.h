@@ -335,6 +335,10 @@ ngx_int_t ngx_ssl_get_client_v_end(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_client_v_remain(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
+ngx_int_t ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_peer_sigalg(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
 
 
 ngx_int_t ngx_ssl_handshake(ngx_connection_t *c);
