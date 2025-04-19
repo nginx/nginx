@@ -112,6 +112,9 @@
 
 #define NGX_QUIC_ERR_CRYPTO(e)  (NGX_QUIC_ERR_CRYPTO_ERROR + (e))
 
+/* The special code to close connection without any response */
+#define NGX_QUIC_ERR_CLOSE                         0x10000000
+
 
 /* 22.3.  QUIC Transport Parameters Registry */
 #define NGX_QUIC_TP_ORIGINAL_DCID                        0x00

@@ -165,9 +165,6 @@ typedef struct {
     uint64_t                          remote_max_streams_bidi;
     uint64_t                          remote_streams_uni;
     uint64_t                          remote_streams_bidi;
-
-    ngx_uint_t                        initialized;
-                                                 /* unsigned  initialized:1; */
 } ngx_quic_streams_t;
 
 
@@ -290,11 +287,9 @@ struct ngx_quic_connection_s {
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
-    ngx_uint_t                        shutdown_code;
-    const char                       *shutdown_reason;
-
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
+    unsigned                          lingering:1;
     unsigned                          closing:1;
     unsigned                          shutdown:1;
     unsigned                          draining:1;
@@ -312,8 +307,9 @@ struct ngx_quic_connection_s {
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
-void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
-void ngx_quic_shutdown_quic(ngx_connection_t *c);
+void ngx_quic_end_handler(ngx_connection_t *c);
+void ngx_quic_set_error(ngx_connection_t *c, ngx_uint_t err,
+    const char *reason);
 
 #if (NGX_DEBUG)
 void ngx_quic_connstate_dbg(ngx_connection_t *c);

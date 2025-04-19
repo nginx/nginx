@@ -101,7 +101,7 @@ ngx_quic_output(ngx_connection_t *c)
 
     if (!qc->send_timer_set) {
         qc->send_timer_set = 1;
-        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+        ngx_add_timer(&qc->close, qc->tp.max_idle_timeout);
     }
 
     ngx_quic_set_lost_timer(c);
@@ -1339,7 +1339,7 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     if (!qc->send_timer_set) {
         qc->send_timer_set = 1;
-        ngx_add_timer(c->read, qc->tp.max_idle_timeout);
+        ngx_add_timer(&qc->close, qc->tp.max_idle_timeout);
     }
 
     ngx_quic_set_lost_timer(c);

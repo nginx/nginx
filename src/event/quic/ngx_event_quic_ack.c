@@ -1091,11 +1091,10 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
     c = ev->data;
 
     if (ngx_quic_detect_lost(c, NULL) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
-        return;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "lost detect error");
     }
 
-    ngx_quic_connstate_dbg(c);
+    ngx_quic_end_handler(c);
 }
 
 
@@ -1148,7 +1147,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
             f = ngx_quic_alloc_frame(c);
             if (f == NULL) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "memory error");
+                goto done;
             }
 
             f->level = ctx->level;
@@ -1156,7 +1157,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
             f->ignore_congestion = 1;
 
             if (ngx_quic_frame_sendto(c, f, 0, qc->path) == NGX_ERROR) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "send error");
+                goto done;
             }
         }
     }
@@ -1165,14 +1168,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
     ngx_quic_set_lost_timer(c);
 
-    ngx_quic_connstate_dbg(c);
+done:
 
-    return;
-
-failed:
-
-    ngx_quic_close_connection(c, NGX_ERROR);
-    return;
+    ngx_quic_end_handler(c);
 }
 
 
