@@ -2196,3 +2196,80 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 
     return NGX_OK;
 }
+
+ngx_int_t
+ngx_conf_check_field_name_and_strip_value(ngx_conf_t *cf,
+    const ngx_str_t *cmd_name, const ngx_str_t *name, ngx_str_t *value)
+{
+    u_char  *out_cursor, *cursor, *end;
+
+    if (ngx_http_valid_header_name(*name) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%V: Invalid HTTP field name",
+                           (ngx_str_t *)cmd_name);
+        return NGX_ERROR;
+    }
+
+    if (ngx_http_conf_forbidden_header(*name)) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%V: cannot set %V as it would break HTTP/1.x "
+                           "framing", (ngx_str_t *)cmd_name,
+                           (ngx_str_t *)name);
+        return NGX_ERROR;
+    }
+
+#define ISSPACE(c) ((c) == ' ' || (c) == '\t')
+    while (value->len > 0) {
+        if (!ISSPACE(value->data[0])) {
+            break;
+        }
+        value->len--;
+        value->data++;
+    }
+
+    while (value->len > 0) {
+        size_t last = value->len - 1;
+        if (!ISSPACE(value->data[last])) {
+            break;
+        }
+        value->len--;
+    }
+
+    end = value->len + value->data;
+    out_cursor = cursor = value->data;
+
+    for ( /* void */; cursor < end; ++cursor) {
+        if (cursor[0] == 0) {
+            goto fail;
+        }
+
+        if (cursor[0] != CR && cursor[0] != LF) {
+            *out_cursor++ = *cursor;
+            continue;
+        }
+
+        int iscr = cursor[0] == CR;
+        if (end - cursor >= iscr + 2 && cursor[iscr] == LF
+             && ISSPACE(cursor[iscr + 1])) {
+            while (out_cursor > value->data && ISSPACE(out_cursor[-1])) {
+                out_cursor--;
+            }
+            cursor += iscr + 2;
+            while (end > cursor && ISSPACE(*cursor)) {
+                cursor++;
+            }
+            *out_cursor++ = ' ';
+            continue;
+        }
+        goto fail;
+    }
+    if (out_cursor < end) {
+        memset(out_cursor, '\0', (size_t)(end - out_cursor));
+        value->len -= (size_t)(end - out_cursor);
+    }
+    return NGX_OK;
+fail:
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "%V: Invalid HTTP field value", (ngx_str_t *)cmd_name);
+    return NGX_ERROR;
+}
