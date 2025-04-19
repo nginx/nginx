@@ -4065,6 +4065,13 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 #endif
 
+#ifdef IPPROTO_MPTCP
+        if (ngx_strcmp(value[n].data, "multipath") == 0) {
+            lsopt.protocol = IPPROTO_MPTCP;
+            continue;
+        }
+#endif
+
         if (ngx_strncmp(value[n].data, "backlog=", 8) == 0) {
             lsopt.backlog = ngx_atoi(value[n].data + 8, value[n].len - 8);
             lsopt.set = 1;
@@ -4351,6 +4358,12 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HTTP_SSL)
         if (lsopt.ssl) {
             return "\"ssl\" parameter is incompatible with \"quic\"";
+        }
+#endif
+
+#ifdef IPPROTO_MPTCP
+        if (lsopt.protocol == IPPROTO_MPTCP) {
+             return "\"multipath\" parameter is incompatible with \"quic\"";
         }
 #endif
 
