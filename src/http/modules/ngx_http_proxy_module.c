@@ -1958,6 +1958,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 if (rc != NGX_OK) {
                     return rc;
                 }
+            } else {
+              h->next = NULL;
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
