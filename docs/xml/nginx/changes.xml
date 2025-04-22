@@ -5,6 +5,42 @@
 <change_log title="nginx">
 
 
+<changes ver="1.28.0" date="2025-04-23">
+
+<change>
+<para lang="ru">
+Стабильная ветка 1.28.x.
+</para>
+<para lang="en">
+1.28.x stable branch.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался gcc 15,
+если использовались модули ngx_http_v2_module и ngx_http_v3_module.
+</para>
+<para lang="en">
+nginx could not be built by gcc 15
+if ngx_http_v2_module or ngx_http_v3_module modules were used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx мог не собираться gcc 14 и новее с оптимизацией -O3 -flto,
+если использовался модуль ngx_http_v3_module.
+</para>
+<para lang="en">
+nginx might not be built by gcc 14 or newer with -O3 -flto optimization
+if ngx_http_v3_module was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.27.5" date="2025-04-16">
 
 <change type="feature">
