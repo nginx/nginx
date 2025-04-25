@@ -55,7 +55,8 @@ static ssize_t ngx_quic_send_segments(ngx_connection_t *c, u_char *buf,
     size_t len, struct sockaddr *sockaddr, socklen_t socklen, size_t segment);
 #endif
 static ssize_t ngx_quic_output_packet(ngx_connection_t *c,
-    ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min);
+    ngx_quic_send_ctx_t *ctx, u_char *data, size_t max, size_t min,
+    ngx_uint_t ack_only);
 static void ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     ngx_quic_header_t *pkt, ngx_quic_path_t *path);
 static ngx_uint_t ngx_quic_get_padding_level(ngx_connection_t *c);
@@ -131,8 +132,7 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
     ngx_memzero(preserved_pnum, sizeof(preserved_pnum));
 #endif
 
-    while (cg->in_flight < cg->window) {
-
+    do {
         p = dst;
 
         len = ngx_quic_path_limit(c, path, path->mtu);
@@ -158,7 +158,8 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
                 return NGX_OK;
             }
 
-            n = ngx_quic_output_packet(c, ctx, p, len, min);
+            n = ngx_quic_output_packet(c, ctx, p, len, min,
+                                       cg->in_flight >= cg->window);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -187,7 +188,8 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
         ngx_quic_commit_send(c);
 
         path->sent += len;
-    }
+
+    } while (cg->in_flight < cg->window);
 
     return NGX_OK;
 }
@@ -315,6 +317,10 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
 
         bytes += f->len;
 
+        if (qc->congestion.in_flight + bytes >= qc->congestion.window) {
+            return 0;
+        }
+
         if (bytes > len * 3) {
             /* require at least ~3 full packets to batch */
             return 1;
@@ -364,7 +370,7 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
         if (len && cg->in_flight + (p - dst) < cg->window) {
 
-            n = ngx_quic_output_packet(c, ctx, p, len, len);
+            n = ngx_quic_output_packet(c, ctx, p, len, len, 0);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -521,7 +527,7 @@ ngx_quic_get_padding_level(ngx_connection_t *c)
 
 static ssize_t
 ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
-    u_char *data, size_t max, size_t min)
+    u_char *data, size_t max, size_t min, ngx_uint_t ack_only)
 {
     size_t                  len, pad, min_payload, max_payload;
     u_char                 *p;
@@ -584,6 +590,10 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
          q = ngx_queue_next(q))
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        if (ack_only && f->type != NGX_QUIC_FT_ACK) {
+            break;
+        }
 
         if (len >= max_payload) {
             break;
