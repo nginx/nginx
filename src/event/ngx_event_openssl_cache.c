@@ -1136,6 +1136,13 @@ ngx_ssl_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t valid,
     ngx_ssl_cache_t     *cache;
     ngx_pool_cleanup_t  *cln;
 
+#if (NGX_DEBUG_PLOCK)
+    pool = ngx_create_child_pool(pool);
+    if (pool == NULL) {
+        return NULL;
+    }
+#endif
+
     cache = ngx_pcalloc(pool, sizeof(ngx_ssl_cache_t));
     if (cache == NULL) {
         return NULL;

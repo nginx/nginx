@@ -4805,7 +4805,11 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_OK;
     }
 
+#if (NGX_DEBUG_PLOCK)
+    keys = ngx_pmcalloc(cf->pool, sizeof(ngx_ssl_ticket_keys_t));
+#else
     keys = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_ticket_keys_t));
+#endif
     if (keys == NULL) {
         return NGX_ERROR;
     }
@@ -4816,6 +4820,12 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
     {
         return NGX_ERROR;
     }
+#if (NGX_DEBUG_PLOCK)
+    keys->keys.elts = ngx_alloc(keys->keys.nalloc * keys->keys.size, cf->log);
+    if (keys->keys.elts == NULL) {
+        return NGX_ERROR;
+    }
+#endif
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (cln == NULL) {

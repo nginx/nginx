@@ -1083,7 +1083,11 @@ ngx_stream_log_set_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_strncmp(value[1].data, "syslog:", 7) == 0) {
 
+#if (NGX_DEBUG_PLOCK)
+        peer = ngx_pmcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
+#else
         peer = ngx_pcalloc(cf->pool, sizeof(ngx_syslog_peer_t));
+#endif
         if (peer == NULL) {
             return NGX_CONF_ERROR;
         }

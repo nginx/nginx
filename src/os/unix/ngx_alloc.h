@@ -16,6 +16,11 @@
 void *ngx_alloc(size_t size, ngx_log_t *log);
 void *ngx_calloc(size_t size, ngx_log_t *log);
 
+void *ngx_kalloc(ngx_uint_t npages, ngx_log_t *log);
+ngx_int_t ngx_kfree(void *p, ngx_uint_t npages, ngx_log_t *log);
+ngx_int_t ngx_kmemlock(void *p, ngx_uint_t npages, ngx_log_t *log);
+ngx_int_t ngx_kmemunlock(void *p, ngx_uint_t npages, ngx_log_t *log);
+
 #define ngx_free          free
 
 

@@ -226,7 +226,11 @@ ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
     ngx_pool_cleanup_t  *cln;
     ngx_ssl_stapling_t  *staple;
 
+#if (NGX_DEBUG_PLOCK)
+    staple = ngx_pmcalloc(cf->pool, sizeof(ngx_ssl_stapling_t));
+#else
     staple = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_stapling_t));
+#endif
     if (staple == NULL) {
         return NGX_ERROR;
     }

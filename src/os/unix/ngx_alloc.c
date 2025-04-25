@@ -88,3 +88,86 @@ ngx_memalign(size_t alignment, size_t size, ngx_log_t *log)
 }
 
 #endif
+
+
+void *
+ngx_kalloc(ngx_uint_t npages, ngx_log_t *log)
+{
+    void    *p;
+    size_t   size;
+
+    size = npages * ngx_pagesize;
+
+    p = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+    if (p == MAP_FAILED) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "mmap(MAP_ANON, %uz) failed", size);
+        return NULL;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0, "mmap: %p:%uz", p, size);
+
+    return p;
+}
+
+
+ngx_int_t
+ngx_kfree(void *p, ngx_uint_t npages, ngx_log_t *log)
+{
+    size_t  size;
+
+    size = npages * ngx_pagesize;
+
+    if (munmap(p, size) == -1) {
+        if (log) {
+            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                          "munmap(%p, %uz) failed", p, size);
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (log) {
+        ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0, "munmap: %p:%uz", p, size);
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_kmemlock(void *p, ngx_uint_t npages, ngx_log_t *log)
+{
+    size_t  size;
+
+    size = npages * ngx_pagesize;
+
+    if (mprotect(p, size, PROT_READ) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "mprotect(%p, %uz) failed", p, size);
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0, "mprotect: %p:%uz", p, size);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_kmemunlock(void *p, ngx_uint_t npages, ngx_log_t *log)
+{
+    size_t  size;
+
+    size = npages * ngx_pagesize;
+
+    if (mprotect(p, size, PROT_READ|PROT_WRITE) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
+                      "mprotect(%p, %uz) failed", p, size);
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, log, 0, "mprotect: %p:%uz", p, size);
+
+    return NGX_OK;
+}

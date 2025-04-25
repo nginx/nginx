@@ -306,6 +306,10 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
         exit(2);
     }
 
+#if (NGX_DEBUG_PLOCK)
+    ngx_plock(cycle->pool);
+#endif
+
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {
             if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
@@ -747,6 +751,9 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 
         if (ngx_terminate) {
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
+#if (NGX_DEBUG_PLOCK)
+            ngx_punlock(cycle->pool);
+#endif
             ngx_worker_process_exit(cycle);
         }
 
@@ -759,6 +766,10 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             if (!ngx_exiting) {
                 ngx_cycle_exiting(cycle, 1);
                 ngx_set_cycle(cycle);
+
+#if (NGX_DEBUG_PLOCK)
+                ngx_punlock(cycle->pool);
+#endif
 
                 ngx_set_shutdown_timer(cycle);
                 ngx_close_listening_sockets(cycle);
@@ -791,6 +802,10 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         /* fatal */
         exit(2);
     }
+
+#if (NGX_DEBUG_PLOCK)
+    ngx_plock(cycle->pool);
+#endif
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
@@ -1258,6 +1273,10 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+#if (NGX_DEBUG_PLOCK)
+    ngx_plock(cycle->pool);
+#endif
+
     worker_processes = ccf->worker_processes;
 
     *cycle->count = worker_processes;
@@ -1298,6 +1317,9 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
         while (first_cycle != cycle && *first_cycle->count == 0) {
             next_cycle = (ngx_cycle_t *) first_cycle->next_cycle;
 
+#if (NGX_DEBUG_PLOCK)
+            ngx_punlock(first_cycle->pool);
+#endif
             ngx_free_cycle(first_cycle);
 
             ngx_destroy_pool(first_cycle->pool);
@@ -1306,6 +1328,9 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
         }
 
         if (first_cycle == cycle) {
+#if (NGX_DEBUG_PLOCK)
+            ngx_punlock(first_cycle->pool);
+#endif
 
             if (ngx_exiting && *cycle->count == 0) {
                 ngx_master_process_exit(cycle);
@@ -1336,6 +1361,10 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
 
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
 
+#if (NGX_DEBUG_PLOCK)
+            ngx_punlock(cycle->pool);
+#endif
+
             cycle = ngx_init_cycle(cycle);
             if (cycle == NULL) {
                 cycle = (ngx_cycle_t *) ngx_cycle;
@@ -1346,6 +1375,11 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
 
             *cycle->count = worker_processes;
             ngx_cycle->next_cycle = cycle;
+
+#if (NGX_DEBUG_PLOCK)
+            ngx_plock(ngx_cycle->pool);
+            ngx_plock(cycle->pool);
+#endif
 
             ngx_cycle = cycle;
 

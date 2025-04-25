@@ -65,7 +65,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
+#if (NGX_DEBUG_PLOCK)
+    pool = ngx_create_lockable_pool(log);
+#else
     pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
+#endif
     if (pool == NULL) {
         return NULL;
     }
@@ -530,12 +534,20 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 #endif
 
+#if (NGX_DEBUG_PLOCK)
+    cycle->ctx = ngx_pmcalloc(pool, n * sizeof(void *));
+#else
     cycle->ctx = ngx_pcalloc(pool, n * sizeof(void *));
+#endif
     if (cycle->ctx == NULL) {
         goto failed;
     }
 
+#if (NGX_DEBUG_PLOCK)
+    cycle->count = ngx_pmcalloc(pool, sizeof(ngx_atomic_t));
+#else
     cycle->count = ngx_pcalloc(pool, sizeof(ngx_atomic_t));
+#endif
     if (cycle->count == NULL) {
         goto failed;
     }
