@@ -383,13 +383,26 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     c->uniq = of.uniq;
     c->length = of.size;
     c->fs_size = (of.fs_size + cache->bsize - 1) / cache->bsize;
+    if (of.fs_size > clcf->directio) { /* here directio is the size from conf */
+        c->file.directio = 1;          /* here a single bit flag */
+    }
+    /* it isn't entirely correct to use the fs_size because the size of the body
+     * without the cache headers might be lower than the configured threshold of
+     * directio, but the body_start isn't the actual body start in the cache
+     * file if the cache object was just created with ngx_http_file_cache_new()
+     */
 
-    c->buf = ngx_create_temp_buf(r->pool, c->body_start);
+    c->buf = ngx_create_temp_buf(r->pool, c->body_start); 
+    /* We read proxy_buffer_size (4k default) on first run, why not always*/
     if (c->buf == NULL) {
         return NGX_ERROR;
     }
 
     return ngx_http_file_cache_read(r, c);
+    /* Will, in fact, read the cache file only up to body_start, i.e. only the 
+     * metadata in the top of the cache file. The cache file body will be read 
+     * north of ngx_http_cache_send() in ngx_output_chain_copy_buf()
+     */
 
 done:
 
@@ -1663,6 +1676,7 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->file->fd = c->file.fd;
     b->file->name = c->file.name;
     b->file->log = r->connection->log;
+    b->file->directio = c->file.directio;
 
     out.buf = b;
     out.next = NULL;
