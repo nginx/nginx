@@ -956,13 +956,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch == LF) {
-                r->header_name_end = p;
-                r->header_start = p;
-                r->header_end = p;
-                goto done;
-            }
-
             if (!ngx_http_non_alnum_dash_header_char(ch)) {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
