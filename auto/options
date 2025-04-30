@@ -402,6 +402,7 @@ $0: warning: the \"--with-sha1-asm\" option is deprecated"
 
         --with-zlib=*)                   ZLIB="$value"              ;;
         --with-zlib-opt=*)               ZLIB_OPT="$value"          ;;
+        --with-zlib-conf-opt=*)          ZLIB_CONF_OPT="$value"     ;;
         --with-zlib-asm=*)               ZLIB_ASM="$value"          ;;
 
         --with-libatomic)                NGX_LIBATOMIC=YES          ;;
