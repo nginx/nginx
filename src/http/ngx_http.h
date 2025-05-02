@@ -152,6 +152,7 @@ ngx_int_t ngx_http_read_client_request_body(ngx_http_request_t *r,
 ngx_int_t ngx_http_read_unbuffered_request_body(ngx_http_request_t *r);
 
 ngx_int_t ngx_http_send_header(ngx_http_request_t *r);
+ngx_int_t ngx_http_send_early_hints(ngx_http_request_t *r);
 ngx_int_t ngx_http_special_response_handler(ngx_http_request_t *r,
     ngx_int_t error);
 ngx_int_t ngx_http_filter_finalize_request(ngx_http_request_t *r,
@@ -191,6 +192,7 @@ extern ngx_str_t  ngx_http_html_default_types[];
 
 
 extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
+extern ngx_http_output_header_filter_pt  ngx_http_top_early_hints_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 extern ngx_http_request_body_filter_pt   ngx_http_top_request_body_filter;
 
