@@ -142,6 +142,10 @@ static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_pid(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+#if (NGX_THREADS)
+static ngx_int_t ngx_http_variable_tid(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+#endif
 static ngx_int_t ngx_http_variable_msec(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_time_iso8601(ngx_http_request_t *r,
@@ -370,6 +374,11 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("pid"), NULL, ngx_http_variable_pid,
       0, 0, 0 },
 
+#if (NGX_THREADS)
+    { ngx_string("tid"), NULL, ngx_http_variable_tid,
+      0, 0, 0 },
+#endif
+
     { ngx_string("msec"), NULL, ngx_http_variable_msec,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
@@ -418,7 +427,7 @@ ngx_http_variable_value_t  ngx_http_variable_true_value =
     ngx_http_variable("1");
 
 
-static ngx_uint_t  ngx_http_variable_depth = 100;
+static ngx_thread_local ngx_uint_t  ngx_http_variable_depth = 100;
 
 
 ngx_http_variable_t *
@@ -2449,6 +2458,31 @@ ngx_http_variable_pid(ngx_http_request_t *r,
 
     return NGX_OK;
 }
+
+
+#if (NGX_THREADS)
+
+static ngx_int_t
+ngx_http_variable_tid(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, NGX_INT64_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, NGX_TID_T_FMT, ngx_tid) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t

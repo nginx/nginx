@@ -22,7 +22,7 @@
 ngx_int_t ngx_event_timer_init(ngx_log_t *log);
 ngx_msec_t ngx_event_find_timer(void);
 void ngx_event_expire_timers(void);
-ngx_int_t ngx_event_no_timers_left(void);
+ngx_int_t ngx_event_no_timers_left(ngx_cycle_t *cycle);
 
 
 extern ngx_thread_local ngx_rbtree_t  ngx_event_timer_rbtree;
@@ -44,14 +44,18 @@ ngx_event_del_timer(ngx_event_t *ev)
 #endif
 
     ev->timer_set = 0;
+
+    if (!ev->cancelable) {
+        ngx_get_cyclex(ev->cycle)->timers_n--;
+    }
 }
 
 
 static ngx_inline void
 ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
-    ngx_msec_t      key;
-    ngx_msec_int_t  diff;
+    ngx_msec_t       key;
+    ngx_msec_int_t   diff;
 
     key = ngx_current_msec + timer;
 
@@ -84,6 +88,10 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
 
     ngx_save_cycle(ev->cycle);
+
+    if (!ev->cancelable) {
+        ngx_get_cyclex(ev->cycle)->timers_n++;
+    }
 
     ev->timer_set = 1;
 }

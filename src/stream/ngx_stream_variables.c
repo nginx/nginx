@@ -46,6 +46,10 @@ static ngx_int_t ngx_stream_variable_hostname(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_variable_pid(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
+#if (NGX_THREADS)
+static ngx_int_t ngx_stream_variable_tid(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
+#endif
 static ngx_int_t ngx_stream_variable_msec(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_variable_time_iso8601(ngx_stream_session_t *s,
@@ -119,6 +123,11 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
 
     { ngx_string("pid"), NULL, ngx_stream_variable_pid,
       0, 0, 0 },
+
+#if (NGX_THREADS)
+    { ngx_string("tid"), NULL, ngx_stream_variable_tid,
+      0, 0, 0 },
+#endif
 
     { ngx_string("msec"), NULL, ngx_stream_variable_msec,
       0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
@@ -886,6 +895,31 @@ ngx_stream_variable_pid(ngx_stream_session_t *s,
 
     return NGX_OK;
 }
+
+
+#if (NGX_THREADS)
+
+static ngx_int_t
+ngx_stream_variable_tid(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(s->connection->pool, NGX_INT64_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, NGX_TID_T_FMT, ngx_tid) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static ngx_int_t

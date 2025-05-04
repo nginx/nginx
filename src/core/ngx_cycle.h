@@ -32,7 +32,8 @@ struct ngx_shm_zone_s {
     ngx_shm_zone_init_pt      init;
     void                     *tag;
     void                     *sync;
-    ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
+    unsigned                  noreuse:1;
+    unsigned                  remain:1;
 };
 
 
@@ -63,6 +64,8 @@ struct ngx_cycle_s {
     ngx_uint_t                connection_n;
     ngx_uint_t                ctx_n;
 
+    ngx_atomic_t             *count;
+    volatile ngx_cycle_t     *next_cycle;
     ngx_cycle_t              *old_cycle;
 
     ngx_str_t                 conf_file;
@@ -96,12 +99,17 @@ typedef struct {
     ngx_uint_t                free_connection_n;
     ngx_uint_t                reusable_connections_n;
     ngx_uint_t                listen_connection_n;
+
+    ngx_uint_t                exiting; /* unsigned  exiting:1; */
 } ngx_cyclex_t;
 
 
 typedef struct {
     ngx_flag_t                daemon;
     ngx_flag_t                master;
+#if (NGX_THREADS)
+    ngx_flag_t                threads;
+#endif
 
     ngx_msec_t                timer_resolution;
     ngx_msec_t                shutdown_timeout;
@@ -138,8 +146,8 @@ typedef struct {
 #define ngx_is_init_cycle(cycle)        (cycle->conf_ctx == NULL)
 
 #define ngx_cycle_ctx_add(cf)           ((cf)->cycle->ctx_n++)
-#define ngx_get_cycle_ctx(cycle, n)     ((cycle)->ctx[0][n])
-#define ngx_set_cycle_ctx(cycle, n, d)  (cycle)->ctx[0][n] = (d)
+#define ngx_get_cycle_ctx(cycle, n)     ((cycle)->ctx[ngx_thread][n])
+#define ngx_set_cycle_ctx(cycle, n, d)  (cycle)->ctx[ngx_thread][n] = (d)
 
 #define ngx_get_cyclex(cycle)                                                 \
     ((ngx_cyclex_t *) ngx_get_cycle_ctx(cycle, 0))
@@ -150,10 +158,17 @@ typedef struct {
 #define ngx_set_cycle(cycle)                                                  \
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, (cycle)->log, 0,                      \
                    "cycle p:%p", cycle);                                      \
+    ngx_exiting = ngx_get_cyclex(cycle)->exiting;                             \
     ngx_cycle = cycle
+
+#define ngx_cycle_exiting(cycle, ex)                                          \
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, (cycle)->log, 0,                      \
+                   "cycle p:%p exiting:%ui", cycle, (ngx_uint_t) (ex));       \
+    ngx_get_cyclex(cycle)->exiting = (ex)
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
+void ngx_free_cycle(ngx_cycle_t *cycle);
 ngx_int_t ngx_init_cyclex(ngx_cycle_t *cycle);
 void ngx_free_cyclex(ngx_cycle_t *cycle);
 ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
@@ -168,7 +183,7 @@ ngx_shm_zone_t *ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name,
 void ngx_set_shutdown_timer(ngx_cycle_t *cycle);
 
 
-extern volatile ngx_cycle_t  *ngx_cycle;
+extern ngx_thread_local       ngx_cycle_t  *ngx_cycle;
 extern ngx_array_t            ngx_old_cycles;
 extern ngx_module_t           ngx_core_module;
 extern ngx_uint_t             ngx_test_config;

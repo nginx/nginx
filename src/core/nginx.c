@@ -55,6 +55,15 @@ static ngx_command_t  ngx_core_commands[] = {
       offsetof(ngx_core_conf_t, master),
       NULL },
 
+#if (NGX_THREADS)
+    { ngx_string("threads"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_core_conf_t, threads),
+      NULL },
+#endif
+
     { ngx_string("timer_resolution"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -230,6 +239,9 @@ main(int argc, char *const *argv)
 #endif
 
     ngx_pid = ngx_getpid();
+#if (NGX_THREADS)
+    ngx_tid = NGX_INVALID_TID;
+#endif
     ngx_parent = ngx_getppid();
 
     log = ngx_log_init(ngx_prefix, ngx_error_log);
@@ -336,6 +348,12 @@ main(int argc, char *const *argv)
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+#if (NGX_THREADS)
+    if (ccf->threads) {
+        ngx_process = NGX_PROCESS_THREAD;
+
+    } else
+#endif
     if (ccf->master && ngx_process == NGX_PROCESS_SINGLE) {
         ngx_process = NGX_PROCESS_MASTER;
     }
@@ -379,6 +397,11 @@ main(int argc, char *const *argv)
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
         ngx_single_process_cycle(cycle);
+
+#if (NGX_THREADS)
+    } else if (ngx_process == NGX_PROCESS_THREAD) {
+        ngx_master_thread_cycle(cycle);
+#endif
 
     } else {
         ngx_master_process_cycle(cycle);
@@ -1113,6 +1136,9 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 
     ccf->daemon = NGX_CONF_UNSET;
     ccf->master = NGX_CONF_UNSET;
+#if (NGX_THREADS)
+    ccf->threads = NGX_CONF_UNSET;
+#endif
     ccf->timer_resolution = NGX_CONF_UNSET_MSEC;
     ccf->shutdown_timeout = NGX_CONF_UNSET_MSEC;
 
@@ -1142,6 +1168,9 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
+#if (NGX_THREADS)
+    ngx_conf_init_value(ccf->threads, 0);
+#endif
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
     ngx_conf_init_msec_value(ccf->shutdown_timeout, 0);
 

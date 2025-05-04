@@ -408,6 +408,14 @@ ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_uint_t size)
 
     cln = NULL;
 
+    if (ngx_regex_match_data == NULL) {
+        cln = ngx_pool_cleanup_add(ngx_get_cyclex(ngx_cycle)->pool, 0);
+        if (cln == NULL) {
+            rc = NGX_ERROR;
+            goto failed;
+        }
+    }
+
     if (ngx_regex_match_data == NULL
         || size > ngx_regex_match_data_size)
     {

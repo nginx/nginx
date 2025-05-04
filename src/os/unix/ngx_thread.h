@@ -34,7 +34,9 @@ ngx_int_t ngx_thread_cond_wait(ngx_thread_cond_t *cond, ngx_thread_mutex_t *mtx,
     ngx_log_t *log);
 
 
-#define ngx_thread_local
+#define ngx_thread_local  __thread
+
+#define NGX_INVALID_TID       -1
 
 
 #if (NGX_LINUX)

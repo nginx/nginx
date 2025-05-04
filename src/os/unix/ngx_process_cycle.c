@@ -27,11 +27,33 @@ static void ngx_cache_manager_process_cycle(ngx_cycle_t *cycle, void *data);
 static void ngx_cache_manager_process_handler(ngx_event_t *ev);
 static void ngx_cache_loader_process_handler(ngx_event_t *ev);
 
+#if (NGX_THREADS)
+static void ngx_start_worker_threads(ngx_cycle_t *cycle, ngx_int_t n);
+static void ngx_start_cache_manager_threads(ngx_cycle_t *cycle);
+static void ngx_signal_worker_threads(ngx_cycle_t *cycle, int signo);
+static void ngx_worker_thread_cycle(ngx_cycle_t *cycle, void *data);
+static void ngx_worker_thread_init(ngx_cycle_t *cycle, ngx_int_t worker);
+static void ngx_worker_thread_exit(ngx_cycle_t *cycle);
+static ngx_int_t ngx_worker_cycle_init(ngx_cycle_t *cycle);
+static void ngx_worker_cycle_exit(ngx_cycle_t *cycle);
+static void ngx_thread_channel_handler(ngx_event_t *ev);
+#endif
+
 
 ngx_uint_t    ngx_process;
-ngx_uint_t    ngx_worker;
 ngx_pid_t     ngx_pid;
 ngx_pid_t     ngx_parent;
+
+ngx_thread_local ngx_uint_t  ngx_worker;
+ngx_thread_local ngx_uint_t  ngx_exiting;
+ngx_thread_local ngx_uint_t  ngx_thread;
+
+#if (NGX_THREADS)
+ngx_thread_local ngx_tid_t   ngx_tid;
+ngx_thread_local ngx_uint_t  ngx_thread_quit;
+ngx_thread_local ngx_uint_t  ngx_thread_exiting;
+ngx_thread_local ngx_uint_t  ngx_thread_reconfigure;
+#endif
 
 sig_atomic_t  ngx_reap;
 sig_atomic_t  ngx_sigio;
@@ -39,7 +61,6 @@ sig_atomic_t  ngx_sigalrm;
 sig_atomic_t  ngx_terminate;
 sig_atomic_t  ngx_quit;
 sig_atomic_t  ngx_debug_quit;
-ngx_uint_t    ngx_exiting;
 sig_atomic_t  ngx_reconfigure;
 sig_atomic_t  ngx_reopen;
 
@@ -320,7 +341,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
                 continue;
             }
 
-            ngx_cycle = cycle;
+            ngx_set_cycle(cycle);
         }
 
         if (ngx_reopen) {
@@ -684,6 +705,8 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     ngx_exit_log.next = NULL;
     ngx_exit_log.writer = NULL;
 
+    /* XXX */
+
     ngx_exit_cycle.log = &ngx_exit_log;
     /* XXX
     ngx_exit_cycle.files = ngx_cycle->files;
@@ -712,7 +735,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
     for ( ;; ) {
 
         if (ngx_exiting) {
-            if (ngx_event_no_timers_left() == NGX_OK) {
+            if (ngx_event_no_timers_left(cycle) == NGX_OK) {
                 ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "exiting");
                 ngx_worker_process_exit(cycle);
             }
@@ -734,7 +757,9 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             ngx_setproctitle("worker process is shutting down");
 
             if (!ngx_exiting) {
-                ngx_exiting = 1;
+                ngx_cycle_exiting(cycle, 1);
+                ngx_set_cycle(cycle);
+
                 ngx_set_shutdown_timer(cycle);
                 ngx_close_listening_sockets(cycle);
                 ngx_close_idle_connections(cycle);
@@ -930,7 +955,7 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
     if (ngx_add_channel_event(cycle, ngx_channel, NGX_READ_EVENT,
                               ngx_channel_handler)
-        == NGX_ERROR)
+        == NULL)
     {
         /* fatal */
         exit(2);
@@ -1196,3 +1221,515 @@ ngx_cache_loader_process_handler(ngx_event_t *ev)
 
     exit(0);
 }
+
+
+#if (NGX_THREADS)
+
+void
+ngx_master_thread_cycle(ngx_cycle_t *cycle)
+{
+    sigset_t           set;
+    ngx_uint_t         worker_processes;
+    struct itimerval   itv;
+    ngx_msec_t         delay;
+    ngx_cycle_t       *first_cycle, *next_cycle;
+    ngx_core_conf_t   *ccf;
+
+    if (ngx_set_environment(cycle, NULL) == NULL) {
+        /* fatal */
+        exit(2);
+    }
+
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
+    sigaddset(&set, SIGALRM);
+    sigaddset(&set, SIGIO);
+    sigaddset(&set, SIGINT);
+    sigaddset(&set, ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
+    sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+
+    if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed");
+    }
+
+    sigemptyset(&set);
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    worker_processes = ccf->worker_processes;
+
+    *cycle->count = worker_processes;
+    ngx_start_worker_threads(cycle, ccf->worker_processes);
+    ngx_start_cache_manager_threads(cycle);
+
+    first_cycle = cycle;
+
+    delay = 0;
+
+    for ( ;; ) {
+        if (delay) {
+            if (ngx_sigalrm) {
+                delay *= 2;
+                ngx_sigalrm = 0;
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                           "thread cycle: %M", delay);
+
+            itv.it_interval.tv_sec = 0;
+            itv.it_interval.tv_usec = 0;
+            itv.it_value.tv_sec = delay / 1000;
+            itv.it_value.tv_usec = (delay % 1000 ) * 1000;
+
+            if (setitimer(ITIMER_REAL, &itv, NULL) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                              "setitimer() failed");
+            }
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "sigsuspend");
+
+        sigsuspend(&set);
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "wake up");
+
+        while (first_cycle != cycle && *first_cycle->count == 0) {
+            next_cycle = (ngx_cycle_t *) first_cycle->next_cycle;
+
+            ngx_free_cycle(first_cycle);
+
+            ngx_destroy_pool(first_cycle->pool);
+
+            first_cycle = next_cycle;
+        }
+
+        if (first_cycle == cycle) {
+
+            if (ngx_exiting && *cycle->count == 0) {
+                ngx_master_process_exit(cycle);
+            }
+
+            if (!ngx_exiting) {
+                delay = 0;
+            }
+        }
+
+        if (ngx_terminate) {
+            exit(0);
+        }
+
+        if (ngx_quit) {
+            ngx_quit = 0;
+            ngx_exiting = 1;
+
+            delay = 100;
+
+            ngx_signal_worker_threads(cycle,
+                                      ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+            continue;
+        }
+
+        if (ngx_reconfigure) {
+            ngx_reconfigure = 0;
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
+
+            cycle = ngx_init_cycle(cycle);
+            if (cycle == NULL) {
+                cycle = (ngx_cycle_t *) ngx_cycle;
+                continue;
+            }
+
+            delay = 1000;
+
+            *cycle->count = worker_processes;
+            ngx_cycle->next_cycle = cycle;
+
+            ngx_cycle = cycle;
+
+            ngx_signal_worker_threads(cycle,
+                                      ngx_signal_value(NGX_RECONFIGURE_SIGNAL));
+        }
+    }
+}
+
+
+static void
+ngx_start_worker_threads(ngx_cycle_t *cycle, ngx_int_t n)
+{
+    ngx_int_t  i;
+
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start worker threads");
+
+    for (i = 0; i < n; i++) {
+
+        ngx_spawn_thread(cycle, ngx_worker_thread_cycle,
+                          (void *) (intptr_t) i, "worker thread");
+
+        /* XXX */
+        ngx_pass_open_channel(cycle);
+    }
+}
+
+
+static void
+ngx_start_cache_manager_threads(ngx_cycle_t *cycle)
+{
+    ngx_uint_t    i, manager, loader;
+    ngx_path_t  **path;
+
+    manager = 0;
+    loader = 0;
+
+    path = ngx_cycle->paths.elts;
+    for (i = 0; i < ngx_cycle->paths.nelts; i++) {
+
+        if (path[i]->manager) {
+            manager = 1;
+        }
+
+        if (path[i]->loader) {
+            loader = 1;
+        }
+    }
+
+    if (manager == 0) {
+        return;
+    }
+    /* XXX
+    ngx_spawn_thread(cycle, ngx_cache_manager_thread_cycle,
+                      &ngx_cache_manager_ctx, "cache manager thread");
+*/
+
+    ngx_pass_open_channel(cycle);
+
+    if (loader == 0) {
+        return;
+    }
+/* XXX
+    ngx_spawn_thread(cycle, ngx_cache_manager_thread_cycle,
+                      &ngx_cache_loader_ctx, "cache loader thread");
+*/
+    ngx_pass_open_channel(cycle);
+}
+
+
+static void
+ngx_signal_worker_threads(ngx_cycle_t *cycle, int signo)
+{
+    ngx_int_t      i;
+    ngx_channel_t  ch;
+
+    ngx_memzero(&ch, sizeof(ngx_channel_t));
+
+    switch (signo) {
+
+    case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
+        ch.command = NGX_CMD_QUIT;
+        break;
+
+    case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
+        ch.command = NGX_CMD_RECONFIGURE;
+        break;
+
+    default:
+        return;
+    }
+
+    ch.fd = -1;
+
+    for (i = 0; i < ngx_last_thread; i++) {
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                       "thread: %i a:%d", i, (int) ngx_threads[i].active);
+
+        if (!ngx_threads[i].active) {
+            continue;
+        }
+
+        (void) ngx_write_channel(ngx_threads[i].channel[0],
+                                 &ch, sizeof(ngx_channel_t), cycle->log);
+    }
+}
+
+
+static void
+ngx_worker_thread_cycle(ngx_cycle_t *cycle, void *data)
+{
+    ngx_int_t worker = (intptr_t) data;
+
+    ngx_cycle_t       *first_cycle, *next_cycle;
+    ngx_connection_t  *ch;
+
+    ngx_cycle = cycle;
+    ngx_worker = worker;
+    ngx_thread = worker;
+
+    first_cycle = cycle;
+
+    ngx_worker_thread_init(cycle, worker);
+
+    ch = ngx_add_channel_event(cycle, ngx_thread_channel, NGX_READ_EVENT,
+                               ngx_thread_channel_handler);
+    if (ch == NULL) {
+        /* fatal */
+        exit(2);
+    }
+
+    for ( ;; ) {
+
+        while (ngx_event_no_timers_left(first_cycle) == NGX_OK) {
+
+            if (first_cycle == cycle) {
+                if (ngx_thread_exiting) {
+                    ngx_worker_thread_exit(cycle);
+                }
+
+                break;
+            }
+
+            next_cycle = (ngx_cycle_t *) first_cycle->next_cycle;
+
+            ngx_worker_cycle_exit(first_cycle);
+
+            first_cycle = next_cycle;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, cycle->log, 0, "worker cycle");
+
+        ngx_process_events_and_timers(cycle);
+
+        if (ngx_thread_quit) {
+            ngx_thread_quit = 0;
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                          "gracefully shutting down");
+
+            if (!ngx_thread_exiting) {
+                ngx_thread_exiting = 1;
+
+                ngx_cycle_exiting(cycle, 1);
+                ngx_set_shutdown_timer(cycle);
+                ngx_stop_listening(cycle);
+                ngx_close_idle_connections(cycle);
+                ngx_event_process_posted(cycle, &ngx_posted_events);
+            }
+        }
+
+        if (ngx_thread_reconfigure) {
+            ngx_thread_reconfigure = 0;
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reconfiguring");
+
+            while (cycle->next_cycle) {
+                ngx_cycle_exiting(cycle, 1);
+                ngx_set_shutdown_timer(cycle);
+                ngx_stop_listening(cycle);
+                ngx_close_idle_connections(cycle);
+                ngx_event_process_posted(cycle, &ngx_posted_events);
+
+                if (ngx_del_conn(ch, 0) != NGX_OK) {
+                    /* fatal */
+                    exit(2);
+                }
+
+                cycle = (ngx_cycle_t *) cycle->next_cycle;
+
+                if (ngx_worker_cycle_init(cycle) != NGX_OK) {
+                    /* fatal */
+                    exit(2);
+                }
+
+                ch = ngx_add_channel_event(cycle, ngx_thread_channel,
+                                           NGX_READ_EVENT,
+                                           ngx_thread_channel_handler);
+                if (ch == NULL) {
+                    /* fatal */
+                    exit(2);
+                }
+            }
+        }
+    }
+}
+
+
+static void
+ngx_worker_thread_init(ngx_cycle_t *cycle, ngx_int_t worker)
+{
+    sigset_t          set;
+    ngx_cpuset_t     *cpu_affinity;
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+
+    ngx_time_init();
+
+    if (worker >= 0 && ccf->priority != 0) {
+        if (setpriority(PRIO_PROCESS, 0, ccf->priority) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "setpriority(%d) failed", ccf->priority);
+        }
+    }
+
+    if (worker >= 0) {
+        cpu_affinity = ngx_get_cpu_affinity(worker);
+
+        if (cpu_affinity) {
+            ngx_setaffinity(cpu_affinity, cycle->log);
+        }
+    }
+
+    sigemptyset(&set);
+
+    if (sigprocmask(SIG_SETMASK, &set, NULL) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "sigprocmask() failed");
+    }
+
+    if (ngx_worker_cycle_init(cycle) != NGX_OK) {
+        /* fatal */
+        exit(2);
+    }
+}
+
+
+static void
+ngx_worker_thread_exit(ngx_cycle_t *cycle)
+{
+    ngx_fd_t  fd[2];
+
+    fd[0] = ngx_threads[ngx_thread_slot].channel[0];
+    fd[1] = ngx_threads[ngx_thread_slot].channel[1];
+
+    ngx_threads[ngx_thread_slot].active = 0;
+
+    ngx_memory_barrier();
+
+    ngx_close_channel(fd, cycle->log);
+
+    ngx_worker_cycle_exit(cycle);
+
+    pthread_exit(0);
+}
+
+
+static ngx_int_t
+ngx_worker_cycle_init(ngx_cycle_t *cycle)
+{
+    ngx_uint_t  i;
+
+    ngx_cycle = cycle;
+    ngx_exiting = 0;
+
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->init_process) {
+            if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_worker_cycle_exit(ngx_cycle_t *cycle)
+{
+    ngx_uint_t         i;
+    ngx_cyclex_t      *cyclex;
+    ngx_connection_t  *c;
+
+    ngx_set_cycle(cycle);
+
+    for (i = 0; cycle->modules[i]; i++) {
+        if (cycle->modules[i]->exit_process) {
+            cycle->modules[i]->exit_process(cycle);
+        }
+    }
+
+    cyclex = ngx_get_cyclex(cycle);
+
+    c = cyclex->connections;
+    for (i = 0; i < cyclex->connection_n; i++) {
+
+        if (c[i].fd != -1
+            && c[i].read
+            && !c[i].read->accept
+            && !c[i].read->channel
+            && !c[i].read->resolver)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                          "*%uA open socket #%d left in connection %ui",
+                          c[i].number, c[i].fd, i);
+        }
+    }
+
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "cycle exit");
+
+    ngx_free_cyclex(cycle);
+
+    ngx_atomic_fetch_add(cycle->count, -1);
+}
+
+
+static void
+ngx_thread_channel_handler(ngx_event_t *ev)
+{
+    ngx_int_t          n;
+    ngx_channel_t      ch;
+    ngx_connection_t  *c;
+
+    if (ev->timedout) {
+        ev->timedout = 0;
+        return;
+    }
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel handler");
+
+    for ( ;; ) {
+
+        n = ngx_read_channel(c->fd, &ch, sizeof(ngx_channel_t), ev->log);
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0, "channel: %i", n);
+
+        if (n == NGX_ERROR) {
+
+            if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+                ngx_del_conn(c, 0);
+            }
+
+            ngx_close_connection(c);
+            return;
+        }
+
+        if (ngx_event_flags & NGX_USE_EVENTPORT_EVENT) {
+            if (ngx_add_event(ev, NGX_READ_EVENT, 0) == NGX_ERROR) {
+                return;
+            }
+        }
+
+        if (n == NGX_AGAIN) {
+            return;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_CORE, ev->log, 0,
+                       "channel command: %ui", ch.command);
+
+        switch (ch.command) {
+
+        case NGX_CMD_QUIT:
+            ngx_thread_quit = 1;
+            break;
+
+        case NGX_CMD_RECONFIGURE:
+            ngx_thread_reconfigure = 1;
+            break;
+        }
+    }
+}
+
+#endif

@@ -1110,7 +1110,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
     lc = NULL;
 
-    if (cycle->ctx[0]) {
+    if (cycle->ctx[ngx_thread]) {
         lc = ngx_get_cyclex(cycle)->listen_connections;
     }
 
@@ -1177,6 +1177,40 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     }
 
     cycle->listening.nelts = 0;
+}
+
+
+void
+ngx_stop_listening(ngx_cycle_t *cycle)
+{
+    ngx_uint_t         j;
+    ngx_cyclex_t      *cyclex;
+    ngx_connection_t  *c;
+
+    cyclex = ngx_get_cyclex(cycle);
+
+    for (j = 0; j < cyclex->listen_connection_n; j++) {
+
+        c = cyclex->listen_connections[j];
+
+        if (c) {
+            if (c->read->active) {
+                if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
+
+                    /*
+                     * it seems that Linux-2.6.x OpenVZ sends events
+                     * for closed shared listening sockets unless
+                     * the events was explicitly deleted
+                     */
+
+                    ngx_del_event(c->read, NGX_READ_EVENT, 0);
+
+                } else {
+                    ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+                }
+            }
+        }
+    }
 }
 
 
@@ -1376,8 +1410,6 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
     c->reusable = reusable;
 
     if (reusable) {
-        /* need cast as ngx_cycle is volatile */
-
         ngx_queue_insert_head(
                 (ngx_queue_t *) &cyclex->reusable_connections_queue, &c->queue);
         cyclex->reusable_connections_n++;

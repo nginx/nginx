@@ -35,6 +35,8 @@ static void *ngx_event_core_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
+static ngx_thread_local  ngx_uint_t  ngx_events_initialized;
+
 static ngx_uint_t     ngx_timer_resolution;
 
 sig_atomic_t          ngx_event_timer_alarm;
@@ -671,31 +673,35 @@ ngx_event_process_init(ngx_cycle_t *cycle)
 
     ngx_use_exclusive_accept = 0;
 
-    ngx_queue_init(&ngx_posted_accept_events);
-    ngx_queue_init(&ngx_posted_next_events);
-    ngx_queue_init(&ngx_posted_events);
+    if (!ngx_events_initialized) {
+        ngx_events_initialized = 1;
 
-    if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
-        return NGX_ERROR;
-    }
+        ngx_queue_init(&ngx_posted_accept_events);
+        ngx_queue_init(&ngx_posted_next_events);
+        ngx_queue_init(&ngx_posted_events);
 
-    for (m = 0; cycle->modules[m]; m++) {
-        if (cycle->modules[m]->type != NGX_EVENT_MODULE) {
-            continue;
+        if (ngx_event_timer_init(cycle->log) == NGX_ERROR) {
+            return NGX_ERROR;
         }
 
-        if (cycle->modules[m]->ctx_index != ecf->use) {
-            continue;
+        for (m = 0; cycle->modules[m]; m++) {
+            if (cycle->modules[m]->type != NGX_EVENT_MODULE) {
+                continue;
+            }
+
+            if (cycle->modules[m]->ctx_index != ecf->use) {
+                continue;
+            }
+
+            module = cycle->modules[m]->ctx;
+
+            if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
+                /* fatal */
+                exit(2);
+            }
+
+            break;
         }
-
-        module = cycle->modules[m]->ctx;
-
-        if (module->actions.init(cycle, ngx_timer_resolution) != NGX_OK) {
-            /* fatal */
-            exit(2);
-        }
-
-        break;
     }
 
 #if !(NGX_WIN32)

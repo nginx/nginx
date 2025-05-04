@@ -636,7 +636,8 @@ ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle)
     ngx_stream_upstream_main_conf_t  *umcf;
 
     if (ngx_process != NGX_PROCESS_WORKER
-        && ngx_process != NGX_PROCESS_SINGLE)
+        && ngx_process != NGX_PROCESS_SINGLE
+        && ngx_process != NGX_PROCESS_THREAD)
     {
         return NGX_OK;
     }
@@ -706,7 +707,8 @@ ngx_stream_upstream_zone_exit_worker(ngx_cycle_t *cycle)
     ngx_stream_upstream_main_conf_t  *umcf;
 
     if (ngx_process != NGX_PROCESS_WORKER
-        && ngx_process != NGX_PROCESS_SINGLE)
+        && ngx_process != NGX_PROCESS_SINGLE
+        && ngx_process != NGX_PROCESS_THREAD)
     {
         return;
     }
