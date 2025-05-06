@@ -427,7 +427,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
                 return NGX_ERROR;
             }
 
-            ngx_ssl_error(NGX_LOG_ERR, c->log, 0, "SSL_do_handshake() failed");
+            ngx_ssl_connection_error(c, sslerr, 0, "SSL_do_handshake() failed");
             return NGX_ERROR;
         }
     }
