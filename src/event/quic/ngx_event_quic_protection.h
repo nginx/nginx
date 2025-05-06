@@ -14,8 +14,6 @@
 #include <ngx_event_quic_transport.h>
 
 
-#define NGX_QUIC_ENCRYPTION_LAST  ((ssl_encryption_application) + 1)
-
 /* RFC 5116, 5.1/5.3 and RFC 8439, 2.3/2.5 for all supported ciphers */
 #define NGX_QUIC_IV_LEN               12
 #define NGX_QUIC_TAG_LEN              16
@@ -94,13 +92,11 @@ typedef struct {
 ngx_int_t ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys,
     ngx_str_t *secret, ngx_log_t *log);
 ngx_int_t ngx_quic_keys_set_encryption_secret(ngx_log_t *log,
-    ngx_uint_t is_write, ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
-    const uint8_t *secret, size_t secret_len);
-ngx_uint_t ngx_quic_keys_available(ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level, ngx_uint_t is_write);
-void ngx_quic_keys_discard(ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level);
+    ngx_uint_t is_write, ngx_quic_keys_t *keys, ngx_uint_t level,
+    const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len);
+ngx_uint_t ngx_quic_keys_available(ngx_quic_keys_t *keys, ngx_uint_t level,
+    ngx_uint_t is_write);
+void ngx_quic_keys_discard(ngx_quic_keys_t *keys, ngx_uint_t level);
 void ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys);
 void ngx_quic_keys_update(ngx_event_t *ev);
 void ngx_quic_keys_cleanup(ngx_quic_keys_t *keys);
