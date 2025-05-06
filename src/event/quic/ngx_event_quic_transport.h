@@ -47,9 +47,9 @@
     (ngx_quic_long_pkt(flags) ? 0x0F : 0x1F)
 
 #define ngx_quic_level_name(lvl)                                              \
-    (lvl == ssl_encryption_application) ? "app"                               \
-        : (lvl == ssl_encryption_initial) ? "init"                            \
-            : (lvl == ssl_encryption_handshake) ? "hs" : "early"
+    (lvl == NGX_QUIC_ENCRYPTION_APPLICATION) ? "app"                          \
+        : (lvl == NGX_QUIC_ENCRYPTION_INITIAL) ? "init"                       \
+            : (lvl == NGX_QUIC_ENCRYPTION_HANDSHAKE) ? "hs" : "early"
 
 #define NGX_QUIC_MAX_CID_LEN                             20
 #define NGX_QUIC_SERVER_CID_LEN                          NGX_QUIC_MAX_CID_LEN
@@ -262,7 +262,7 @@ typedef struct ngx_quic_frame_s                 ngx_quic_frame_t;
 
 struct ngx_quic_frame_s {
     ngx_uint_t                                  type;
-    enum ssl_encryption_level_t                 level;
+    ngx_uint_t                                  level;
     ngx_queue_t                                 queue;
     uint64_t                                    pnum;
     size_t                                      plen;
@@ -310,7 +310,7 @@ typedef struct {
     uint8_t                                     flags;
     uint32_t                                    version;
     ngx_str_t                                   token;
-    enum ssl_encryption_level_t                 level;
+    ngx_uint_t                                  level;
     ngx_uint_t                                  error;
 
     /* filled in by parser */

@@ -25,43 +25,65 @@
 #define NGX_QUIC_MAX_BUFFERED    65535
 
 
+static ngx_inline ngx_uint_t ngx_quic_map_encryption_level(
+    enum ssl_encryption_level_t ssl_level);
+
 #if (NGX_QUIC_BORINGSSL_API)
 static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    enum ssl_encryption_level_t ssl_level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
 static int ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    enum ssl_encryption_level_t ssl_level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
 #else
 static int ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const uint8_t *read_secret,
+    enum ssl_encryption_level_t ssl_level, const uint8_t *read_secret,
     const uint8_t *write_secret, size_t secret_len);
 #endif
 
 static int ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const uint8_t *data, size_t len);
+    enum ssl_encryption_level_t ssl_level, const uint8_t *data, size_t len);
 static int ngx_quic_flush_flight(ngx_ssl_conn_t *ssl_conn);
 static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t level, uint8_t alert);
 static ngx_int_t ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
-    enum ssl_encryption_level_t level);
+    ngx_uint_t level);
+
+
+static ngx_inline ngx_uint_t
+ngx_quic_map_encryption_level(enum ssl_encryption_level_t ssl_level)
+{
+    switch (ssl_level) {
+    default:
+    case ssl_encryption_initial:
+        return NGX_QUIC_ENCRYPTION_INITIAL;
+    case ssl_encryption_early_data:
+        return NGX_QUIC_ENCRYPTION_EARLY_DATA;
+    case ssl_encryption_handshake:
+        return NGX_QUIC_ENCRYPTION_HANDSHAKE;
+    case ssl_encryption_application:
+        return NGX_QUIC_ENCRYPTION_APPLICATION;
+    }
+}
 
 
 #if (NGX_QUIC_BORINGSSL_API)
 
 static int
 ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    enum ssl_encryption_level_t ssl_level, const SSL_CIPHER *cipher,
     const uint8_t *rsecret, size_t secret_len)
 {
+    ngx_uint_t              level;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
 
     c = ngx_ssl_get_connection(ssl_conn);
     qc = ngx_quic_get_connection(c);
+    level = ngx_quic_map_encryption_level(ssl_level);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_set_read_secret() level:%d", level);
+                   "quic ngx_quic_set_read_secret() level:%ui", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic read secret len:%uz %*xs", secret_len,
@@ -81,17 +103,19 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
 
 static int
 ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const SSL_CIPHER *cipher,
+    enum ssl_encryption_level_t ssl_level, const SSL_CIPHER *cipher,
     const uint8_t *wsecret, size_t secret_len)
 {
+    ngx_uint_t              level;
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
 
     c = ngx_ssl_get_connection(ssl_conn);
     qc = ngx_quic_get_connection(c);
+    level = ngx_quic_map_encryption_level(ssl_level);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_set_write_secret() level:%d", level);
+                   "quic ngx_quic_set_write_secret() level:%ui", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic write secret len:%uz %*xs", secret_len,
@@ -112,18 +136,20 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
 
 static int
 ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const uint8_t *rsecret,
+    enum ssl_encryption_level_t ssl_level, const uint8_t *rsecret,
     const uint8_t *wsecret, size_t secret_len)
 {
+    ngx_uint_t              level;
     ngx_connection_t       *c;
     const SSL_CIPHER       *cipher;
     ngx_quic_connection_t  *qc;
 
     c = ngx_ssl_get_connection(ssl_conn);
     qc = ngx_quic_get_connection(c);
+    level = ngx_quic_map_encryption_level(ssl_level);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                   "quic ngx_quic_set_encryption_secrets() level:%d", level);
+                   "quic ngx_quic_set_encryption_secrets() level:%ui", level);
 #ifdef NGX_QUIC_DEBUG_CRYPTO
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic read secret len:%uz %*xs", secret_len,
@@ -139,7 +165,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
         return 0;
     }
 
-    if (level == ssl_encryption_early_data) {
+    if (level == NGX_QUIC_ENCRYPTION_EARLY_DATA) {
         return 1;
     }
 
@@ -164,10 +190,11 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
 
 static int
 ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
-    enum ssl_encryption_level_t level, const uint8_t *data, size_t len)
+    enum ssl_encryption_level_t ssl_level, const uint8_t *data, size_t len)
 {
     u_char                 *p, *end;
     size_t                  client_params_len;
+    ngx_uint_t              level;
     ngx_chain_t            *out;
     unsigned int            alpn_len;
     const uint8_t          *client_params;
@@ -180,6 +207,7 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     c = ngx_ssl_get_connection(ssl_conn);
     qc = ngx_quic_get_connection(c);
+    level = ngx_quic_map_encryption_level(ssl_level);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_add_handshake_data");
@@ -302,7 +330,8 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn, enum ssl_encryption_level_t level,
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_send_alert() level:%s alert:%d",
-                   ngx_quic_level_name(level), (int) alert);
+                   ngx_quic_level_name(ngx_quic_map_encryption_level(level)),
+                   (int) alert);
 
     /* already closed on regular shutdown */
 
@@ -346,13 +375,13 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (last <= ctx->crypto.offset) {
-        if (pkt->level == ssl_encryption_initial) {
+        if (pkt->level == NGX_QUIC_ENCRYPTION_INITIAL) {
             /* speeding up handshake completion */
 
             if (!ngx_queue_empty(&ctx->sent)) {
                 ngx_quic_resend_frames(c, ctx);
 
-                ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_handshake);
+                ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_HANDSHAKE);
                 while (!ngx_queue_empty(&ctx->sent)) {
                     ngx_quic_resend_frames(c, ctx);
                 }
@@ -394,7 +423,7 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
 static ngx_int_t
 ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
-    enum ssl_encryption_level_t level)
+    ngx_uint_t level)
 {
     int                     n, sslerr;
     ngx_buf_t              *b;
@@ -406,6 +435,22 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
     qc = ngx_quic_get_connection(c);
 
     ssl_conn = c->ssl->connection;
+
+    switch (level) {
+    default:
+    case NGX_QUIC_ENCRYPTION_INITIAL:
+        level = ssl_encryption_initial;
+        break;
+    case NGX_QUIC_ENCRYPTION_EARLY_DATA:
+        level = ssl_encryption_early_data;
+        break;
+    case NGX_QUIC_ENCRYPTION_HANDSHAKE:
+        level = ssl_encryption_handshake;
+        break;
+    case NGX_QUIC_ENCRYPTION_APPLICATION:
+        level = ssl_encryption_application;
+        break;
+    }
 
     for (cl = data; cl; cl = cl->next) {
         b = cl->buf;
@@ -442,7 +487,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
     }
 
     if (n <= 0 || SSL_in_init(ssl_conn)) {
-        if (ngx_quic_keys_available(qc->keys, ssl_encryption_early_data, 0)
+        if (ngx_quic_keys_available(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA, 0)
             && qc->client_tp_done)
         {
             if (ngx_quic_init_streams(c) != NGX_OK) {
@@ -464,7 +509,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
         return NGX_ERROR;
     }
 
-    frame->level = ssl_encryption_application;
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
     ngx_quic_queue_frame(qc, frame);
 
@@ -488,7 +533,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
      * An endpoint MUST discard its Handshake keys
      * when the TLS handshake is confirmed.
      */
-    ngx_quic_discard_ctx(c, ssl_encryption_handshake);
+    ngx_quic_discard_ctx(c, NGX_QUIC_ENCRYPTION_HANDSHAKE);
 
     ngx_quic_discover_path_mtu(c, qc->path);
 

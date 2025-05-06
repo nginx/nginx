@@ -99,7 +99,7 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
             return NGX_ERROR;
         }
 
-        frame->level = ssl_encryption_application;
+        frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
         frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
         frame->u.retire_cid.sequence_number = f->seqnum;
 
@@ -452,7 +452,7 @@ ngx_quic_send_server_id(ngx_connection_t *c, ngx_quic_server_id_t *sid)
         return NGX_ERROR;
     }
 
-    frame->level = ssl_encryption_application;
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_NEW_CONNECTION_ID;
     frame->u.ncid.seqnum = sid->seqnum;
     frame->u.ncid.retire = 0;
@@ -485,7 +485,7 @@ ngx_quic_free_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
         return NGX_ERROR;
     }
 
-    frame->level = ssl_encryption_application;
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_RETIRE_CONNECTION_ID;
     frame->u.retire_cid.sequence_number = cid->seqnum;
 

@@ -17,6 +17,12 @@
 /* #define NGX_QUIC_DEBUG_ALLOC */    /* log frames and bufs alloc */
 /* #define NGX_QUIC_DEBUG_CRYPTO */
 
+#define NGX_QUIC_ENCRYPTION_INITIAL          0
+#define NGX_QUIC_ENCRYPTION_EARLY_DATA       1
+#define NGX_QUIC_ENCRYPTION_HANDSHAKE        2
+#define NGX_QUIC_ENCRYPTION_APPLICATION      3
+
+
 typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
 typedef struct ngx_quic_client_id_s   ngx_quic_client_id_t;
@@ -56,8 +62,8 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
  *  2 - 0-RTT and 1-RTT
  */
 #define ngx_quic_get_send_ctx(qc, level)                                      \
-    ((level) == ssl_encryption_initial) ? &((qc)->send_ctx[0])                \
-        : (((level) == ssl_encryption_handshake) ? &((qc)->send_ctx[1])       \
+    ((level) == NGX_QUIC_ENCRYPTION_INITIAL) ? &((qc)->send_ctx[0])           \
+        : (((level) == NGX_QUIC_ENCRYPTION_HANDSHAKE) ? &((qc)->send_ctx[1])  \
                                                  : &((qc)->send_ctx[2]))
 
 #define ngx_quic_get_connection(c)                                            \
@@ -188,7 +194,7 @@ typedef struct {
  *  are also Initial packets.
  */
 struct ngx_quic_send_ctx_s {
-    enum ssl_encryption_level_t       level;
+    ngx_uint_t                        level;
 
     ngx_quic_buffer_t                 crypto;
     uint64_t                          crypto_sent;
@@ -279,7 +285,7 @@ struct ngx_quic_connection_s {
     off_t                             received;
 
     ngx_uint_t                        error;
-    enum ssl_encryption_level_t       error_level;
+    ngx_uint_t                        error_level;
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
@@ -299,8 +305,7 @@ struct ngx_quic_connection_s {
 
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
-void ngx_quic_discard_ctx(ngx_connection_t *c,
-    enum ssl_encryption_level_t level);
+void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
 
