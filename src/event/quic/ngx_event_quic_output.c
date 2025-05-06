@@ -294,17 +294,17 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
         return 0;
     }
 
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_INITIAL);
     if (!ngx_queue_empty(&ctx->frames)) {
         return 0;
     }
 
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_handshake);
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_HANDSHAKE);
     if (!ngx_queue_empty(&ctx->frames)) {
         return 0;
     }
 
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
 
     bytes = 0;
     len = ngx_min(qc->path->mtu, NGX_QUIC_MAX_UDP_SEGMENT_BUF);
@@ -349,7 +349,7 @@ ngx_quic_create_segments(ngx_connection_t *c)
     cg = &qc->congestion;
     path = qc->path;
 
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_application);
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
 
     if (ngx_quic_generate_ack(c, ctx) != NGX_OK) {
         return NGX_ERROR;
@@ -500,7 +500,7 @@ ngx_quic_get_padding_level(ngx_connection_t *c)
      */
 
     qc = ngx_quic_get_connection(c);
-    ctx = ngx_quic_get_send_ctx(qc, ssl_encryption_initial);
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_INITIAL);
 
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
@@ -687,10 +687,10 @@ ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     pkt->flags = NGX_QUIC_PKT_FIXED_BIT;
 
-    if (ctx->level == ssl_encryption_initial) {
+    if (ctx->level == NGX_QUIC_ENCRYPTION_INITIAL) {
         pkt->flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_INITIAL;
 
-    } else if (ctx->level == ssl_encryption_handshake) {
+    } else if (ctx->level == NGX_QUIC_ENCRYPTION_HANDSHAKE) {
         pkt->flags |= NGX_QUIC_PKT_LONG | NGX_QUIC_PKT_HANDSHAKE;
 
     } else {
@@ -1103,7 +1103,7 @@ ngx_quic_send_new_token(ngx_connection_t *c, ngx_quic_path_t *path)
         return NGX_ERROR;
     }
 
-    frame->level = ssl_encryption_application;
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_NEW_TOKEN;
     frame->data = out;
     frame->u.token.length = token.len;

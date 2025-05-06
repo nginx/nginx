@@ -130,8 +130,8 @@ ngx_quic_keys_set_initial_secret(ngx_quic_keys_t *keys, ngx_str_t *secret,
         0x9a, 0xe6, 0xa4, 0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a
     };
 
-    client = &keys->secrets[ssl_encryption_initial].client;
-    server = &keys->secrets[ssl_encryption_initial].server;
+    client = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].client;
+    server = &keys->secrets[NGX_QUIC_ENCRYPTION_INITIAL].server;
 
     /*
      * RFC 9001, section 5.  Packet Protection
@@ -656,8 +656,8 @@ ngx_quic_crypto_hp_cleanup(ngx_quic_secret_t *s)
 
 ngx_int_t
 ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
-    ngx_quic_keys_t *keys, enum ssl_encryption_level_t level,
-    const SSL_CIPHER *cipher, const uint8_t *secret, size_t secret_len)
+    ngx_quic_keys_t *keys, ngx_uint_t level, const SSL_CIPHER *cipher,
+    const uint8_t *secret, size_t secret_len)
 {
     ngx_int_t            key_len;
     ngx_str_t            secret_str;
@@ -722,8 +722,8 @@ ngx_quic_keys_set_encryption_secret(ngx_log_t *log, ngx_uint_t is_write,
 
 
 ngx_uint_t
-ngx_quic_keys_available(ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level, ngx_uint_t is_write)
+ngx_quic_keys_available(ngx_quic_keys_t *keys, ngx_uint_t level,
+    ngx_uint_t is_write)
 {
     if (is_write == 0) {
         return keys->secrets[level].client.ctx != NULL;
@@ -734,8 +734,7 @@ ngx_quic_keys_available(ngx_quic_keys_t *keys,
 
 
 void
-ngx_quic_keys_discard(ngx_quic_keys_t *keys,
-    enum ssl_encryption_level_t level)
+ngx_quic_keys_discard(ngx_quic_keys_t *keys, ngx_uint_t level)
 {
     ngx_quic_secret_t  *client, *server;
 
@@ -765,7 +764,7 @@ ngx_quic_keys_switch(ngx_connection_t *c, ngx_quic_keys_t *keys)
 {
     ngx_quic_secrets_t  *current, *next, tmp;
 
-    current = &keys->secrets[ssl_encryption_application];
+    current = &keys->secrets[NGX_QUIC_ENCRYPTION_APPLICATION];
     next = &keys->next_key;
 
     ngx_quic_crypto_cleanup(&current->client);
@@ -794,7 +793,7 @@ ngx_quic_keys_update(ngx_event_t *ev)
     qc = ngx_quic_get_connection(c);
     keys = qc->keys;
 
-    current = &keys->secrets[ssl_encryption_application];
+    current = &keys->secrets[NGX_QUIC_ENCRYPTION_APPLICATION];
     next = &keys->next_key;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic key update");
