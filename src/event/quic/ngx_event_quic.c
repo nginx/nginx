@@ -260,9 +260,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
         qc->send_ctx[i].pending_ack = NGX_QUIC_UNSET_PN;
     }
 
-    qc->send_ctx[0].level = ssl_encryption_initial;
-    qc->send_ctx[1].level = ssl_encryption_handshake;
-    qc->send_ctx[2].level = ssl_encryption_application;
+    qc->send_ctx[0].level = NGX_QUIC_ENCRYPTION_INITIAL;
+    qc->send_ctx[1].level = NGX_QUIC_ENCRYPTION_HANDSHAKE;
+    qc->send_ctx[2].level = NGX_QUIC_ENCRYPTION_APPLICATION;
 
     ngx_queue_init(&qc->free_frames);
 
@@ -800,13 +800,13 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
                    pkt->dcid.len, &pkt->dcid);
 
 #if (NGX_DEBUG)
-    if (pkt->level != ssl_encryption_application) {
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION) {
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic packet rx scid len:%uz %xV",
                        pkt->scid.len, &pkt->scid);
     }
 
-    if (pkt->level == ssl_encryption_initial) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_INITIAL) {
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic address validation token len:%uz %xV",
                        pkt->token.len, &pkt->token);
@@ -823,7 +823,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
             return NGX_DECLINED;
         }
 
-        if (pkt->level != ssl_encryption_application) {
+        if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION) {
 
             if (pkt->version != qc->version) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -853,7 +853,9 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
         rc = ngx_quic_handle_payload(c, pkt);
 
-        if (rc == NGX_DECLINED && pkt->level == ssl_encryption_application) {
+        if (rc == NGX_DECLINED
+            && pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION)
+        {
             if (ngx_quic_handle_stateless_reset(c, pkt) == NGX_OK) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic stateless reset packet detected");
@@ -874,11 +876,11 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return ngx_quic_negotiate_version(c, pkt);
     }
 
-    if (pkt->level == ssl_encryption_application) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
         return ngx_quic_send_stateless_reset(c, conf, pkt);
     }
 
-    if (pkt->level != ssl_encryption_initial) {
+    if (pkt->level != NGX_QUIC_ENCRYPTION_INITIAL) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic expected initial, got handshake");
         return NGX_ERROR;
@@ -976,7 +978,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 #if (NGX_QUIC_QUICTLS_API)
     /* QuicTLS provides app read keys before completing handshake */
 
-    if (pkt->level == ssl_encryption_application && !c->ssl->handshaked) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION && !c->ssl->handshaked) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic no %s keys ready, ignoring packet",
                       ngx_quic_level_name(pkt->level));
@@ -1014,14 +1016,14 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
     }
 
-    if (pkt->level == ssl_encryption_handshake) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_HANDSHAKE) {
         /*
          * RFC 9001, 4.9.1.  Discarding Initial Keys
          *
          * The successful use of Handshake packets indicates
          * that no more Initial packets need to be exchanged
          */
-        ngx_quic_discard_ctx(c, ssl_encryption_initial);
+        ngx_quic_discard_ctx(c, NGX_QUIC_ENCRYPTION_INITIAL);
 
         if (!qc->path->validated) {
             qc->path->validated = 1;
@@ -1030,14 +1032,14 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
     }
 
-    if (pkt->level == ssl_encryption_application) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
         /*
          * RFC 9001, 4.9.3.  Discarding 0-RTT Keys
          *
          * After receiving a 1-RTT packet, servers MUST discard
          * 0-RTT keys within a short time
          */
-        ngx_quic_keys_discard(qc->keys, ssl_encryption_early_data);
+        ngx_quic_keys_discard(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA);
     }
 
     if (qc->closing) {
@@ -1064,7 +1066,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     c->log->action = "handling payload";
 
-    if (pkt->level != ssl_encryption_application) {
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION) {
         return ngx_quic_handle_frames(c, pkt);
     }
 
@@ -1089,7 +1091,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
 
 void
-ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
+ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level)
 {
     ngx_queue_t            *q;
     ngx_quic_frame_t       *f;
@@ -1130,7 +1132,7 @@ ngx_quic_discard_ctx(ngx_connection_t *c, enum ssl_encryption_level_t level)
         ngx_quic_free_frame(c, f);
     }
 
-    if (level == ssl_encryption_initial) {
+    if (level == NGX_QUIC_ENCRYPTION_INITIAL) {
         /* close temporary listener with initial dcid */
         qsock = ngx_quic_find_socket(c, NGX_QUIC_UNSET_PN);
         if (qsock) {
