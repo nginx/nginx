@@ -253,11 +253,10 @@ CRLF
 
 static char ngx_http_error_495_page[] =
 "<html>" CRLF
-"<head><title>400 The SSL certificate error</title></head>"
-CRLF
+"<head><title>400 SSL certificate error</title></head>" CRLF
 "<body>" CRLF
 "<center><h1>400 Bad Request</h1></center>" CRLF
-"<center>The SSL certificate error</center>" CRLF
+"<center>SSL certificate error</center>" CRLF
 ;
 
 
