@@ -1494,18 +1494,19 @@ ngx_http_v3_do_read_client_request_body(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    off_t                      max;
-    size_t                     size;
-    u_char                    *p;
-    ngx_int_t                  rc;
-    ngx_buf_t                 *b;
-    ngx_uint_t                 last;
-    ngx_chain_t               *cl, *out, *tl, **ll;
-    ngx_http_v3_session_t     *h3c;
-    ngx_http_request_body_t   *rb;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_core_srv_conf_t  *cscf;
-    ngx_http_v3_parse_data_t  *st;
+    off_t                       max;
+    size_t                      size;
+    u_char                     *p;
+    ngx_int_t                   rc;
+    ngx_buf_t                  *b;
+    ngx_uint_t                  last;
+    ngx_chain_t                *cl, *out, *tl, **ll;
+    ngx_http_v3_session_t      *h3c;
+    ngx_http_request_body_t    *rb;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_v3_parse_data_t   *st;
+    ngx_http_core_main_conf_t  *cmcf;
 
     rb = r->request_body;
     st = &r->v3_parse->body;
@@ -1723,7 +1724,9 @@ done:
         rb->rest = (off_t) cscf->large_client_header_buffers.size;
     }
 
-    rc = ngx_http_top_request_body_filter(r, out);
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    rc = cmcf->top_request_body_filter(r, out);
 
     ngx_chain_update_chains(r->pool, &rb->free, &rb->busy, &out,
                             (ngx_buf_tag_t) &ngx_http_read_client_request_body);

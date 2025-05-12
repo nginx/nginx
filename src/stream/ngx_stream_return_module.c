@@ -133,9 +133,10 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
 static void
 ngx_stream_return_write_handler(ngx_event_t *ev)
 {
-    ngx_connection_t         *c;
-    ngx_stream_session_t     *s;
-    ngx_stream_return_ctx_t  *ctx;
+    ngx_connection_t             *c;
+    ngx_stream_session_t         *s;
+    ngx_stream_return_ctx_t      *ctx;
+    ngx_stream_core_main_conf_t  *cmcf;
 
     c = ev->data;
     s = c->data;
@@ -146,9 +147,11 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
         return;
     }
 
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
     ctx = ngx_stream_get_module_ctx(s, ngx_stream_return_module);
 
-    if (ngx_stream_top_filter(s, ctx->out, 1) == NGX_ERROR) {
+    if (cmcf->top_filter(s, ctx->out, 1) == NGX_ERROR) {
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }

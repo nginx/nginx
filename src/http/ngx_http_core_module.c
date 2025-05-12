@@ -1845,6 +1845,8 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
 ngx_int_t
 ngx_http_send_header(ngx_http_request_t *r)
 {
+    ngx_http_core_main_conf_t  *cmcf;
+
     if (r->post_action) {
         return NGX_OK;
     }
@@ -1860,7 +1862,9 @@ ngx_http_send_header(ngx_http_request_t *r)
         r->headers_out.status_line.len = 0;
     }
 
-    return ngx_http_top_header_filter(r);
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    return cmcf->top_header_filter(r);
 }
 
 
@@ -1898,15 +1902,18 @@ ngx_http_send_early_hints(ngx_http_request_t *r)
 ngx_int_t
 ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    ngx_int_t          rc;
-    ngx_connection_t  *c;
+    ngx_int_t                   rc;
+    ngx_connection_t           *c;
+    ngx_http_core_main_conf_t  *cmcf;
 
     c = r->connection;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http output filter \"%V?%V\"", &r->uri, &r->args);
 
-    rc = ngx_http_top_body_filter(r, in);
+    rc = cmcf->top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */
@@ -5403,6 +5410,25 @@ ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
                            NGX_POOL_ALIGNMENT);
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_http_init_filters(ngx_conf_t *cf)
+{
+    ngx_http_core_main_conf_t  *cmcf;
+
+    cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    cmcf->top_header_filter = ngx_http_top_header_filter;
+    cmcf->top_body_filter = ngx_http_top_body_filter;
+    cmcf->top_request_body_filter = ngx_http_top_request_body_filter;
+
+    ngx_http_top_header_filter = NULL;
+    ngx_http_top_body_filter = NULL;
+    ngx_http_top_request_body_filter = NULL;
 
     return NGX_CONF_OK;
 }

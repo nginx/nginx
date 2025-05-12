@@ -3898,15 +3898,16 @@ failed:
 ngx_int_t
 ngx_http_v2_read_request_body(ngx_http_request_t *r)
 {
-    off_t                      len;
-    size_t                     size;
-    ngx_buf_t                 *buf;
-    ngx_int_t                  rc;
-    ngx_http_v2_stream_t      *stream;
-    ngx_http_v2_srv_conf_t    *h2scf;
-    ngx_http_request_body_t   *rb;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_v2_connection_t  *h2c;
+    off_t                       len;
+    size_t                      size;
+    ngx_buf_t                  *buf;
+    ngx_int_t                   rc;
+    ngx_http_v2_stream_t       *stream;
+    ngx_http_v2_srv_conf_t     *h2scf;
+    ngx_http_request_body_t    *rb;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_v2_connection_t   *h2c;
+    ngx_http_core_main_conf_t  *cmcf;
 
     stream = r->stream;
     rb = r->request_body;
@@ -3921,7 +3922,9 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
     /* set rb->filter_need_buffering */
 
-    rc = ngx_http_top_request_body_filter(r, NULL);
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    rc = cmcf->top_request_body_filter(r, NULL);
 
     if (rc != NGX_OK) {
         stream->skip_data = 1;
@@ -4175,11 +4178,12 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
 static ngx_int_t
 ngx_http_v2_filter_request_body(ngx_http_request_t *r)
 {
-    ngx_buf_t                 *b, *buf;
-    ngx_int_t                  rc;
-    ngx_chain_t               *cl;
-    ngx_http_request_body_t   *rb;
-    ngx_http_core_loc_conf_t  *clcf;
+    ngx_buf_t                  *b, *buf;
+    ngx_int_t                   rc;
+    ngx_chain_t                *cl;
+    ngx_http_request_body_t    *rb;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_main_conf_t  *cmcf;
 
     rb = r->request_body;
     buf = rb->buf;
@@ -4255,7 +4259,9 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
 
 update:
 
-    rc = ngx_http_top_request_body_filter(r, cl);
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    rc = cmcf->top_request_body_filter(r, cl);
 
     ngx_chain_update_chains(r->pool, &rb->free, &rb->busy, &cl,
                             (ngx_buf_tag_t) &ngx_http_v2_filter_request_body);

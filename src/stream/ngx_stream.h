@@ -97,6 +97,8 @@ typedef ngx_int_t (*ngx_stream_phase_handler_pt)(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph);
 typedef ngx_int_t (*ngx_stream_handler_pt)(ngx_stream_session_t *s);
 typedef void (*ngx_stream_content_handler_pt)(ngx_stream_session_t *s);
+typedef ngx_int_t (*ngx_stream_filter_pt)(ngx_stream_session_t *s,
+    ngx_chain_t *chain, ngx_uint_t from_upstream);
 
 
 struct ngx_stream_phase_handler_s {
@@ -138,6 +140,8 @@ typedef struct {
     ngx_array_t                   *ports;
 
     ngx_stream_phase_t             phases[NGX_STREAM_LOG_PHASE + 1];
+
+    ngx_stream_filter_pt           top_filter;
 } ngx_stream_core_main_conf_t;
 
 
@@ -363,6 +367,8 @@ ngx_int_t ngx_stream_validate_host(ngx_str_t *host, ngx_pool_t *pool,
 ngx_int_t ngx_stream_find_virtual_server(ngx_stream_session_t *s,
     ngx_str_t *host, ngx_stream_core_srv_conf_t **cscfp);
 
+char *ngx_stream_init_filters(ngx_conf_t *cf);
+
 void ngx_stream_init_connection(ngx_connection_t *c);
 void ngx_stream_session_handler(ngx_event_t *rev);
 void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
@@ -371,10 +377,6 @@ void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
 extern ngx_module_t  ngx_stream_module;
 extern ngx_uint_t    ngx_stream_max_module;
 extern ngx_module_t  ngx_stream_core_module;
-
-
-typedef ngx_int_t (*ngx_stream_filter_pt)(ngx_stream_session_t *s,
-    ngx_chain_t *chain, ngx_uint_t from_upstream);
 
 
 extern ngx_stream_filter_pt  ngx_stream_top_filter;
