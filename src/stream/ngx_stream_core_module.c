@@ -1502,3 +1502,12 @@ ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+char *
+ngx_stream_init_filters(ngx_conf_t *cf)
+{
+    ngx_stream_safe_top_filter = ngx_stream_top_filter;
+
+    return NGX_CONF_OK;
+}

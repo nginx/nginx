@@ -363,6 +363,8 @@ ngx_int_t ngx_stream_validate_host(ngx_str_t *host, ngx_pool_t *pool,
 ngx_int_t ngx_stream_find_virtual_server(ngx_stream_session_t *s,
     ngx_str_t *host, ngx_stream_core_srv_conf_t **cscfp);
 
+char *ngx_stream_init_filters(ngx_conf_t *cf);
+
 void ngx_stream_init_connection(ngx_connection_t *c);
 void ngx_stream_session_handler(ngx_event_t *rev);
 void ngx_stream_finalize_session(ngx_stream_session_t *s, ngx_uint_t rc);
@@ -378,6 +380,7 @@ typedef ngx_int_t (*ngx_stream_filter_pt)(ngx_stream_session_t *s,
 
 
 extern ngx_stream_filter_pt  ngx_stream_top_filter;
+extern ngx_stream_filter_pt  ngx_stream_safe_top_filter;
 
 
 #endif /* _NGX_STREAM_H_INCLUDED_ */

@@ -50,6 +50,7 @@ ngx_uint_t  ngx_stream_max_module;
 
 
 ngx_stream_filter_pt  ngx_stream_top_filter;
+ngx_stream_filter_pt  ngx_stream_safe_top_filter;
 
 
 static ngx_command_t  ngx_stream_commands[] = {
@@ -255,6 +256,10 @@ ngx_stream_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
         }
+    }
+
+    if (ngx_stream_init_filters(cf) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     if (ngx_stream_variables_init_vars(cf) != NGX_OK) {
