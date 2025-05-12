@@ -148,7 +148,7 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
 
     ctx = ngx_stream_get_module_ctx(s, ngx_stream_return_module);
 
-    if (ngx_stream_top_filter(s, ctx->out, 1) == NGX_ERROR) {
+    if (ngx_stream_safe_top_filter(s, ctx->out, 1) == NGX_ERROR) {
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }

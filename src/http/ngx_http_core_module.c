@@ -1860,7 +1860,7 @@ ngx_http_send_header(ngx_http_request_t *r)
         r->headers_out.status_line.len = 0;
     }
 
-    return ngx_http_top_header_filter(r);
+    return ngx_http_safe_top_header_filter(r);
 }
 
 
@@ -1891,7 +1891,7 @@ ngx_http_send_early_hints(ngx_http_request_t *r)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http send early hints \"%V?%V\"", &r->uri, &r->args);
 
-    return ngx_http_top_early_hints_filter(r);
+    return ngx_http_safe_top_early_hints_filter(r);
 }
 
 
@@ -1906,7 +1906,7 @@ ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http output filter \"%V?%V\"", &r->uri, &r->args);
 
-    rc = ngx_http_top_body_filter(r, in);
+    rc = ngx_http_safe_top_body_filter(r, in);
 
     if (rc == NGX_ERROR) {
         /* NGX_ERROR may be returned by any filter */
@@ -5403,6 +5403,18 @@ ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
                            NGX_POOL_ALIGNMENT);
         return NGX_CONF_ERROR;
     }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_http_init_filters(ngx_conf_t *cf)
+{
+    ngx_http_safe_top_header_filter = ngx_http_top_header_filter;
+    ngx_http_safe_top_early_hints_filter = ngx_http_top_early_hints_filter;
+    ngx_http_safe_top_body_filter = ngx_http_top_body_filter;
+    ngx_http_safe_top_request_body_filter = ngx_http_top_request_body_filter;
 
     return NGX_CONF_OK;
 }

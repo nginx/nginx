@@ -172,6 +172,8 @@ char *ngx_http_merge_types(ngx_conf_t *cf, ngx_array_t **keys,
 ngx_int_t ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
     ngx_str_t *default_type);
 
+char *ngx_http_init_filters(ngx_conf_t *cf);
+
 #if (NGX_HTTP_DEGRADATION)
 ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 #endif
@@ -194,6 +196,11 @@ extern ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 extern ngx_http_output_header_filter_pt  ngx_http_top_early_hints_filter;
 extern ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 extern ngx_http_request_body_filter_pt   ngx_http_top_request_body_filter;
+
+extern ngx_http_output_header_filter_pt  ngx_http_safe_top_header_filter;
+extern ngx_http_output_header_filter_pt  ngx_http_safe_top_early_hints_filter;
+extern ngx_http_output_body_filter_pt    ngx_http_safe_top_body_filter;
+extern ngx_http_request_body_filter_pt   ngx_http_safe_top_request_body_filter;
 
 
 #endif /* _NGX_HTTP_H_INCLUDED_ */
