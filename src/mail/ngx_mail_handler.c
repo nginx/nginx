@@ -1048,7 +1048,7 @@ ngx_mail_send(ngx_event_t *wev)
     }
 
     if (s->out.len == 0) {
-        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        if (ngx_handle_write_event(wev, 0) != NGX_OK) {
             ngx_mail_close_connection(c);
         }
 
@@ -1092,9 +1092,9 @@ again:
 
     cscf = ngx_mail_get_module_srv_conf(s, ngx_mail_core_module);
 
-    ngx_add_timer(c->write, cscf->timeout);
+    ngx_add_timer(wev, cscf->timeout);
 
-    if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
         return;
     }
