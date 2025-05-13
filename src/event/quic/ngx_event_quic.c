@@ -135,6 +135,9 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     if (scid.len != ctp->initial_scid.len
         || ngx_memcmp(scid.data, ctp->initial_scid.data, scid.len) != 0)
     {
+        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+        qc->error_reason = "invalid initial_source_connection_id";
+
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic client initial_source_connection_id mismatch");
         return NGX_ERROR;
