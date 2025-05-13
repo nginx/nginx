@@ -3111,6 +3111,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 static void
 ngx_http_writer(ngx_http_request_t *r)
 {
+    off_t                      sent;
     ngx_int_t                  rc;
     ngx_event_t               *wev;
     ngx_connection_t          *c;
@@ -3148,6 +3149,8 @@ ngx_http_writer(ngx_http_request_t *r)
         return;
     }
 
+    sent = c->sent;
+
     rc = ngx_http_output_filter(r, NULL);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -3161,7 +3164,7 @@ ngx_http_writer(ngx_http_request_t *r)
 
     if (r->buffered || r->postponed || (r == r->main && c->buffered)) {
 
-        if (!wev->delayed) {
+        if (!wev->delayed && (c->sent != sent || !wev->timer_set)) {
             ngx_add_timer(wev, clcf->send_timeout);
         }
 

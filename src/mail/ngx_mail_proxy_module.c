@@ -1169,6 +1169,7 @@ static void
 ngx_mail_proxy_handler(ngx_event_t *ev)
 {
     char                   *action, *recv_action, *send_action;
+    off_t                   sent;
     size_t                  size;
     ssize_t                 n;
     ngx_buf_t              *b;
@@ -1234,6 +1235,7 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
     }
 
     do_write = ev->write ? 1 : 0;
+    sent = dst->sent;
 
     ngx_log_debug3(NGX_LOG_DEBUG_MAIL, ev->log, 0,
                    "mail proxy handler: %ui, #%d > #%d",
@@ -1329,7 +1331,7 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
         return;
     }
 
-    if (c == s->connection) {
+    if (c == s->connection && (dst->sent != sent || !ev->write)) {
         pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
         ngx_add_timer(c->read, pcf->timeout);
     }
