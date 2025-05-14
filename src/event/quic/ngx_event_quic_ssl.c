@@ -415,7 +415,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
-    if (qc->error != (ngx_uint_t) -1) {
+    if (qc->error) {
         return NGX_ERROR;
     }
 
