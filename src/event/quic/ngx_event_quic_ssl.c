@@ -10,13 +10,6 @@
 #include <ngx_event_quic_connection.h>
 
 
-#if defined OPENSSL_IS_BORINGSSL                                              \
-    || defined LIBRESSL_VERSION_NUMBER                                        \
-    || NGX_QUIC_OPENSSL_COMPAT
-#define NGX_QUIC_BORINGSSL_API   1
-#endif
-
-
 /*
  * RFC 9000, 7.5.  Cryptographic Message Buffering
  *
@@ -40,7 +33,7 @@ static int ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
 static int ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert,
     void *arg);
 
-#else /* !NGX_QUIC_OPENSSL_API */
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
 static ngx_inline ngx_uint_t ngx_quic_map_encryption_level(
     enum ssl_encryption_level_t ssl_level);
@@ -52,7 +45,7 @@ static int ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
 static int ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t ssl_level, const SSL_CIPHER *cipher,
     const uint8_t *secret, size_t secret_len);
-#else
+#else /* NGX_QUIC_QUICTLS_API */
 static int ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
     enum ssl_encryption_level_t ssl_level, const uint8_t *read_secret,
     const uint8_t *write_secret, size_t secret_len);
@@ -324,7 +317,7 @@ ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert, void *arg)
 }
 
 
-#else /* !NGX_QUIC_OPENSSL_API */
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
 
 static ngx_inline ngx_uint_t
@@ -408,7 +401,7 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
     return 1;
 }
 
-#else
+#else /* NGX_QUIC_QUICTLS_API */
 
 static int
 ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
@@ -791,7 +784,7 @@ ngx_quic_handshake(ngx_connection_t *c, ngx_uint_t level)
 static ngx_int_t
 ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level)
 {
-#if !(NGX_QUIC_OPENSSL_API)
+#if (NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API)
 
     ngx_buf_t                    *b;
     ngx_chain_t                  *out, *cl;
@@ -903,7 +896,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         SSL_set_quic_tls_early_data_enabled(ssl_conn, 1);
     }
 
-#else
+#else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
     if (!quic_method.send_alert) {
 #if (NGX_QUIC_BORINGSSL_API)
@@ -922,7 +915,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-#ifdef OPENSSL_INFO_QUIC
+#if (NGX_QUIC_QUICTLS_API)
     if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
         SSL_set_quic_early_data_enabled(ssl_conn, 1);
     }

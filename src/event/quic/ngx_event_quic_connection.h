@@ -37,6 +37,20 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 
 #ifdef OSSL_RECORD_PROTECTION_LEVEL_NONE
 #define NGX_QUIC_OPENSSL_API                 1
+
+#elif defined SSL_R_MISSING_QUIC_TRANSPORT_PARAMETERS_EXTENSION
+#define NGX_QUIC_QUICTLS_API                 1
+#endif
+
+#if (NGX_QUIC_OPENSSL_API || NGX_QUIC_QUICTLS_API                             \
+     || defined LIBRESSL_VERSION_NUMBER)
+#undef NGX_QUIC_OPENSSL_COMPAT
+#endif
+
+#if (defined OPENSSL_IS_BORINGSSL                                             \
+     || defined LIBRESSL_VERSION_NUMBER                                       \
+     || NGX_QUIC_OPENSSL_COMPAT)
+#define NGX_QUIC_BORINGSSL_API               1
 #endif
 
 
