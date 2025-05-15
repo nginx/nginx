@@ -359,7 +359,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     cid = ngx_quic_next_client_id(c);
     if (cid == NULL) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no available client ids for new path");
+                      "client sent unsufficient client ids for new path");
         /* stop processing of this datagram */
         return NGX_DONE;
     }

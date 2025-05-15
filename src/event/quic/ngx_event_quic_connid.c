@@ -56,8 +56,8 @@ ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id)
     optlen = sizeof(cookie);
 
     if (getsockopt(fd, SOL_SOCKET, SO_COOKIE, &cookie, &optlen) == -1) {
-        ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
-                      "quic getsockopt(SO_COOKIE) failed");
+        ngx_log_error(NGX_LOG_ALERT, c->log, ngx_socket_errno,
+                      "getsockopt(SO_COOKIE) failed");
 
         return NGX_ERROR;
     }

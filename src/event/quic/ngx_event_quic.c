@@ -136,7 +136,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         || ngx_memcmp(scid.data, ctp->initial_scid.data, scid.len) != 0)
     {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic client initial_source_connection_id mismatch");
+                      "client sent invalid initial_source_connection_id");
         return NGX_ERROR;
     }
 
@@ -147,7 +147,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         qc->error_reason = "invalid maximum packet size";
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic maximum packet size is invalid");
+                      "client sent invalid max_udp_payload_size");
         return NGX_ERROR;
     }
 
@@ -156,7 +156,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         qc->error_reason = "invalid active_connection_id_limit";
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic active_connection_id_limit is invalid");
+                      "client sent invalid active_connection_id_limit");
         return NGX_ERROR;
     }
 
@@ -165,7 +165,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         qc->error_reason = "invalid ack_delay_exponent";
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic ack_delay_exponent is invalid");
+                      "client sent invalid ack_delay_exponent");
         return NGX_ERROR;
     }
 
@@ -174,7 +174,7 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
         qc->error_reason = "invalid max_ack_delay";
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic max_ack_delay is invalid");
+                      "client sent invalid max_ack_delay");
         return NGX_ERROR;
     }
 
@@ -413,8 +413,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
     c->log->action = "handling quic input";
 
     if (rev->timedout) {
-        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
-                      "quic client timed out");
+        ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT, "client timed out");
         ngx_quic_close_connection(c, NGX_DONE);
         return;
     }
@@ -816,7 +815,8 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
         if (rc == NGX_ABORT) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "quic unsupported version: 0x%xD", pkt->version);
+                          "client sent unsupported quic version: 0x%xD",
+                          pkt->version);
             return NGX_DECLINED;
         }
 
@@ -824,7 +824,8 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
             if (pkt->version != qc->version) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic version mismatch: 0x%xD", pkt->version);
+                              "client sent unexpected quic version: 0x%xD",
+                              pkt->version);
                 return NGX_DECLINED;
             }
 
@@ -886,7 +887,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
     if (pkt->dcid.len < NGX_QUIC_CID_LEN_MIN) {
         /* RFC 9000, 7.2.  Negotiating Connection IDs */
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic too short dcid in initial"
+                      "client sent short quic dcid in initial"
                       " packet: len:%i", pkt->dcid.len);
         return NGX_ERROR;
     }
@@ -965,7 +966,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (!ngx_quic_keys_available(qc->keys, pkt->level, 0)) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no %s keys, ignoring packet",
+                      "no %s read keys available, ignoring",
                       ngx_quic_level_name(pkt->level));
         return NGX_DECLINED;
     }
@@ -975,7 +976,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (pkt->level == ssl_encryption_application && !c->ssl->handshaked) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no %s keys ready, ignoring packet",
+                      "no %s read keys available, ignoring",
                       ngx_quic_level_name(pkt->level));
         return NGX_DECLINED;
     }
@@ -1160,7 +1161,7 @@ ngx_quic_check_csid(ngx_quic_connection_t *qc, ngx_quic_header_t *pkt)
         }
     }
 
-    ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic unexpected quic scid");
+    ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "client sent unexpected scid");
     return NGX_ERROR;
 }
 
@@ -1396,18 +1397,10 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
             break;
 
         default:
-            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic missing frame handler");
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent invalid quic frame type");
             return NGX_ERROR;
         }
-    }
-
-    if (p != end) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic trailing garbage in payload:%ui bytes", end - p);
-
-        qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
-        return NGX_ERROR;
     }
 
     if (do_close) {

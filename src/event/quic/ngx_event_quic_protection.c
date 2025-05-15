@@ -1231,7 +1231,8 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
          * An endpoint MUST treat receipt of a packet containing no
          * frames as a connection error of type PROTOCOL_VIOLATION.
          */
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic zero-length packet");
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "client sent zero-length quic packet");
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }
@@ -1246,7 +1247,7 @@ ngx_quic_decrypt(ngx_quic_header_t *pkt, uint64_t *largest_pn)
          * of type PROTOCOL_VIOLATION.
          */
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic reserved bit set in packet");
+                      "client sent quic packet with reserved bits set");
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }

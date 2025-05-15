@@ -278,7 +278,8 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
     now = ngx_time();
 
     if (now > exp) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic expired token");
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent expired quic token");
         return NGX_DECLINED;
     }
 
@@ -297,13 +298,13 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
 garbage:
 
-    ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic garbage token");
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent malformed quic token");
 
     return NGX_ABORT;
 
 bad_token:
 
-    ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
+    ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent invalid quic token");
 
     return NGX_DECLINED;
 }
