@@ -463,7 +463,7 @@ ngx_quic_handshake(ngx_connection_t *c)
         }
     }
 
-    if (n <= 0 || SSL_in_init(ssl_conn)) {
+    if (!SSL_is_init_finished(ssl_conn)) {
         if (ngx_quic_keys_available(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA, 0)
             && qc->client_tp_done)
         {
