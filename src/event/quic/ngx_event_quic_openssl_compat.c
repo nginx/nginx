@@ -35,8 +35,6 @@ typedef struct {
     ngx_str_t                     payload;
     uint64_t                      number;
     ngx_quic_compat_keys_t       *keys;
-
-    enum ssl_encryption_level_t   level;
 } ngx_quic_compat_record_t;
 
 
@@ -435,11 +433,10 @@ ngx_quic_compat_message_callback(int write_p, int version, int content_type,
 
     case SSL3_RT_HANDSHAKE:
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic compat tx %s len:%uz ",
-                       ngx_quic_level_name(level), len);
+                       "quic compat tx level:%d len:%uz", level, len);
 
         if (com->method->add_handshake_data(ssl, level, buf, len) != 1) {
-            goto failed;
+            return;
         }
 
         break;
@@ -449,11 +446,11 @@ ngx_quic_compat_message_callback(int write_p, int version, int content_type,
             alert = ((u_char *) buf)[1];
 
             ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic compat %s alert:%ui len:%uz ",
-                           ngx_quic_level_name(level), alert, len);
+                           "quic compat level:%d alert:%ui len:%uz",
+                           level, alert, len);
 
             if (com->method->send_alert(ssl, level, alert) != 1) {
-                goto failed;
+                return;
             }
         }
 
@@ -461,10 +458,6 @@ ngx_quic_compat_message_callback(int write_p, int version, int content_type,
     }
 
     return;
-
-failed:
-
-    ngx_post_event(&qc->close, &ngx_posted_events);
 }
 
 
@@ -487,8 +480,8 @@ SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
 
     c = ngx_ssl_get_connection(ssl);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic compat rx %s len:%uz",
-                   ngx_quic_level_name(level), len);
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic compat rx level:%d len:%uz", level, len);
 
     qc = ngx_quic_get_connection(c);
     com = qc->compat;
@@ -501,7 +494,6 @@ SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
         rec.log = c->log;
         rec.number = com->read_record++;
         rec.keys = &com->keys;
-        rec.level = level;
 
         if (level == ssl_encryption_initial) {
             n = ngx_min(len, 65535);

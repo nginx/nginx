@@ -281,7 +281,7 @@ ngx_int_t
 ngx_quic_parse_packet(ngx_quic_header_t *pkt)
 {
     if (!ngx_quic_long_pkt(pkt->flags)) {
-        pkt->level = ssl_encryption_application;
+        pkt->level = NGX_QUIC_ENCRYPTION_APPLICATION;
 
         if (ngx_quic_parse_short_header(pkt, NGX_QUIC_SERVER_CID_LEN) != NGX_OK)
         {
@@ -324,7 +324,8 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
                    "quic packet rx short flags:%xd", pkt->flags);
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "client sent quic packet with unset fixed bit");
         return NGX_ERROR;
     }
 
@@ -333,7 +334,7 @@ ngx_quic_parse_short_header(ngx_quic_header_t *pkt, size_t dcid_len)
     p = ngx_quic_read_bytes(p, end, dcid_len, &pkt->dcid.data);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read dcid");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
@@ -355,7 +356,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     p = ngx_quic_read_uint32(p, end, &pkt->version);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read version");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
@@ -364,20 +365,21 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
                    pkt->flags, pkt->version);
 
     if (!(pkt->flags & NGX_QUIC_PKT_FIXED_BIT)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic fixed bit is not set");
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "client sent quic packet with unset fixed bit");
         return NGX_ERROR;
     }
 
     p = ngx_quic_read_uint8(p, end, &idlen);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read dcid len");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
     if (idlen > NGX_QUIC_CID_LEN_MAX) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet dcid is too long");
+                      "client sent too long quic packet dcid");
         return NGX_ERROR;
     }
 
@@ -386,20 +388,20 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     p = ngx_quic_read_bytes(p, end, idlen, &pkt->dcid.data);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read dcid");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
     p = ngx_quic_read_uint8(p, end, &idlen);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read scid len");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
     if (idlen > NGX_QUIC_CID_LEN_MAX) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet scid is too long");
+                      "client sent too long quic packet scid");
         return NGX_ERROR;
     }
 
@@ -408,7 +410,7 @@ ngx_quic_parse_long_header(ngx_quic_header_t *pkt)
     p = ngx_quic_read_bytes(p, end, idlen, &pkt->scid.data);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic packet is too small to read scid");
+                      "client sent too small quic packet");
         return NGX_ERROR;
     }
 
@@ -448,14 +450,14 @@ ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt)
 
         if (pkt->len < NGX_QUIC_MIN_INITIAL_SIZE) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "quic UDP datagram is too small for initial packet");
+                          "client sent too small UDP datagram");
             return NGX_DECLINED;
         }
 
         p = ngx_quic_parse_int(p, end, &varint);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "quic failed to parse token length");
+                          "client sent malformed token length");
             return NGX_ERROR;
         }
 
@@ -464,27 +466,28 @@ ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt)
         p = ngx_quic_read_bytes(p, end, pkt->token.len, &pkt->token.data);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                          "quic packet too small to read token data");
+                          "client sent malformed token");
             return NGX_ERROR;
         }
 
-        pkt->level = ssl_encryption_initial;
+        pkt->level = NGX_QUIC_ENCRYPTION_INITIAL;
 
     } else if (ngx_quic_pkt_zrtt(pkt->flags)) {
-        pkt->level = ssl_encryption_early_data;
+        pkt->level = NGX_QUIC_ENCRYPTION_EARLY_DATA;
 
     } else if (ngx_quic_pkt_hs(pkt->flags)) {
-        pkt->level = ssl_encryption_handshake;
+        pkt->level = NGX_QUIC_ENCRYPTION_HANDSHAKE;
 
     } else {
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic bad packet type");
+                      "client sent invalid quic packet type");
         return NGX_DECLINED;
     }
 
     p = ngx_quic_parse_int(p, end, &varint);
     if (p == NULL) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic bad packet length");
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "client sent invalid quic packet length");
         return NGX_ERROR;
     }
 
@@ -493,7 +496,8 @@ ngx_quic_parse_long_header_v1(ngx_quic_header_t *pkt)
                    ngx_quic_level_name(pkt->level), varint);
 
     if (varint > (uint64_t) ((pkt->data + pkt->len) - p)) {
-        ngx_log_error(NGX_LOG_INFO, pkt->log, 0, "quic truncated %s packet",
+        ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
+                      "client sent truncated %s packet",
                       ngx_quic_level_name(pkt->level));
         return NGX_ERROR;
     }
@@ -539,7 +543,8 @@ ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t n,
 
 failed:
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0, "quic malformed packet");
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "client sent malformed quic packet");
 
     return NGX_ERROR;
 }
@@ -593,7 +598,7 @@ ngx_quic_payload_size(ngx_quic_header_t *pkt, size_t pkt_len)
 
     /* flags, version, dcid and scid with lengths and zero-length token */
     len = 5 + 2 + pkt->dcid.len + pkt->scid.len
-          + (pkt->level == ssl_encryption_initial ? 1 : 0);
+          + (pkt->level == NGX_QUIC_ENCRYPTION_INITIAL ? 1 : 0);
 
     if (len > pkt_len) {
         return 0;
@@ -632,7 +637,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     if (out == NULL) {
         return 5 + 2 + pkt->dcid.len + pkt->scid.len
                + ngx_quic_varint_len(rem_len) + pkt->num_len
-               + (pkt->level == ssl_encryption_initial ? 1 : 0);
+               + (pkt->level == NGX_QUIC_ENCRYPTION_INITIAL ? 1 : 0);
     }
 
     p = start = out;
@@ -647,7 +652,7 @@ ngx_quic_create_long_header(ngx_quic_header_t *pkt, u_char *out,
     *p++ = pkt->scid.len;
     p = ngx_cpymem(p, pkt->scid.data, pkt->scid.len);
 
-    if (pkt->level == ssl_encryption_initial) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_INITIAL) {
         ngx_quic_build_int(&p, 0);
     }
 
@@ -757,14 +762,14 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
     if (p == NULL) {
         pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic failed to obtain quic frame type");
+                      "client sent malformed quic frame type");
         return NGX_ERROR;
     }
 
     if (varint > NGX_QUIC_FT_LAST) {
         pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic unknown frame type 0x%xL", varint);
+                      "client sent unknown quic frame type 0x%xL", varint);
         return NGX_ERROR;
     }
 
@@ -1135,7 +1140,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     default:
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                      "quic unknown frame type 0x%xi", f->type);
+                      "client sent malformed quic frame type 0x%xi", f->type);
         return NGX_ERROR;
     }
 
@@ -1151,7 +1156,7 @@ error:
     pkt->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
 
     ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                  "quic failed to parse frame type:0x%xi", f->type);
+                  "client sent malformed quic frame type:0x%xi", f->type);
 
     return NGX_ERROR;
 }
@@ -1222,7 +1227,7 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
     }
 
     ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
-                  "quic frame type 0x%xi is not "
+                  "client sent quic frame type 0x%xi not "
                   "allowed in packet with flags 0x%xd",
                   frame_type, pkt->flags);
 
@@ -1241,14 +1246,14 @@ ngx_quic_parse_ack_range(ngx_log_t *log, u_char *start, u_char *end,
     p = ngx_quic_parse_int(p, end, gap);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "quic failed to parse ack frame gap");
+                      "client sent malformed ack frame gap");
         return NGX_ERROR;
     }
 
     p = ngx_quic_parse_int(p, end, range);
     if (p == NULL) {
         ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "quic failed to parse ack frame range");
+                      "client sent malformed ack frame range");
         return NGX_ERROR;
     }
 
@@ -1732,7 +1737,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         p = ngx_quic_parse_int(p, end, &id);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic failed to parse transport param id");
+                          "client sent malformed transport param id");
             return NGX_ERROR;
         }
 
@@ -1742,24 +1747,20 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         case NGX_QUIC_TP_RETRY_SCID:
         case NGX_QUIC_TP_SR_TOKEN:
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic client sent forbidden transport param"
-                          " id:0x%xL", id);
+                          "client sent forbidden transport param id:0x%xL", id);
             return NGX_ERROR;
         }
 
         p = ngx_quic_parse_int(p, end, &len);
         if (p == NULL) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic failed to parse"
-                          " transport param id:0x%xL length", id);
+                          "client sent malformed transport param id:0x%xL", id);
             return NGX_ERROR;
         }
 
         if ((size_t) (end - p) < len) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic failed to parse"
-                          " transport param id:0x%xL, data length %uL too long",
-                          id, len);
+                          "client sent malformed transport param id:0x%xL", id);
             return NGX_ERROR;
         }
 
@@ -1767,8 +1768,7 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
 
         if (rc == NGX_ERROR) {
             ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic failed to parse"
-                          " transport param id:0x%xL data", id);
+                          "client sent malformed transport param id:0x%xL", id);
             return NGX_ERROR;
         }
 
@@ -1779,14 +1779,6 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
         }
 
         p += len;
-    }
-
-    if (p != end) {
-        ngx_log_error(NGX_LOG_INFO, log, 0,
-                      "quic trailing garbage in"
-                      " transport parameters: bytes:%ui",
-                      end - p);
-        return NGX_ERROR;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, log, 0,

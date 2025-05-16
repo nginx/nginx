@@ -93,7 +93,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
                 return;
             }
 
-            ngx_log_error(NGX_LOG_ALERT, ev->log, err, "quic recvmsg() failed");
+            ngx_log_error(NGX_LOG_ALERT, ev->log, err, "recvmsg() failed");
 
             return;
         }
@@ -101,7 +101,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
 #if (NGX_HAVE_ADDRINFO_CMSG)
         if (msg.msg_flags & (MSG_TRUNC|MSG_CTRUNC)) {
             ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
-                          "quic recvmsg() truncated data");
+                          "recvmsg() truncated data");
             continue;
         }
 #endif

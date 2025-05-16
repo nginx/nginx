@@ -230,7 +230,7 @@ ngx_quic_bpf_close(ngx_log_t *log, int fd, const char *name)
     }
 
     ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                  "quic bpf close %s fd:%d failed", name, fd);
+                  "close(%d) \"%s\" failed", fd, name);
 }
 
 
@@ -313,7 +313,7 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     flags = fcntl(grp->map_fd, F_GETFD);
     if (flags == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, errno,
-                      "quic bpf getfd failed");
+                      "fcntl(F_GETFD) failed");
         goto failed;
     }
 
@@ -323,7 +323,7 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     rc = fcntl(grp->map_fd, F_SETFD, flags);
     if (rc == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, errno,
-                      "quic bpf setfd failed");
+                      "fcntl(F_SETFD) failed");
         goto failed;
     }
 
@@ -342,7 +342,7 @@ ngx_quic_bpf_create_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
         == -1)
     {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
-                      "quic bpf setsockopt(SO_ATTACH_REUSEPORT_EBPF) failed");
+                      "setsockopt(SO_ATTACH_REUSEPORT_EBPF) failed");
         failed = 1;
     }
 
@@ -400,7 +400,7 @@ ngx_quic_bpf_get_group(ngx_cycle_t *cycle, ngx_listening_t *ls)
     grp->map_fd = dup(ogrp->map_fd);
     if (grp->map_fd == -1) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                      "quic bpf failed to duplicate bpf map descriptor");
+                      "quic bpf failed to dup() map descriptor");
 
         ngx_queue_remove(&grp->queue);
 
@@ -469,7 +469,7 @@ ngx_quic_bpf_socket_key(ngx_fd_t fd, ngx_log_t *log)
 
     if (getsockopt(fd, SOL_SOCKET, SO_COOKIE, &cookie, &optlen) == -1) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                      "quic bpf getsockopt(SO_COOKIE) failed");
+                      "getsockopt(SO_COOKIE) failed");
 
         return (ngx_uint_t) NGX_ERROR;
     }
