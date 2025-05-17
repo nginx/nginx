@@ -763,7 +763,15 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             }
         }
 
-#if (NGX_HAVE_KEEPALIVE_TUNABLE)
+#if (NGX_HAVE_KEEPALIVE_TUNABLE) && \
+    (defined(__DragonFly__) || \
+     defined(__FreeBSD__) || \
+     defined(__linux__))
+     /*
+      * For TCP keepalive mechanism, `SO_KEEPALIVE` is inherited by a accepted
+      * socket from the listening socket on most UNIX-like OS's, whereas
+      * `TCP_KEEP*` options are only inherited on Linux, FreeBSD, or DragonFlyBSD.
+      */
 
         if (ls[i].keepidle) {
             value = ls[i].keepidle;
