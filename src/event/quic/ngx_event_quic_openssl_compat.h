@@ -7,11 +7,6 @@
 #ifndef _NGX_EVENT_QUIC_OPENSSL_COMPAT_H_INCLUDED_
 #define _NGX_EVENT_QUIC_OPENSSL_COMPAT_H_INCLUDED_
 
-#if defined SSL_R_MISSING_QUIC_TRANSPORT_PARAMETERS_EXTENSION                 \
-    || defined LIBRESSL_VERSION_NUMBER
-#undef NGX_QUIC_OPENSSL_COMPAT
-#else
-
 
 #include <ngx_config.h>
 #include <ngx_core.h>
@@ -52,8 +47,5 @@ int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,
     size_t params_len);
 void SSL_get_peer_quic_transport_params(const SSL *ssl,
     const uint8_t **out_params, size_t *out_params_len);
-
-
-#endif /* TLSEXT_TYPE_quic_transport_parameters */
 
 #endif /* _NGX_EVENT_QUIC_OPENSSL_COMPAT_H_INCLUDED_ */

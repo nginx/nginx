@@ -12,7 +12,6 @@ if [ $OPENSSL != NONE ]; then
 
     if [ $USE_OPENSSL_QUIC = YES ]; then
         have=NGX_QUIC . auto/have
-        have=NGX_QUIC_OPENSSL_COMPAT . auto/have
     fi
 
     case "$CC" in
@@ -154,8 +153,6 @@ else
                 . auto/feature
 
                 if [ $ngx_found = no ]; then
-                    have=NGX_QUIC_OPENSSL_COMPAT . auto/have
-
                     ngx_feature="OpenSSL QUIC compatibility"
                     ngx_feature_test="SSL_CTX_add_custom_ext(NULL, 0, 0,
                                                  NULL, NULL, NULL, NULL, NULL)"

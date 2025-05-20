@@ -973,8 +973,8 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DECLINED;
     }
 
-#if !defined (OPENSSL_IS_BORINGSSL)
-    /* OpenSSL provides read keys for an application level before it's ready */
+#if (NGX_QUIC_QUICTLS_API)
+    /* QuicTLS provides app read keys before completing handshake */
 
     if (pkt->level == ssl_encryption_application && !c->ssl->handshaked) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
