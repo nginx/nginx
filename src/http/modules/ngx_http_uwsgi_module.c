@@ -661,6 +661,10 @@ ngx_http_uwsgi_handler(ngx_http_request_t *r)
     ngx_http_uwsgi_main_conf_t  *uwmcf;
 #endif
 
+    if (r->method == NGX_HTTP_CONNECT) {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }

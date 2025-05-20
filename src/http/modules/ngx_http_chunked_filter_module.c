@@ -71,6 +71,13 @@ ngx_http_chunked_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
+    if (r->method == NGX_HTTP_CONNECT
+        && r->headers_out.status >= NGX_HTTP_OK
+        && r->headers_out.status < NGX_HTTP_SPECIAL_RESPONSE)
+    {
+        return ngx_http_next_header_filter(r);
+    }
+
     if (r->headers_out.content_length_n == -1
         || r->expect_trailers)
     {
