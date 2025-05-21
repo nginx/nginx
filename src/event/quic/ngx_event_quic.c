@@ -964,7 +964,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
     qc = ngx_quic_get_connection(c);
 
     qc->error = 0;
-    qc->error_reason = 0;
+    qc->error_reason = NULL;
 
     c->log->action = "decrypting packet";
 
