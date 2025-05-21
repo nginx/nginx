@@ -402,7 +402,7 @@ ngx_quic_crypto_input(ngx_connection_t *c, ngx_chain_t *data,
         b = cl->buf;
 
         if (!SSL_provide_quic_data(ssl_conn, level, b->pos, b->last - b->pos)) {
-            ngx_ssl_error(NGX_LOG_INFO, c->log, 0,
+            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                           "SSL_provide_quic_data() failed");
             return NGX_ERROR;
         }
@@ -531,7 +531,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
     if (SSL_set_quic_method(ssl_conn, &quic_method) == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                       "quic SSL_set_quic_method() failed");
         return NGX_ERROR;
     }
@@ -572,14 +572,14 @@ ngx_quic_init_connection(ngx_connection_t *c)
 #endif
 
     if (SSL_set_quic_transport_params(ssl_conn, p, len) == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                       "quic SSL_set_quic_transport_params() failed");
         return NGX_ERROR;
     }
 
 #ifdef OPENSSL_IS_BORINGSSL
     if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                       "quic SSL_set_quic_early_data_context() failed");
         return NGX_ERROR;
     }
