@@ -137,8 +137,9 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
              * the endpoint MAY treat that receipt as a connection error
              * of type PROTOCOL_VIOLATION.
              */
-            qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-            qc->error_reason = "seqnum refers to different connection id/token";
+            ngx_quic_set_error(c, NGX_QUIC_ERR_PROTOCOL_VIOLATION,
+                               "seqnum refers to different "
+                               "connection id/token");
             return NGX_ERROR;
         }
 
@@ -194,8 +195,8 @@ done:
          * active_connection_id_limit transport parameter, an endpoint MUST
          * close the connection with an error of type CONNECTION_ID_LIMIT_ERROR.
          */
-        qc->error = NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR;
-        qc->error_reason = "too many connection ids received";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_CONNECTION_ID_LIMIT_ERROR,
+                           "too many connection ids received");
         return NGX_ERROR;
     }
 
@@ -357,8 +358,8 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
          *  number greater than any previously sent to the peer MUST be
          *  treated as a connection error of type PROTOCOL_VIOLATION.
          */
-        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        qc->error_reason = "sequence number of id to retire was never issued";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_PROTOCOL_VIOLATION,
+                           "sequence number of id to retire was never issued");
 
         return NGX_ERROR;
     }
@@ -375,9 +376,8 @@ ngx_quic_handle_retire_connection_id_frame(ngx_connection_t *c,
          * which the frame is contained.  The peer MAY treat this as a
          * connection error of type PROTOCOL_VIOLATION.
          */
-
-        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        qc->error_reason = "sequence number of id to retire refers DCID";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_PROTOCOL_VIOLATION,
+                           "sequence number of id to retire refers DCID");
 
         return NGX_ERROR;
     }

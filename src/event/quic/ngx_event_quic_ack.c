@@ -120,7 +120,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
      */
 
     if (ack->first_range > ack->largest) {
-        qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_FRAME_ENCODING_ERROR,
+                           "invalid first range in ack frame");
+
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic invalid first range in ack frame");
         return NGX_ERROR;
@@ -177,7 +179,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         pos += n;
 
         if (gap + 2 > min) {
-            qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_FRAME_ENCODING_ERROR,
+                               "invalid range in ack frame");
+
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "quic invalid range:%ui in ack frame", i);
             return NGX_ERROR;
@@ -186,7 +190,9 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         max = min - gap - 2;
 
         if (range > max) {
-            qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_FRAME_ENCODING_ERROR,
+                               "invalid range in ack frame");
+
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "quic invalid range:%ui in ack frame", i);
             return NGX_ERROR;
@@ -324,8 +330,8 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic ACK for the packet not sent");
 
-        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        qc->error_reason = "unknown packet number";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_PROTOCOL_VIOLATION,
+                           "unsent packet acknowledged");
 
         return NGX_ERROR;
     }
