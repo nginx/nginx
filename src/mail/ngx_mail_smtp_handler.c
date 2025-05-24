@@ -742,6 +742,12 @@ ngx_mail_smtp_mail(ngx_mail_session_t *s, ngx_connection_t *c)
     ngx_str_t                 *arg, cmd;
     ngx_mail_smtp_srv_conf_t  *sscf;
 
+#if (NGX_MAIL_SSL)
+    if (ngx_mail_starttls_only(s, c)) {
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+#endif
+
     sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
 
     if (!(sscf->auth_methods & NGX_MAIL_AUTH_NONE_ENABLED)) {
