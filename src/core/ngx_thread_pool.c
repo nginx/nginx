@@ -207,7 +207,7 @@ ngx_thread_pool_exit_handler(void *data, ngx_log_t *log)
 
     *lock = 0;
 
-    pthread_exit(0);
+    pthread_exit(NULL);
 }
 
 

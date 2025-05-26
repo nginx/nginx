@@ -304,7 +304,7 @@ ngx_http_gunzip_filter_inflate_start(ngx_http_request_t *r,
 {
     int  rc;
 
-    ctx->zstream.next_in = Z_NULL;
+    ctx->zstream.next_in = NULL;
     ctx->zstream.avail_in = 0;
 
     ctx->zstream.zalloc = ngx_http_gunzip_filter_alloc;
