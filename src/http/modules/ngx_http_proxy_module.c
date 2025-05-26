@@ -470,6 +470,20 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, upstream.pass_trailers),
       NULL },
 
+    { ngx_string("proxy_pass_early_hints"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.pass_early_hints),
+      NULL },
+
+    { ngx_string("proxy_early_hint"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
+      ngx_http_upstream_early_hint_set_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.early_hints),
+      NULL },
+
     { ngx_string("proxy_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -3594,6 +3608,9 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_request_headers = NGX_CONF_UNSET;
     conf->upstream.pass_request_body = NGX_CONF_UNSET;
     conf->upstream.pass_trailers = NGX_CONF_UNSET;
+    conf->upstream.pass_early_hints = NGX_CONF_UNSET;
+
+    conf->upstream.early_hints = NGX_CONF_UNSET_PTR;
 
 #if (NGX_HTTP_CACHE)
     conf->upstream.cache = NGX_CONF_UNSET;
@@ -3940,8 +3957,14 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->upstream.pass_trailers,
                               prev->upstream.pass_trailers, 0);
 
+    ngx_conf_merge_value(conf->upstream.pass_early_hints,
+                              prev->upstream.pass_early_hints, 0);
+
     ngx_conf_merge_value(conf->upstream.intercept_errors,
                               prev->upstream.intercept_errors, 0);
+
+    ngx_conf_merge_ptr_value(conf->upstream.early_hints,
+                              prev->upstream.early_hints, NULL);
 
 #if (NGX_HTTP_SSL)
 

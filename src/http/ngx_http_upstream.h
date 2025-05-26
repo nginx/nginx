@@ -185,6 +185,7 @@ typedef struct {
     ngx_flag_t                       pass_request_headers;
     ngx_flag_t                       pass_request_body;
     ngx_flag_t                       pass_trailers;
+    ngx_flag_t                       pass_early_hints;
 
     ngx_flag_t                       ignore_client_abort;
     ngx_flag_t                       intercept_errors;
@@ -196,6 +197,7 @@ typedef struct {
     ngx_hash_t                       hide_headers_hash;
     ngx_array_t                     *hide_headers;
     ngx_array_t                     *pass_headers;
+    ngx_array_t                     *early_hints;
 
     ngx_http_upstream_local_t       *local;
     ngx_flag_t                       socket_keepalive;
@@ -354,6 +356,7 @@ struct ngx_http_upstream_s {
 
     ngx_buf_t                        buffer;
     off_t                            length;
+    off_t                            early_hints_length;
 
     ngx_chain_t                     *out_bufs;
     ngx_chain_t                     *busy_bufs;
@@ -437,6 +440,8 @@ char *ngx_http_upstream_param_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev,
     ngx_str_t *default_hide_headers, ngx_hash_init_t *hash);
+char *ngx_http_upstream_early_hint_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 #if (NGX_HTTP_SSL)
 ngx_int_t ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
     ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev);
