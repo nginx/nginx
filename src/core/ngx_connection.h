@@ -24,6 +24,7 @@ struct ngx_listening_s {
     ngx_str_t           addr_text;
 
     int                 type;
+    int                 protocol;
 
     int                 backlog;
     int                 rcvbuf;
