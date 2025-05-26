@@ -234,6 +234,7 @@ typedef struct {
     unsigned                         intercept_404:1;
     unsigned                         change_buffering:1;
     unsigned                         preserve_output:1;
+    unsigned                         ignore_input:1;
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_ssl_t                       *ssl;

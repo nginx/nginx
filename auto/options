@@ -89,6 +89,7 @@ HTTP_FASTCGI=YES
 HTTP_UWSGI=YES
 HTTP_SCGI=YES
 HTTP_GRPC=YES
+HTTP_TUNNEL=YES
 HTTP_PERL=NO
 HTTP_MEMCACHED=YES
 HTTP_LIMIT_CONN=YES
@@ -279,6 +280,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --without-http_uwsgi_module)     HTTP_UWSGI=NO              ;;
         --without-http_scgi_module)      HTTP_SCGI=NO               ;;
         --without-http_grpc_module)      HTTP_GRPC=NO               ;;
+        --without-http_tunnel_module)    HTTP_TUNNEL=NO             ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_limit_conn_module) HTTP_LIMIT_CONN=NO        ;;
         --without-http_limit_req_module) HTTP_LIMIT_REQ=NO         ;;
