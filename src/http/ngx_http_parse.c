@@ -811,6 +811,29 @@ done:
     return NGX_OK;
 }
 
+static ngx_int_t
+ngx_http_non_alnum_dash_header_char(u_char ch)
+{
+    switch (ch) {
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '*':
+    case '+':
+    case '.':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+        return 1;
+    default:
+        return 0;
+    }
+}
 
 ngx_int_t
 ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
@@ -824,7 +847,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         sw_space_before_value,
         sw_value,
         sw_space_after_value,
-        sw_ignore_line,
         sw_almost_done,
         sw_header_almost_done
     } state;
@@ -875,22 +897,14 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
-                if (ch == '_') {
-                    if (allow_underscores) {
-                        hash = ngx_hash(0, ch);
-                        r->lowcase_header[0] = ch;
-                        i = 1;
-
-                    } else {
-                        hash = 0;
-                        i = 0;
-                        r->invalid_header = 1;
-                    }
-
+                if (ch == '_' && allow_underscores) {
+                    hash = ngx_hash(0, ch);
+                    r->lowcase_header[0] = ch;
+                    i = 1;
                     break;
                 }
 
-                if (ch <= 0x20 || ch == 0x7f || ch == ':') {
+                if (!ngx_http_non_alnum_dash_header_char(ch)) {
                     r->header_end = p;
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
@@ -949,17 +963,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 goto done;
             }
 
-            /* IIS may send the duplicate "HTTP/1.1 ..." lines */
-            if (ch == '/'
-                && r->upstream
-                && p - r->header_name_start == 4
-                && ngx_strncmp(r->header_name_start, "HTTP", 4) == 0)
-            {
-                state = sw_ignore_line;
-                break;
-            }
-
-            if (ch <= 0x20 || ch == 0x7f) {
+            if (!ngx_http_non_alnum_dash_header_char(ch)) {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
@@ -972,6 +976,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 r->header_start = p;
@@ -996,6 +1001,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 r->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -1016,6 +1022,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
@@ -1027,17 +1034,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             default:
                 state = sw_value;
-                break;
-            }
-            break;
-
-        /* ignore header line */
-        case sw_ignore_line:
-            switch (ch) {
-            case LF:
-                state = sw_start;
-                break;
-            default:
                 break;
             }
             break;
@@ -1088,6 +1084,120 @@ header_done:
 
     return NGX_HTTP_PARSE_HEADER_DONE;
 }
+
+
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+ngx_int_t
+ngx_http_v23_validate_header(ngx_http_request_t *r, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    int                        bad;
+    u_char                     ch;
+    ngx_uint_t                 i;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    r->invalid_header = 0;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (name->len < 1) {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                      "BUG: internal zero-length header name");
+
+        return NGX_ERROR;
+    }
+
+    for (i = (name->data[0] == ':'); i != name->len; i++) {
+        ch = name->data[i];
+
+        if ((ch >= 'a' && ch <= 'z')
+            || (ch == '-')
+            || (ch >= '0' && ch <= '9')
+            || (ch == '_' && cscf->underscores_in_headers))
+        {
+            continue;
+        }
+
+        if (!ngx_http_non_alnum_dash_header_char(ch))
+        {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid header name");
+
+            return NGX_ERROR;
+        }
+
+        r->invalid_header = 1;
+    }
+
+    if (value->len > 0) {
+        if (cscf->reject_leading_trailing_whitespace
+            && (value->data[0] == ' ' || value->data[0] == '\t'
+                || value->data[value->len - 1] == ' '
+                || value->data[value->len - 1] == '\t')) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent header \"%V\" with "
+                          " leading or trailing space",
+                          name);
+
+            return NGX_ERROR;
+        }
+
+        for (i = 0; i != value->len; i++) {
+            ch = value->data[i];
+
+            if (ch == '\0' || ch == LF || ch == CR) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent header \"%V\" with "
+                              "invalid value", name, value);
+
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    bad = 0;
+    switch (name->len) {
+#define X(s) \
+    case sizeof("" s) - 1: \
+        bad = memcmp(name->data, s, sizeof(s) - 1) == 0; \
+        break;
+    X("upgrade");
+    X("transfer-encoding");
+#undef X
+    case 10:
+        switch (name->data[0]) {
+        case 'c':
+            bad = memcmp(name->data + 1, "onnection", 9) == 0;
+            break;
+        case 'k':
+            bad = memcmp(name->data + 1, "eep-alive", 9) == 0;
+            break;
+        default:
+            break;
+        }
+        break;
+    case 2:
+        /* te: trailiers is allowed, all other te values forbidden */
+        bad = name->data[0] == 't' && name->data[1] == 'e'
+            && !(value->len == 8 && memcmp(value->data, "trailers", 8) == 0);
+        break;
+    }
+
+    /* Proxy-* headers are not allowed */
+    if (name->len >= 6 && memcmp(name->data, "proxy-", 6) == 0) {
+        bad = 1;
+    }
+
+    if (bad) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent forbidden hop-by-hop header \"%V\" with "
+                      "value: \"%V\"", name, value);
+
+        return NGX_ERROR;
+    }
+    return NGX_OK;
+}
+#endif
 
 
 ngx_int_t
