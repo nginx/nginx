@@ -83,8 +83,8 @@ static ngx_event_module_t  ngx_kqueue_module_ctx = {
         ngx_kqueue_del_event,              /* delete an event */
         ngx_kqueue_add_event,              /* enable an event */
         ngx_kqueue_del_event,              /* disable an event */
-        NULL,                              /* add an connection */
-        NULL,                              /* delete an connection */
+        NULL,                              /* add a connection */
+        NULL,                              /* delete a connection */
 #ifdef EVFILT_USER
         ngx_kqueue_notify,                 /* trigger a notify */
 #else
