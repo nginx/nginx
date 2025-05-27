@@ -78,7 +78,7 @@ typedef struct {
 } ngx_quic_buffer_t;
 
 
-typedef struct {
+struct ngx_quic_conf_s {
     ngx_ssl_t                     *ssl;
 
     ngx_flag_t                     retry;
@@ -96,7 +96,7 @@ typedef struct {
 
     u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];
-} ngx_quic_conf_t;
+};
 
 
 typedef struct {
@@ -134,6 +134,8 @@ ngx_int_t ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
     ngx_uint_t flags);
 ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
 ngx_connection_t *ngx_quic_accept_stream(ngx_connection_t *c);
+ngx_int_t ngx_quic_has_streams(ngx_connection_t *c, ngx_uint_t local,
+    ngx_uint_t bidi);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_set_app_error(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);

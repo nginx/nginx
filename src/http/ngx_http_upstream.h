@@ -251,6 +251,10 @@ typedef struct {
     ngx_array_t                     *ssl_passwords;
 #endif
 
+#if (NGX_QUIC || NGX_COMPAT)
+    ngx_quic_conf_t                 *quic;
+#endif
+
     ngx_str_t                        module;
 
     NGX_COMPAT_BEGIN(6)
@@ -370,6 +374,7 @@ struct ngx_http_upstream_s {
     ngx_int_t                      (*create_key)(ngx_http_request_t *r);
 #endif
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
+    ngx_int_t                      (*create_stream)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
@@ -399,6 +404,7 @@ struct ngx_http_upstream_s {
     unsigned                         cacheable:1;
     unsigned                         accel:1;
     unsigned                         ssl:1;
+    unsigned                         quic:1;
 #if (NGX_HTTP_CACHE)
     unsigned                         cache_status:3;
 #endif

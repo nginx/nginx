@@ -57,6 +57,50 @@ ngx_quic_is_stream_local(ngx_connection_t *c, uint64_t id)
 }
 
 
+ngx_int_t
+ngx_quic_has_streams(ngx_connection_t *c, ngx_uint_t local, ngx_uint_t bidi)
+{
+    uint64_t                type;
+    ngx_rbtree_t           *tree;
+    ngx_rbtree_node_t      *node;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    /* TODO optimize */
+
+    type = 0;
+
+    if ((qc->is_server && local) || (!qc->is_server && !local)) {
+        type |= NGX_QUIC_STREAM_SERVER_INITIATED;
+    }
+
+    if (!bidi) {
+        type |= NGX_QUIC_STREAM_UNIDIRECTIONAL;
+    }
+
+    tree = &qc->streams.tree;
+
+    if (tree->root == tree->sentinel) {
+        return NGX_DECLINED;
+    }
+
+    node = ngx_rbtree_min(tree->root, tree->sentinel);
+
+    while (node) {
+        qs = (ngx_quic_stream_t *) node;
+        node = ngx_rbtree_next(tree, node);
+
+        if ((qs->id & 0x03) == type) {
+            return NGX_OK;
+        }
+    }
+
+    return NGX_DECLINED;
+}
+
+
 ngx_connection_t *
 ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
 {
@@ -925,44 +969,67 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 
 
 static ssize_t
-ngx_quic_stream_recv_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
+ngx_quic_stream_recv_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t limit)
 {
-    size_t  len, size;
-    ssize_t  n;
+    u_char     *last;
+    ssize_t     n, bytes, size;
+    ngx_buf_t  *b;
 
     /* TODO optimize */
 
-    len = 0;
+    bytes = 0;
 
-    while (in && limit) {
-        size = in->buf->last - in->buf->pos;
-        if ((off_t) size > limit) {
-            size = limit;
+    b = cl->buf;
+    last = b->last;
+
+    for ( ;; ) {
+        size = b->end - last;
+
+        if (limit) {
+            if (bytes >= limit) {
+                return bytes;
+            }
+
+            if (bytes + size > limit) {
+                size = (ssize_t) (limit - bytes);
+            }
         }
 
-        n = ngx_quic_stream_recv(c, in->buf->pos, size);
+        n = ngx_quic_stream_recv(c, last, size);
 
-        if (n == NGX_ERROR) {
-            return NGX_ERROR;
+        if (n > 0) {
+            last += n;
+            bytes += n;
+
+            if (!c->read->ready) {
+                return bytes;
+            }
+
+            if (last == b->end) {
+                cl = cl->next;
+
+                if (cl == NULL) {
+                    return bytes;
+                }
+
+                b = cl->buf;
+                last = b->last;
+            }
+
+            continue;
         }
 
-        if (n == NGX_AGAIN) {
-            break;
+        if (bytes) {
+
+            if (n == 0 || n == NGX_ERROR) {
+                c->read->ready = 1;
+            }
+
+            return bytes;
         }
 
-        in->buf->pos += n;
-        limit -= n;
-
-        if (in->buf->pos == in->buf->last) {
-            in = in->next;
-        }
+        return n;
     }
-
-    if (len == 0 && in) {
-        return NGX_AGAIN;
-    }
-
-    return len;
 }
 
 
