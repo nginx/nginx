@@ -156,6 +156,8 @@ void ngx_http_v3_close_connection(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
 
+ngx_int_t ngx_http_v3_proxy_handler(ngx_http_request_t *r);
+
 
 extern ngx_module_t  ngx_http_v3_module;
 

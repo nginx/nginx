@@ -22,6 +22,9 @@
 #define NGX_HTTP_V3_HEADER_LAST_MODIFIED             10
 #define NGX_HTTP_V3_HEADER_LOCATION                  12
 #define NGX_HTTP_V3_HEADER_METHOD_GET                17
+#define NGX_HTTP_V3_HEADER_METHOD_HEAD               18
+#define NGX_HTTP_V3_HEADER_METHOD_POST               20
+#define NGX_HTTP_V3_HEADER_METHOD_PUT                21
 #define NGX_HTTP_V3_HEADER_SCHEME_HTTP               22
 #define NGX_HTTP_V3_HEADER_SCHEME_HTTPS              23
 #define NGX_HTTP_V3_HEADER_STATUS_103                24
