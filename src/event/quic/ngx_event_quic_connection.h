@@ -26,7 +26,6 @@
 #define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
 
 
-typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
 typedef struct ngx_quic_client_id_s   ngx_quic_client_id_t;
 typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
@@ -67,8 +66,7 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
         : (((level) == NGX_QUIC_ENCRYPTION_HANDSHAKE) ? &((qc)->send_ctx[1])  \
                                                       : &((qc)->send_ctx[2]))
 
-#define ngx_quic_get_connection(c)                                            \
-    (((c)->udp) ? (((ngx_quic_socket_t *)((c)->udp))->quic) : NULL)
+#define ngx_quic_get_connection(c)           ((c)->quic->connection)
 
 #define ngx_quic_get_socket(c)               ((ngx_quic_socket_t *)((c)->udp))
 
@@ -287,6 +285,7 @@ struct ngx_quic_connection_s {
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
+    unsigned                          initialized:1;
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
     unsigned                          lingering:1;

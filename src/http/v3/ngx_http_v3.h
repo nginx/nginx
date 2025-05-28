@@ -79,8 +79,9 @@
 
 
 #define ngx_http_v3_get_session(c)                                            \
-    ((ngx_http_v3_session_t *) ((c)->quic ? (c)->quic->parent->data           \
-                                          : (c)->data))
+    ((ngx_http_v3_session_t *) ((c)->quic->stream                             \
+                                     ? (c)->quic->stream->parent->data        \
+                                     : (c)->data))
 
 #define ngx_http_quic_get_connection(c)                                       \
     (ngx_http_v3_get_session(c)->http_connection)
@@ -94,8 +95,10 @@
                                  module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
-    ngx_quic_set_app_error((c)->quic ? (c)->quic->parent : (c), code, reason);\
-    ngx_post_event((c)->quic ? (c)->quic->parent->read : (c)->read,           \
+    ngx_quic_set_app_error((c)->quic->stream ? (c)->quic->stream->parent      \
+                                             : (c), code, reason);            \
+    ngx_post_event((c)->quic->stream ? (c)->quic->stream->parent->read        \
+                                     : (c)->read,                             \
                    &ngx_posted_events)
 
 

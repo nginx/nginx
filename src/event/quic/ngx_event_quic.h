@@ -44,6 +44,7 @@
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
 
+typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef ngx_int_t (*ngx_quic_init_pt)(ngx_connection_t *c);
 typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
 
@@ -98,7 +99,7 @@ typedef struct {
 } ngx_quic_conf_t;
 
 
-struct ngx_quic_stream_s {
+typedef struct {
     ngx_rbtree_node_t              node;
     ngx_queue_t                    queue;
     ngx_connection_t              *parent;
@@ -119,11 +120,19 @@ struct ngx_quic_stream_s {
     ngx_quic_stream_send_state_e   send_state;
     ngx_quic_stream_recv_state_e   recv_state;
     unsigned                       fin_acked:1;
+} ngx_quic_stream_t;
+
+
+struct ngx_quic_s {
+    ngx_quic_connection_t         *connection;
+    ngx_quic_stream_t             *stream;
 };
 
 
 void ngx_quic_recvmsg(ngx_event_t *ev);
-ngx_int_t ngx_quic_handshake(ngx_connection_t *c, ngx_quic_conf_t *conf);
+ngx_int_t ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
+    ngx_uint_t flags);
+ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
 ngx_connection_t *ngx_quic_accept_stream(ngx_connection_t *c);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
 void ngx_quic_set_app_error(ngx_connection_t *c, ngx_uint_t err,

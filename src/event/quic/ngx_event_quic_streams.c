@@ -56,7 +56,7 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    pc = c->quic ? c->quic->parent : c;
+    pc = c->quic->stream ? c->quic->stream->parent : c;
     qc = ngx_quic_get_connection(pc);
 
     if (qc->closing) {
@@ -285,7 +285,7 @@ ngx_quic_close_streams(ngx_connection_t *c)
 ngx_int_t
 ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err)
 {
-    return ngx_quic_do_reset_stream(c->quic, err);
+    return ngx_quic_do_reset_stream(c->quic->stream, err);
 }
 
 
@@ -359,7 +359,7 @@ ngx_quic_shutdown_stream_send(ngx_connection_t *c)
 {
     ngx_quic_stream_t  *qs;
 
-    qs = c->quic;
+    qs = c->quic->stream;
 
     if (qs->send_state != NGX_QUIC_STREAM_SEND_READY
         && qs->send_state != NGX_QUIC_STREAM_SEND_SEND)
@@ -385,7 +385,7 @@ ngx_quic_shutdown_stream_recv(ngx_connection_t *c)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->quic;
+    qs = c->quic->stream;
 
     if (qs->recv_state != NGX_QUIC_STREAM_RECV_RECV
         && qs->recv_state != NGX_QUIC_STREAM_RECV_SIZE_KNOWN)
@@ -616,6 +616,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     ngx_log_t              *log;
     ngx_pool_t             *pool;
     ngx_uint_t              reusable;
+    ngx_quic_t             *quic;
     ngx_queue_t            *q;
     struct sockaddr        *sockaddr;
     ngx_connection_t       *sc;
@@ -669,6 +670,16 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     *log = *c->log;
     pool->log = log;
 
+    quic = ngx_palloc(pool, sizeof(ngx_quic_t));
+    if (quic == NULL) {
+        ngx_destroy_pool(pool);
+        ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
+        return NULL;
+    }
+
+    quic->connection = qc;
+    quic->stream = qs;
+
     sockaddr = ngx_palloc(pool, c->socklen);
     if (sockaddr == NULL) {
         ngx_destroy_pool(pool);
@@ -709,7 +720,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 
     qs->connection = sc;
 
-    sc->quic = qs;
+    sc->quic = quic;
     sc->shared = 1;
     sc->type = SOCK_STREAM;
     sc->pool = pool;
@@ -798,7 +809,7 @@ ngx_quic_stream_recv(ngx_connection_t *c, u_char *buf, size_t size)
     ngx_connection_t   *pc;
     ngx_quic_stream_t  *qs;
 
-    qs = c->quic;
+    qs = c->quic->stream;
     pc = qs->parent;
     rev = c->read;
 
@@ -939,7 +950,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->quic;
+    qs = c->quic->stream;
     pc = qs->parent;
     qc = ngx_quic_get_connection(pc);
     wev = c->write;
@@ -1081,7 +1092,7 @@ ngx_quic_stream_cleanup_handler(void *data)
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
-    qs = c->quic;
+    qs = c->quic->stream;
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, qs->parent->log, 0,
                    "quic stream id:0x%xL cleanup", qs->id);
