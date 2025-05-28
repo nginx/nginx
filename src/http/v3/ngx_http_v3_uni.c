@@ -41,7 +41,7 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init uni stream");
 
-    n = c->quic->id >> 2;
+    n = c->quic->stream->id >> 2;
 
     if (n >= NGX_HTTP_V3_MAX_UNI_STREAMS) {
         ngx_http_v3_finalize_connection(c,

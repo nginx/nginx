@@ -11,16 +11,15 @@
 
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handle_stateless_reset(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static void ngx_quic_input_handler(ngx_event_t *rev);
 static void ngx_quic_close_handler(ngx_event_t *ev);
 
-static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
-    ngx_quic_conf_t *conf);
+static ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_handle_packet(ngx_connection_t *c,
-    ngx_quic_conf_t *conf, ngx_quic_header_t *pkt);
+    ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_handle_payload(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 static ngx_int_t ngx_quic_check_csid(ngx_quic_connection_t *qc,
@@ -198,14 +197,42 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
 
 
 ngx_int_t
-ngx_quic_handshake(ngx_connection_t *c, ngx_quic_conf_t *conf)
+ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
+    ngx_uint_t flags)
+{
+    ngx_quic_t             *quic;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
+    if (qc == NULL) {
+        return NGX_ERROR;
+    }
+
+    qc->conf = conf;
+
+    quic = ngx_palloc(c->pool, sizeof(ngx_quic_t));
+    if (quic == NULL) {
+        return NGX_ERROR;
+    }
+
+    quic->connection = qc;
+    quic->stream = NULL;
+
+    c->quic = quic;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_quic_handshake(ngx_connection_t *c)
 {
     ngx_int_t               rc;
     ngx_quic_connection_t  *qc;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic handshake");
 
-    rc = ngx_quic_handle_datagram(c, c->buffer, conf);
+    rc = ngx_quic_handle_datagram(c, c->buffer);
 
     if (rc != NGX_OK) {
         if (c->ssl) {
@@ -215,7 +242,7 @@ ngx_quic_handshake(ngx_connection_t *c, ngx_quic_conf_t *conf)
         return NGX_ERROR;
     }
 
-    /* quic connection is now created */
+    /* quic connection is now initialized */
     qc = ngx_quic_get_connection(c);
 
     ngx_add_timer(&qc->close, qc->tp.max_idle_timeout);
@@ -229,17 +256,15 @@ ngx_quic_handshake(ngx_connection_t *c, ngx_quic_conf_t *conf)
 
 
 static ngx_quic_connection_t *
-ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
-    ngx_quic_header_t *pkt)
+ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_uint_t              i;
     ngx_quic_tp_t          *ctp;
+    ngx_quic_conf_t        *conf;
     ngx_quic_connection_t  *qc;
 
-    qc = ngx_pcalloc(c->pool, sizeof(ngx_quic_connection_t));
-    if (qc == NULL) {
-        return NULL;
-    }
+    qc = c->quic->connection;
+    conf = qc->conf;
 
     qc->keys = ngx_pcalloc(c->pool, sizeof(ngx_quic_keys_t));
     if (qc->keys == NULL) {
@@ -346,6 +371,8 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     c->idle = 1;
 
+    qc->initialized = 1;
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic connection created");
 
@@ -424,7 +451,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         goto done;
     }
 
-    rc = ngx_quic_handle_datagram(c, b, NULL);
+    rc = ngx_quic_handle_datagram(c, b);
 
     if (rc == NGX_ERROR) {
         ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
@@ -477,7 +504,7 @@ ngx_quic_shutdown(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc == NULL) {
+    if (!qc->initialized) {
         goto quic_done;
     }
 
@@ -713,8 +740,7 @@ ngx_quic_close_handler(ngx_event_t *ev)
 
 
 static ngx_int_t
-ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
-    ngx_quic_conf_t *conf)
+ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b)
 {
     size_t                  size;
     u_char                 *p, *start;
@@ -743,7 +769,7 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         pkt.flags = p[0];
         pkt.raw->pos++;
 
-        rc = ngx_quic_handle_packet(c, conf, &pkt);
+        rc = ngx_quic_handle_packet(c, &pkt);
 
 #if (NGX_DEBUG)
         if (pkt.parsed) {
@@ -799,18 +825,16 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc) {
-        qc->received += size;
+    qc->received += size;
 
-        if ((uint64_t) (c->sent + qc->received) / 8 >
-            (qc->streams.sent + qc->streams.recv_last) + 1048576)
-        {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic flood detected");
+    if ((uint64_t) (c->sent + qc->received) / 8 >
+        (qc->streams.sent + qc->streams.recv_last) + 1048576)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic flood detected");
 
-            qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
-            qc->error_reason = "QUIC flood detected";
-            return NGX_ERROR;
-        }
+        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        qc->error_reason = "QUIC flood detected";
+        return NGX_ERROR;
     }
 
     return NGX_OK;
@@ -818,10 +842,10 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
 
 
 static ngx_int_t
-ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
-    ngx_quic_header_t *pkt)
+ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     ngx_int_t               rc;
+    ngx_quic_conf_t        *conf;
     ngx_quic_socket_t      *qsock;
     ngx_quic_connection_t  *qc;
 
@@ -857,7 +881,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc) {
+    if (qc->initialized) {
 
         if (rc == NGX_ABORT) {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -912,7 +936,9 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         return rc;
     }
 
-    /* packet does not belong to a connection */
+    /* connection has not been initialized yet */
+
+    conf = c->quic->connection->conf;
 
     if (rc == NGX_ABORT) {
         return ngx_quic_negotiate_version(c, pkt);
@@ -986,7 +1012,7 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
 
     c->log->action = "creating quic connection";
 
-    qc = ngx_quic_new_connection(c, conf, pkt);
+    qc = ngx_quic_new_connection(c, pkt);
     if (qc == NULL) {
         return NGX_ERROR;
     }
