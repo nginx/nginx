@@ -408,7 +408,8 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
                 return NGX_QUIC_STREAM_GONE;
             }
 
-            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                               "peer attempted to open a local stream");
             return NULL;
         }
 
@@ -417,7 +418,8 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
         }
 
         if ((id >> 2) >= qc->streams.client_max_streams_uni) {
-            qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_LIMIT_ERROR,
+                               "peer exceeded stream limit");
             return NULL;
         }
 
@@ -432,7 +434,8 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
                 return NGX_QUIC_STREAM_GONE;
             }
 
-            qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                               "peer attempted to open a local stream");
             return NULL;
         }
 
@@ -441,7 +444,8 @@ ngx_quic_get_stream(ngx_connection_t *c, uint64_t id)
         }
 
         if ((id >> 2) >= qc->streams.client_max_streams_bidi) {
-            qc->error = NGX_QUIC_ERR_STREAM_LIMIT_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_LIMIT_ERROR,
+                               "peer exceeded stream limit");
             return NULL;
         }
 
@@ -1096,12 +1100,14 @@ ngx_quic_stream_cleanup_handler(void *data)
 {
     ngx_connection_t *c = data;
 
+    ngx_connection_t       *pc;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qs = c->quic;
+    pc = qs->parent;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, qs->parent->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "quic stream id:0x%xL cleanup", qs->id);
 
     if (ngx_quic_shutdown_stream(c, NGX_RDWR_SHUTDOWN) != NGX_OK) {
@@ -1119,8 +1125,9 @@ ngx_quic_stream_cleanup_handler(void *data)
 
 failed:
 
-    qc = ngx_quic_get_connection(qs->parent);
-    qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+    ngx_quic_set_error(pc, NGX_QUIC_ERR_INTERNAL_ERROR, "stream cleanup error");
+
+    qc = ngx_quic_get_connection(pc);
 
     ngx_post_event(&qc->close, &ngx_posted_events);
 }
@@ -1234,16 +1241,15 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 {
     uint64_t                  last;
     ngx_quic_stream_t        *qs;
-    ngx_quic_connection_t    *qc;
     ngx_quic_stream_frame_t  *f;
 
-    qc = ngx_quic_get_connection(c);
     f = &frame->u.stream;
 
     if ((f->stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->stream_id & NGX_QUIC_STREAM_SERVER_INITIATED))
     {
-        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                           "peer sent data on local uni stream");
         return NGX_ERROR;
     }
 
@@ -1271,7 +1277,8 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     }
 
     if (qs->recv_final_size != (uint64_t) -1 && last > qs->recv_final_size) {
-        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_FINAL_SIZE_ERROR,
+                           "peer sent data beyond stream end");
         return NGX_ERROR;
     }
 
@@ -1282,12 +1289,14 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     if (f->fin) {
         if (qs->recv_final_size != (uint64_t) -1 && qs->recv_final_size != last)
         {
-            qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_FINAL_SIZE_ERROR,
+                               "peer sent data beyond stream end");
             return NGX_ERROR;
         }
 
         if (qs->recv_last > last) {
-            qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+            ngx_quic_set_error(c, NGX_QUIC_ERR_FINAL_SIZE_ERROR,
+                               "peer sent data beyond stream end");
             return NGX_ERROR;
         }
 
@@ -1380,15 +1389,13 @@ ngx_int_t
 ngx_quic_handle_stream_data_blocked_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stream_data_blocked_frame_t *f)
 {
-    ngx_quic_stream_t      *qs;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_quic_stream_t  *qs;
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
     {
-        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                           "peer sent data blocked for local uni stream");
         return NGX_ERROR;
     }
 
@@ -1410,15 +1417,13 @@ ngx_int_t
 ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_max_stream_data_frame_t *f)
 {
-    ngx_quic_stream_t      *qs;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_quic_stream_t  *qs;
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
     {
-        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                           "peer sent flow control for local uni stream");
         return NGX_ERROR;
     }
 
@@ -1452,16 +1457,14 @@ ngx_int_t
 ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_reset_stream_frame_t *f)
 {
-    ngx_event_t            *rev;
-    ngx_quic_stream_t      *qs;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_event_t        *rev;
+    ngx_quic_stream_t  *qs;
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED))
     {
-        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                           "peer sent reset for local uni stream");
         return NGX_ERROR;
     }
 
@@ -1490,12 +1493,14 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
     if (qs->recv_final_size != (uint64_t) -1
         && qs->recv_final_size != f->final_size)
     {
-        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_FINAL_SIZE_ERROR,
+                           "peer sent data beyond stream end");
         return NGX_ERROR;
     }
 
     if (qs->recv_last > f->final_size) {
-        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_FINAL_SIZE_ERROR,
+                           "peer sent data beyond stream end");
         return NGX_ERROR;
     }
 
@@ -1522,15 +1527,13 @@ ngx_int_t
 ngx_quic_handle_stop_sending_frame(ngx_connection_t *c,
     ngx_quic_header_t *pkt, ngx_quic_stop_sending_frame_t *f)
 {
-    ngx_quic_stream_t      *qs;
-    ngx_quic_connection_t  *qc;
-
-    qc = ngx_quic_get_connection(c);
+    ngx_quic_stream_t  *qs;
 
     if ((f->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
         && (f->id & NGX_QUIC_STREAM_SERVER_INITIATED) == 0)
     {
-        qc->error = NGX_QUIC_ERR_STREAM_STATE_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_STREAM_STATE_ERROR,
+                           "peer sent stop sending for local uni stream");
         return NGX_ERROR;
     }
 
@@ -1683,14 +1686,16 @@ ngx_quic_control_flow(ngx_quic_stream_t *qs, uint64_t last)
     if (qs->recv_state == NGX_QUIC_STREAM_RECV_RECV
         && qs->recv_last > qs->recv_max_data)
     {
-        qc->error = NGX_QUIC_ERR_FLOW_CONTROL_ERROR;
+        ngx_quic_set_error(pc, NGX_QUIC_ERR_FLOW_CONTROL_ERROR,
+                           "peer sent data beyond stream flow control");
         return NGX_ERROR;
     }
 
     qc->streams.recv_last += len;
 
     if (qc->streams.recv_last > qc->streams.recv_max_data) {
-        qc->error = NGX_QUIC_ERR_FLOW_CONTROL_ERROR;
+        ngx_quic_set_error(pc, NGX_QUIC_ERR_FLOW_CONTROL_ERROR,
+                           "peer sent data beyond flow control");
         return NGX_ERROR;
     }
 
