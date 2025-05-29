@@ -710,7 +710,24 @@ ngx_quic_init_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
 
     pkt->keys = qc->keys;
 
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet tx %s", ngx_quic_level_name(pkt->level));
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet tx dcid len:%uz %*xs",
+                   pkt->dcid.len, pkt->dcid.len, pkt->dcid.data);
+
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION) {
+        ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic packet tx scid len:%uz %*xs",
+                       pkt->scid.len, pkt->scid.len, pkt->scid.data);
+    }
+
     ngx_quic_set_packet_number(pkt, ctx);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic packet tx number:%uL len:%d",
+                   pkt->number, pkt->num_len);
 }
 
 
