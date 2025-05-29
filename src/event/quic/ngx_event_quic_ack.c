@@ -325,7 +325,6 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
                       "quic ACK for the packet not sent");
 
         qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
-        qc->error_ftype = NGX_QUIC_FT_ACK;
         qc->error_reason = "unknown packet number";
 
         return NGX_ERROR;

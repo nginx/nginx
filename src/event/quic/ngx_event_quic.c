@@ -636,7 +636,6 @@ ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     qc->error = err;
     qc->error_reason = reason;
     qc->error_app = 1;
-    qc->error_ftype = 0;
 
     ngx_post_event(&qc->close, &ngx_posted_events);
 }
@@ -1056,7 +1055,6 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         qc->error_level = pkt->level;
         qc->error = NGX_QUIC_ERR_NO_ERROR;
         qc->error_reason = "connection is closing, packet discarded";
-        qc->error_ftype = 0;
         qc->error_app = 0;
 
         return ngx_quic_send_cc(c);
@@ -1213,6 +1211,10 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         c->log->action = "handling frames";
 
         p += len;
+
+        if (qc->error == 0) {
+            qc->error_ftype = frame.type;
+        }
 
         switch (frame.type) {
         /* probing frames */
@@ -1404,6 +1406,10 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic missing frame handler");
             return NGX_ERROR;
+        }
+
+        if (qc->error == 0) {
+            qc->error_ftype = 0;
         }
     }
 
