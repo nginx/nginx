@@ -4033,6 +4033,20 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strncmp(value[n].data, "bind_device=", 12) == 0) {
+#if (NGX_HAVE_BINDTODEVICE)
+            lsopt.bind_device = (const char *) &value[n].data[12];
+            lsopt.set = 1;
+            lsopt.bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                "bind to device \"%V\" is not supported "
+                                "on this platform, ignored",
+                                &value[n]);
+#endif
+            continue;
+        }
+
 #if (NGX_HAVE_SETFIB)
         if (ngx_strncmp(value[n].data, "setfib=", 7) == 0) {
             lsopt.setfib = ngx_atoi(value[n].data + 7, value[n].len - 7);
