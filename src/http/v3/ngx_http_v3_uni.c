@@ -10,24 +10,38 @@
 #include <ngx_http.h>
 
 
+typedef ngx_int_t (*ngx_http_v3_uni_parse_pt)(ngx_connection_t *c,
+    void *data, ngx_buf_t *b);
+
+
 typedef struct {
-    ngx_http_v3_parse_uni_t         parse;
-    ngx_int_t                       index;
+    ngx_http_v3_uni_parse_pt   parse;
+    void                      *data;
+    ngx_int_t                  index;
 } ngx_http_v3_uni_stream_t;
 
 
+static ngx_int_t ngx_http_v3_uni_parse_type(ngx_connection_t *c, void *data,
+    ngx_buf_t *b);
+static ngx_int_t ngx_http_v3_parse_unknown(ngx_connection_t *c, void *data,
+    ngx_buf_t *b);
 static void ngx_http_v3_close_uni_stream(ngx_connection_t *c);
+static ngx_int_t ngx_http_v3_register_uni_stream(ngx_connection_t *c,
+    uint64_t type);
 static void ngx_http_v3_uni_read_handler(ngx_event_t *rev);
 static void ngx_http_v3_uni_dummy_read_handler(ngx_event_t *wev);
 static void ngx_http_v3_uni_dummy_write_handler(ngx_event_t *wev);
+static ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c,
+    ngx_uint_t stream_id);
 
 
 void
 ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 {
-    uint64_t                   n;
-    ngx_http_v3_session_t     *h3c;
-    ngx_http_v3_uni_stream_t  *us;
+    uint64_t                         n;
+    ngx_http_v3_session_t           *h3c;
+    ngx_http_v3_uni_stream_t        *us;
+    ngx_http_v3_parse_varlen_int_t  *st;
 
     h3c = ngx_http_v3_get_session(c);
     if (h3c->hq) {
@@ -64,12 +78,125 @@ ngx_http_v3_init_uni_stream(ngx_connection_t *c)
 
     us->index = -1;
 
-    c->data = us;
+    st = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_varlen_int_t));
+    if (st == NULL) {
+        ngx_http_v3_finalize_connection(c,
+                                        NGX_HTTP_V3_ERR_INTERNAL_ERROR,
+                                        "memory allocation error");
+        c->data = NULL;
+        ngx_http_v3_close_uni_stream(c);
+        return;
+    }
 
+    us->parse = ngx_http_v3_uni_parse_type;
+    us->data = st;
+
+    c->data = us;
     c->read->handler = ngx_http_v3_uni_read_handler;
     c->write->handler = ngx_http_v3_uni_dummy_write_handler;
 
     ngx_http_v3_uni_read_handler(c->read);
+}
+
+
+static ngx_int_t
+ngx_http_v3_uni_parse_type(ngx_connection_t *c, void *data, ngx_buf_t *b)
+{
+    ngx_http_v3_parse_varlen_int_t  *st = data;
+
+    ngx_int_t                     rc;
+    ngx_http_v3_session_t        *h3c;
+    ngx_http_v3_uni_stream_t     *us;
+    ngx_http_v3_parse_control_t  *stc;
+    ngx_http_v3_parse_encoder_t  *ste;
+    ngx_http_v3_parse_decoder_t  *std;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse uni");
+
+    us = c->data;
+
+    rc = ngx_http_v3_parse_varlen_int(c, st, b);
+    if (rc != NGX_DONE) {
+        return rc;
+    }
+
+    rc = ngx_http_v3_register_uni_stream(c, st->value);
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
+    h3c = ngx_http_v3_get_session(c);
+
+    switch (st->value) {
+
+    case NGX_HTTP_V3_STREAM_CONTROL:
+        stc = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_control_t));
+        if (stc == NULL) {
+            return NGX_ERROR;
+        }
+
+        stc->set_param = (ngx_http_v3_set_param_pt) ngx_http_v3_set_param;
+        stc->data = c;
+        stc->max_literal = h3c->max_literal;
+
+        us->parse = (ngx_http_v3_uni_parse_pt) ngx_http_v3_parse_control;
+        us->data = stc;
+
+        break;
+
+    case NGX_HTTP_V3_STREAM_ENCODER:
+        ste = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_encoder_t));
+        if (ste == NULL) {
+            return NGX_ERROR;
+        }
+
+        ste->ref_insert = (ngx_http_v3_ref_insert_pt) ngx_http_v3_ref_insert;
+        ste->insert = (ngx_http_v3_insert_pt) ngx_http_v3_insert;
+        ste->duplicate = (ngx_http_v3_duplicate_pt) ngx_http_v3_duplicate;
+        ste->set_capacity =
+                        (ngx_http_v3_set_capacity_pt) ngx_http_v3_set_capacity;
+        ste->data = c;
+        ste->max_literal = h3c->max_literal;
+
+        us->parse = (ngx_http_v3_uni_parse_pt) ngx_http_v3_parse_encoder;
+        us->data = ste;
+
+        break;
+
+    case NGX_HTTP_V3_STREAM_DECODER:
+        std = ngx_pcalloc(c->pool, sizeof(ngx_http_v3_parse_decoder_t));
+        if (std == NULL) {
+            return NGX_ERROR;
+        }
+
+        std->ack_section = (ngx_http_v3_ack_section_pt) ngx_http_v3_ack_section;
+        std->cancel_stream =
+                      (ngx_http_v3_cancel_stream_pt) ngx_http_v3_cancel_stream;
+        std->inc_insert_count =
+                (ngx_http_v3_inc_insert_count_pt) ngx_http_v3_inc_insert_count;
+        std->data = c;
+        std->max_literal = h3c->max_literal;
+
+        us->parse = (ngx_http_v3_uni_parse_pt) ngx_http_v3_parse_decoder;
+        us->data = std;
+
+        break;
+
+    default:
+        us->parse = (ngx_http_v3_uni_parse_pt) ngx_http_v3_parse_unknown;
+        us->data = NULL;
+    }
+
+    return us->parse(c, us->data, b);
+}
+
+
+static ngx_int_t
+ngx_http_v3_parse_unknown(ngx_connection_t *c, void *data, ngx_buf_t *b)
+{
+    b->pos = b->last;
+
+    return NGX_AGAIN;
 }
 
 
@@ -99,7 +226,7 @@ ngx_http_v3_close_uni_stream(ngx_connection_t *c)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type)
 {
     ngx_int_t                  index;
@@ -222,7 +349,7 @@ ngx_http_v3_uni_read_handler(ngx_event_t *rev)
             return;
         }
 
-        rc = ngx_http_v3_parse_uni(c, &us->parse, &b);
+        rc = us->parse(c, us->data, &b);
 
         if (rc == NGX_DONE) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -389,11 +516,10 @@ failed:
 ngx_int_t
 ngx_http_v3_send_settings(ngx_connection_t *c)
 {
-    u_char                  *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
-    size_t                   n;
-    ngx_connection_t        *cc;
-    ngx_http_v3_session_t   *h3c;
-    ngx_http_v3_srv_conf_t  *h3scf;
+    u_char                 *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
+    size_t                  n;
+    ngx_connection_t       *cc;
+    ngx_http_v3_session_t  *h3c;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 send settings");
 
@@ -402,26 +528,25 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+    h3c = ngx_http_v3_get_session(c);
 
     n = ngx_http_v3_encode_varlen_int(NULL,
                                       NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY);
-    n += ngx_http_v3_encode_varlen_int(NULL, h3scf->max_table_capacity);
+    n += ngx_http_v3_encode_varlen_int(NULL, h3c->max_table_capacity);
     n += ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
-    n += ngx_http_v3_encode_varlen_int(NULL, h3scf->max_blocked_streams);
+    n += ngx_http_v3_encode_varlen_int(NULL, h3c->max_blocked_streams);
 
     p = (u_char *) ngx_http_v3_encode_varlen_int(buf,
                                                  NGX_HTTP_V3_FRAME_SETTINGS);
     p = (u_char *) ngx_http_v3_encode_varlen_int(p, n);
     p = (u_char *) ngx_http_v3_encode_varlen_int(p,
                                          NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY);
-    p = (u_char *) ngx_http_v3_encode_varlen_int(p, h3scf->max_table_capacity);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, h3c->max_table_capacity);
     p = (u_char *) ngx_http_v3_encode_varlen_int(p,
                                             NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
-    p = (u_char *) ngx_http_v3_encode_varlen_int(p, h3scf->max_blocked_streams);
+    p = (u_char *) ngx_http_v3_encode_varlen_int(p, h3c->max_blocked_streams);
     n = p - buf;
 
-    h3c = ngx_http_v3_get_session(c);
     h3c->total_bytes += n;
 
     if (cc->send(cc, buf, n) != (ssize_t) n) {
@@ -606,7 +731,7 @@ failed:
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id)
 {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
