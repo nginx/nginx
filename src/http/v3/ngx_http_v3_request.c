@@ -11,7 +11,6 @@
 
 
 static void ngx_http_v3_handshake_handler(ngx_connection_t *c);
-static void ngx_http_v3_close_connection(ngx_connection_t *c);
 static ngx_int_t ngx_http_v3_init(ngx_connection_t *c);
 static void ngx_http_v3_handler(ngx_connection_t *c);
 static void ngx_http_v3_init_request_stream(ngx_connection_t *c);
@@ -19,8 +18,10 @@ static void ngx_http_v3_wait_request_handler(ngx_event_t *rev);
 static void ngx_http_v3_cleanup_connection(void *data);
 static void ngx_http_v3_cleanup_request(void *data);
 static void ngx_http_v3_process_request(ngx_event_t *rev);
-static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
-    ngx_str_t *name, ngx_str_t *value);
+static ngx_int_t ngx_http_v3_process_header(void *data,
+    ngx_str_t *name, ngx_str_t *value, ngx_uint_t index, ngx_uint_t dynamic);
+static ngx_int_t ngx_http_v3_process_insert_count(void *data,
+    ngx_uint_t *insert_count);
 static ngx_int_t ngx_http_v3_validate_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
@@ -207,51 +208,37 @@ ngx_http_v3_handler(ngx_connection_t *c)
 }
 
 
-static void
-ngx_http_v3_close_connection(ngx_connection_t *c)
-{
-    ngx_pool_t             *pool;
-    ngx_http_v3_session_t  *h3c;
-
-    if (ngx_quic_shutdown(c) == NGX_AGAIN) {
-        c->ssl->handler = ngx_http_v3_close_connection;
-        return;
-    }
-
-#if (NGX_STAT_STUB)
-    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
-#endif
-
-    c->destroyed = 1;
-
-    pool = c->pool;
-
-    ngx_close_connection(c);
-
-    ngx_destroy_pool(pool);
-}
-
-
 static ngx_int_t
 ngx_http_v3_init(ngx_connection_t *c)
 {
     unsigned int               len;
     const unsigned char       *data;
+    ngx_http_connection_t     *hc;
     ngx_http_v3_session_t     *h3c;
     ngx_http_v3_srv_conf_t    *h3scf;
+    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_core_loc_conf_t  *clcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init");
+
+    hc = c->data;
 
     if (ngx_http_v3_init_session(c) != NGX_OK) {
         return NGX_ERROR;
     }
 
     h3c = ngx_http_v3_get_session(c);
+    h3c->data = hc;
+
     clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);
     ngx_add_timer(c->read, clcf->keepalive_timeout);
 
+    cscf = ngx_http_v3_get_module_srv_conf(c, ngx_http_core_module);
     h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+
+    h3c->max_literal = cscf->large_client_header_buffers.size;
+    h3c->max_table_capacity = h3scf->max_table_capacity;
+    h3c->max_blocked_streams = h3scf->max_blocked_streams;
 
     if (h3scf->enable_hq) {
         if (!h3scf->enable) {
@@ -380,14 +367,15 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
 static void
 ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 {
-    size_t                     size;
-    ssize_t                    n;
-    ngx_buf_t                 *b;
-    ngx_connection_t          *c;
-    ngx_pool_cleanup_t        *cln;
-    ngx_http_request_t        *r;
-    ngx_http_connection_t     *hc;
-    ngx_http_core_srv_conf_t  *cscf;
+    size_t                        size;
+    ssize_t                       n;
+    ngx_buf_t                    *b;
+    ngx_connection_t             *c;
+    ngx_pool_cleanup_t           *cln;
+    ngx_http_request_t           *r;
+    ngx_http_connection_t        *hc;
+    ngx_http_core_srv_conf_t     *cscf;
+    ngx_http_v3_parse_headers_t  *st;
 
     c = rev->data;
 
@@ -494,6 +482,13 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
 
     r->v3_parse->header_limit = cscf->large_client_header_buffers.size
                                 * cscf->large_client_header_buffers.num;
+
+    st = &r->v3_parse->headers;
+
+    st->max_literal = cscf->large_client_header_buffers.size;
+    st->process_insert_count = ngx_http_v3_process_insert_count;
+    st->process_header = ngx_http_v3_process_header;
+    st->data = r;
 
     c->data = r;
     c->requests = (c->quic->stream->id >> 2) + 1;
@@ -603,9 +598,9 @@ ngx_http_v3_process_request(ngx_event_t *rev)
         return;
     }
 
-    h3c = ngx_http_v3_get_session(c);
-
     st = &r->v3_parse->headers;
+
+    h3c = ngx_http_v3_get_session(c);
 
     b = r->header_in;
 
@@ -668,6 +663,10 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             break;
         }
 
+        if (rc == NGX_ABORT) {
+            break;
+        }
+
         r->request_length += b->pos - p;
         h3c->total_bytes += b->pos - p;
 
@@ -695,24 +694,19 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             break;
         }
 
-        if (rc == NGX_AGAIN) {
-            continue;
-        }
-
-        /* rc == NGX_OK || rc == NGX_DONE */
-
-        h3c->payload_bytes += ngx_http_v3_encode_field_l(NULL,
-                st->field_rep.field.name.data, st->field_rep.field.name.len,
-                st->field_rep.field.value.data, st->field_rep.field.value.len);
-
-        if (ngx_http_v3_process_header(r, &st->field_rep.field.name,
-                                       &st->field_rep.field.value)
-            != NGX_OK)
-        {
-            break;
-        }
-
         if (rc == NGX_DONE) {
+
+            if (st->insert_count > 0) {
+                if (ngx_http_v3_send_ack_section(c, c->quic->stream->id)
+                    != NGX_OK)
+                {
+                    ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                    break;
+                }
+
+                ngx_http_v3_ack_insert_count(c, st->insert_count);
+            }
+
             if (ngx_http_v3_process_request_header(r) != NGX_OK) {
                 break;
             }
@@ -720,6 +714,8 @@ ngx_http_v3_process_request(ngx_event_t *rev)
             ngx_http_process_request(r);
             break;
         }
+
+        /* rc == NGX_AGAIN */
     }
 
     ngx_http_run_posted_requests(c);
@@ -729,16 +725,68 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
 
 static ngx_int_t
-ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
-    ngx_str_t *value)
+ngx_http_v3_process_header(void *data, ngx_str_t *name, ngx_str_t *value,
+    ngx_uint_t index, ngx_uint_t dynamic)
 {
+    ngx_http_request_t  *r = data;
+
+    u_char                     *p;
     size_t                      len;
+    ngx_str_t                   namet, valuet;
     ngx_table_elt_t            *h;
+    ngx_connection_t           *c;
     ngx_http_header_t          *hh;
+    ngx_http_v3_session_t      *h3c;
     ngx_http_core_srv_conf_t   *cscf;
     ngx_http_core_main_conf_t  *cmcf;
 
     static ngx_str_t cookie = ngx_string("cookie");
+
+    c = r->connection;
+    h3c = ngx_http_v3_get_session(c);
+
+    if (name == NULL) {
+
+        if (dynamic) {
+
+            if (ngx_http_v3_lookup(c, index, &namet, &valuet) != NGX_OK) {
+                return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+            }
+
+            p = ngx_pstrdup(c->pool, &namet);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            namet.data = p;
+            name = &namet;
+
+            if (value == NULL) {
+                p = ngx_pstrdup(r->pool, &valuet);
+                if (p == NULL) {
+                    return NGX_ERROR;
+                }
+
+                valuet.data = p;
+                value = &valuet;
+            }
+
+        } else {
+            if (ngx_http_v3_lookup_static(c, index, &namet, &valuet) != NGX_OK)
+            {
+                return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+            }
+
+            name = &namet;
+
+            if (value == NULL) {
+                value = &valuet;
+            }
+        }
+    }
+
+    h3c->payload_bytes += ngx_http_v3_encode_field_l(NULL,
+                               name->data, name->len, value->data, value->len);
 
     len = name->len + value->len;
 
@@ -746,14 +794,14 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent too large header");
         ngx_http_finalize_request(r, NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
-        return NGX_ERROR;
+        return NGX_ABORT;
     }
 
     r->v3_parse->header_limit -= len;
 
     if (ngx_http_v3_validate_header(r, name, value) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-        return NGX_ERROR;
+        return NGX_ABORT;
     }
 
     if (r->invalid_header) {
@@ -772,21 +820,19 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
-        return NGX_ERROR;
+        return NGX_ABORT;
     }
 
     if (name->len == cookie.len
         && ngx_memcmp(name->data, cookie.data, cookie.len) == 0)
     {
         if (ngx_http_v3_cookie(r, value) != NGX_OK) {
-            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
         }
 
     } else {
         h = ngx_list_push(&r->headers_in.headers);
         if (h == NULL) {
-            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
         }
 
@@ -801,12 +847,38 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
                            h->lowcase_key, h->key.len);
 
         if (hh && hh->handler(r, h, hh->offset) != NGX_OK) {
-            return NGX_ERROR;
+            return NGX_ABORT;
         }
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 header: \"%V: %V\"", name, value);
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v3_process_insert_count(void *data, ngx_uint_t *insert_count)
+{
+    ngx_http_request_t *r = data;
+
+    ngx_int_t   rc;
+    ngx_uint_t  n;
+
+    n = *insert_count;
+
+    rc = ngx_http_v3_decode_insert_count(r->connection, &n);
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
+    rc = ngx_http_v3_check_insert_count(r->connection, n);
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
+    *insert_count = n;
+
     return NGX_OK;
 }
 
@@ -1012,7 +1084,7 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
 failed:
 
     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-    return NGX_ERROR;
+    return NGX_ABORT;
 }
 
 
