@@ -5074,6 +5074,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+#if (NGX_HAVE_PREAD || NGX_WIN32)
+
     ngx_http_core_loc_conf_t *clcf = conf;
 
     time_t       inactive;
@@ -5141,11 +5143,17 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     clcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
-    if (clcf->open_file_cache) {
-        return NGX_CONF_OK;
+    if (clcf->open_file_cache == NULL) {
+        return NGX_CONF_ERROR;
     }
 
-    return NGX_CONF_ERROR;
+#else
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"open_file_cache\" is not supported "
+                       "on this platform, ignored");
+#endif
+
+    return NGX_CONF_OK;
 }
 
 
