@@ -194,13 +194,17 @@ ngx_http_postpone_filter_in_memory(ngx_http_request_t *r, ngx_chain_t *in)
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
         if (r->headers_out.content_length_n != -1) {
-            len = r->headers_out.content_length_n;
 
-            if (len > clcf->subrequest_output_buffer_size) {
+            if (r->headers_out.content_length_n
+                > (off_t) clcf->subrequest_output_buffer_size)
+            {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                              "too big subrequest response: %uz", len);
+                              "too big subrequest response: %O",
+                              r->headers_out.content_length_n);
                 return NGX_ERROR;
             }
+
+            len = (size_t) r->headers_out.content_length_n;
 
         } else {
             len = clcf->subrequest_output_buffer_size;
