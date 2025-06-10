@@ -2458,22 +2458,17 @@ before_semi:
             goto invalid;
 
         case sw_trailer:
-            switch (ch) {
-            case CR:
+            if (ch == CR) {
                 state = sw_trailer_almost_done;
                 break;
-            case LF:
-                goto done;
-            default:
-                if (ngx_http_token_char(ch)) {
-                    state = sw_trailer_name;
-                    r->lowcase_index = 1;
-                    r->lowcase_header[0] = (ch | 0x20);
-                    break;
-                }
-                goto invalid;
             }
-            break;
+            if (ngx_http_token_char(ch)) {
+                state = sw_trailer_name;
+                r->lowcase_index = 1;
+                r->lowcase_header[0] = (ch | 0x20);
+                break;
+            }
+            goto invalid;
 
         case sw_trailer_almost_done:
             if (ch == LF) {
@@ -2518,8 +2513,7 @@ before_semi:
                 state = sw_trailer_header_almost_done;
                 break;
             }
-
-            /* fall through */
+            goto invalid;
 
         case sw_trailer_header_almost_done:
             if (ch == LF) {
