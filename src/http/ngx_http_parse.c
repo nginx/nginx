@@ -2259,7 +2259,6 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
         sw_chunk_size,
         sw_chunk_extension_before_semi,
         sw_chunk_extension,
-        sw_chunk_extension_bws_before_equal,
         sw_chunk_extension_name,
         sw_chunk_extension_value_start,
         sw_chunk_extension_quoted_value,
@@ -2332,14 +2331,6 @@ before_semi:
             case ';':
                 state = sw_chunk_extension;
                 break;
-            case ' ':
-            case '\t':
-                /*
-                 * This switch is also used by other states, so set
-                 * the state explicitly here.
-                 */
-                state = sw_chunk_extension_before_semi;
-                break; /* BWS */
             default:
                 goto invalid;
             }
@@ -2350,53 +2341,28 @@ before_semi:
                 state = sw_chunk_extension_name;
                 break;
             }
-            switch (ch) {
-            case ' ':
-            case '\t':
-                break; /* BWS */
-            default:
-                goto invalid;
-            }
-            break;
+            goto invalid;
 
         case sw_chunk_extension_name:
             if (ngx_http_token_char(ch)) {
                 break;
             }
-
-            state = sw_chunk_extension_bws_before_equal;
-
-            /* fall through */
-
-        case sw_chunk_extension_bws_before_equal:
-            switch (ch) {
-            case ' ':
-            case '\t':
-                break; /* BWS */
-            case '=':
+            if (ch == '=') {
                 state = sw_chunk_extension_value_start;
                 break;
-            default:
-                goto invalid;
             }
-            break;
+            goto invalid;
 
         case sw_chunk_extension_value_start:
             if (ngx_http_token_char(ch)) {
                 state = sw_chunk_extension_unquoted_value;
                 break;
             }
-            switch (ch) {
-            case ' ':
-            case '\t':
-                break; /* BWS */
-            case '"':
+            if (ch == '"') {
                 state = sw_chunk_extension_quoted_value;
                 break;
-            default:
-                goto invalid;
             }
-            break;
+            goto invalid;
 
         case sw_chunk_extension_quoted_value:
             if (ch == '"') {
@@ -2550,7 +2516,6 @@ data:
     case sw_chunk_extension:
         ctx->length = 5 /* a=b CR LF */ + min_length;
         break;
-    case sw_chunk_extension_bws_before_equal:
     case sw_chunk_extension_name:
         ctx->length = 4 /* =b CR LF */ + min_length;
         break;
