@@ -4,6 +4,11 @@
   <img alt="NGINX Banner">
 </picture>
 
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Community Forum](https://img.shields.io/badge/community-forum-009639?logo=discourse&link=https%3A%2F%2Fcommunity.nginx.org)](https://community.nginx.org)
+[![License](https://img.shields.io/badge/License-BSD%202--Clause-blue.svg)](/LICENSE)
+[![Code of Conduct](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](/CODE_OF_CONDUCT.md)
+
 NGINX (pronounced "engine x" or "en-jin-eks") is the world's most popular Web Server, high performance Load Balancer, Reverse Proxy, API Gateway and Content Cache.
 
 NGINX is free and open source software, distributed under the terms of a simplified [2-clause BSD-like license](LICENSE).
@@ -59,7 +64,6 @@ NGINX modules can be built and distributed as static or dynamic modules. Static 
 nginx -V
 ```
 > See [Configuring the build](#configuring-the-build) for information on how to include specific Static modules into your nginx build.
-
 
 ## Configurations
 NGINX is highly flexible and configurable. Provisioning the software is achieved via text-based config file(s) accepting parameters called "[Directives](https://nginx.org/en/docs/dirindex.html)". See [Configuration File's Structure](https://nginx.org/en/docs/beginners_guide.html#conf_structure) for a comprehensive description of how NGINX configuration files work.
@@ -209,9 +213,7 @@ The output of which should start with:
 ```
 
 # Asking questions and reporting issues
-We encourage you to engage with us.
-- [NGINX GitHub Discussions](https://github.com/nginx/nginx/discussions), is the go-to place to start asking questions and sharing your thoughts.
-- Our [GitHub Issues](https://github.com/nginx/nginx/issues) page offers space to submit and discuss specific issues, report bugs, and suggest enhancements.
+See our [Support](SUPPORT.md) guidelines for information on how discuss the codebase, ask troubleshooting questions, and report issues.
 
 # Contributing code
 Please see the [Contributing](CONTRIBUTING.md) guide for information on how to contribute code.

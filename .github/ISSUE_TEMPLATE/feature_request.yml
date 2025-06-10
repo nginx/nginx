@@ -1,0 +1,40 @@
+---
+name: ✨ Feature request
+description: Suggest an idea for this project
+labels: enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+
+        Before you continue filling out this request, please take a moment to check that your feature has not been [already requested on GitHub][issue search] 🙌
+
+        **Note:** If you are seeking community support, please start a new topic in the [NGINX Community forum][forum]. If you wish to discuss the codebase, please start a new thread via [GitHub discussions][discussions].
+
+        [issue search]: https://github.com/nginx/nginx/search?q=is%3Aissue&type=issues
+        [discussions]: https://github.com/nginx/nginx/discussions
+        [forum]: https://community.nginx.org
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Feature Overview
+      description: A clear and concise description of what the feature request is.
+      placeholder: I would like this project to be able to do "X".
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Detail any potential alternative solutions/workarounds you've used or considered.
+      placeholder: I have done/might be able to do "X" in this project by doing "Y".
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
+      placeholder: Feel free to add any other context/information/screenshots/etc... that you think might be relevant to this feature request here.
