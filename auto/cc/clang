@@ -78,6 +78,7 @@ fi
 
 CFLAGS="$CFLAGS $NGX_CLANG_OPT -Wall -Wextra -Wpointer-arith"
 CFLAGS="$CFLAGS -Wconditional-uninitialized"
+CFLAGS="$CFLAGS -Wzero-as-null-pointer-constant"
 #CFLAGS="$CFLAGS -Wmissing-prototypes"
 
 # we have a lot of unused function arguments
