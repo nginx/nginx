@@ -820,7 +820,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                 }
 
                 for (prm = cmd->params; prm->name.len; prm++) {
-                    if (prm->mandatory && params[prm->index] == 0) {
+                    if (prm->mandatory && params[prm->index] == NULL) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "mandatory \"%V\" parameter is absent "
                                       "in \"%V\" SSI command",
@@ -2942,7 +2942,7 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
                              &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
-        != NGX_OK)
+        != NGX_CONF_OK)
     {
         return NGX_CONF_ERROR;
     }

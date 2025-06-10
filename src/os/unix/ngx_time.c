@@ -43,7 +43,7 @@ ngx_timezone_update(void)
     struct tm  *t;
     char        buf[4];
 
-    s = time(0);
+    s = time(NULL);
 
     t = localtime(&s);
 

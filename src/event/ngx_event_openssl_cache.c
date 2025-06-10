@@ -707,7 +707,7 @@ ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             return NULL;
         }
 
-        pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
+        pkey = ENGINE_load_private_key(engine, (char *) last, NULL, NULL);
 
         if (pkey == NULL) {
             *err = "ENGINE_load_private_key() failed";
