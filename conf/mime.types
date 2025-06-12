@@ -25,6 +25,7 @@ types {
     image/x-jng                                      jng;
     image/x-ms-bmp                                   bmp;
 
+    font/otf                                         otf;
     font/woff                                        woff;
     font/woff2                                       woff2;
 
