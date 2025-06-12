@@ -67,6 +67,7 @@ types {
     application/x-sea                                sea;
     application/x-shockwave-flash                    swf;
     application/x-stuffit                            sit;
+    application/x-tar                                tar;
     application/x-tcl                                tcl tk;
     application/x-x509-ca-cert                       der pem crt;
     application/x-xpinstall                          xpi;
