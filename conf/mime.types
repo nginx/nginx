@@ -92,6 +92,7 @@ types {
     video/webm                                       webm;
     video/x-flv                                      flv;
     video/x-m4v                                      m4v;
+    video/x-matroska                                 mkv;
     video/x-mng                                      mng;
     video/x-ms-asf                                   asx asf;
     video/x-ms-wmv                                   wmv;
