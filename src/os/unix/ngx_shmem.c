@@ -18,7 +18,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
                                 PROT_READ|PROT_WRITE,
                                 MAP_ANON|MAP_SHARED, -1, 0);
 
-    if (shm->addr == MAP_FAILED) {
+    if (shm->addr == NGX_INVALID_SHM) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED, %uz) failed", shm->size);
         return NGX_ERROR;
@@ -35,6 +35,8 @@ ngx_shm_free(ngx_shm_t *shm)
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "munmap(%p, %uz) failed", shm->addr, shm->size);
     }
+
+    shm->addr = NGX_INVALID_SHM;
 }
 
 #elif (NGX_HAVE_MAP_DEVZERO)
@@ -55,7 +57,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
     shm->addr = (u_char *) mmap(NULL, shm->size, PROT_READ|PROT_WRITE,
                                 MAP_SHARED, fd, 0);
 
-    if (shm->addr == MAP_FAILED) {
+    if (shm->addr == NGX_INVALID_SHM) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "mmap(/dev/zero, MAP_SHARED, %uz) failed", shm->size);
     }
@@ -65,7 +67,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
                       "close(\"/dev/zero\") failed");
     }
 
-    return (shm->addr == MAP_FAILED) ? NGX_ERROR : NGX_OK;
+    return (shm->addr == NGX_INVALID_SHM) ? NGX_ERROR : NGX_OK;
 }
 
 
@@ -76,6 +78,8 @@ ngx_shm_free(ngx_shm_t *shm)
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "munmap(%p, %uz) failed", shm->addr, shm->size);
     }
+
+    shm->addr = NGX_INVALID_SHM;
 }
 
 #elif (NGX_HAVE_SYSVSHM)
@@ -101,7 +105,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
 
     shm->addr = shmat(id, NULL, 0);
 
-    if (shm->addr == (void *) -1) {
+    if (shm->addr == NGX_INVALID_SHM) {
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno, "shmat() failed");
     }
 
@@ -110,7 +114,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
                       "shmctl(IPC_RMID) failed");
     }
 
-    return (shm->addr == (void *) -1) ? NGX_ERROR : NGX_OK;
+    return (shm->addr == NGX_INVALID_SHM) ? NGX_ERROR : NGX_OK;
 }
 
 
@@ -121,6 +125,8 @@ ngx_shm_free(ngx_shm_t *shm)
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "shmdt(%p) failed", shm->addr);
     }
+
+    shm->addr = NGX_INVALID_SHM;
 }
 
 #endif

@@ -13,6 +13,13 @@
 #include <ngx_core.h>
 
 
+#if (NGX_HAVE_MAP_ANON || NGX_HAVE_MAP_DEVZERO)
+#define NGX_INVALID_SHM  MAP_FAILED
+#elif (NGX_HAVE_SYSVSHM)
+#define NGX_INVALID_SHM  (void *) -1
+#endif
+
+
 typedef struct {
     u_char      *addr;
     size_t       size;
