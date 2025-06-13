@@ -740,6 +740,12 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             }
         }
 
+#if (NGX_HAVE_MALLOC_TRIM)
+        if (ngx_exiting) {
+            malloc_trim(0);
+        }
+#endif
+
         if (ngx_reopen) {
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
