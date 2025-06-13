@@ -1325,6 +1325,10 @@ ngx_master_thread_cycle(ngx_cycle_t *cycle)
             ngx_destroy_pool(first_cycle->pool);
 
             first_cycle = next_cycle;
+
+#if (NGX_HAVE_MALLOC_TRIM)
+            malloc_trim(0);
+#endif
         }
 
         if (first_cycle == cycle) {
