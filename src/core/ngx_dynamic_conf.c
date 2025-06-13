@@ -864,6 +864,10 @@ ngx_dynamic_conf_unload(ngx_dynamic_conf_ctx_t *ctx)
                    ctx->cycle, ctx->id);
 
     ngx_destroy_pool(ctx->pool);
+
+#if (NGX_HAVE_MALLOC_TRIM)
+    malloc_trim(0);
+#endif
 }
 
 
