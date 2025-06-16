@@ -292,6 +292,7 @@ main(int argc, char *const *argv)
 
     cycle = ngx_init_cycle(&init_cycle);
     if (cycle == NULL) {
+        ngx_destroy_pool(init_cycle.pool);	    
         if (ngx_test_config) {
             ngx_log_stderr(0, "configuration file %s test failed",
                            init_cycle.conf_file.data);
@@ -383,7 +384,7 @@ main(int argc, char *const *argv)
     } else {
         ngx_master_process_cycle(cycle);
     }
-
+    ngx_destroy_pool(init_cycle.pool);
     return 0;
 }
 
