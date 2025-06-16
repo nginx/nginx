@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -204,7 +204,7 @@ ngx_log_error_core(ngx_uint_t level, ngx_log_t *log, ngx_err_t err,
 
     msg -= (7 + err_levels[level].len + 3);
 
-    (void) ngx_sprintf(msg, "nginx: [%V] ", &err_levels[level]);
+    (void) ngx_sprintf(msg, "ngnix: [%V] ", &err_levels[level]);
 
     (void) ngx_write_console(ngx_stderr, msg, p - msg);
 }
@@ -264,7 +264,7 @@ ngx_log_stderr(ngx_err_t err, const char *fmt, ...)
 
     last = errstr + NGX_MAX_ERROR_STR;
 
-    p = ngx_cpymem(errstr, "nginx: ", 7);
+    p = ngx_cpymem(errstr, "ngnix: ", 7);
 
     va_start(args, fmt);
     p = ngx_vslprintf(p, last, fmt, args);
@@ -637,7 +637,7 @@ ngx_log_set_log(ngx_conf_t *cf, ngx_log_t **head)
 
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "nginx was built without debug support");
+                           "ngnix was built without debug support");
         return NGX_CONF_ERROR;
 #endif
 

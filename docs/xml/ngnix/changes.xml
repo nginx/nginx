@@ -2,7 +2,7 @@
 <!DOCTYPE change_log SYSTEM "../../dtd/changes.dtd" >
 
 
-<change_log title="nginx">
+<change_log title="ngnix">
 
 
 <changes ver="1.27.5" date="2025-04-16">
@@ -55,11 +55,11 @@ when using pluggable curves in OpenSSL.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с musl libc.<br/>
+ngnix не собирался с musl libc.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-nginx could not be built with musl libc.<br/>
+ngnix could not be built with musl libc.<br/>
 Thanks to Piotr Sikora.
 </para>
 </change>
@@ -127,11 +127,11 @@ when using zlib-ng.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не мог собрать библиотеку libatomic из исходных текстов,
+ngnix не мог собрать библиотеку libatomic из исходных текстов,
 если использовался параметр --with-libatomic=DIR.
 </para>
 <para lang="en">
-nginx could not build libatomic library using the library sources
+ngnix could not build libatomic library using the library sources
 if the --with-libatomic=DIR option was used.
 </para>
 </change>
@@ -150,20 +150,20 @@ the bug had appeared in 1.27.1.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx игнорирует пакеты согласования версий QUIC от клиентов.
+теперь ngnix игнорирует пакеты согласования версий QUIC от клиентов.
 </para>
 <para lang="en">
-nginx now ignores QUIC version negotiation packets from clients.
+ngnix now ignores QUIC version negotiation packets from clients.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris 10 и более ранних
+ngnix не собирался на Solaris 10 и более ранних
 с модулем ngx_http_v3_module.
 </para>
 <para lang="en">
-nginx could not be built on Solaris 10 and earlier
+ngnix could not be built on Solaris 10 and earlier
 with the ngx_http_v3_module.
 </para>
 </change>
@@ -432,12 +432,12 @@ if "gzip", "gunzip", "ssi", "sub_filter", or "grpc_pass" directives are used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc 14,
+ngnix не собирался gcc 14,
 если использовался параметр --with-libatomic.<br/>
 Спасибо Edgar Bonet.
 </para>
 <para lang="en">
-nginx could not be built by gcc 14
+ngnix could not be built by gcc 14
 if the --with-libatomic option was used.<br/>
 Thanks to Edgar Bonet.
 </para>
@@ -560,7 +560,7 @@ during graceful shutdown of old worker processes.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx не пишет в лог сообщения об утечке сокетов,
+теперь ngnix не пишет в лог сообщения об утечке сокетов,
 если во время плавного завершения старых рабочих процессов
 было запрошено быстрое завершение.
 </para>
@@ -706,22 +706,22 @@ TLS_AES_128_CCM_SHA256 cipher suite support when using HTTP/3.
 <change type="change">
 <para lang="ru">
 теперь при загрузке конфигурации OpenSSL
-nginx использует appname "nginx".
+ngnix использует appname "ngnix".
 </para>
 <para lang="en">
-now nginx uses appname "nginx"
+now ngnix uses appname "ngnix"
 when loading OpenSSL configuration.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx не пытается загружать конфигурацию OpenSSL,
+теперь ngnix не пытается загружать конфигурацию OpenSSL,
 если для сборки OpenSSL использовался параметр --with-openssl
 и переменная окружения OPENSSL_CONF не установлена.
 </para>
 <para lang="en">
-now nginx does not try to load OpenSSL configuration
+now ngnix does not try to load OpenSSL configuration
 if the --with-openssl option was used to built OpenSSL
 and the OPENSSL_CONF environment variable is not set.
 </para>
@@ -818,11 +818,11 @@ now TLSv1.3 protocol is enabled by default.
 
 <change type="change">
 <para lang="ru">
-теперь nginx выдаёт предупреждение
+теперь ngnix выдаёт предупреждение
 при переопределении параметров listen-сокета, задающих используемые протоколы.
 </para>
 <para lang="en">
-now nginx issues a warning
+now ngnix issues a warning
 if protocol parameters of a listening socket are redefined.
 </para>
 </change>
@@ -830,10 +830,10 @@ if protocol parameters of a listening socket are redefined.
 <change type="change">
 <para lang="ru">
 теперь, если клиент использует pipelining,
-nginx закрывает соединения с ожиданием дополнительных данных (lingering close).
+ngnix закрывает соединения с ожиданием дополнительных данных (lingering close).
 </para>
 <para lang="en">
-now nginx closes connections with lingering
+now ngnix closes connections with lingering
 if pipelining was used by the client.
 </para>
 </change>
@@ -992,23 +992,23 @@ Thanks to Ciel Zhao.
 <para lang="ru">
 теперь, если при преобразовании в адреса имени хоста,
 указанного в директиве listen, возвращается несколько адресов,
-nginx игнорирует дубликаты среди этих адресов.
+ngnix игнорирует дубликаты среди этих адресов.
 </para>
 <para lang="en">
 when a hostname used in the "listen" directive
 resolves to multiple addresses,
-nginx now ignores duplicates within these addresses.
+ngnix now ignores duplicates within these addresses.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог нагружать процессор
+ngnix мог нагружать процессор
 при небуферизированном проксировании,
 если использовались SSL-соединения с бэкендами.
 </para>
 <para lang="en">
-nginx might hog CPU
+ngnix might hog CPU
 during unbuffered proxying
 if SSL connections to backends were used.
 </para>
@@ -1086,10 +1086,10 @@ and not more often than once per second.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с OpenSSL 3.0.x.
+ngnix/Windows не собирался с OpenSSL 3.0.x.
 </para>
 <para lang="en">
-nginx/Windows could not be built with OpenSSL 3.0.x.
+ngnix/Windows could not be built with OpenSSL 3.0.x.
 </para>
 </change>
 
@@ -1171,12 +1171,12 @@ has been lowered from "crit" to "info".
 <change type="bugfix">
 <para lang="ru">
 при возврате диапазонов
-nginx не удалял строку заголовка "Content-Range",
+ngnix не удалял строку заголовка "Content-Range",
 если она присутствовала в исходном ответе бэкенда.
 </para>
 <para lang="en">
 while returning byte ranges
-nginx did not remove the "Content-Range" header line
+ngnix did not remove the "Content-Range" header line
 if it was present in the original backend response.
 </para>
 </change>
@@ -1212,14 +1212,14 @@ now header lines are represented as linked lists.
 
 <change type="change">
 <para lang="ru">
-теперь nginx объединяет произвольные строки заголовков с одинаковыми именами
+теперь ngnix объединяет произвольные строки заголовков с одинаковыми именами
 при отправке на FastCGI-, SCGI- и uwsgi-бэкенды,
 в методе $r->header_in() модуля ngx_http_perl_module,
 и при доступе через переменные "$http_...", "$sent_http_...",
 "$sent_trailer_...", "$upstream_http_..." и "$upstream_trailer_...".
 </para>
 <para lang="en">
-now nginx combines arbitrary header lines with identical names
+now ngnix combines arbitrary header lines with identical names
 when sending to FastCGI, SCGI, and uwsgi backends,
 in the $r->header_in() method of the ngx_http_perl_module,
 and during lookup of the "$http_...", "$sent_http_...",
@@ -1231,11 +1231,11 @@ variables.
 <change type="bugfix">
 <para lang="ru">
 если в заголовке ответа бэкенда было несколько строк "Vary",
-при кэшировании nginx учитывал только последнюю из них.
+при кэшировании ngnix учитывал только последнюю из них.
 </para>
 <para lang="en">
 if there were multiple "Vary" header lines in the backend response,
-nginx only used the last of them when caching.
+ngnix only used the last of them when caching.
 </para>
 </change>
 
@@ -1244,13 +1244,13 @@ nginx only used the last of them when caching.
 если в заголовке ответа бэкенда было несколько строк "WWW-Authenticate"
 и использовался перехват ошибок с кодом 401 от бэкенда
 или директива auth_request,
-nginx пересылал клиенту только первую из этих строк.
+ngnix пересылал клиенту только первую из этих строк.
 </para>
 <para lang="en">
 if there were multiple "WWW-Authenticate" header lines in the backend response
 and errors with code 401 were intercepted
 or the "auth_request" directive was used,
-nginx only sent the first of the header lines to the client.
+ngnix only sent the first of the header lines to the client.
 </para>
 </change>
 
@@ -1267,14 +1267,14 @@ has been lowered from "crit" to "info".
 
 <change type="bugfix">
 <para lang="ru">
-соединения могли зависать, если nginx был собран на Linux 2.6.17 и новее,
+соединения могли зависать, если ngnix был собран на Linux 2.6.17 и новее,
 а использовался на системах без поддержки EPOLLRDHUP, в частности, на
 системах с эмуляцией epoll;
 ошибка появилась в 1.17.5.<br/>
 Спасибо Marcus Ball.
 </para>
 <para lang="en">
-connections might hang if nginx was built on Linux 2.6.17 or newer,
+connections might hang if ngnix was built on Linux 2.6.17 or newer,
 but was used on systems without EPOLLRDHUP support, notably with epoll
 emulation layers;
 the bug had appeared in 1.17.5.<br/>
@@ -1284,12 +1284,12 @@ Thanks to Marcus Ball.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не кэшировал ответ,
+ngnix не кэшировал ответ,
 если строка заголовка ответа "Expires" запрещала кэширование,
 а последующая строка заголовка "Cache-Control" разрешала кэширование.
 </para>
 <para lang="en">
-nginx did not cache the response
+ngnix did not cache the response
 if the "Expires" response header line disabled caching,
 but following "Cache-Control" header line enabled caching.
 </para>
@@ -1316,10 +1316,10 @@ among worker processes.
 <change type="bugfix">
 <para lang="ru">
 во время плавного завершения старых рабочих процессов
-nginx возвращал в ответах строку заголовка "Connection: keep-alive".
+ngnix возвращал в ответах строку заголовка "Connection: keep-alive".
 </para>
 <para lang="en">
-nginx returned the "Connection: keep-alive" header line in responses
+ngnix returned the "Connection: keep-alive" header line in responses
 during graceful shutdown of old worker processes.
 </para>
 </change>
@@ -1340,19 +1340,19 @@ in the "ssl_session_ticket_key" when using TLSv1.3.
 
 <change type="change">
 <para lang="ru">
-теперь nginx по умолчанию собирается с библиотекой PCRE2.
+теперь ngnix по умолчанию собирается с библиотекой PCRE2.
 </para>
 <para lang="en">
-now nginx is built with the PCRE2 library by default.
+now ngnix is built with the PCRE2 library by default.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда использует sendfile(SF_NODISKIO) на FreeBSD.
+теперь ngnix всегда использует sendfile(SF_NODISKIO) на FreeBSD.
 </para>
 <para lang="en">
-now nginx always uses sendfile(SF_NODISKIO) on FreeBSD.
+now ngnix always uses sendfile(SF_NODISKIO) on FreeBSD.
 </para>
 </change>
 
@@ -1403,11 +1403,11 @@ has been removed.
 
 <change type="change">
 <para lang="ru">
-теперь nginx закрывает SSL соединение, если клиент использует ALPN,
-но nginx не поддерживает ни один из присланных клиентом протоколов.
+теперь ngnix закрывает SSL соединение, если клиент использует ALPN,
+но ngnix не поддерживает ни один из присланных клиентом протоколов.
 </para>
 <para lang="en">
-now nginx rejects SSL connections if ALPN is used by the client,
+now ngnix rejects SSL connections if ALPN is used by the client,
 but no supported protocols can be negotiated.
 </para>
 </change>
@@ -1482,12 +1482,12 @@ in the $content_length variable when using chunked transfer encoding.
 <change type="bugfix">
 <para lang="ru">
 при получении ответа некорректной длины от проксируемого бэкенда
-nginx мог тем не менее закэшировать соединение.<br/>
+ngnix мог тем не менее закэшировать соединение.<br/>
 Спасибо Awdhesh Mathpal.
 </para>
 <para lang="en">
 after receiving a response with incorrect length from a proxied backend
-nginx might nevertheless cache the connection.<br/>
+ngnix might nevertheless cache the connection.<br/>
 Thanks to Awdhesh Mathpal.
 </para>
 </change>
@@ -1550,12 +1550,12 @@ when using HTTP/2 and buffering of the data being processed.
 
 <change type="change">
 <para lang="ru">
-теперь nginx возвращает ошибку,
+теперь ngnix возвращает ошибку,
 если в запросе по протоколу HTTP/1.0 присутствует
 строка заголовка "Transfer-Encoding".
 </para>
 <para lang="en">
-now nginx rejects HTTP/1.0 requests
+now ngnix rejects HTTP/1.0 requests
 with the "Transfer-Encoding" header line.
 </para>
 </change>
@@ -1657,21 +1657,21 @@ if the "Content-Length" header line was not present in the request.
 
 <change type="change">
 <para lang="ru">
-теперь nginx для метода CONNECT всегда возвращает ошибку.
+теперь ngnix для метода CONNECT всегда возвращает ошибку.
 </para>
 <para lang="en">
-now nginx always returns an error for the CONNECT method.
+now ngnix always returns an error for the CONNECT method.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда возвращает ошибку,
+теперь ngnix всегда возвращает ошибку,
 если в запросе одновременно присутствуют строки заголовка "Content-Length"
 и "Transfer-Encoding".
 </para>
 <para lang="en">
-now nginx always returns an error
+now ngnix always returns an error
 if both "Content-Length" and "Transfer-Encoding" header lines
 are present in the request.
 </para>
@@ -1679,34 +1679,34 @@ are present in the request.
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда возвращает ошибку,
+теперь ngnix всегда возвращает ошибку,
 если в строке запроса используются пробелы или управляющие символы.
 </para>
 <para lang="en">
-now nginx always returns an error
+now ngnix always returns an error
 if spaces or control characters are used in the request line.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда возвращает ошибку,
+теперь ngnix всегда возвращает ошибку,
 если в имени заголовка используются пробелы или управляющие символы.
 </para>
 <para lang="en">
-now nginx always returns an error
+now ngnix always returns an error
 if spaces or control characters are used in a header name.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда возвращает ошибку,
+теперь ngnix всегда возвращает ошибку,
 если в строке "Host" заголовка запроса
 используются пробелы или управляющие символы.
 </para>
 <para lang="en">
-now nginx always returns an error
+now ngnix always returns an error
 if spaces or control characters
 are used in the "Host" request header line.
 </para>
@@ -1725,12 +1725,12 @@ when using many listening sockets.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не экранировал
+ngnix не экранировал
 символы """, "&lt;", ">", "\", "^", "`", "{", "|", и "}"
 при проксировании с изменением URI запроса.
 </para>
 <para lang="en">
-nginx did not escape
+ngnix did not escape
 """, "&lt;", ">", "\", "^", "`", "{", "|", and "}" characters
 when proxying with changed URI.
 </para>
@@ -1913,12 +1913,12 @@ when using zlib-ng.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с почтовым прокси-сервером,
+ngnix не собирался с почтовым прокси-сервером,
 но без модуля ngx_mail_ssl_module;
 ошибка появилась в 1.19.8.
 </para>
 <para lang="en">
-nginx could not be built with the mail proxy module,
+ngnix could not be built with the mail proxy module,
 but without the ngx_mail_ssl_module;
 the bug had appeared in 1.19.8.
 </para>
@@ -1940,10 +1940,10 @@ the bug had appeared in 1.19.1.
 <change type="bugfix">
 <para lang="ru">
 если клиент закрывал соединение в момент отбрасывания тела запроса,
-nginx мог не закрыть соединение до истечения keepalive-таймаута.
+ngnix мог не закрыть соединение до истечения keepalive-таймаута.
 </para>
 <para lang="en">
-nginx might not close a connection till keepalive timeout expiration
+ngnix might not close a connection till keepalive timeout expiration
 if the connection was closed by the client while discarding the request body.
 </para>
 </change>
@@ -1951,10 +1951,10 @@ if the connection was closed by the client while discarding the request body.
 <change type="bugfix">
 <para lang="ru">
 при ожидании задержки limit_req или auth_delay, а также при работе с бэкендами
-nginx мог не обнаружить, что соединение уже закрыто клиентом.
+ngnix мог не обнаружить, что соединение уже закрыто клиентом.
 </para>
 <para lang="en">
-nginx might not detect that a connection was already closed by the client
+ngnix might not detect that a connection was already closed by the client
 when waiting for auth_delay or limit_req delay, or when working with backends.
 </para>
 </change>
@@ -2013,11 +2013,11 @@ the bug had appeared in 1.19.7.
 <change type="bugfix">
 <para lang="ru">
 некоторые ошибки логгировались как неизвестные,
-если nginx был собран с glibc 2.32.
+если ngnix был собран с glibc 2.32.
 </para>
 <para lang="en">
 some errors were logged as unknown
-if nginx was built with glibc 2.32.
+if ngnix was built with glibc 2.32.
 </para>
 </change>
 
@@ -2069,12 +2069,12 @@ the "large_client_header_buffers" directive should be used instead.
 <change type="feature">
 <para lang="ru">
 теперь при исчерпании свободных соединений
-nginx закрывает не только keepalive-соединения,
+ngnix закрывает не только keepalive-соединения,
 но и соединения в lingering close.
 </para>
 <para lang="en">
 now, if free worker connections are exhausted,
-nginx starts closing not only keepalive connections,
+ngnix starts closing not only keepalive connections,
 but also connections in lingering close.
 </para>
 </change>
@@ -2145,11 +2145,11 @@ the bug had appeared in 1.19.5.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал ошибку 400 на запросы вида
+ngnix возвращал ошибку 400 на запросы вида
 <nobr>"GET http://example.com?args HTTP/1.0"</nobr>.
 </para>
 <para lang="en">
-nginx returned the 400 response on requests like
+ngnix returned the 400 response on requests like
 <nobr>"GET http://example.com?args HTTP/1.0"</nobr>.
 </para>
 </change>
@@ -2368,12 +2368,12 @@ socket leak when using HTTP/2 and subrequests in the njs module.
 
 <change type="change">
 <para lang="ru">
-теперь nginx начинает закрывать keepalive-соединения,
+теперь ngnix начинает закрывать keepalive-соединения,
 не дожидаясь исчерпания всех свободных соединений,
 а также пишет об этом предупреждение в лог ошибок.
 </para>
 <para lang="en">
-now nginx starts closing keepalive connections
+now ngnix starts closing keepalive connections
 before all free worker connections are exhausted,
 and logs a warning about this to the error log.
 </para>
@@ -2491,12 +2491,12 @@ now extra data sent by a backend are always discarded.
 <change type="change">
 <para lang="ru">
 теперь при получении слишком короткого ответа от FastCGI-сервера
-nginx пытается отправить клиенту доступную часть ответа,
+ngnix пытается отправить клиенту доступную часть ответа,
 после чего закрывает соединение с клиентом.
 </para>
 <para lang="en">
 now after receiving a too short response from a FastCGI server
-nginx tries to send the available part of the response to the client,
+ngnix tries to send the available part of the response to the client,
 and then closes the client connection.
 </para>
 </change>
@@ -2504,11 +2504,11 @@ and then closes the client connection.
 <change type="change">
 <para lang="ru">
 теперь при получении ответа некорректной длины от gRPC-бэкенда
-nginx прекращает обработку ответа с ошибкой.
+ngnix прекращает обработку ответа с ошибкой.
 </para>
 <para lang="en">
 now after receiving a response with incorrect length from a gRPC backend
-nginx stops response processing with an error.
+ngnix stops response processing with an error.
 </para>
 </change>
 
@@ -2527,11 +2527,11 @@ Thanks to Adam Bambuch.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не удалял unix domain listen-сокеты
+ngnix не удалял unix domain listen-сокеты
 при плавном завершении по сигналу SIGQUIT.
 </para>
 <para lang="en">
-nginx did not delete unix domain listen sockets
+ngnix did not delete unix domain listen sockets
 during graceful shutdown on the SIGQUIT signal.
 </para>
 </change>
@@ -2653,22 +2653,22 @@ the "auth_delay" directive.
 
 <change type="change">
 <para lang="ru">
-теперь nginx не разрешает
+теперь ngnix не разрешает
 несколько строк "Host" в заголовке запроса.
 </para>
 <para lang="en">
-now nginx does not allow
+now ngnix does not allow
 several "Host" request header lines.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал дополнительные
+ngnix игнорировал дополнительные
 строки "Transfer-Encoding" в заголовке запроса.
 </para>
 <para lang="en">
-nginx ignored additional
+ngnix ignored additional
 "Transfer-Encoding" request header lines.
 </para>
 </change>
@@ -2705,10 +2705,10 @@ in the ngx_http_mp4_module.
 <change type="bugfix">
 <para lang="ru">
 при перенаправлении ошибок с кодом 494 с помощью директивы error_page
-nginx возвращал ответ с кодом 494 вместо 400.
+ngnix возвращал ответ с кодом 494 вместо 400.
 </para>
 <para lang="en">
-nginx used status code 494 instead of 400
+ngnix used status code 494 instead of 400
 if errors with code 494 were redirected with the "error_page" directive.
 </para>
 </change>
@@ -2881,11 +2881,11 @@ the $limit_req_status and $limit_conn_status variables.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx использует вызов ioctl(FIONREAD), если он доступен,
+теперь ngnix использует вызов ioctl(FIONREAD), если он доступен,
 чтобы избежать чтения из быстрого соединения в течение долгого времени.
 </para>
 <para lang="en">
-now nginx uses ioctl(FIONREAD), if available,
+now ngnix uses ioctl(FIONREAD), if available,
 to avoid reading from a fast connection for a long time.
 </para>
 </change>
@@ -2930,10 +2930,10 @@ Thanks to Alan Kemp.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с MinGW-w64 gcc 8.1 и новее.
+ngnix не собирался с MinGW-w64 gcc 8.1 и новее.
 </para>
 <para lang="en">
-nginx could not be built with MinGW-w64 gcc 8.1 or newer.
+ngnix could not be built with MinGW-w64 gcc 8.1 or newer.
 </para>
 </change>
 
@@ -2997,10 +2997,10 @@ on Windows when using SSL.
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал лишние данные при использовании chunked transfer encoding.
+ngnix игнорировал лишние данные при использовании chunked transfer encoding.
 </para>
 <para lang="en">
-nginx ignored extra data when using chunked transfer encoding.
+ngnix ignored extra data when using chunked transfer encoding.
 </para>
 </change>
 
@@ -3008,10 +3008,10 @@ nginx ignored extra data when using chunked transfer encoding.
 <para lang="ru">
 если использовалась директива return и
 при чтении тела запроса возникала ошибка,
-nginx всегда возвращал ошибку 500.
+ngnix всегда возвращал ошибку 500.
 </para>
 <para lang="en">
-nginx always returned the 500 error
+ngnix always returned the 500 error
 if the "return" directive was used
 and an error occurred during reading client request body.
 </para>
@@ -3127,11 +3127,11 @@ if hash bucket size larger than 64 kilobytes was used in the configuration.
 <change type="bugfix">
 <para lang="ru">
 при использовании методов обработки соединений select, poll и /dev/poll
-nginx мог нагружать процессор во время небуферизованного проксирования
+ngnix мог нагружать процессор во время небуферизованного проксирования
 и при проксировании WebSocket-соединений.
 </para>
 <para lang="en">
-nginx might hog CPU during unbuffered proxying
+ngnix might hog CPU during unbuffered proxying
 and when proxying WebSocket connections
 if the select, poll, or /dev/poll methods were used.
 </para>
@@ -3315,13 +3315,13 @@ in the "ssl_stapling_file" directive on Windows.
 <change type="change">
 <para lang="ru">
 теперь при использовании имени хоста в директиве listen
-nginx создаёт listen-сокеты для всех адресов,
+ngnix создаёт listen-сокеты для всех адресов,
 соответствующих этому имени
 (ранее использовался только первый адрес).
 </para>
 <para lang="en">
 when using a hostname in the "listen" directive
-nginx now creates listening sockets
+ngnix now creates listening sockets
 for all addresses the hostname resolves to
 (previously, only the first address was used).
 </para>
@@ -3358,11 +3358,11 @@ when using OpenSSL 1.1.1.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с Visual Studio 2015 и новее;
+ngnix/Windows не собирался с Visual Studio 2015 и новее;
 ошибка появилась в 1.15.9.
 </para>
 <para lang="en">
-nginx/Windows could not be built with Visual Studio 2015 or newer;
+ngnix/Windows could not be built with Visual Studio 2015 or newer;
 the bug had appeared in 1.15.9.
 </para>
 </change>
@@ -3398,12 +3398,12 @@ when using Windows Vista or newer.
 <para lang="ru">
 если при использовании метода select на Windows
 происходила ошибка при установлении соединения с бэкендом,
-nginx ожидал истечения таймаута на установление соединения.
+ngnix ожидал истечения таймаута на установление соединения.
 </para>
 <para lang="en">
 if the "select" method was used on Windows
 and an error occurred while establishing a backend connection,
-nginx waited for the connection establishment timeout to expire.
+ngnix waited for the connection establishment timeout to expire.
 </para>
 </change>
 
@@ -3480,10 +3480,10 @@ when using the "ssl_early_data" directive with OpenSSL.
 
 <change type="bugfix">
 <para lang="ru">
-в nginx/Windows.
+в ngnix/Windows.
 </para>
 <para lang="en">
-in nginx/Windows.
+in ngnix/Windows.
 </para>
 </change>
 
@@ -3598,11 +3598,11 @@ the "proxy_socket_keepalive", "fastcgi_socket_keepalive",
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с OpenSSL 1.1.0, а использовался с OpenSSL 1.1.1,
+если ngnix был собран с OpenSSL 1.1.0, а использовался с OpenSSL 1.1.1,
 протокол TLS 1.3 всегда был разрешён.
 </para>
 <para lang="en">
-if nginx was built with OpenSSL 1.1.0 and used with OpenSSL 1.1.1,
+if ngnix was built with OpenSSL 1.1.0 and used with OpenSSL 1.1.1,
 the TLS 1.3 protocol was always enabled.
 </para>
 </change>
@@ -3823,10 +3823,10 @@ the bug had appeared in 1.13.5.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с LibreSSL 2.8.0.
+ngnix не собирался с LibreSSL 2.8.0.
 </para>
 <para lang="en">
-nginx could not be built with LibreSSL 2.8.0.
+ngnix could not be built with LibreSSL 2.8.0.
 </para>
 </change>
 
@@ -3849,11 +3849,11 @@ in the ngx_stream_ssl_preread_module.
 <change type="feature">
 <para lang="ru">
 теперь при использовании директивы reset_timedout_connection
-nginx сбрасывает соединения, закрываемые с кодом 444.
+ngnix сбрасывает соединения, закрываемые с кодом 444.
 </para>
 <para lang="en">
 now when using the "reset_timedout_connection" directive
-nginx will reset connections being closed with the 444 code.
+ngnix will reset connections being closed with the 444 code.
 </para>
 </change>
 
@@ -3955,11 +3955,11 @@ now uses SO_REUSEPORT_LB on FreeBSD 12.
 <change type="bugfix">
 <para lang="ru">
 HTTP/2 server push не работал, если SSL терминировался прокси-сервером
-перед nginx'ом.
+перед ngnix'ом.
 </para>
 <para lang="en">
 HTTP/2 server push did not work if SSL was terminated by a proxy server
-in front of nginx.
+in front of ngnix.
 </para>
 </change>
 
@@ -4002,10 +4002,10 @@ the "ssl" parameter of the "listen" directive should be used instead.
 <change type="change">
 <para lang="ru">
 теперь при использовании директивы listen с параметром ssl
-nginx определяет отсутствие SSL-сертификатов при тестировании конфигурации.
+ngnix определяет отсутствие SSL-сертификатов при тестировании конфигурации.
 </para>
 <para lang="en">
-now nginx detects missing SSL certificates during configuration testing
+now ngnix detects missing SSL certificates during configuration testing
 when using the "ssl" parameter of the "listen" directive.
 </para>
 </change>
@@ -4034,10 +4034,10 @@ in the "proxy_cache_valid" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc 8.1.
+ngnix не собирался gcc 8.1.
 </para>
 <para lang="en">
-nginx could not be built by gcc 8.1.
+ngnix could not be built by gcc 8.1.
 </para>
 </change>
 
@@ -4052,11 +4052,11 @@ logging to syslog stopped on local IP address changes.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался компилятором clang, если был установлен CUDA SDK;
+ngnix не собирался компилятором clang, если был установлен CUDA SDK;
 ошибка появилась в 1.13.8.
 </para>
 <para lang="en">
-nginx could not be built by clang with CUDA SDK installed;
+ngnix could not be built by clang with CUDA SDK installed;
 the bug had appeared in 1.13.8.
 </para>
 </change>
@@ -4076,10 +4076,10 @@ when using unix domain listen sockets on FreeBSD.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Fedora 28 Linux.
+ngnix не собирался на Fedora 28 Linux.
 </para>
 <para lang="en">
-nginx could not be built on Fedora 28 Linux.
+ngnix could not be built on Fedora 28 Linux.
 </para>
 </change>
 
@@ -4148,10 +4148,10 @@ now supports the PROXY protocol version 2.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с OpenSSL 1.1.1 статически на Linux.
+ngnix не собирался с OpenSSL 1.1.1 статически на Linux.
 </para>
 <para lang="en">
-nginx could not be built with OpenSSL 1.1.1 statically on Linux.
+ngnix could not be built with OpenSSL 1.1.1 statically on Linux.
 </para>
 </change>
 
@@ -4186,12 +4186,12 @@ the "subrequest_output_buffer_size" directive defines maximum response size.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx использует вызов clock_gettime(CLOCK_MONOTONIC), если он доступен,
+теперь ngnix использует вызов clock_gettime(CLOCK_MONOTONIC), если он доступен,
 что позволяет избежать некорректного срабатывания таймаутов
 при изменениях системного времени.
 </para>
 <para lang="en">
-now nginx uses clock_gettime(CLOCK_MONOTONIC) if available,
+now ngnix uses clock_gettime(CLOCK_MONOTONIC) if available,
 to avoid timeouts being incorrectly triggered
 on system time changes.
 </para>
@@ -4319,10 +4319,10 @@ in the ngx_http_dav_module.
 <para lang="ru">
 теперь при использовании параметра transparent директив proxy_bind,
 fastcgi_bind, memcached_bind, scgi_bind и uwsgi_bind
-nginx автоматически сохраняет capability CAP_NET_RAW в рабочих процессах.
+ngnix автоматически сохраняет capability CAP_NET_RAW в рабочих процессах.
 </para>
 <para lang="en">
-now nginx automatically preserves the CAP_NET_RAW capability in worker processes
+now ngnix automatically preserves the CAP_NET_RAW capability in worker processes
 when using the "transparent" parameter of the "proxy_bind",
 "fastcgi_bind", "memcached_bind", "scgi_bind", and "uwsgi_bind" directives.
 </para>
@@ -4354,11 +4354,11 @@ Thanks to Gena Makhomed.
 <para lang="ru">
 процедура обновления исполняемого файла не работала,
 если после завершения родительского процесса
-новым родительским процессом nginx'а становился процесс с PID, отличным от 1.
+новым родительским процессом ngnix'а становился процесс с PID, отличным от 1.
 </para>
 <para lang="en">
 binary upgrade refused to work
-if nginx was re-parented to a process with PID different from 1
+if ngnix was re-parented to a process with PID different from 1
 after its parent process has finished.
 </para>
 </change>
@@ -4465,12 +4465,12 @@ in the ngx_http_fastcgi_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал ошибку 500,
+ngnix возвращал ошибку 500,
 если в директиве xslt_stylesheet
 были заданы параметры без использования переменных.
 </para>
 <para lang="en">
-nginx returned the 500 error
+ngnix returned the 500 error
 if parameters without variables were specified
 in the "xslt_stylesheet" directive.
 </para>
@@ -4528,11 +4528,11 @@ Thanks to Piotr Sikora.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал даты после 2038 года
+ngnix не поддерживал даты после 2038 года
 на 32-битных платформах с 64-битным time_t.
 </para>
 <para lang="en">
-nginx did not support dates after the year 2038
+ngnix did not support dates after the year 2038
 on 32-bit platforms with 64-bit time_t.
 </para>
 </change>
@@ -4559,11 +4559,11 @@ were not logged or logged at the "info" level instead of "error".
 
 <change type="bugfix">
 <para lang="ru">
-при использовании HTTP/2 nginx мог вернуть ошибку 400,
+при использовании HTTP/2 ngnix мог вернуть ошибку 400,
 не указав в логе причину.
 </para>
 <para lang="en">
-when using HTTP/2 nginx might return the 400 response
+when using HTTP/2 ngnix might return the 400 response
 without logging the reason.
 </para>
 </change>
@@ -4609,11 +4609,11 @@ in handling of client addresses when using unix domain sockets.
 <change type="bugfix">
 <para lang="ru">
 при использовании директивы "hash ... consistent" в блоке upstream
-nginx нагружал процессор, если использовались большие веса
+ngnix нагружал процессор, если использовались большие веса
 и все или почти все бэкенды были недоступны.
 </para>
 <para lang="en">
-nginx hogged CPU
+ngnix hogged CPU
 when using the "hash ... consistent" directive in the upstream block
 if large weights were used and all or most of the servers were unavailable.
 </para>
@@ -4732,7 +4732,7 @@ any shared memory allocation required 4096 bytes on Windows.
 рабочий процесс мог завершаться аварийно.
 </para>
 <para lang="en">
-nginx worker might be terminated abnormally
+ngnix worker might be terminated abnormally
 when using the "zone" directive inside the "upstream" block on Windows.
 </para>
 </change>
@@ -4765,10 +4765,10 @@ potentially resulting in sensitive information leak
 <change type="change">
 <para lang="ru">
 теперь при запросе диапазона, начинающегося с 0, из пустого файла
-nginx возвращает ответ 200 вместо 416.
+ngnix возвращает ответ 200 вместо 416.
 </para>
 <para lang="en">
-nginx now returns 200 instead of 416
+ngnix now returns 200 instead of 416
 when a range starting with 0 is requested from an empty file.
 </para>
 </change>
@@ -4786,22 +4786,22 @@ Thanks to Piotr Sikora.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под Cygwin и NetBSD;
+ngnix не собирался под Cygwin и NetBSD;
 ошибка появилась в 1.13.0.
 </para>
 <para lang="en">
-nginx could not be built on Cygwin and NetBSD;
+ngnix could not be built on Cygwin and NetBSD;
 the bug had appeared in 1.13.0.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под MSYS2 / MinGW 64-bit.<br/>
+ngnix не собирался под MSYS2 / MinGW 64-bit.<br/>
 Спасибо Orgad Shaneh.
 </para>
 <para lang="en">
-nginx could not be built under MSYS2 / MinGW 64-bit.<br/>
+ngnix could not be built under MSYS2 / MinGW 64-bit.<br/>
 Thanks to Orgad Shaneh.
 </para>
 </change>
@@ -4879,10 +4879,10 @@ did not work when using OpenSSL before 1.1.0.
 
 <change type="workaround">
 <para lang="ru">
-nginx не собирался с Oracle Developer Studio 12.5.
+ngnix не собирался с Oracle Developer Studio 12.5.
 </para>
 <para lang="en">
-nginx could not be built with Oracle Developer Studio 12.5.
+ngnix could not be built with Oracle Developer Studio 12.5.
 </para>
 </change>
 
@@ -4980,7 +4980,7 @@ the "TLSv1.3" parameter of the "ssl_protocols" directive.
 при логгировании сигналов теперь указывается PID отправившего сигнал процесса.
 </para>
 <para lang="en">
-when logging signals nginx now logs PID of the process which sent the signal.
+when logging signals ngnix now logs PID of the process which sent the signal.
 </para>
 </change>
 
@@ -5104,11 +5104,11 @@ in the ngx_http_slice_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог нагружать процессор;
+ngnix мог нагружать процессор;
 ошибка появилась в 1.11.11.
 </para>
 <para lang="en">
-nginx might hog CPU;
+ngnix might hog CPU;
 the bug had appeared in 1.11.11.
 </para>
 </change>
@@ -5224,12 +5224,12 @@ the "proxy_cache_background_update", "fastcgi_cache_background_update",
 
 <change type="feature">
 <para lang="ru">
-теперь nginx может кэшировать ответы
+теперь ngnix может кэшировать ответы
 со строкой Vary заголовка длиной до 128 символов
 (вместо 42 символов в предыдущих версиях).
 </para>
 <para lang="en">
-nginx is now able to cache responses
+ngnix is now able to cache responses
 with the "Vary" header line up to 128 characters long
 (instead of 42 characters in previous versions).
 </para>
@@ -5293,11 +5293,11 @@ reduced memory consumption for long-lived requests using gzipping.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании модуля stream nginx мог нагружать процессор;
+при использовании модуля stream ngnix мог нагружать процессор;
 ошибка появилась в 1.11.5.
 </para>
 <para lang="en">
-nginx might hog CPU when using the stream module;
+ngnix might hog CPU when using the stream module;
 the bug had appeared in 1.11.5.
 </para>
 </change>
@@ -5472,19 +5472,19 @@ now a successfully established connection is enough.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с 64-битным Visual Studio.
+ngnix/Windows не собирался с 64-битным Visual Studio.
 </para>
 <para lang="en">
-nginx/Windows could not be built with 64-bit Visual Studio.
+ngnix/Windows could not be built with 64-bit Visual Studio.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с OpenSSL 1.1.0.
+ngnix/Windows не собирался с OpenSSL 1.1.0.
 </para>
 <para lang="en">
-nginx/Windows could not be built with OpenSSL 1.1.0.
+ngnix/Windows could not be built with OpenSSL 1.1.0.
 </para>
 </change>
 
@@ -5702,11 +5702,11 @@ when proxying WebSocket connections with caching enabled.
 <change type="bugfix">
 <para lang="ru">
 если во время SSL handshake с бэкендом происходил таймаут,
-nginx ничего не писал в лог
+ngnix ничего не писал в лог
 и возвращал ответ с кодом 502 вместо 504.
 </para>
 <para lang="en">
-nginx did not write anything to log
+ngnix did not write anything to log
 and returned a response with code 502 instead of 504
 when a timeout occurred during an SSL handshake to a backend.
 </para>
@@ -5731,12 +5731,12 @@ now IPv6 support is configured automatically.
 <change type="change">
 <para lang="ru">
 теперь, если в блоке upstream не оказалось доступных серверов,
-nginx не сбрасывает статистику ошибок всех серверов, как делал ранее,
+ngnix не сбрасывает статистику ошибок всех серверов, как делал ранее,
 а ожидает истечения fail_timeout.
 </para>
 <para lang="en">
 now if there are no available servers in an upstream,
-nginx will not reset number of failures of all servers as it previously did,
+ngnix will not reset number of failures of all servers as it previously did,
 but will wait for fail_timeout to expire.
 </para>
 </change>
@@ -5837,11 +5837,11 @@ during binary upgrade on Linux.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал ошибку 400 на запросы
+ngnix возвращал ошибку 400 на запросы
 с символом "-" в HTTP-методе.
 </para>
 <para lang="en">
-nginx returned the 400 response on requests
+ngnix returned the 400 response on requests
 with the "-" character in the HTTP method.
 </para>
 </change>
@@ -5908,12 +5908,12 @@ the ngx_stream_realip_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с модулем stream и модулем ngx_http_ssl_module,
+ngnix не собирался с модулем stream и модулем ngx_http_ssl_module,
 но без модуля ngx_stream_ssl_module;
 ошибка появилась в 1.11.3.
 </para>
 <para lang="en">
-nginx could not be built with the stream module and the ngx_http_ssl_module,
+ngnix could not be built with the stream module and the ngx_http_ssl_module,
 but without ngx_stream_ssl_module;
 the bug had appeared in 1.11.3.
 </para>
@@ -5967,10 +5967,10 @@ now the "accept_mutex" directive is turned off by default.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx использует EPOLLEXCLUSIVE на Linux.
+теперь ngnix использует EPOLLEXCLUSIVE на Linux.
 </para>
 <para lang="en">
-now nginx uses EPOLLEXCLUSIVE on Linux.
+now ngnix uses EPOLLEXCLUSIVE on Linux.
 </para>
 </change>
 
@@ -6039,11 +6039,11 @@ Thanks to Piotr Sikora.
 
 <change type="change">
 <para lang="ru">
-теперь nginx всегда использует внутренние реализации MD5 и SHA1;
+теперь ngnix всегда использует внутренние реализации MD5 и SHA1;
 параметры configure --with-md5 и --with-sha1 упразднены.
 </para>
 <para lang="en">
-now nginx always uses internal MD5 and SHA1 implementations;
+now ngnix always uses internal MD5 and SHA1 implementations;
 the --with-md5 and --with-sha1 configure options were canceled.
 </para>
 </change>
@@ -6088,10 +6088,10 @@ a port can be specified in the "proxy_bind", "fastcgi_bind",
 
 <change type="feature">
 <para lang="ru">
-теперь nginx использует опцию сокета IP_BIND_ADDRESS_NO_PORT, если она доступна.
+теперь ngnix использует опцию сокета IP_BIND_ADDRESS_NO_PORT, если она доступна.
 </para>
 <para lang="en">
-now nginx uses the IP_BIND_ADDRESS_NO_PORT socket option when available.
+now ngnix uses the IP_BIND_ADDRESS_NO_PORT socket option when available.
 </para>
 </change>
 
@@ -6204,11 +6204,11 @@ as resulting values.
 <change type="feature">
 <para lang="ru">
 теперь при использовании метода epoll
-nginx проверяет, поддерживает ли ядро события EPOLLRDHUP,
+ngnix проверяет, поддерживает ли ядро события EPOLLRDHUP,
 и соответственно оптимизирует обработку соединений.
 </para>
 <para lang="en">
-now nginx checks if EPOLLRDHUP events are supported by kernel,
+now ngnix checks if EPOLLRDHUP events are supported by kernel,
 and optimizes connection handling accordingly
 if the "epoll" method is used.
 </para>
@@ -6301,12 +6301,12 @@ when using client certificates.
 <para lang="ru">
 HTTP/2-клиенты теперь могут сразу присылать тело запроса;
 директива http2_body_preread_size позволяет указать размер буфера, который
-будет использоваться до того, как nginx начнёт читать тело.
+будет использоваться до того, как ngnix начнёт читать тело.
 </para>
 <para lang="en">
 HTTP/2 clients can now start sending request body immediately;
 the "http2_body_preread_size" directive controls size of the buffer used
-before nginx will start reading client request body.
+before ngnix will start reading client request body.
 </para>
 </change>
 
@@ -6533,12 +6533,12 @@ Thanks to Justin Li.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог нагружать процессор
+ngnix мог нагружать процессор
 при использовании директивы sendfile на Linux и Solaris,
 если отправляемый файл был изменён в процессе отправки.
 </para>
 <para lang="en">
-nginx might hog CPU
+ngnix might hog CPU
 if the "sendfile" directive was used on Linux or Solaris
 and a file being sent was changed during sending.
 </para>
@@ -6639,11 +6639,11 @@ Thanks to Piotr Sikora.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался статически с OpenSSL на Linux;
+ngnix не собирался статически с OpenSSL на Linux;
 ошибка появилась в 1.9.11.
 </para>
 <para lang="en">
-nginx could not be built statically with OpenSSL on Linux;
+ngnix could not be built statically with OpenSSL on Linux;
 the bug had appeared in 1.9.11.
 </para>
 </change>
@@ -6910,10 +6910,10 @@ the bug had appeared in 1.9.6.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог не собираться на OS X.
+ngnix мог не собираться на OS X.
 </para>
 <para lang="en">
-nginx could not be built on OS X in some cases.
+ngnix could not be built on OS X in some cases.
 </para>
 </change>
 
@@ -6973,12 +6973,12 @@ the bug had appeared in 1.9.6.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_v2_module,
+если ngnix был собран с модулем ngx_http_v2_module,
 протокол HTTP/2 мог быть использован клиентом,
 даже если не был указан параметр http2 директивы listen.
 </para>
 <para lang="en">
-if nginx was built with the ngx_http_v2_module
+if ngnix was built with the ngx_http_v2_module
 it was possible to use the HTTP/2 protocol
 even if the "http2" parameter of the "listen" directive was not specified.
 </para>
@@ -7046,12 +7046,12 @@ in different virtual servers.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с MinGW gcc;
+ngnix/Windows не собирался с MinGW gcc;
 ошибка появилась в 1.9.4.<br/>
 Спасибо Kouhei Sutou.
 </para>
 <para lang="en">
-nginx/Windows could not be built with MinGW gcc;
+ngnix/Windows could not be built with MinGW gcc;
 the bug had appeared in 1.9.4.<br/>
 Thanks to Kouhei Sutou.
 </para>
@@ -7104,22 +7104,22 @@ now the "output_buffers" directive uses two buffers by default.
 
 <change type="change">
 <para lang="ru">
-теперь nginx ограничивает максимальную вложенность подзапросов,
+теперь ngnix ограничивает максимальную вложенность подзапросов,
 а не количество одновременных подзапросов.
 </para>
 <para lang="en">
-now nginx limits subrequests recursion,
+now ngnix limits subrequests recursion,
 not simultaneous subrequests.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь при возврате ответов из кэша nginx проверяет ключ полностью.<br/>
+теперь при возврате ответов из кэша ngnix проверяет ключ полностью.<br/>
 Спасибо Геннадию Махомеду и Сергею Брестеру.
 </para>
 <para lang="en">
-now nginx checks the whole cache key when returning a response from cache.<br/>
+now ngnix checks the whole cache key when returning a response from cache.<br/>
 Thanks to Gena Makhomed and Sergey Brester.
 </para>
 </change>
@@ -7278,10 +7278,10 @@ in hash table initialization error handling.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с Visual Studio 2015.
+ngnix не собирался с Visual Studio 2015.
 </para>
 <para lang="en">
-nginx could not be built with Visual Studio 2015.
+ngnix could not be built with Visual Studio 2015.
 </para>
 </change>
 
@@ -7513,11 +7513,11 @@ in the "hash" directive on big-endian platforms.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог не запускаться на некоторых старых версиях Linux;
+ngnix мог не запускаться на некоторых старых версиях Linux;
 ошибка появилась в 1.7.11.
 </para>
 <para lang="en">
-nginx might fail to start on some old Linux variants;
+ngnix might fail to start on some old Linux variants;
 the bug had appeared in 1.7.11.
 </para>
 </change>
@@ -7682,12 +7682,12 @@ in the ngx_http_spdy_module.
 <change type="change">
 <para lang="ru">
 параметр sendfile директивы aio более не нужен;
-теперь nginx автоматически использует AIO для подгрузки данных для sendfile,
+теперь ngnix автоматически использует AIO для подгрузки данных для sendfile,
 если одновременно используются директивы aio и sendfile.
 </para>
 <para lang="en">
 the "sendfile" parameter of the "aio" directive is deprecated;
-now nginx automatically uses AIO to pre-load data for sendfile
+now ngnix automatically uses AIO to pre-load data for sendfile
 if both "aio" and "sendfile" directives are used.
 </para>
 </change>
@@ -7869,11 +7869,11 @@ the $upstream_header_time variable.
 
 <change type="workaround">
 <para lang="ru">
-теперь при переполнении диска nginx пытается писать error_log'и только
+теперь при переполнении диска ngnix пытается писать error_log'и только
 раз в секунду.
 </para>
 <para lang="en">
-now on disk overflow nginx tries to write error logs once a second only.
+now on disk overflow ngnix tries to write error logs once a second only.
 </para>
 </change>
 
@@ -7894,7 +7894,7 @@ Thanks to Damien Tournoud.
 <para lang="ru">
 при использовании директивы sendfile на OS X
 возникали ошибки "sendfile() failed";
-ошибка появилась в nginx 1.7.8.
+ошибка появилась в ngnix 1.7.8.
 </para>
 <para lang="en">
 alerts "sendfile() failed"
@@ -7914,22 +7914,22 @@ alerts "sem_post() failed" might appear in logs.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с musl libc.<br/>
+ngnix не собирался с musl libc.<br/>
 Спасибо James Taylor.
 </para>
 <para lang="en">
-nginx could not be built with musl libc.<br/>
+ngnix could not be built with musl libc.<br/>
 Thanks to James Taylor.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Tru64 UNIX.<br/>
+ngnix не собирался на Tru64 UNIX.<br/>
 Спасибо Goetz T. Fischer.
 </para>
 <para lang="en">
-nginx could not be built on Tru64 UNIX.<br/>
+ngnix could not be built on Tru64 UNIX.<br/>
 Thanks to Goetz T. Fischer.
 </para>
 </change>
@@ -8029,11 +8029,11 @@ was used on a previous level.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с BoringSSL.<br/>
+ngnix не собирался с BoringSSL.<br/>
 Спасибо Lukas Tribus.
 </para>
 <para lang="en">
-nginx could not be built with BoringSSL.<br/>
+ngnix could not be built with BoringSSL.<br/>
 Thanks to Lukas Tribus.
 </para>
 </change>
@@ -8047,13 +8047,13 @@ Thanks to Lukas Tribus.
 <para lang="ru">
 теперь строки "If-Modified-Since", "If-Range" и им подобные
 в заголовке запроса клиента передаются бэкенду при включённом кэшировании,
-если nginx заранее знает, что не будет кэшировать ответ
+если ngnix заранее знает, что не будет кэшировать ответ
 (например, при использовании proxy_cache_min_uses).
 </para>
 <para lang="en">
 now the "If-Modified-Since", "If-Range", etc.
 client request header lines are passed to a backend while caching
-if nginx knows in advance that the response will not be cached
+if ngnix knows in advance that the response will not be cached
 (e.g., when using proxy_cache_min_uses).
 </para>
 </change>
@@ -8061,7 +8061,7 @@ if nginx knows in advance that the response will not be cached
 <change type="change">
 <para lang="ru">
 теперь после истечения proxy_cache_lock_timeout
-nginx отправляет запрос на бэкенд без кэширования;
+ngnix отправляет запрос на бэкенд без кэширования;
 новые директивы proxy_cache_lock_age, fastcgi_cache_lock_age,
 scgi_cache_lock_age и uwsgi_cache_lock_age позволяют указать,
 через какое время блокировка будет принудительно снята
@@ -8069,7 +8069,7 @@ scgi_cache_lock_age и uwsgi_cache_lock_age позволяют указать,
 </para>
 <para lang="en">
 now after proxy_cache_lock_timeout
-nginx sends a request to a backend with caching disabled;
+ngnix sends a request to a backend with caching disabled;
 the new directives "proxy_cache_lock_age", "fastcgi_cache_lock_age",
 "scgi_cache_lock_age", and "uwsgi_cache_lock_age" specify a time
 after which the lock will be released
@@ -8136,12 +8136,12 @@ Thanks to Peter Wu.
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал значение "s-maxage"
+ngnix игнорировал значение "s-maxage"
 в строке "Cache-Control" в заголовке ответа бэкенда.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-nginx ignored the "s-maxage" value
+ngnix ignored the "s-maxage" value
 in the "Cache-Control" backend response header line.<br/>
 Thanks to Piotr Sikora.
 </para>
@@ -8173,7 +8173,7 @@ when using OpenSSL 0.9.8zc, 1.0.0o, 1.0.1j.
 <para lang="ru">
 при использовании директивы post_action
 в лог писались сообщения "header already sent";
-ошибка появилась в nginx 1.5.4.
+ошибка появилась в ngnix 1.5.4.
 </para>
 <para lang="en">
 alerts "header already sent" appeared in logs
@@ -8211,11 +8211,11 @@ Thanks to Yichun Zhang.
 
 <change type="change">
 <para lang="ru">
-теперь nginx учитывает при кэшировании строку "Vary"
+теперь ngnix учитывает при кэшировании строку "Vary"
 в заголовке ответа бэкенда.
 </para>
 <para lang="en">
-now nginx takes into account the "Vary"
+now ngnix takes into account the "Vary"
 header line in a backend response while caching.
 </para>
 </change>
@@ -8305,11 +8305,11 @@ Thanks to Feng Gu.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с MinGW-w64 gcc.<br/>
+ngnix/Windows не собирался с MinGW-w64 gcc.<br/>
 Спасибо Kouhei Sutou.
 </para>
 <para lang="en">
-nginx/Windows could not be built with MinGW-w64 gcc.<br/>
+ngnix/Windows could not be built with MinGW-w64 gcc.<br/>
 Thanks to Kouhei Sutou.
 </para>
 </change>
@@ -8539,11 +8539,11 @@ Thanks to Piotr Sikora.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx можно собрать с BoringSSL и LibreSSL.<br/>
+теперь ngnix можно собрать с BoringSSL и LibreSSL.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-now nginx can be build with BoringSSL and LibreSSL.<br/>
+now ngnix can be build with BoringSSL and LibreSSL.<br/>
 Thanks to Piotr Sikora.
 </para>
 </change>
@@ -8695,10 +8695,10 @@ were logged at "info" level instead of "error" while connecting to backends.
 
 <change type="bugfix">
 <para lang="ru">
-в модуле ngx_http_dav_module в nginx/Windows.
+в модуле ngx_http_dav_module в ngnix/Windows.
 </para>
 <para lang="en">
-in the ngx_http_dav_module module in nginx/Windows.
+in the ngx_http_dav_module module in ngnix/Windows.
 </para>
 </change>
 
@@ -8766,10 +8766,10 @@ from the last parameter of the "try_files" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог не собираться на OS X.
+ngnix мог не собираться на OS X.
 </para>
 <para lang="en">
-nginx could not be built on OS X in some cases.
+ngnix could not be built on OS X in some cases.
 </para>
 </change>
 
@@ -8893,10 +8893,10 @@ then responses might be transferred incorrectly.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --with-file-aio на Linux/aarch64.
+ngnix не собирался с параметром --with-file-aio на Linux/aarch64.
 </para>
 <para lang="en">
-nginx could not be built with the --with-file-aio option on Linux/aarch64.
+ngnix could not be built with the --with-file-aio option on Linux/aarch64.
 </para>
 </change>
 
@@ -8981,7 +8981,7 @@ to cache.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx не пишет в лог сообщения "ngx_slab_alloc() failed: no memory"
+теперь ngnix не пишет в лог сообщения "ngx_slab_alloc() failed: no memory"
 при использовании разделяемой памяти в ssl_session_cache
 и в модуле ngx_http_limit_req_module.
 </para>
@@ -9007,20 +9007,20 @@ Thanks to Piotr Sikora.
 
 <change type="bugfix">
 <para lang="ru">
-cache manager мог нагружать процессор при выходе в nginx/Windows.
+cache manager мог нагружать процессор при выходе в ngnix/Windows.
 </para>
 <para lang="en">
-cache manager might hog CPU on exit in nginx/Windows.
+cache manager might hog CPU on exit in ngnix/Windows.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
 при использовании ssl_session_cache с параметром shared
-рабочий процесс nginx/Windows завершался аварийно.
+рабочий процесс ngnix/Windows завершался аварийно.
 </para>
 <para lang="en">
-nginx/Windows terminated abnormally
+ngnix/Windows terminated abnormally
 if the "ssl_session_cache" directive was used with the "shared" parameter.
 </para>
 </change>
@@ -9183,10 +9183,10 @@ using the "error_page" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с Visual Studio 2013.
+ngnix/Windows не собирался с Visual Studio 2013.
 </para>
 <para lang="en">
-nginx/Windows could not be built with Visual Studio 2013.
+ngnix/Windows could not be built with Visual Studio 2013.
 </para>
 </change>
 
@@ -9276,10 +9276,10 @@ Thanks to Piotr Sikora.
 
 <change type="change">
 <para lang="ru">
-теперь в заголовке X-Accel-Redirect nginx ожидает закодированный URI.
+теперь в заголовке X-Accel-Redirect ngnix ожидает закодированный URI.
 </para>
 <para lang="en">
-now nginx expects escaped URIs in "X-Accel-Redirect" headers.
+now ngnix expects escaped URIs in "X-Accel-Redirect" headers.
 </para>
 </change>
 
@@ -9338,10 +9338,10 @@ Thanks to Ivan Ristić.
 
 <change type="bugfix">
 <para lang="ru">
-nginx неправильно обрабатывал закодированный символ "?" в команде SSI include.
+ngnix неправильно обрабатывал закодированный символ "?" в команде SSI include.
 </para>
 <para lang="en">
-nginx incorrectly handled escaped "?" character in the "include" SSI command.
+ngnix incorrectly handled escaped "?" character in the "include" SSI command.
 </para>
 </change>
 
@@ -9471,10 +9471,10 @@ in an SSL connection using chunked transfer encoding.
 
 <change type="bugfix">
 <para lang="ru">
-директива master_process работала неправильно в nginx/Windows.
+директива master_process работала неправильно в ngnix/Windows.
 </para>
 <para lang="en">
-the "master_process" directive did not work correctly in nginx/Windows.
+the "master_process" directive did not work correctly in ngnix/Windows.
 </para>
 </change>
 
@@ -9625,10 +9625,10 @@ with the "auth_request" directive.
 
 <change type="bugfix">
 <para lang="ru">
-утечки памяти в nginx/Windows.
+утечки памяти в ngnix/Windows.
 </para>
 <para lang="en">
-memory leak in nginx/Windows.
+memory leak in ngnix/Windows.
 </para>
 </change>
 
@@ -9690,12 +9690,12 @@ Thanks to Markus Linnala.
 
 <change type="bugfix">
 <para lang="ru">
-на MacOSX, Cygwin и nginx/Windows
+на MacOSX, Cygwin и ngnix/Windows
 для обработки запроса мог использоваться неверный location,
 если для задания location'ов использовались символы разных регистров.
 </para>
 <para lang="en">
-in MacOSX, Cygwin, and nginx/Windows
+in MacOSX, Cygwin, and ngnix/Windows
 incorrect location might be used to process a request
 if locations were given using characters in different cases.
 </para>
@@ -9737,11 +9737,11 @@ in the ngx_http_spdy_module.
 
 <change type="change">
 <para lang="ru">
-теперь nginx по умолчанию использует HTTP/1.0,
+теперь ngnix по умолчанию использует HTTP/1.0,
 если точно определить протокол не удалось.
 </para>
 <para lang="en">
-now nginx assumes HTTP/1.0 by default
+now ngnix assumes HTTP/1.0 by default
 if it is not able to detect protocol reliably.
 </para>
 </change>
@@ -9762,7 +9762,7 @@ the "disable_symlinks" directive now uses O_PATH on Linux.
 теперь используются события EPOLLRDHUP.
 </para>
 <para lang="en">
-now nginx uses EPOLLRDHUP events
+now ngnix uses EPOLLRDHUP events
 to detect premature connection close by clients
 if the "epoll" method is used.
 </para>
@@ -9779,10 +9779,10 @@ in the "valid_referers" directive if the "server_names" parameter was used.
 
 <change type="bugfix">
 <para lang="ru">
-переменная $request_time не работала в nginx/Windows.
+переменная $request_time не работала в ngnix/Windows.
 </para>
 <para lang="en">
-the $request_time variable did not work in nginx/Windows.
+the $request_time variable did not work in ngnix/Windows.
 </para>
 </change>
 
@@ -9932,12 +9932,12 @@ if working with backends in unbuffered mode.
 <change type="change">
 <para lang="ru">
 теперь при получении неполного ответа от бэкенда
-nginx отправляет полученную часть ответа,
+ngnix отправляет полученную часть ответа,
 после чего закрывает соединение с клиентом.
 </para>
 <para lang="en">
 now after receiving an incomplete response from a backend server
-nginx tries to send an available part of the response to a client,
+ngnix tries to send an available part of the response to a client,
 and then closes client connection.
 </para>
 </change>
@@ -10026,11 +10026,11 @@ Thanks to Jim Radford.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Linux при использовании x32 ABI.<br/>
+ngnix не собирался на Linux при использовании x32 ABI.<br/>
 Спасибо Сергею Иванцову.
 </para>
 <para lang="en">
-nginx could not be built on Linux with x32 ABI.<br/>
+ngnix could not be built on Linux with x32 ABI.<br/>
 Thanks to Serguei Ivantsov.
 </para>
 </change>
@@ -10075,12 +10075,12 @@ the "allow" and "deny" directives now support unix domain sockets.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с модулем ngx_mail_ssl_module,
+ngnix не собирался с модулем ngx_mail_ssl_module,
 но без модуля ngx_http_ssl_module;
 ошибка появилась в 1.3.14.
 </para>
 <para lang="en">
-nginx could not be built with the ngx_mail_ssl_module,
+ngnix could not be built with the ngx_mail_ssl_module,
 but without ngx_http_ssl_module;
 the bug had appeared in 1.3.14.
 </para>
@@ -10149,11 +10149,11 @@ Thanks to Filipe Da Silva.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows мог перестать принимать соединения,
+ngnix/Windows мог перестать принимать соединения,
 если использовалось несколько рабочих процессов.
 </para>
 <para lang="en">
-nginx/Windows might stop accepting connections
+ngnix/Windows might stop accepting connections
 if several worker processes were used.
 </para>
 </change>
@@ -10187,12 +10187,12 @@ Thanks to Greg MacManus, iSIGHT Partners Labs.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с модулем ngx_http_perl_module,
+ngnix не собирался с модулем ngx_http_perl_module,
 если использовался параметр --with-openssl;
 ошибка появилась в 1.3.16.
 </para>
 <para lang="en">
-nginx could not be built with the ngx_http_perl_module
+ngnix could not be built with the ngx_http_perl_module
 if the --with-openssl option was used;
 the bug had appeared in 1.3.16.
 </para>
@@ -10550,11 +10550,11 @@ if resolver was used with the poll method.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог нагружать процессор во время SSL handshake с бэкендом
+ngnix мог нагружать процессор во время SSL handshake с бэкендом
 при использовании методов обработки соединений select, poll и /dev/poll.
 </para>
 <para lang="en">
-nginx might hog CPU during SSL handshake with a backend
+ngnix might hog CPU during SSL handshake with a backend
 if the select, poll, or /dev/poll methods were used.
 </para>
 </change>
@@ -10706,10 +10706,10 @@ variables support in the "auth_basic" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx в некоторых случаях не собирался с модулем ngx_http_perl_module.
+ngnix в некоторых случаях не собирался с модулем ngx_http_perl_module.
 </para>
 <para lang="en">
-nginx could not be built with the ngx_http_perl_module in some cases.
+ngnix could not be built with the ngx_http_perl_module in some cases.
 </para>
 </change>
 
@@ -10726,11 +10726,11 @@ if the ngx_http_xslt_module was used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог не собираться на MacOSX.<br/>
+ngnix мог не собираться на MacOSX.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-nginx could not be built on MacOSX in some cases.<br/>
+ngnix could not be built on MacOSX in some cases.<br/>
 Thanks to Piotr Sikora.
 </para>
 </change>
@@ -11023,11 +11023,11 @@ Thanks to Charles Chen.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc 4.7 с оптимизацией -O2
+ngnix не собирался gcc 4.7 с оптимизацией -O2
 если использовался параметр --with-ipv6.
 </para>
 <para lang="en">
-nginx could not be built by gcc 4.7 with -O2 optimization
+ngnix could not be built by gcc 4.7 with -O2 optimization
 if the --with-ipv6 option was used.
 </para>
 </change>
@@ -11105,11 +11105,11 @@ Thanks to Coverity.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не собирался с Visual Studio 2005 Express.<br/>
+ngnix/Windows не собирался с Visual Studio 2005 Express.<br/>
 Спасибо HAYASHI Kentaro.
 </para>
 <para lang="en">
-nginx/Windows could not be built with Visual Studio 2005 Express.<br/>
+ngnix/Windows could not be built with Visual Studio 2005 Express.<br/>
 Thanks to HAYASHI Kentaro.
 </para>
 </change>
@@ -11152,12 +11152,12 @@ Thanks to Roman Odaisky.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows мог нагружать процессор, если при запуске рабочего процесса
+ngnix/Windows мог нагружать процессор, если при запуске рабочего процесса
 происходила ошибка.<br/>
 Спасибо Ricardo Villalobos Guevara.
 </para>
 <para lang="en">
-nginx/Windows might hog CPU if a worker process failed to start.<br/>
+ngnix/Windows might hog CPU if a worker process failed to start.<br/>
 Thanks to Ricardo Villalobos Guevara.
 </para>
 </change>
@@ -11302,10 +11302,10 @@ if conflicting wildcard server names were used.
 
 <change type="bugfix">
 <para lang="ru">
-на платформе ARM nginx мог аварийно завершаться по сигналу SIGBUS.
+на платформе ARM ngnix мог аварийно завершаться по сигналу SIGBUS.
 </para>
 <para lang="en">
-nginx might be terminated abnormally on a SIGBUS signal on ARM platform.
+ngnix might be terminated abnormally on a SIGBUS signal on ARM platform.
 </para>
 </change>
 
@@ -11327,12 +11327,12 @@ while reconfiguration.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует точку в конце компонента URI
+теперь ngnix/Windows игнорирует точку в конце компонента URI
 и не разрешает URI, содержащие последовательность ":$".<br/>
 Спасибо Владимиру Кочеткову, Positive Research Center.
 </para>
 <para lang="en">
-now nginx/Windows ignores trailing dot in URI path component, and
+now ngnix/Windows ignores trailing dot in URI path component, and
 does not allow URIs with ":$" in it.<br/>
 Thanks to Vladimir Kochetkov, Positive Research Center.
 </para>
@@ -11397,11 +11397,11 @@ the bug had appeared in 1.3.0.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с модулем ngx_cpp_test_module;
+ngnix не собирался с модулем ngx_cpp_test_module;
 ошибка появилась в 1.1.12.
 </para>
 <para lang="en">
-nginx could not be built with ngx_cpp_test_module;
+ngnix could not be built with ngx_cpp_test_module;
 the bug had appeared in 1.1.12.
 </para>
 </change>
@@ -11534,11 +11534,11 @@ in a replacement used variables.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог нагружать процессор,
+ngnix мог нагружать процессор,
 если было достигнуто ограничение на количество открытых файлов.
 </para>
 <para lang="en">
-nginx might hog CPU
+ngnix might hog CPU
 if the open file resource limit was reached.
 </para>
 </change>
@@ -11546,11 +11546,11 @@ if the open file resource limit was reached.
 <change type="bugfix">
 <para lang="ru">
 при использовании директивы proxy_next_upstream с параметром http_404
-nginx мог бесконечно перебирать бэкенды, если в блоке upstream был
+ngnix мог бесконечно перебирать бэкенды, если в блоке upstream был
 хотя бы один сервер с флагом backup.
 </para>
 <para lang="en">
-nginx might loop infinitely over backends
+ngnix might loop infinitely over backends
 if the "proxy_next_upstream" directive with the "http_404" parameter was used
 and there were backup servers specified in an upstream block.
 </para>
@@ -11652,22 +11652,22 @@ Thanks to Matthew Daley.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows мог завершаться аварийно.<br/>
+ngnix/Windows мог завершаться аварийно.<br/>
 Спасибо Vincent Lee.
 </para>
 <para lang="en">
-nginx/Windows might be terminated abnormally.<br/>
+ngnix/Windows might be terminated abnormally.<br/>
 Thanks to Vincent Lee.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx нагружал процессор, если все серверы в upstream'е были помечены
+ngnix нагружал процессор, если все серверы в upstream'е были помечены
 флагом backup.
 </para>
 <para lang="en">
-nginx hogged CPU if all servers in an upstream were marked as "backup".
+ngnix hogged CPU if all servers in an upstream were marked as "backup".
 </para>
 </change>
 
@@ -11787,10 +11787,10 @@ in the ngx_http_xslt_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Debian GNU/Hurd.
+ngnix не собирался на Debian GNU/Hurd.
 </para>
 <para lang="en">
-nginx could not be built on Debian GNU/Hurd.
+ngnix could not be built on Debian GNU/Hurd.
 </para>
 </change>
 
@@ -11927,20 +11927,20 @@ the bug had appeared in 1.0.1.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался компилятором icc 12.1.
+ngnix не собирался компилятором icc 12.1.
 </para>
 <para lang="en">
-nginx could not be built by the icc 12.1 compiler.
+ngnix could not be built by the icc 12.1 compiler.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc на Solaris;
+ngnix не собирался gcc на Solaris;
 ошибка появилась в 1.1.15.
 </para>
 <para lang="en">
-nginx could not be built by gcc on Solaris;
+ngnix could not be built by gcc on Solaris;
 the bug had appeared in 1.1.15.
 </para>
 </change>
@@ -11970,12 +11970,12 @@ the "proxy_cookie_domain" and "proxy_cookie_path" directives.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог некорректно сообщать об ошибке "upstream prematurely closed
+ngnix мог некорректно сообщать об ошибке "upstream prematurely closed
 connection" вместо "upstream sent too big header".<br/>
 Спасибо Feibo Li.
 </para>
 <para lang="en">
-nginx might log incorrect error "upstream prematurely closed connection"
+ngnix might log incorrect error "upstream prematurely closed connection"
 instead of correct "upstream sent too big header" one.<br/>
 Thanks to Feibo Li.
 </para>
@@ -11983,11 +11983,11 @@ Thanks to Feibo Li.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с модулем ngx_http_perl_module,
+ngnix не собирался с модулем ngx_http_perl_module,
 если использовался параметр --with-openssl.
 </para>
 <para lang="en">
-nginx could not be built with the ngx_http_perl_module
+ngnix could not be built with the ngx_http_perl_module
 if the --with-openssl option was used.
 </para>
 </change>
@@ -12167,11 +12167,11 @@ the "worker_cpu_affinity" directive might not work.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris;
+ngnix не собирался на Solaris;
 ошибка появилась в 1.1.12.
 </para>
 <para lang="en">
-nginx could not be built on Solaris;
+ngnix could not be built on Solaris;
 the bug had appeared in 1.1.12.
 </para>
 </change>
@@ -12316,11 +12316,11 @@ in the ngx_http_mp4_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris;
+ngnix не собирался на Solaris;
 ошибка появилась в 1.1.9.
 </para>
 <para lang="en">
-nginx could not be built on Solaris;
+ngnix could not be built on Solaris;
 the bug had appeared in 1.1.9.
 </para>
 </change>
@@ -12470,10 +12470,10 @@ Thanks to Kirill A. Korinskiy.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог перестать отвечать, если рабочий процесс завершался аварийно.
+ngnix мог перестать отвечать, если рабочий процесс завершался аварийно.
 </para>
 <para lang="en">
-nginx might hang after a worker process abnormal termination.
+ngnix might hang after a worker process abnormal termination.
 </para>
 </change>
 
@@ -12568,7 +12568,7 @@ in the ngx_http_mp4_module.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx понимает IPv6-адреса в строке запроса и в заголовке Host.
+теперь ngnix понимает IPv6-адреса в строке запроса и в заголовке Host.
 </para>
 <para lang="en">
 IPv6 addresses are now handled properly in a request line and in a "Host"
@@ -12589,19 +12589,19 @@ and response status code was 206.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на FreeBSD 10.
+ngnix не собирался на FreeBSD 10.
 </para>
 <para lang="en">
-nginx could not be built on FreeBSD 10.
+ngnix could not be built on FreeBSD 10.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на AIX.
+ngnix не собирался на AIX.
 </para>
 <para lang="en">
-nginx could not be built on AIX.
+ngnix could not be built on AIX.
 </para>
 </change>
 
@@ -13004,11 +13004,11 @@ the "worker_aio_requests" directive.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с файловым AIO,
+если ngnix был собран с файловым AIO,
 он не мог запускаться на Linux без поддержки AIO.
 </para>
 <para lang="en">
-if nginx was built --with-file-aio it could not be run on Linux
+if ngnix was built --with-file-aio it could not be run on Linux
 kernel which did not support AIO.
 </para>
 </change>
@@ -13080,10 +13080,10 @@ if file was not atomically changed.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на MacOSX 10.7.
+ngnix не собирался на MacOSX 10.7.
 </para>
 <para lang="en">
-nginx could not be built on MacOSX 10.7.
+ngnix could not be built on MacOSX 10.7.
 </para>
 </change>
 
@@ -13095,11 +13095,11 @@ nginx could not be built on MacOSX 10.7.
 <change type="change">
 <para lang="ru">
 теперь, если суммарный размер всех диапазонов больше размера исходного ответа,
-то nginx возвращает только исходный ответ, не обрабатывая диапазоны.
+то ngnix возвращает только исходный ответ, не обрабатывая диапазоны.
 </para>
 <para lang="en">
 now if total size of all ranges is greater than source response size,
-then nginx disables ranges and returns just the source response.
+then ngnix disables ranges and returns just the source response.
 </para>
 </change>
 
@@ -13181,20 +13181,20 @@ accept filters are now supported on NetBSD.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Linux 3.0.
+ngnix не собирался на Linux 3.0.
 </para>
 <para lang="en">
-nginx could not be built on Linux 3.0.
+ngnix could not be built on Linux 3.0.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-в некоторых случаях nginx не использовал сжатие;
+в некоторых случаях ngnix не использовал сжатие;
 ошибка появилась в 1.1.0.
 </para>
 <para lang="en">
-nginx did not use gzipping in some cases;
+ngnix did not use gzipping in some cases;
 the bug had appeared in 1.1.0.
 </para>
 </change>
@@ -13230,11 +13230,11 @@ if SSL connection to backend was used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx нагружал процессор, если все серверы в upstream'е были помечены
+ngnix нагружал процессор, если все серверы в upstream'е были помечены
 флагом down.
 </para>
 <para lang="en">
-nginx hogged CPU if all servers in an upstream were marked as "down".
+ngnix hogged CPU if all servers in an upstream were marked as "down".
 </para>
 </change>
 
@@ -13312,11 +13312,11 @@ loading time decrease of configuration with large number of HTTPS sites.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx поддерживает шифры с обменом ECDHE-ключами.<br/>
+теперь ngnix поддерживает шифры с обменом ECDHE-ключами.<br/>
 Спасибо Adrian Kotelba.
 </para>
 <para lang="en">
-now nginx supports ECDHE key exchange ciphers.<br/>
+now ngnix supports ECDHE key exchange ciphers.<br/>
 Thanks to Adrian Kotelba.
 </para>
 </change>
@@ -13345,11 +13345,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запрещал сжатие при получении значения "gzip;q=0"
+ngnix не запрещал сжатие при получении значения "gzip;q=0"
 в строке "Accept-Encoding" в заголовке запроса клиента.
 </para>
 <para lang="en">
-nginx did not disable gzipping if client sent "gzip;q=0" in
+ngnix did not disable gzipping if client sent "gzip;q=0" in
 "Accept-Encoding" request header line.
 </para>
 </change>
@@ -13523,11 +13523,11 @@ Thanks to Denis F. Latypoff.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http_auth_basic_module;
+ngnix не собирался с параметром --without-http_auth_basic_module;
 ошибка появилась в 1.0.3.
 </para>
 <para lang="en">
-nginx could not be built --without-http_auth_basic_module;
+ngnix could not be built --without-http_auth_basic_module;
 the bug had appeared in 1.0.3.
 </para>
 </change>
@@ -13628,11 +13628,11 @@ Thanks to Adam Bocim.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris;
+ngnix не собирался на Solaris;
 ошибка появилась в 1.0.1.
 </para>
 <para lang="en">
-nginx could not be built on Solaris;
+ngnix could not be built on Solaris;
 the bug had appeared in 1.0.1.
 </para>
 </change>
@@ -13669,10 +13669,10 @@ Thanks to Maxim Dounin.
 
 <change type="change">
 <para lang="ru">
-теперь по умолчанию nginx использует значение 511 для listen backlog на Linux.
+теперь по умолчанию ngnix использует значение 511 для listen backlog на Linux.
 </para>
 <para lang="en">
-now nginx uses a default listen backlog value 511 on Linux.
+now ngnix uses a default listen backlog value 511 on Linux.
 </para>
 </change>
 
@@ -13687,11 +13687,11 @@ the $upstream_... variables may be used in the SSI and perl modules.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx лучше ограничивает размер кэша на диске.<br/>
+теперь ngnix лучше ограничивает размер кэша на диске.<br/>
 Спасибо Олегу Мамонтову.
 </para>
 <para lang="en">
-now nginx limits better disk cache size.<br/>
+now ngnix limits better disk cache size.<br/>
 Thanks to Oleg Mamontov.
 </para>
 </change>
@@ -13711,21 +13711,21 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc 4.6 без параметра --with-debug.
+ngnix не собирался gcc 4.6 без параметра --with-debug.
 </para>
 <para lang="en">
-nginx could not be built by gcc 4.6 without --with-debug option.
+ngnix could not be built by gcc 4.6 without --with-debug option.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris 9 и более ранних;
+ngnix не собирался на Solaris 9 и более ранних;
 ошибка появилась в 0.9.3.<br/>
 Спасибо Dagobert Michelsen.
 </para>
 <para lang="en">
-nginx could not be built on Solaris 9 and earlier;
+ngnix could not be built on Solaris 9 and earlier;
 the bug had appeared in 0.9.3.<br/>
 Thanks to Dagobert Michelsen.
 </para>
@@ -13856,12 +13856,12 @@ Thanks to Michael Lustfield.
 
 <change type="change">
 <para lang="ru">
-теперь по умолчанию nginx использует значение -1 для listen backlog
+теперь по умолчанию ngnix использует значение -1 для listen backlog
 на Linux.<br/>
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-now nginx uses a default listen backlog value -1 on Linux.<br/>
+now ngnix uses a default listen backlog value -1 on Linux.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -13944,11 +13944,11 @@ then captures in regular expressions in a "server_name" directive did not work.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под Solaris;
+ngnix не собирался под Solaris;
 ошибка появилась в 0.9.0.
 </para>
 <para lang="en">
-nginx could not be built on Solaris;
+ngnix could not be built on Solaris;
 the bug had appeared in 0.9.0.
 </para>
 </change>
@@ -13980,11 +13980,11 @@ the issue had appeared in 0.9.0.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под Cygwin;
+ngnix не собирался под Cygwin;
 ошибка появилась в 0.9.0.
 </para>
 <para lang="en">
-nginx could not be built on Cygwin;
+ngnix could not be built on Cygwin;
 the bug had appeared in 0.9.0.
 </para>
 </change>
@@ -14060,11 +14060,11 @@ the "map" directive supports expressions as the first parameter.
 
 <change type="feature">
 <para lang="ru">
-страница руководства nginx(8).<br/>
+страница руководства ngnix(8).<br/>
 Спасибо Сергею Осокину.
 </para>
 <para lang="en">
-nginx(8) manual page.<br/>
+ngnix(8) manual page.<br/>
 Thanks to Sergey Osokin.
 </para>
 </change>
@@ -14171,12 +14171,12 @@ the bug had appeared in 0.8.21.
 
 <change type="bugfix">
 <para lang="ru">
-nginx использовал режим SSL для listen сокета, если для него был
+ngnix использовал режим SSL для listen сокета, если для него был
 установлен любой listen-параметр;
 ошибка появилась в 0.8.51.
 </para>
 <para lang="en">
-nginx used SSL mode for a listen socket if any listen option was set;
+ngnix used SSL mode for a listen socket if any listen option was set;
 the bug had appeared in 0.8.51.
 </para>
 </change>
@@ -14266,11 +14266,11 @@ Thanks to Derrick Petzold.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не мог посылать сигналы stop, quit, reopen, reload процессу,
+ngnix/Windows не мог посылать сигналы stop, quit, reopen, reload процессу,
 запущенному в другой сессии.
 </para>
 <para lang="en">
-nginx/Windows could not send stop, quit, reopen, and reload signals
+ngnix/Windows could not send stop, quit, reopen, and reload signals
 to a process run in other session.
 </para>
 </change>
@@ -14474,12 +14474,12 @@ and "scgi_cache_bypass" directives.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не освобождал память в keys_zone кэшей в случае ошибки работы с
+ngnix не освобождал память в keys_zone кэшей в случае ошибки работы с
 бэкендом: память освобождалась только по истечении времени неактивности
 или при недостатке памяти.
 </para>
 <para lang="en">
-nginx did not free memory in cache keys zones if there was an error
+ngnix did not free memory in cache keys zones if there was an error
 during working with backend: the memory was freed only after inactivity
 time or on memory low condition.
 </para>
@@ -14531,11 +14531,11 @@ the "listen" directive did not support the "setfib=0" parameter.
 
 <change type="change">
 <para lang="ru">
-теперь nginx по умолчанию не кэширует ответы бэкендов,
+теперь ngnix по умолчанию не кэширует ответы бэкендов,
 в заголовке которых есть строка "Set-Cookie".
 </para>
 <para lang="en">
-now nginx does not cache by default backend responses,
+now ngnix does not cache by default backend responses,
 if they have a "Set-Cookie" header line.
 </para>
 </change>
@@ -14580,11 +14580,11 @@ compatibility with AIX xlC_r compiler.
 
 <change type="bugfix">
 <para lang="ru">
-nginx считал большие пакеты SSLv2 как обычные текстовые запросы.<br/>
+ngnix считал большие пакеты SSLv2 как обычные текстовые запросы.<br/>
 Спасибо Miroslaw Jaworski.
 </para>
 <para lang="en">
-nginx treated large SSLv2 packets as plain requests.<br/>
+ngnix treated large SSLv2 packets as plain requests.<br/>
 Thanks to Miroslaw Jaworski.
 </para>
 </change>
@@ -14618,11 +14618,11 @@ the bug had appeared in 0.8.42.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог закрывать IPv6 listen сокет во время переконфигурации.<br/>
+ngnix мог закрывать IPv6 listen сокет во время переконфигурации.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-nginx might close IPv6 listen socket during reconfiguration.<br/>
+ngnix might close IPv6 listen socket during reconfiguration.<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -14643,12 +14643,12 @@ the $uid_set variable may be used at any request processing stage.
 
 <change type="change">
 <para lang="ru">
-теперь nginx проверяет location'ы, заданные регулярными выражениями,
+теперь ngnix проверяет location'ы, заданные регулярными выражениями,
 если запрос полностью совпал с location'ом, заданным строкой префикса.
 Предыдущее поведение появилось в 0.7.1.
 </para>
 <para lang="en">
-now nginx tests locations given by regular expressions,
+now ngnix tests locations given by regular expressions,
 if request was matched exactly by a location given by a prefix string.
 The previous behavior has been introduced in 0.7.1.
 </para>
@@ -14681,21 +14681,21 @@ a text answer may be added to a "return" directive.
 
 <change type="security">
 <para lang="ru">
-рабочий процесс nginx/Windows мог завершаться аварийно при запросе файла
+рабочий процесс ngnix/Windows мог завершаться аварийно при запросе файла
 с неверной кодировкой UTF-8.
 </para>
 <para lang="en">
-nginx/Windows worker might be terminated abnormally if a requested file name
+ngnix/Windows worker might be terminated abnormally if a requested file name
 has invalid UTF-8 encoding.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx разрешает использовать пробелы в строке запроса.
+теперь ngnix разрешает использовать пробелы в строке запроса.
 </para>
 <para lang="en">
-now nginx allows to use spaces in a request line.
+now ngnix allows to use spaces in a request line.
 </para>
 </change>
 
@@ -14714,11 +14714,11 @@ Thanks to Andrey Andreew and Max Sogin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал путь без имени хоста в
+ngnix не поддерживал путь без имени хоста в
 строке "Destination" в заголовке запроса.
 </para>
 <para lang="en">
-nginx did not support path without host name
+ngnix did not support path without host name
 in "Destination" request header line.
 </para>
 </change>
@@ -14730,11 +14730,11 @@ in "Destination" request header line.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует имя потока файла по умолчанию.<br/>
+теперь ngnix/Windows игнорирует имя потока файла по умолчанию.<br/>
 Спасибо Jose Antonio Vazquez Gonzalez.
 </para>
 <para lang="en">
-now nginx/Windows ignores default file stream name.<br/>
+now ngnix/Windows ignores default file stream name.<br/>
 Thanks to Jose Antonio Vazquez Gonzalez.
 </para>
 </change>
@@ -14890,11 +14890,11 @@ the "map" directive supports keys more than 255 characters.
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал значения "private" и "no-store" в строке "Cache-Control"
+ngnix игнорировал значения "private" и "no-store" в строке "Cache-Control"
 в заголовке ответа бэкенда.
 </para>
 <para lang="en">
-nginx ignored the "private" and "no-store" values
+ngnix ignored the "private" and "no-store" values
 in the "Cache-Control" backend response header line.
 </para>
 </change>
@@ -15003,11 +15003,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http-cache;
+ngnix не собирался с параметром --without-http-cache;
 ошибка появилась в 0.8.35.
 </para>
 <para lang="en">
-nginx could not be built --without-http-cache;
+ngnix could not be built --without-http-cache;
 the bug had appeared in 0.8.35.
 </para>
 </change>
@@ -15047,13 +15047,13 @@ in a rewrite rule.
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог завершаться аварийно во время обработки сигнала или
+ngnix мог завершаться аварийно во время обработки сигнала или
 при использовании директивы timer_resolution на платформах,
 не поддерживающих методы kqueue или eventport.<br/>
 Спасибо George Xie и Максиму Дунину.
 </para>
 <para lang="en">
-nginx might be terminated abnormally
+ngnix might be terminated abnormally
 while a signal processing or if the directive "timer_resolution" was used
 on platforms which do not support kqueue or eventport notification methods.<br/>
 Thanks to George Xie and Maxim Dounin.
@@ -15088,11 +15088,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не мог собрать библиотеку zlib-1.2.4 из исходных текстов.<br/>
+ngnix не мог собрать библиотеку zlib-1.2.4 из исходных текстов.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-nginx could not built zlib-1.2.4 library using the library sources.<br/>
+ngnix could not built zlib-1.2.4 library using the library sources.<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -15119,43 +15119,43 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал все шифры, используемые в клиентских сертификатах.<br/>
+ngnix не поддерживал все шифры, используемые в клиентских сертификатах.<br/>
 Спасибо Иннокентию Еникееву.
 </para>
 <para lang="en">
-nginx did not support all ciphers and digests used in client certificates.<br/>
+ngnix did not support all ciphers and digests used in client certificates.<br/>
 Thanks to Innocenty Enikeew.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx неправильно кэшировал FastCGI-ответы, если перед ответом было
+ngnix неправильно кэшировал FastCGI-ответы, если перед ответом было
 много вывода в stderr.
 </para>
 <para lang="en">
-nginx cached incorrectly FastCGI responses if there was large stderr output
+ngnix cached incorrectly FastCGI responses if there was large stderr output
 before response.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал HTTPS-рефереры.
+ngnix не поддерживал HTTPS-рефереры.
 </para>
 <para lang="en">
-nginx did not support HTTPS referrers.
+ngnix did not support HTTPS referrers.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows мог не находить файлы, если путь в конфигурации был задан
+ngnix/Windows мог не находить файлы, если путь в конфигурации был задан
 в другом регистре;
 ошибка появилась в 0.8.33.
 </para>
 <para lang="en">
-nginx/Windows might not find file if path in configuration was given
+ngnix/Windows might not find file if path in configuration was given
 in other character case;
 the bug had appeared in 0.8.33.
 </para>
@@ -15230,22 +15230,22 @@ the bug had appeared in 0.8.11.
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует пробелы в конце URI.<br/>
+теперь ngnix/Windows игнорирует пробелы в конце URI.<br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
-now nginx/Windows ignores trailing spaces in URI.<br/>
+now ngnix/Windows ignores trailing spaces in URI.<br/>
 Thanks to Dan Crowley, Core Security Technologies.
 </para>
 </change>
 
 <change type="security">
 <para lang="ru">
-теперь nginx/Windows игнорирует короткие имена файлов.<br/>
+теперь ngnix/Windows игнорирует короткие имена файлов.<br/>
 Спасибо Dan Crowley, Core Security Technologies.
 </para>
 <para lang="en">
-now nginx/Windows ignores short files names.<br/>
+now ngnix/Windows ignores short files names.<br/>
 Thanks to Dan Crowley, Core Security Technologies.
 </para>
 </change>
@@ -15345,11 +15345,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал передачу chunk'ами для 201-ых ответов.<br/>
+ngnix не поддерживал передачу chunk'ами для 201-ых ответов.<br/>
 Спасибо Julian Reich.
 </para>
 <para lang="en">
-nginx did not support chunked transfer encoding for 201 responses.<br/>
+ngnix did not support chunked transfer encoding for 201 responses.<br/>
 Thanks to Julian Reich.
 </para>
 </change>
@@ -15406,23 +15406,23 @@ application specific data if the data consume more than 5% of a JPEG file.
 
 <change type="bugfix">
 <para lang="ru">
-nginx закрывал соединение при запросе закэшированного
+ngnix закрывал соединение при запросе закэшированного
 ответа с пустым телом.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-nginx closed a connection if a cached response had an empty body.<br/>
+ngnix closed a connection if a cached response had an empty body.<br/>
 Thanks to Piotr Sikora.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог не собираться gcc 4.x при использовании оптимизации -O2 и выше.<br/>
+ngnix мог не собираться gcc 4.x при использовании оптимизации -O2 и выше.<br/>
 Спасибо Максиму Дунину и Денису Латыпову.
 </para>
 <para lang="en">
-nginx might not be built by gcc 4.x if the -O2 or higher optimization option
+ngnix might not be built by gcc 4.x if the -O2 or higher optimization option
 was used.<br/>
 Thanks to Maxim Dounin and Denis F. Latypoff.
 </para>
@@ -15441,12 +15441,12 @@ the bug had appeared in 0.8.25.
 
 <change type="bugfix">
 <para lang="ru">
-nginx кэшировал 304 ответ, если в заголовке проксируемого запроса
+ngnix кэшировал 304 ответ, если в заголовке проксируемого запроса
 была строка "If-None-Match".<br/>
 Спасибо Tim Dettrick и David Kostal.
 </para>
 <para lang="en">
-nginx cached a 304 response if there was the "If-None-Match" header line
+ngnix cached a 304 response if there was the "If-None-Match" header line
 in a proxied request.<br/>
 Thanks to Tim Dettrick and David Kostal.
 </para>
@@ -15454,11 +15454,11 @@ Thanks to Tim Dettrick and David Kostal.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows пытался дважды удалить временный файл
+ngnix/Windows пытался дважды удалить временный файл
 при перезаписи уже существующего файла.
 </para>
 <para lang="en">
-nginx/Windows tried to delete a temporary file twice
+ngnix/Windows tried to delete a temporary file twice
 if the file should replace an already existent file.
 </para>
 </change>
@@ -15492,11 +15492,11 @@ the conf/fastcgi.conf for simple FastCGI configurations.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows пытался дважды переименовать временный файл
+ngnix/Windows пытался дважды переименовать временный файл
 при перезаписи уже существующего файла.
 </para>
 <para lang="en">
-nginx/Windows tried to rename a temporary file twice if the file
+ngnix/Windows tried to rename a temporary file twice if the file
 should replace an already existent file.
 </para>
 </change>
@@ -15611,11 +15611,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-pcre;
+ngnix не собирался с параметром --without-pcre;
 ошибка появилась в 0.8.25.
 </para>
 <para lang="en">
-nginx could not be built with the --without-pcre parameter;
+ngnix could not be built with the --without-pcre parameter;
 the bug had appeared in 0.8.25.
 </para>
 </change>
@@ -15627,11 +15627,11 @@ the bug had appeared in 0.8.25.
 
 <change type="bugfix">
 <para lang="ru">
-регулярные выражения не работали в nginx/Windows;
+регулярные выражения не работали в ngnix/Windows;
 ошибка появилась в 0.8.25.
 </para>
 <para lang="en">
-regular expressions did not work in nginx/Windows;
+regular expressions did not work in ngnix/Windows;
 the bug had appeared in 0.8.25.
 </para>
 </change>
@@ -15654,11 +15654,11 @@ the bug had appeared in 0.8.25.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без параметра --with-debug;
+ngnix не собирался без параметра --with-debug;
 ошибка появилась в 0.8.25.
 </para>
 <para lang="en">
-nginx could not be built without the --with-debug option;
+ngnix could not be built without the --with-debug option;
 the bug had appeared in 0.8.25.
 </para>
 </change>
@@ -15729,12 +15729,12 @@ the bug had appeared in 0.8.18.
 
 <change type="bugfix">
 <para lang="ru">
-nginx передавал сжатые ответы клиентам, не поддерживающим сжатие,
+ngnix передавал сжатые ответы клиентам, не поддерживающим сжатие,
 при настройках gzip_static on и gzip_vary off;
 ошибка появилась в 0.8.16.
 </para>
 <para lang="en">
-nginx sent gzipped responses to clients those do not support gzip,
+ngnix sent gzipped responses to clients those do not support gzip,
 if "gzip_static on" and "gzip_vary off";
 the bug had appeared in 0.8.16.
 </para>
@@ -15747,22 +15747,22 @@ the bug had appeared in 0.8.16.
 
 <change type="bugfix">
 <para lang="ru">
-nginx всегда добавлял строку "Content-Encoding: gzip" в заголовок
+ngnix всегда добавлял строку "Content-Encoding: gzip" в заголовок
 304-ых ответов модуля ngx_http_gzip_static_module.
 </para>
 <para lang="en">
-nginx always added "Content-Encoding: gzip" response header line
+ngnix always added "Content-Encoding: gzip" response header line
 in 304 responses sent by ngx_http_gzip_static_module.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без параметра --with-debug;
+ngnix не собирался без параметра --with-debug;
 ошибка появилась в 0.8.23.
 </para>
 <para lang="en">
-nginx could not be built without the --with-debug option;
+ngnix could not be built without the --with-debug option;
 the bug had appeared in 0.8.23.
 </para>
 </change>
@@ -15886,19 +15886,19 @@ the "unix:" parameter of the "set_real_ip_from" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не удалял unix domain сокет после тестирования конфигурации.
+ngnix не удалял unix domain сокет после тестирования конфигурации.
 </para>
 <para lang="en">
-nginx did not delete unix domain socket after configuration testing.
+ngnix did not delete unix domain socket after configuration testing.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx удалял unix domain сокет во время обновления без перерыва.
+ngnix удалял unix domain сокет во время обновления без перерыва.
 </para>
 <para lang="en">
-nginx deleted unix domain socket while online upgrade.
+ngnix deleted unix domain socket while online upgrade.
 </para>
 </change>
 
@@ -15997,10 +15997,10 @@ now a "default" parameter is not required to set listen socket options.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал даты в 2038 году на 32-битных платформах;
+ngnix не поддерживал даты в 2038 году на 32-битных платформах;
 </para>
 <para lang="en">
-nginx did not support dates in 2038 year on 32-bit platforms;
+ngnix did not support dates in 2038 year on 32-bit platforms;
 </para>
 </change>
 
@@ -16044,34 +16044,34 @@ the bug had appeared in 0.7.15.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не закрывал лог, заданный параметром конфигурации --error-log-path;
+ngnix не закрывал лог, заданный параметром конфигурации --error-log-path;
 ошибка появилась в 0.7.53.
 </para>
 <para lang="en">
-nginx did not close a log file set by the --error-log-path configuration option;
+ngnix did not close a log file set by the --error-log-path configuration option;
 the bug had appeared in 0.7.53.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не считал запятую разделителем в строке "Cache-Control" в
+ngnix не считал запятую разделителем в строке "Cache-Control" в
 заголовке ответа бэкенда.
 </para>
 <para lang="en">
-nginx did not treat a comma as separator in the "Cache-Control" backend response
+ngnix did not treat a comma as separator in the "Cache-Control" backend response
 header line.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows мог не создать временный файл, файл в кэше или файл
+ngnix/Windows мог не создать временный файл, файл в кэше или файл
 с помощью директив proxy/fastcgi_store, если рабочий процесс не имел
 достаточно прав для работы с каталогами верхнего уровня.
 </para>
 <para lang="en">
-nginx/Windows might not create temporary file, a cache file, or
+ngnix/Windows might not create temporary file, a cache file, or
 "proxy/fastcgi_store"d file if a worker had no enough access rights
 for top level directories.
 </para>
@@ -16092,10 +16092,10 @@ any parameters.
 
 <change type="bugfix">
 <para lang="ru">
-nginx неверно считал размер кэша на диске.
+ngnix неверно считал размер кэша на диске.
 </para>
 <para lang="en">
-nginx counted incorrectly disk cache size.
+ngnix counted incorrectly disk cache size.
 </para>
 </change>
 
@@ -16179,23 +16179,23 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на Linux/sparc.<br/>
+ngnix не работал на Linux/sparc.<br/>
 Спасибо Marcus Ramberg.
 </para>
 <para lang="en">
-nginx did not work on Linux/sparc.<br/>
+ngnix did not work on Linux/sparc.<br/>
 Thanks to Marcus Ramberg.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx слал символ '\0' в строке "Location" в заголовке в ответе на запрос
+ngnix слал символ '\0' в строке "Location" в заголовке в ответе на запрос
 MKCOL.<br/>
 Спасибо Xie Zhenye.
 </para>
 <para lang="en">
-nginx sent '\0' in a "Location" response header line on MKCOL request.<br/>
+ngnix sent '\0' in a "Location" response header line on MKCOL request.<br/>
 Thanks to Xie Zhenye.
 </para>
 </change>
@@ -16332,21 +16332,21 @@ in PNG alpha-channel support in the ngx_http_image_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx всегда добавлял строку "Vary: Accept-Encoding" в заголовок ответа,
+ngnix всегда добавлял строку "Vary: Accept-Encoding" в заголовок ответа,
 если обе директивы gzip_static и gzip_vary были включены.
 </para>
 <para lang="en">
-nginx always added "Vary: Accept-Encoding" response header line,
+ngnix always added "Vary: Accept-Encoding" response header line,
 if both "gzip_static" and "gzip_vary" were on.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-в поддержке кодировки UTF-8 директивой try_files в nginx/Windows.
+в поддержке кодировки UTF-8 директивой try_files в ngnix/Windows.
 </para>
 <para lang="en">
-in UTF-8 encoding support by "try_files" directive in nginx/Windows.
+in UTF-8 encoding support by "try_files" directive in ngnix/Windows.
 </para>
 </change>
 
@@ -16499,11 +16499,11 @@ the bug had appeared in 0.8.12.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без параметра --with-file-aio на FreeBSD;
+ngnix не собирался без параметра --with-file-aio на FreeBSD;
 ошибка появилась в 0.8.12.
 </para>
 <para lang="en">
-nginx could not be built without the --with-file-aio option on FreeBSD;
+ngnix could not be built without the --with-file-aio option on FreeBSD;
 the bug had appeared in 0.8.12.
 </para>
 </change>
@@ -16807,23 +16807,23 @@ Thanks to Kuramoto Eiji.
 
 <change type="bugfix">
 <para lang="ru">
-в MacOSX, Cygwin и nginx/Windows при проверке location'ов, заданных
+в MacOSX, Cygwin и ngnix/Windows при проверке location'ов, заданных
 регулярным выражением, теперь всегда делается сравнение без учёта
 регистра символов.
 </para>
 <para lang="en">
-now in MacOSX, Cygwin, and nginx/Windows locations given by a regular
+now in MacOSX, Cygwin, and ngnix/Windows locations given by a regular
 expression are always tested in case insensitive mode.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx/Windows игнорирует точки в конце URI.<br/>
+теперь ngnix/Windows игнорирует точки в конце URI.<br/>
 Спасибо Hugo Leisink.
 </para>
 <para lang="en">
-now nginx/Windows ignores trailing dots in URI.<br/>
+now ngnix/Windows ignores trailing dots in URI.<br/>
 Thanks to Hugo Leisink.
 </para>
 </change>
@@ -16848,10 +16848,10 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx разрешает подчёркивания в методе запроса.
+теперь ngnix разрешает подчёркивания в методе запроса.
 </para>
 <para lang="en">
-now nginx allows underscores in a request method.
+now ngnix allows underscores in a request method.
 </para>
 </change>
 
@@ -16893,11 +16893,11 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http-cache;
+ngnix не собирался с параметром --without-http-cache;
 ошибка появилась в 0.8.3.
 </para>
 <para lang="en">
-nginx could not be built --without-http-cache;
+ngnix could not be built --without-http-cache;
 the bug had appeared in 0.8.3.
 </para>
 </change>
@@ -16918,20 +16918,20 @@ the $upstream_cache_status variable.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на MacOSX 10.6.
+ngnix не собирался на MacOSX 10.6.
 </para>
 <para lang="en">
-nginx could not be built on MacOSX 10.6.
+ngnix could not be built on MacOSX 10.6.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http-cache;
+ngnix не собирался с параметром --without-http-cache;
 ошибка появилась в 0.8.2.
 </para>
 <para lang="en">
-nginx could not be built --without-http-cache;
+ngnix could not be built --without-http-cache;
 the bug had appeared in 0.8.2.
 </para>
 </change>
@@ -17030,11 +17030,11 @@ Thanks to Denis Ilyinyh.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris 10 и более ранних;
+ngnix не собирался на Solaris 10 и более ранних;
 ошибка появилась в 0.7.56.
 </para>
 <para lang="en">
-nginx could not be built modules on Solaris 10 and early;
+ngnix could not be built modules on Solaris 10 and early;
 the bug had appeared in 0.7.56.
 </para>
 </change>
@@ -17075,19 +17075,19 @@ XLST filter did not work in subrequests.
 
 <change type="bugfix">
 <para lang="ru">
-обработке относительных путей в nginx/Windows.
+обработке относительных путей в ngnix/Windows.
 </para>
 <para lang="en">
-in relative paths handling in nginx/Windows.
+in relative paths handling in ngnix/Windows.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-в proxy_store, fastcgi_store, proxy_cache и fastcgi_cache в nginx/Windows.
+в proxy_store, fastcgi_store, proxy_cache и fastcgi_cache в ngnix/Windows.
 </para>
 <para lang="en">
-in proxy_store, fastcgi_store, proxy_cache, and fastcgi_cache in nginx/Windows.
+in proxy_store, fastcgi_store, proxy_cache, and fastcgi_cache in ngnix/Windows.
 </para>
 </change>
 
@@ -17267,10 +17267,10 @@ the bug had appeared in 0.7.56.
 
 <change type="feature">
 <para lang="ru">
-nginx/Windows поддерживает IPv6 в директиве listen модуля HTTP.
+ngnix/Windows поддерживает IPv6 в директиве listen модуля HTTP.
 </para>
 <para lang="en">
-nginx/Windows supports IPv6 in a "listen" directive of the HTTP module.
+ngnix/Windows supports IPv6 in a "listen" directive of the HTTP module.
 </para>
 </change>
 
@@ -17310,12 +17310,12 @@ fastcgi cache did not cache header only responses.
 
 <change type="bugfix">
 <para lang="ru">
-ошибки "select() failed (9: Bad file descriptor)" в nginx/Unix
-и "select() failed (10038: ...)" в nginx/Windows.
+ошибки "select() failed (9: Bad file descriptor)" в ngnix/Unix
+и "select() failed (10038: ...)" в ngnix/Windows.
 </para>
 <para lang="en">
-of "select() failed (9: Bad file descriptor)" error in nginx/Unix
-and "select() failed (10038: ...)" error in nginx/Windows.
+of "select() failed (9: Bad file descriptor)" error in ngnix/Unix
+and "select() failed (10038: ...)" error in ngnix/Windows.
 </para>
 </change>
 
@@ -17410,20 +17410,20 @@ improve handling of "select" method errors.
 
 <change type="bugfix">
 <para lang="ru">
-ошибки "select() failed (10022: ...)" в nginx/Windows.
+ошибки "select() failed (10022: ...)" в ngnix/Windows.
 </para>
 <para lang="en">
-of "select() failed (10022: ...)" error in nginx/Windows.
+of "select() failed (10022: ...)" error in ngnix/Windows.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-в текстовых сообщениях об ошибках в nginx/Windows;
+в текстовых сообщениях об ошибках в ngnix/Windows;
 ошибка появилась в 0.7.53.
 </para>
 <para lang="en">
-in error text descriptions in nginx/Windows;
+in error text descriptions in ngnix/Windows;
 the bug had appeared in 0.7.53.
 </para>
 </change>
@@ -17454,11 +17454,11 @@ now the start up errors and warnings are outputted to an error_log and stderr.
 
 <change type="feature">
 <para lang="ru">
-при сборке с пустым параметром --prefix= nginx использует как префикс каталог,
+при сборке с пустым параметром --prefix= ngnix использует как префикс каталог,
 в котором он был запущен.
 </para>
 <para lang="en">
-the empty --prefix= configure parameter forces nginx to use a directory
+the empty --prefix= configure parameter forces ngnix to use a directory
 where it was run as prefix.
 </para>
 </change>
@@ -17503,10 +17503,10 @@ now switches may be set in condensed form.
 
 <change type="bugfix">
 <para lang="ru">
-nginx/Windows не работал, если файл конфигурации был задан ключом -c.
+ngnix/Windows не работал, если файл конфигурации был задан ключом -c.
 </para>
 <para lang="en">
-nginx/Windows did not work if configuration file was given by the -c switch.
+ngnix/Windows did not work if configuration file was given by the -c switch.
 </para>
 </change>
 
@@ -17607,12 +17607,12 @@ now the "Set-Cookie" and "P3P" header lines are hidden in cacheable responses.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_perl_module и perl
+если ngnix был собран с модулем ngx_http_perl_module и perl
 поддерживал потоки, то при выходе основного процесса
 могла выдаваться ошибка "panic: MUTEX_LOCK".
 </para>
 <para lang="en">
-if nginx was built with the ngx_http_perl_module and with a perl which
+if ngnix was built with the ngx_http_perl_module and with a perl which
 supports threads, then during a master process exit
 the message "panic: MUTEX_LOCK" might be issued.
 </para>
@@ -17620,22 +17620,22 @@ the message "panic: MUTEX_LOCK" might be issued.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http-cache;
+ngnix не собирался с параметром --without-http-cache;
 ошибка появилась в 0.7.48.
 </para>
 <para lang="en">
-nginx could not be built --without-http-cache;
+ngnix could not be built --without-http-cache;
 the bug had appeared in 0.7.48.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ngnix не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.7.42.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc,
+ngnix could not be built on platforms different from i386, amd64, sparc,
 and ppc;
 the bug had appeared in 0.7.42.
 </para>
@@ -17738,21 +17738,21 @@ the "proxy_cache_key" directive.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx учитывает при кэшировании строки "X-Accel-Expires",
+теперь ngnix учитывает при кэшировании строки "X-Accel-Expires",
 "Expires" и "Cache-Control" в заголовке ответа бэкенда.
 </para>
 <para lang="en">
-now nginx takes into account the "X-Accel-Expires", "Expires", and
+now ngnix takes into account the "X-Accel-Expires", "Expires", and
 "Cache-Control" header lines in a backend response.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx кэширует только ответы на запросы GET.
+теперь ngnix кэширует только ответы на запросы GET.
 </para>
 <para lang="en">
-now nginx caches responses for the GET requests only.
+now ngnix caches responses for the GET requests only.
 </para>
 </change>
 
@@ -17778,22 +17778,22 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с библиотекой uclibc.<br/>
+ngnix не собирался с библиотекой uclibc.<br/>
 Спасибо Timothy Redaelli.
 </para>
 <para lang="en">
-nginx could not be built with uclibc library.<br/>
+ngnix could not be built with uclibc library.<br/>
 Thanks to Timothy Redaelli.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на OpenBSD;
+ngnix не собирался на OpenBSD;
 ошибка появилась <nobr>в 0.7.46.</nobr>
 </para>
 <para lang="en">
-nginx could not be built on OpenBSD;
+ngnix could not be built on OpenBSD;
 the bug had <nobr>appeared in 0.7.46.</nobr>
 </para>
 </change>
@@ -17805,22 +17805,22 @@ the bug had <nobr>appeared in 0.7.46.</nobr>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на FreeBSD 6 и более ранних версиях;
+ngnix не собирался на FreeBSD 6 и более ранних версиях;
 ошибка появилась в 0.7.46.
 </para>
 <para lang="en">
-nginx could not be built on FreeBSD 6 and early versions;
+ngnix could not be built on FreeBSD 6 and early versions;
 the bug had appeared in 0.7.46.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на MacOSX;
+ngnix не собирался на MacOSX;
 ошибка появилась в 0.7.46.
 </para>
 <para lang="en">
-nginx could not be built on MacOSX;
+ngnix could not be built on MacOSX;
 the bug had <nobr>appeared in 0.7.46.</nobr>
 </para>
 </change>
@@ -18142,11 +18142,11 @@ Thanks to Dustin Marquess.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без библиотеки PCRE;
+ngnix не собирался без библиотеки PCRE;
 ошибка появилась в 0.7.41.
 </para>
 <para lang="en">
-nginx could not be built without PCRE library;
+ngnix could not be built without PCRE library;
 the bug had appeared in 0.7.41.
 </para>
 </change>
@@ -18394,11 +18394,11 @@ the "off" parameter of the "if_modified_since" directive.
 
 <change type="feature">
 <para lang="ru">
-теперь после команды XCLIENT nginx посылает команду HELO/EHLO.<br/>
+теперь после команды XCLIENT ngnix посылает команду HELO/EHLO.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-now nginx sends an HELO/EHLO command after a XCLIENT command.<br/>
+now ngnix sends an HELO/EHLO command after a XCLIENT command.<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -18434,10 +18434,10 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на AIX.
+ngnix не собирался на AIX.
 </para>
 <para lang="en">
-nginx could not be built on AIX.
+ngnix could not be built on AIX.
 </para>
 </change>
 
@@ -18516,11 +18516,11 @@ in geo ranges.
 <change type="bugfix">
 <para lang="ru">
 ошибки выделения больших блоков в разделяемой памяти,
-если nginx был собран без отладки.<br/>
+если ngnix был собран без отладки.<br/>
 Спасибо Андрею Квасову.
 </para>
 <para lang="en">
-in shared memory allocations if nginx was built without debugging.<br/>
+in shared memory allocations if ngnix was built without debugging.<br/>
 Thanks to Andrey Kvasov.
 </para>
 </change>
@@ -18583,13 +18583,13 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-при проксировании SMTP nginx выдавал сообщение
+при проксировании SMTP ngnix выдавал сообщение
 <nobr>"250 2.0.0 OK"</nobr> вместо "235 2.0.0 OK";
 ошибка появилась в 0.7.22.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-while SMTP proxying nginx issued message
+while SMTP proxying ngnix issued message
 "250 2.0.0 OK" instead of "235 2.0.0 OK";
 the bug had appeared in 0.7.22.<br/>
 Thanks to Maxim Dounin.
@@ -18752,11 +18752,11 @@ now a "add_header" directive does not add an empty value.
 
 <change type="bugfix">
 <para lang="ru">
-при запросе файла нулевой длины nginx закрывал соединение, ничего не передав;
+при запросе файла нулевой длины ngnix закрывал соединение, ничего не передав;
 ошибка появилась в 0.7.25.
 </para>
 <para lang="en">
-if zero length static file was requested, then nginx just closed connection;
+if zero length static file was requested, then ngnix just closed connection;
 the bug had appeared in 0.7.25.
 </para>
 </change>
@@ -18858,11 +18858,11 @@ the "if_modified_since" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не обрабатывал ответ FastCGI-сервера,
+ngnix не обрабатывал ответ FastCGI-сервера,
 если перед ответом сервер передавал много сообщений в stderr.
 </para>
 <para lang="en">
-nginx did not process a FastCGI server response,
+ngnix did not process a FastCGI server response,
 if the server send too many messages to stderr before response.
 </para>
 </change>
@@ -18991,11 +18991,11 @@ Thanks to Eric Benson and Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на MacOSX 10.4 и более ранних;
+ngnix не запускался на MacOSX 10.4 и более ранних;
 ошибка появилась в 0.7.6.
 </para>
 <para lang="en">
-nginx could not run on MacOSX 10.4 and earlier;
+ngnix could not run on MacOSX 10.4 and earlier;
 the bug had appeared in 0.7.6.
 </para>
 </change>
@@ -19098,12 +19098,12 @@ version number update.
 <change type="change">
 <para lang="ru">
 директива underscores_in_headers;
-теперь nginx по умолчанию не разрешает подчёркивания в именах строк
+теперь ngnix по умолчанию не разрешает подчёркивания в именах строк
 в заголовке запроса клиента.
 </para>
 <para lang="en">
 the "underscores_in_headers" directive;
-now nginx does not allows underscores in a client request header line names.
+now ngnix does not allows underscores in a client request header line names.
 </para>
 </change>
 
@@ -19165,10 +19165,10 @@ the "http_503" parameter of the "proxy_next_upstream" or
 
 <change type="bugfix">
 <para lang="ru">
-nginx мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
+ngnix мог выдавать строку "Transfer-Encoding: chunked" для запросов  HEAD.
 </para>
 <para lang="en">
-nginx might send a "Transfer-Encoding: chunked" header line for HEAD requests.
+ngnix might send a "Transfer-Encoding: chunked" header line for HEAD requests.
 </para>
 </change>
 
@@ -19244,11 +19244,11 @@ received from backend.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на 64-битных платформах;
+ngnix не собирался на 64-битных платформах;
 ошибка появилась в 0.7.15.
 </para>
 <para lang="en">
-nginx could not be built on 64-bit platforms;
+ngnix could not be built on 64-bit platforms;
 the bug had appeared in 0.7.15.
 </para>
 </change>
@@ -19289,10 +19289,10 @@ the "directio" directive turns off sendfile if it is necessary.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx разрешает подчёркивания в именах строк в заголовке запроса клиента.
+теперь ngnix разрешает подчёркивания в именах строк в заголовке запроса клиента.
 </para>
 <para lang="en">
-now nginx allows underscores in a client request header line names.
+now ngnix allows underscores in a client request header line names.
 </para>
 </change>
 
@@ -19323,11 +19323,11 @@ the "listen" directive supports the "ssl" parameter.
 
 <change type="feature">
 <para lang="ru">
-теперь при переконфигурации nginx учитывает изменение временной зоны
+теперь при переконфигурации ngnix учитывает изменение временной зоны
 на FreeBSD и Linux.
 </para>
 <para lang="en">
-now nginx takes into account a time zone change while reconfiguration
+now ngnix takes into account a time zone change while reconfiguration
 on FreeBSD and Linux.
 </para>
 </change>
@@ -19371,11 +19371,11 @@ configuration file validity test improvements.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Linux и Solaris;
+ngnix не собирался на Linux и Solaris;
 ошибка появилась в 0.7.12.
 </para>
 <para lang="en">
-nginx could not be built on Linux and Solaris;
+ngnix could not be built on Linux and Solaris;
 the bug had appeared in 0.7.12.
 </para>
 </change>
@@ -19466,11 +19466,11 @@ now ngx_http_charset_module does not work by default with text/css MIME type.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx возвращает код 405 для метода POST при запросе статического
+теперь ngnix возвращает код 405 для метода POST при запросе статического
 файла, только если файл существует.
 </para>
 <para lang="en">
-now nginx returns the 405 status code for POST method requesting a static file
+now ngnix returns the 405 status code for POST method requesting a static file
 only if the file exists.
 </para>
 </change>
@@ -19498,11 +19498,11 @@ after the "X-Accel-Redirect" redirection was used.
 <change type="bugfix">
 <para lang="ru">
 если у каталога были права доступа только на поиск файлов
-и первый индексный файл отсутствовал, то nginx возвращал ошибку 500.
+и первый индексный файл отсутствовал, то ngnix возвращал ошибку 500.
 </para>
 <para lang="en">
 if a directory has search only rights and the first index file was absent,
-then nginx returned the 500 status code.
+then ngnix returned the 500 status code.
 </para>
 </change>
 
@@ -19694,12 +19694,12 @@ Thanks to Ivan Debnar.
 <change type="bugfix">
 <para lang="ru">
 теперь, если FastCGI-сервер присылает строку "Location" в заголовке ответа
-без строки статуса, то nginx использует код статуса 302.<br/>
+без строки статуса, то ngnix использует код статуса 302.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
 now if FastCGI server sends a "Location" header line without status line,
-then nginx uses 302 status code.<br/>
+then ngnix uses 302 status code.<br/>
 Thanks to Maxim Dounin.
 </para>
 </change>
@@ -19847,12 +19847,12 @@ the bugs had appeared in 0.7.4.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http_gzip_module;
+ngnix не собирался с параметром --without-http_gzip_module;
 ошибка появилась в 0.7.3.<br/>
 Спасибо Кириллу Коринскому.
 </para>
 <para lang="en">
-nginx could not be built --without-http_gzip_module;
+ngnix could not be built --without-http_gzip_module;
 the bug had appeared in 0.7.3.<br/>
 Thanks to Kirill A. Korinskiy.
 </para>
@@ -19975,10 +19975,10 @@ the bug had appeared in 0.6.9.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx поддерживает шифры с обменом EDH-ключами.
+теперь ngnix поддерживает шифры с обменом EDH-ключами.
 </para>
 <para lang="en">
-now nginx supports EDH key exchange ciphers.
+now ngnix supports EDH key exchange ciphers.
 </para>
 </change>
 
@@ -20004,12 +20004,12 @@ Thanks to Manlio Perillo.
 
 <change type="bugfix">
 <para lang="ru">
-после изменения URI с помощью директивы rewrite nginx не искал новый location;
+после изменения URI с помощью директивы rewrite ngnix не искал новый location;
 ошибка появилась в 0.7.1.<br/>
 Спасибо Максиму Дунину.
 </para>
 <para lang="en">
-after changing URI via a "rewrite" directive nginx did not search
+after changing URI via a "rewrite" directive ngnix did not search
 a new location;
 the bug had appeared in 0.7.1.<br/>
 Thanks to Maxim Dounin.
@@ -20018,23 +20018,23 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без библиотеки PCRE;
+ngnix не собирался без библиотеки PCRE;
 ошибка появилась в 0.7.1.
 </para>
 <para lang="en">
-nginx could not be built without PCRE library;
+ngnix could not be built without PCRE library;
 the bug had appeared in 0.7.1.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-при редиректе запроса к каталогу с добавлением слэша nginx
+при редиректе запроса к каталогу с добавлением слэша ngnix
 не добавлял аргументы из оригинального запроса.
 </para>
 <para lang="en">
 when a request to a directory was redirected with the slash added,
-nginx dropped a query string from the original request.
+ngnix dropped a query string from the original request.
 </para>
 </change>
 
@@ -20097,11 +20097,11 @@ worker processes might not catch reconfiguration and log rotation signals.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на последних Fedora 9 Linux.<br/>
+ngnix не собирался на последних Fedora 9 Linux.<br/>
 Спасибо Roxis.
 </para>
 <para lang="en">
-nginx could not be built on latest Fedora 9 Linux.<br/>
+ngnix could not be built on latest Fedora 9 Linux.<br/>
 Thanks to Roxis.
 </para>
 </change>
@@ -20125,10 +20125,10 @@ Thanks to Maxim Dounin.
 
 <change type="change">
 <para lang="ru">
-теперь nginx разрешает несколько строк "Host" в заголовке запроса.
+теперь ngnix разрешает несколько строк "Host" в заголовке запроса.
 </para>
 <para lang="en">
-now nginx allows several "Host" request header line.
+now ngnix allows several "Host" request header line.
 </para>
 </change>
 
@@ -20191,13 +20191,13 @@ if keepalive was enabled.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не обрабатывал ответ FastCGI-сервера, если строка заголовка ответа была
+ngnix не обрабатывал ответ FastCGI-сервера, если строка заголовка ответа была
 в конце записи FastCGI;
 ошибка появилась в 0.6.2.<br/>
 Спасибо Сергею Серову.
 </para>
 <para lang="en">
-nginx did not process FastCGI response
+ngnix did not process FastCGI response
 if header was at the end of FastCGI record;
 the bug had appeared in 0.6.2.<br/>
 Thanks to Sergey Serov.
@@ -20223,11 +20223,11 @@ and the "open_file_cache_errors" directive was off.
 <change type="change">
 <para lang="ru">
 теперь, если маске, заданной в директиве include, не соответствует
-ни один файл, то nginx не выдаёт ошибку.
+ни один файл, то ngnix не выдаёт ошибку.
 </para>
 <para lang="en">
 now if an "include" directive pattern does not match any file,
-then nginx does not issue an error.
+then ngnix does not issue an error.
 </para>
 </change>
 
@@ -20273,20 +20273,20 @@ redirected URI.
 
 <change type="bugfix">
 <para lang="ru">
-теперь при сборке с Cygwin nginx всегда открывает файлы в бинарном режиме.
+теперь при сборке с Cygwin ngnix всегда открывает файлы в бинарном режиме.
 </para>
 <para lang="en">
-now nginx always opens files in binary mode under Cygwin.
+now ngnix always opens files in binary mode under Cygwin.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под OpenBSD;
+ngnix не собирался под OpenBSD;
 ошибка появилась в 0.6.15.
 </para>
 <para lang="en">
-nginx could not be built on OpenBSD;
+ngnix could not be built on OpenBSD;
 the bug had appeared in 0.6.15.
 </para>
 </change>
@@ -20406,11 +20406,11 @@ Thanks to Alexander V. Inyukhin.
 <change type="bugfix">
 <para lang="ru">
 при перенаправлении ошибок 495-497 с помощью директивы error_page
-без изменения кода ошибки nginx пытался выделить очень много памяти.
+без изменения кода ошибки ngnix пытался выделить очень много памяти.
 </para>
 <para lang="en">
 if response code 495-497 was redirected via an "error_page" directive
-without code change, then nginx tried to allocate too many memory.
+without code change, then ngnix tried to allocate too many memory.
 </para>
 </change>
 
@@ -20532,11 +20532,11 @@ Thanks to Joaquin Cuenca Abela.
 
 <change type="bugfix">
 <para lang="ru">
-nginx неверно определял длину строки кэша на <nobr>Pentium 4.</nobr><br/>
+ngnix неверно определял длину строки кэша на <nobr>Pentium 4.</nobr><br/>
 Спасибо Геннадию Махомеду.
 </para>
 <para lang="en">
-nginx incorrectly detected cache line size on Pentium 4.<br/>
+ngnix incorrectly detected cache line size on Pentium 4.<br/>
 Thanks to Gena Makhomed.
 </para>
 </change>
@@ -20565,11 +20565,11 @@ Thanks to Ben Maurer.
 
 <change type="bugfix">
 <para lang="ru">
-nginx выдавал ошибочное сообщение "SSL_shutdown() failed (SSL: )";
+ngnix выдавал ошибочное сообщение "SSL_shutdown() failed (SSL: )";
 ошибка появилась в 0.6.23.
 </para>
 <para lang="en">
-nginx issued the bogus error message "SSL_shutdown() failed (SSL: )";
+ngnix issued the bogus error message "SSL_shutdown() failed (SSL: )";
 the bug had appeared in 0.6.23.
 </para>
 </change>
@@ -20675,11 +20675,11 @@ Thanks to Ben Maurer.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без библиотеки PCRE;
+ngnix не собирался без библиотеки PCRE;
 ошибка появилась в 0.6.23.
 </para>
 <para lang="en">
-nginx could not be built without PCRE library;
+ngnix could not be built without PCRE library;
 the bug had appeared in 0.6.23.
 </para>
 </change>
@@ -20856,14 +20856,14 @@ allocated memory.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_perl_module,
+если ngnix был собран с модулем ngx_http_perl_module,
 использовался perl до версии 5.8.6 и perl поддерживал потоки,
 то во время переконфигурации основной процесс аварийно выходил;
 ошибка появилась в 0.5.9.<br/>
 Спасибо Борису Жмурову.
 </para>
 <para lang="en">
-if nginx was built with ngx_http_perl_module,
+if ngnix was built with ngx_http_perl_module,
 the perl before 5.8.6 was used, and perl supported threads,
 then during reconfiguration the master process aborted;
 the bug had appeared in 0.5.9.<br/>
@@ -20977,12 +20977,12 @@ the bug had appeared in 0.6.19.
 <change type="bugfix">
 <para lang="ru">
 если resolver использовался на платформах, не поддерживающих метод kqueue,
-то nginx выдавал alert "name is out of response".<br/>
+то ngnix выдавал alert "name is out of response".<br/>
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
 if resolver was used on platform that does not support kqueue,
-then nginx issued an alert "name is out of response".<br/>
+then ngnix issued an alert "name is out of response".<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -20992,24 +20992,24 @@ Thanks to Andrei Nigmatulin.
 При использовании переменной $server_protocol в FastCGI-параметрах
 и запросе, длина которого была близка к значению директивы
 client_header_buffer_size,
-nginx выдавал alert "fastcgi: the request record is too big".
+ngnix выдавал alert "fastcgi: the request record is too big".
 </para>
 <para lang="en">
 if the $server_protocol was used in FastCGI parameters
 and a request line length was near to the "client_header_buffer_size"
 directive value,
-then nginx issued an alert "fastcgi: the request record is too big".
+then ngnix issued an alert "fastcgi: the request record is too big".
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-при обычном запросе версии HTTP/0.9 к HTTPS серверу nginx возвращал
+при обычном запросе версии HTTP/0.9 к HTTPS серверу ngnix возвращал
 обычный ответ.
 </para>
 <para lang="en">
 if a plain text HTTP/0.9 version request was made to HTTPS server,
-then nginx returned usual response.
+then ngnix returned usual response.
 </para>
 </change>
 
@@ -21259,10 +21259,10 @@ the "server_tokens" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не раскодировал URI в команде SSI include.
+ngnix не раскодировал URI в команде SSI include.
 </para>
 <para lang="en">
-nginx did not unescape URI in the "include" SSI command.
+ngnix did not unescape URI in the "include" SSI command.
 </para>
 </change>
 
@@ -21279,12 +21279,12 @@ if variable was used in the "charset" or "source_charset" directives.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал ошибку 400 на запросы вида
+ngnix возвращал ошибку 400 на запросы вида
 <nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
 Спасибо James Oakley.
 </para>
 <para lang="en">
-nginx returned the 400 response on requests like
+ngnix returned the 400 response on requests like
 <nobr>"GET http://www.domain.com HTTP/1.0"</nobr>.<br/>
 Thanks to James Oakley.
 </para>
@@ -21293,12 +21293,12 @@ Thanks to James Oakley.
 <change type="bugfix">
 <para lang="ru">
 после перенаправления запроса с телом запроса с помощью директивы
-error_page nginx пытался снова прочитать тело запроса;
+error_page ngnix пытался снова прочитать тело запроса;
 ошибка появилась в 0.6.7.
 </para>
 <para lang="en">
 if request with request body was redirected using the "error_page" directive,
-then nginx tried to read the request body again;
+then ngnix tried to read the request body again;
 the bug had appeared in 0.6.7.
 </para>
 </change>
@@ -21408,12 +21408,12 @@ a worker process may got caught in an endless loop, if the memcached was used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx распознавал параметры "close" и "keep-alive" в строке "Connection"
+ngnix распознавал параметры "close" и "keep-alive" в строке "Connection"
 в заголовке запроса только, если они были в нижнем регистре;
 ошибка появилась в 0.6.11.
 </para>
 <para lang="en">
-nginx supported low case only "close" and "keep-alive" values
+ngnix supported low case only "close" and "keep-alive" values
 in the "Connection" request header line;
 the bug had appeared in 0.6.11.
 </para>
@@ -21444,12 +21444,12 @@ in sub_filter parsing.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не закрывал файл каталога для запроса HEAD,
+ngnix не закрывал файл каталога для запроса HEAD,
 если использовался autoindex<br/>
 Спасибо Arkadiusz Patyk.
 </para>
 <para lang="en">
-nginx did not close directory file on HEAD request if autoindex was used.<br/>
+ngnix did not close directory file on HEAD request if autoindex was used.<br/>
 Thanks to Arkadiusz Patyk.
 </para>
 </change>
@@ -21503,10 +21503,10 @@ the bug had appeared in 0.6.9.
 <change type="bugfix">
 <para lang="ru">
 при использовании разделяемой библиотеки PCRE,
-расположенной в нестандартном месте, nginx не запускался на Solaris.
+расположенной в нестандартном месте, ngnix не запускался на Solaris.
 </para>
 <para lang="en">
-nginx could not start on Solaris if the shared PCRE library located
+ngnix could not start on Solaris if the shared PCRE library located
 in non-standard place was used.
 </para>
 </change>
@@ -21542,20 +21542,20 @@ active connection counter always increased if mail proxy was used.
 <change type="bugfix">
 <para lang="ru">
 если бэкенд возвращал только заголовок ответа при небуферизированном
-проксировании, то nginx закрывал соединение с бэкендом по таймауту.
+проксировании, то ngnix закрывал соединение с бэкендом по таймауту.
 </para>
 <para lang="en">
 if backend returned response header only using non-buffered proxy,
-then nginx closed backend connection on timeout.
+then ngnix closed backend connection on timeout.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не поддерживал несколько строк "Connection" в заголовке запроса.
+ngnix не поддерживал несколько строк "Connection" в заголовке запроса.
 </para>
 <para lang="en">
-nginx did not support several "Connection" request header lines.
+ngnix did not support several "Connection" request header lines.
 </para>
 </change>
 
@@ -21639,12 +21639,12 @@ the bug had appeared in 0.6.7.
 
 <change type="bugfix">
 <para lang="ru">
-если сервер слушал на двух адресах или портах, то nginx не запускался
+если сервер слушал на двух адресах или портах, то ngnix не запускался
 при использовании wildcard в конце имени сервера.
 </para>
 <para lang="en">
 if server listened on two addresses or ports and trailing wildcard was used,
-then nginx did not run.
+then ngnix did not run.
 </para>
 </change>
 
@@ -21659,11 +21659,11 @@ the "ip_hash" directive might incorrectly mark servers as down.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на amd64;
+ngnix не собирался на amd64;
 ошибка появилась в 0.6.8.
 </para>
 <para lang="en">
-nginx could not be built on amd64;
+ngnix could not be built on amd64;
 the bug had appeared in 0.6.8.
 </para>
 </change>
@@ -21675,12 +21675,12 @@ the bug had appeared in 0.6.8.
 
 <change type="change">
 <para lang="ru">
-теперь nginx пытается установить директивы worker_priority,
+теперь ngnix пытается установить директивы worker_priority,
 worker_rlimit_nofile, worker_rlimit_core, worker_rlimit_sigpending
 без привилегий root'а.
 </para>
 <para lang="en">
-now nginx tries to set the "worker_priority", "worker_rlimit_nofile",
+now ngnix tries to set the "worker_priority", "worker_rlimit_nofile",
 "worker_rlimit_core", and "worker_rlimit_sigpending" without super-user
 privileges.
 </para>
@@ -21688,32 +21688,32 @@ privileges.
 
 <change type="change">
 <para lang="ru">
-теперь nginx экранирует символы пробела и "%" при передаче запроса
+теперь ngnix экранирует символы пробела и "%" при передаче запроса
 серверу аутентификации почтового прокси-сервера.
 </para>
 <para lang="en">
-now nginx escapes space and "%" in request to a mail proxy authentication
+now ngnix escapes space and "%" in request to a mail proxy authentication
 server.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-теперь nginx экранирует символ "%" в переменной $memcached_key.
+теперь ngnix экранирует символ "%" в переменной $memcached_key.
 </para>
 <para lang="en">
-now nginx escapes "%" in $memcached_key variable.
+now ngnix escapes "%" in $memcached_key variable.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
 при указании относительного пути к конфигурационному файлу в качестве
-параметра ключа -c nginx определял путь относительно конфигурационного префикса;
+параметра ключа -c ngnix определял путь относительно конфигурационного префикса;
 ошибка появилась в 0.6.6.
 </para>
 <para lang="en">
-nginx used path relative to configuration prefix for non-absolute
+ngnix used path relative to configuration prefix for non-absolute
 configuration file path specified in the "-c" key;
 the bug had appeared in 0.6.6.
 </para>
@@ -21721,10 +21721,10 @@ the bug had appeared in 0.6.6.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на FreeBSD/sparc64.
+ngnix не работал на FreeBSD/sparc64.
 </para>
 <para lang="en">
-nginx did not work on FreeBSD/sparc64.
+ngnix did not work on FreeBSD/sparc64.
 </para>
 </change>
 
@@ -21738,13 +21738,13 @@ nginx did not work on FreeBSD/sparc64.
 теперь пути, указанные в директивах include, auth_basic_user_file,
 perl_modules, ssl_certificate, ssl_certificate_key и
 ssl_client_certificate, определяются относительно каталога конфигурационного
-файла nginx.conf, а не относительно префикса.
+файла ngnix.conf, а не относительно префикса.
 </para>
 <para lang="en">
 now the paths specified in the "include", "auth_basic_user_file",
 "perl_modules", "ssl_certificate", "ssl_certificate_key", and
 "ssl_client_certificate" directives are relative to directory of
-nginx configuration file nginx.conf, but not to nginx prefix directory.
+ngnix configuration file ngnix.conf, but not to ngnix prefix directory.
 </para>
 </change>
 
@@ -21811,12 +21811,12 @@ response header line.
 <para lang="ru">
 если на запрос с телом возвращался ответ с кодом HTTP отличным от 200,
 и после этого запроса соединение переходило в состояние keep-alive,
-то на следующий запрос nginx возвращал 400.
+то на следующий запрос ngnix возвращал 400.
 </para>
 <para lang="en">
 if a response different than 200 was returned to a request with body
 and connection went to the keep-alive state after the request, then
-nginx returned 400 for the next request.
+ngnix returned 400 for the next request.
 </para>
 </change>
 
@@ -21833,12 +21833,12 @@ if invalid address was set in the "auth_http" directive.
 
 <change type="bugfix">
 <para lang="ru">
-теперь по умолчанию nginx использует значение 511 для listen backlog
+теперь по умолчанию ngnix использует значение 511 для listen backlog
 на всех платформах, кроме FreeBSD.<br/>
 Спасибо Jiang Hong.
 </para>
 <para lang="en">
-now nginx uses default listen backlog value 511 on all platforms
+now ngnix uses default listen backlog value 511 on all platforms
 except FreeBSD.<br/>
 Thanks to Jiang Hong.
 </para>
@@ -21921,28 +21921,28 @@ fair big weight upstream balancer.
 <change type="bugfix">
 <para lang="ru">
 если клиент в почтовом прокси-сервере закрывал соединение,
-то nginx мог не закрывать соединение с бэкендом.
+то ngnix мог не закрывать соединение с бэкендом.
 </para>
 <para lang="en">
 if a client has closed connection to mail proxy
- then nginx might not close connection to backend.
+ then ngnix might not close connection to backend.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
 при использовании одного хоста в качестве бэкендов для протоколов HTTP и HTTPS
-без явного указания портов, nginx использовал только один порт&mdash;80 или 443.
+без явного указания портов, ngnix использовал только один порт&mdash;80 или 443.
 </para>
 <para lang="en">
 if the same host without specified port was used as backend for HTTP and HTTPS,
-then nginx used only one port&mdash;80 or 443.
+then ngnix used only one port&mdash;80 or 443.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
+ngnix не собирался на Solaris/amd64 Sun Studio 11 и более ранними версиями;
 ошибка появилась в 0.6.4.
 </para>
 <para lang="en">
@@ -21958,11 +21958,11 @@ the bug had appeared in 0.6.4.
 
 <change type="feature">
 <para lang="ru">
-переменная $nginx_version.<br/>
+переменная $ngnix_version.<br/>
 Спасибо Николаю Гречуху.
 </para>
 <para lang="en">
-$nginx_version variable.<br/>
+$ngnix_version variable.<br/>
 Thanks to Nick S. Grechukh.
 </para>
 </change>
@@ -21991,20 +21991,20 @@ Thanks to Maxim Dounin.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx экранирует пробел в переменной $memcached_key.
+теперь ngnix экранирует пробел в переменной $memcached_key.
 </para>
 <para lang="en">
-now nginx escapes space in $memcached_key variable.
+now ngnix escapes space in $memcached_key variable.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx неправильно собирался Sun Studio на Solaris/amd64.<br/>
+ngnix неправильно собирался Sun Studio на Solaris/amd64.<br/>
 Спасибо Jiang Hong.
 </para>
 <para lang="en">
-nginx was incorrectly built by Sun Studio on Solaris/amd64.<br/>
+ngnix was incorrectly built by Sun Studio on Solaris/amd64.<br/>
 Thanks to Jiang Hong.
 </para>
 </change>
@@ -22056,11 +22056,11 @@ the "proxy_store_access" and "fastcgi_store_access" directives.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на Solaris/sparc64, если был собран Sun Studio.<br/>
+ngnix не работал на Solaris/sparc64, если был собран Sun Studio.<br/>
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-nginx did not work on Solaris/sparc64 if it was built by Sun Studio.<br/>
+ngnix did not work on Solaris/sparc64 if it was built by Sun Studio.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -22155,12 +22155,12 @@ the bug had appeared in 0.5.13.
 
 <change type="bugfix">
 <para lang="ru">
-если заголовок ответа был разделён в FastCGI-записях, то nginx передавал
+если заголовок ответа был разделён в FastCGI-записях, то ngnix передавал
 клиенту мусор в таких заголовках.
 </para>
 <para lang="en">
 if the FastCGI header was split in records,
-then nginx passed garbage in the header to a client.
+then ngnix passed garbage in the header to a client.
 </para>
 </change>
 
@@ -22233,11 +22233,11 @@ the "www.example.*" wildcards.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-http_rewrite_module;
+ngnix не собирался с параметром --without-http_rewrite_module;
 ошибка появилась в 0.5.24.
 </para>
 <para lang="en">
-nginx could not be built with the --without-http_rewrite_module parameter;
+ngnix could not be built with the --without-http_rewrite_module parameter;
 the bug had appeared in 0.5.24.
 </para>
 </change>
@@ -22307,12 +22307,12 @@ two virtual servers should bind() to the overlapping ports.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_perl_module и perl
+если ngnix был собран с модулем ngx_http_perl_module и perl
 поддерживал потоки, то во время второй переконфигурации
 выдавались ошибки "panic: MUTEX_LOCK" и "perl_parse() failed".
 </para>
 <para lang="en">
-if nginx was built with ngx_http_perl_module and perl supported threads,
+if ngnix was built with ngx_http_perl_module and perl supported threads,
 then during second reconfiguration the error messages
 "panic: MUTEX_LOCK" and "perl_parse() failed" were issued.
 </para>
@@ -22443,11 +22443,11 @@ Thanks to Evan Miller.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на Solaris/sparc64, если был собран Sun Studio.<br/>
+ngnix не работал на Solaris/sparc64, если был собран Sun Studio.<br/>
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-nginx did not work on Solaris/sparc64 if it was built by Sun Studio.<br/>
+ngnix did not work on Solaris/sparc64 if it was built by Sun Studio.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -22565,7 +22565,7 @@ keep data about all upstreams before X-Accel-Redirect.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_perl_module и perl
+если ngnix был собран с модулем ngx_http_perl_module и perl
 не поддерживал multiplicity, то после первой переконфигурации
 и после получения любого сигнала
 в основном процессе происходил segmentation fault;
@@ -22574,7 +22574,7 @@ keep data about all upstreams before X-Accel-Redirect.
 <para lang="en">
 a segmentation fault occurred in master process
 after first reconfiguration and receiving any signal
-if nginx was built with ngx_http_perl_module and perl
+if ngnix was built with ngx_http_perl_module and perl
 did not support multiplicity;
 the bug had appeared in 0.5.9.
 </para>
@@ -22600,19 +22600,19 @@ the bug had appeared in 0.3.38.
 
 <change type="change">
 <para lang="ru">
-теперь nginx для метода TRACE всегда возвращает код 405.
+теперь ngnix для метода TRACE всегда возвращает код 405.
 </para>
 <para lang="en">
-now nginx always returns the 405 status for the TRACE method.
+now ngnix always returns the 405 status for the TRACE method.
 </para>
 </change>
 
 <change type="feature">
 <para lang="ru">
-теперь nginx поддерживает директиву include внутри блока types.
+теперь ngnix поддерживает директиву include внутри блока types.
 </para>
 <para lang="en">
-now nginx supports the "include" directive inside the "types" block.
+now ngnix supports the "include" directive inside the "types" block.
 </para>
 </change>
 
@@ -22692,11 +22692,11 @@ a request body written in a temporary file was multiple of 32K.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Solaris без параметра --with-debug;
+ngnix не собирался на Solaris без параметра --with-debug;
 ошибка появилась в 0.5.15.
 </para>
 <para lang="en">
-nginx could not be built on Solaris without the --with-debug option;
+ngnix could not be built on Solaris without the --with-debug option;
 the bug had appeared in 0.5.15.
 </para>
 </change>
@@ -22754,12 +22754,12 @@ and the APOP method was disabled.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании директивы starttls only в протоколе POP3 nginx
+при использовании директивы starttls only в протоколе POP3 ngnix
 разрешал аутентификацию без перехода в режим SSL.
 </para>
 <para lang="en">
 if the "starttls only" directive was used in POP3 protocol,
-then nginx allowed authentication without switching to the SSL mode.
+then ngnix allowed authentication without switching to the SSL mode.
 </para>
 </change>
 
@@ -22786,11 +22786,11 @@ if the "ip_hash" directive was used.
 
 <change type="bugfix">
 <para lang="ru">
-теперь nginx не пишет в лог некоторые alert'ы,
+теперь ngnix не пишет в лог некоторые alert'ы,
 если используются методы eventport или /dev/poll.
 </para>
 <para lang="en">
-now nginx does not log some alerts if eventport or /dev/poll methods are used.
+now ngnix does not log some alerts if eventport or /dev/poll methods are used.
 </para>
 </change>
 
@@ -22801,11 +22801,11 @@ now nginx does not log some alerts if eventport or /dev/poll methods are used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал лишние закрывающие скобки "}" в конце
+ngnix игнорировал лишние закрывающие скобки "}" в конце
 конфигурационного файла.
 </para>
 <para lang="en">
-nginx ignored superfluous closing "}" in the end of configuration file.
+ngnix ignored superfluous closing "}" in the end of configuration file.
 </para>
 </change>
 
@@ -22836,11 +22836,11 @@ keep-alive connection.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на 64-битном big-endian Linux.<br/>
+ngnix не работал на 64-битном big-endian Linux.<br/>
 Спасибо Андрею Нигматулину.
 </para>
 <para lang="en">
-nginx did not work on big-endian 64-bit Linux.<br/>
+ngnix did not work on big-endian 64-bit Linux.<br/>
 Thanks to Andrei Nigmatulin.
 </para>
 </change>
@@ -22859,22 +22859,22 @@ right away, but not after timeout.
 <change type="bugfix">
 <para lang="ru">
 если при использовании метода epoll клиент закрывал преждевременно
-соединение со своей стороны, то nginx закрывал это соединение только
+соединение со своей стороны, то ngnix закрывал это соединение только
 по истечении таймаута на передачу.
 </para>
 <para lang="en">
 if the "epoll" method was used and a client closed a connection prematurely,
-then nginx closed the connection after a send timeout only.
+then ngnix closed the connection after a send timeout only.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ngnix не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc,
+ngnix could not be built on platforms different from i386, amd64, sparc,
 and ppc;
 the bug had appeared in 0.5.8.
 </para>
@@ -22887,11 +22887,11 @@ the bug had appeared in 0.5.8.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ngnix не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.5.8.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc,
+ngnix could not be built on platforms different from i386, amd64, sparc,
 and ppc;
 the bug had appeared in 0.5.8.
 </para>
@@ -22987,7 +22987,7 @@ segmentation fault.
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if nginx was built with -O2 optimization.
+if ngnix was built with -O2 optimization.
 </para>
 </change>
 
@@ -23017,7 +23017,7 @@ segmentation fault;
 </para>
 <para lang="en">
 a segmentation fault might occur in worker process
-if nginx was built with -O2 optimization;
+if ngnix was built with -O2 optimization;
 the bug had appeared in 0.5.1.
 </para>
 </change>
@@ -23076,11 +23076,11 @@ the "sendfile" directive is available inside the "if" block.
 
 <change type="feature">
 <para lang="ru">
-теперь при ошибке записи в access_log nginx записывает сообщение в error_log,
+теперь при ошибке записи в access_log ngnix записывает сообщение в error_log,
 но не чаще одного раза в минуту.
 </para>
 <para lang="en">
-now on failure of the writing to access nginx logs a message to error_log,
+now on failure of the writing to access ngnix logs a message to error_log,
 but not more often than once a minute.
 </para>
 </change>
@@ -23123,7 +23123,7 @@ and a request body was small.
 a segmentation fault occurred if <nobr>"client_body_in_file_only on"</nobr>
 and <nobr>"proxy_pass_request_body off"</nobr>
 or <nobr>"fastcgi_pass_request_body off"</nobr>
-directives were used, and nginx switched to a next upstream.
+directives were used, and ngnix switched to a next upstream.
 </para>
 </change>
 
@@ -23144,12 +23144,12 @@ the bug had appeared in 0.4.7.
 <change type="bugfix">
 <para lang="ru">
 если при использовании метода epoll клиент закрывал преждевременно
-соединение со своей стороны, то nginx закрывал это соединение только
+соединение со своей стороны, то ngnix закрывал это соединение только
 по истечении таймаута на передачу.
 </para>
 <para lang="en">
 if the "epoll" method was used and a client closed a connection prematurely,
-then nginx closed the connection after a send timeout only.
+then ngnix closed the connection after a send timeout only.
 </para>
 </change>
 
@@ -23334,10 +23334,10 @@ the "worker_rlimit_core" directive supports size in K, M, and G.
 
 <change type="bugfix">
 <para lang="ru">
-модуль nginx.pm теперь может устанавливаться непривилегированным пользователем.
+модуль ngnix.pm теперь может устанавливаться непривилегированным пользователем.
 </para>
 <para lang="en">
-the nginx.pm module now could be installed by an unprivileged user.
+the ngnix.pm module now could be installed by an unprivileged user.
 </para>
 </change>
 
@@ -23388,12 +23388,12 @@ for the DELETE method.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании одного параметра в директиве dav_access nginx мог
+при использовании одного параметра в директиве dav_access ngnix мог
 сообщить об ошибке в конфигурации.
 </para>
 <para lang="en">
 if one only parameter was used in the "dav_access" directive, then
-nginx might report about configuration error.
+ngnix might report about configuration error.
 </para>
 </change>
 
@@ -23426,10 +23426,10 @@ and $r->sleep methods.
 
 <change type="feature">
 <para lang="ru">
-метод $r->variable поддерживает переменные, неописанные в конфигурации nginx'а.
+метод $r->variable поддерживает переменные, неописанные в конфигурации ngnix'а.
 </para>
 <para lang="en">
-the $r->variable method supports variables that do not exist in nginx
+the $r->variable method supports variables that do not exist in ngnix
 configuration.
 </para>
 </change>
@@ -23451,12 +23451,12 @@ the $r->has_request_body method did not work.
 <change type="bugfix">
 <para lang="ru">
 если в директивах proxy_pass использовалось имя, указанное в upstream,
-то nginx пытался найти IP-адрес этого имени;
+то ngnix пытался найти IP-адрес этого имени;
 ошибка появилась в 0.5.1.
 </para>
 <para lang="en">
 if the "proxy_pass" directive used the name of the "upstream" block,
-then nginx tried to resolve the name;
+then ngnix tried to resolve the name;
 the bug had appeared in 0.5.1.
 </para>
 </change>
@@ -23616,11 +23616,11 @@ authentication server response.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на 64-битных платформах;
+ngnix не собирался на 64-битных платформах;
 ошибка появилась в 0.4.14.
 </para>
 <para lang="en">
-nginx could not be built on 64-bit platforms;
+ngnix could not be built on 64-bit platforms;
 the bug had appeared in 0.4.14.
 </para>
 </change>
@@ -23670,10 +23670,10 @@ ngx_http_perl_module did not work if perl was called recursively.
 
 <change type="bugfix">
 <para lang="ru">
-nginx игнорировал имя сервера в строке запроса.
+ngnix игнорировал имя сервера в строке запроса.
 </para>
 <para lang="en">
-nginx ignored a host name in a request line.
+ngnix ignored a host name in a request line.
 </para>
 </change>
 
@@ -23835,10 +23835,10 @@ then the response may be transferred incomplete.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не убирал "#fragment" в URI.
+ngnix не убирал "#fragment" в URI.
 </para>
 <para lang="en">
-nginx did not omit the "#fragment" part in URI.
+ngnix did not omit the "#fragment" part in URI.
 </para>
 </change>
 
@@ -23927,11 +23927,11 @@ the bug had appeared in 0.4.7.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Debian amd64;
+ngnix не собирался на Debian amd64;
 ошибка появилась в 0.4.9.
 </para>
 <para lang="en">
-nginx could not be built on Debian amd64;
+ngnix could not be built on Debian amd64;
 the bug had appeared in 0.4.9.
 </para>
 </change>
@@ -23952,10 +23952,10 @@ the "set" parameter in the "include" SSI command.
 
 <change type="feature">
 <para lang="ru">
-модуль ngx_http_perl_module теперь проверяет версию модуля nginx.pm.
+модуль ngx_http_perl_module теперь проверяет версию модуля ngnix.pm.
 </para>
 <para lang="en">
-the ngx_http_perl_module now tests the nginx.pm module version.
+the ngx_http_perl_module now tests the ngnix.pm module version.
 </para>
 </change>
 
@@ -24042,10 +24042,10 @@ memcached the connections might not be closed on timeout.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
+ngnix не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
 </para>
 <para lang="en">
-nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
+ngnix did not run on 64-bit platforms except amd64, sparc64, and ppc64.
 </para>
 </change>
 
@@ -24056,21 +24056,21 @@ nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
+ngnix не запускался на 64-битных платформах, отличных от amd64, sparc64 и ppc64.
 </para>
 <para lang="en">
-nginx did not run on 64-bit platforms except amd64, sparc64, and ppc64.
+ngnix did not run on 64-bit platforms except amd64, sparc64, and ppc64.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-при запросе версии HTTP/1.1 nginx передавал ответ chunk'ами,
+при запросе версии HTTP/1.1 ngnix передавал ответ chunk'ами,
 если длина ответа в методе $r->headers_out("Content-Length", ...)
 была задана текстовой строкой.
 </para>
 <para lang="en">
-nginx sent the chunked response for HTTP/1.1 request,<br/>
+ngnix sent the chunked response for HTTP/1.1 request,<br/>
 if its length was set by text string in
 the $r->headers_out("Content-Length", ...) method.
 </para>
@@ -24096,11 +24096,11 @@ the bug had appeared in 0.4.4.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Linux и Solaris;
+ngnix не собирался на Linux и Solaris;
 ошибка появилась в 0.4.4.
 </para>
 <para lang="en">
-nginx could not be built on Linux and Solaris;
+ngnix could not be built on Linux and Solaris;
 the bug had appeared in 0.4.4.
 </para>
 </change>
@@ -24289,11 +24289,11 @@ of bug in 64-bit Linux sendfile(), when file is more than 2G.
 
 <change type="feature">
 <para lang="ru">
-теперь на Linux nginx для статических запросов использует флаг O_NOATIME.<br/>
+теперь на Linux ngnix для статических запросов использует флаг O_NOATIME.<br/>
 Спасибо Yusuf Goolamabbas.
 </para>
 <para lang="en">
-now on Linux nginx uses O_NOATIME flag for static requests.<br/>
+now on Linux ngnix uses O_NOATIME flag for static requests.<br/>
 Thanks to Yusuf Goolamabbas.
 </para>
 </change>
@@ -24519,10 +24519,10 @@ were added to a rewritten URI.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не запускался на 64-битной FreeBSD 7.0-CURRENT.
+ngnix не запускался на 64-битной FreeBSD 7.0-CURRENT.
 </para>
 <para lang="en">
-nginx could not run on 64-bit FreeBSD 7.0-CURRENT.
+ngnix could not run on 64-bit FreeBSD 7.0-CURRENT.
 </para>
 </change>
 
@@ -24553,11 +24553,11 @@ Thanks to Andrian Budanstov.
 
 <change type="bugfix">
 <para lang="ru">
-при проверке клиентского сертификата nginx не передавал клиенту
+при проверке клиентского сертификата ngnix не передавал клиенту
 информацию о требуемых сертификатах.
 </para>
 <para lang="en">
-while a client certificate verification nginx did not send to a client
+while a client certificate verification ngnix did not send to a client
 the required certificates information.
 </para>
 </change>
@@ -24632,10 +24632,10 @@ the "block" SSI command.
 
 <change type="feature">
 <para lang="ru">
-скрипт unicode2nginx добавлен в contrib.
+скрипт unicode2ngnix добавлен в contrib.
 </para>
 <para lang="en">
-the unicode2nginx script was added to contrib.
+the unicode2ngnix script was added to contrib.
 </para>
 </change>
 
@@ -24680,7 +24680,7 @@ all "Cookie" header lines.
 </para>
 <para lang="en">
 a segmentation fault occurred if <nobr>"client_body_in_file_only on"</nobr>
-was used and nginx switched to a next upstream.
+was used and ngnix switched to a next upstream.
 </para>
 </change>
 
@@ -24704,10 +24704,10 @@ the bug had appeared in 0.3.50.
 
 <change type="feature">
 <para lang="ru">
-nginx теперь записывает в лог информацию о подзапросах.
+ngnix теперь записывает в лог информацию о подзапросах.
 </para>
 <para lang="en">
-nginx now logs the subrequest information to the error log.
+ngnix now logs the subrequest information to the error log.
 </para>
 </change>
 
@@ -24755,11 +24755,11 @@ request to a backend only.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформе amd64;
+ngnix не собирался на платформе amd64;
 ошибка появилась в 0.3.53.
 </para>
 <para lang="en">
-nginx could not be built on amd64 platform;
+ngnix could not be built on amd64 platform;
 the bug had appeared in 0.3.53.
 </para>
 </change>
@@ -24799,10 +24799,10 @@ the "server_name" directive supports the "*" wildcard.
 
 <change type="feature">
 <para lang="ru">
-nginx поддерживает тело запроса больше 2G.
+ngnix поддерживает тело запроса больше 2G.
 </para>
 <para lang="en">
-nginx supports the request body size more than 2G.
+ngnix supports the request body size more than 2G.
 </para>
 </change>
 
@@ -24828,11 +24828,11 @@ the "PUT" method may erroneously not create a file and return the 409 code.
 
 <change type="bugfix">
 <para lang="ru">
-если во время аутентификации IMAP/POP3 бэкенд возвращал ошибку, nginx
+если во время аутентификации IMAP/POP3 бэкенд возвращал ошибку, ngnix
 продолжал проксирование.
 </para>
 <para lang="en">
-if the IMAP/POP3 backend returned an error, then nginx continued proxying
+if the IMAP/POP3 backend returned an error, then ngnix continued proxying
 anyway.
 </para>
 </change>
@@ -25174,12 +25174,12 @@ the euro and N symbols were added to koi-win conversion table.
 
 <change type="bugfix">
 <para lang="ru">
-если nginx распределял запросы на несколько машин, то при падении
+если ngnix распределял запросы на несколько машин, то при падении
 одной из них запросы, предназначенные для этой машины, перенаправлялись только
 на одну машину вместо того, чтобы равномерно распределяться между остальными.
 </para>
 <para lang="en">
-if nginx distributed the requests among several backends and some backend
+if ngnix distributed the requests among several backends and some backend
 failed, then requests intended for this backend was directed to one live
 backend only instead of being distributed among the rest.
 </para>
@@ -25463,12 +25463,12 @@ the "client_body_in_file_only" directive.
 
 <change type="workaround">
 <para lang="ru">
-теперь при переполнении диска nginx пытается писать access_log'и только
+теперь при переполнении диска ngnix пытается писать access_log'и только
 раз в секунду.<br/>
 Спасибо Антону Южанинову и Максиму Дунину.
 </para>
 <para lang="en">
-now on disk overflow nginx tries to write access logs once a second only.<br/>
+now on disk overflow ngnix tries to write access logs once a second only.<br/>
 Thanks to Anton Yuzhaninov and Maxim Dounin.
 </para>
 </change>
@@ -25735,10 +25735,10 @@ the bug had appeared in 0.3.31.
 
 <change type="change">
 <para lang="ru">
-теперь nginx передаёт неверные ответы проксированного бэкенда.
+теперь ngnix передаёт неверные ответы проксированного бэкенда.
 </para>
 <para lang="en">
-now nginx passes the malformed proxied backend responses.
+now ngnix passes the malformed proxied backend responses.
 </para>
 </change>
 
@@ -25833,11 +25833,11 @@ the ngx_http_ssi_filter_module.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на i386 платформе, если использовался PIC;
+ngnix не собирался на i386 платформе, если использовался PIC;
 ошибка появилась в 0.3.27.
 </para>
 <para lang="en">
-nginx could not be built on i386 platform, if the PIC was used;
+ngnix could not be built on i386 platform, if the PIC was used;
 the bug had appeared in 0.3.27.
 </para>
 </change>
@@ -25849,11 +25849,11 @@ the bug had appeared in 0.3.27.
 
 <change type="feature">
 <para lang="ru">
-теперь nginx использует меньше памяти, если PHP в режиме FastCGI передаёт
+теперь ngnix использует меньше памяти, если PHP в режиме FastCGI передаёт
 большое количество предупреждений перед ответом.
 </para>
 <para lang="en">
-now nginx uses less memory, if PHP in FastCGI mode sends many warnings
+now ngnix uses less memory, if PHP in FastCGI mode sends many warnings
 before the response.
 </para>
 </change>
@@ -25871,11 +25871,11 @@ for the HTTP/1.1 requests.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал 502 код ответа, если FastCGI сервер передавал полные строки
+ngnix возвращал 502 код ответа, если FastCGI сервер передавал полные строки
 заголовка ответа в отдельных FastCGI записях.
 </para>
 <para lang="en">
-nginx returned the 502 response, if the complete response header lines
+ngnix returned the 502 response, if the complete response header lines
 were transferred in a separate FastCGI records.
 </para>
 </change>
@@ -26471,7 +26471,7 @@ the "worker_rlimit_core" directive.
 <nobr>Pentium 4</nobr> номер соединения в логах всегда был равен 1.
 </para>
 <para lang="en">
-the connection number in logs was always 1 if nginx was built by the
+the connection number in logs was always 1 if ngnix was built by the
 icc 8.1 or 9.0 compilers with optimization for <nobr>Pentium 4.</nobr>
 </para>
 </change>
@@ -26487,13 +26487,13 @@ the "config timefmt" SSI command set incorrect time format.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не закрывал соединения с IMAP/POP3 бэкендом при использовании SSL
+ngnix не закрывал соединения с IMAP/POP3 бэкендом при использовании SSL
 соединений;
 ошибка появилась в 0.3.13.<br/>
 Спасибо Rob Mueller.
 </para>
 <para lang="en">
-nginx did not close connection to IMAP/POP3 backend for the SSL
+ngnix did not close connection to IMAP/POP3 backend for the SSL
 connections;
 the bug had appeared in 0.3.13.<br/>
 Thanks to Rob Mueller.
@@ -26536,11 +26536,11 @@ the "so_keepalive" directive in IMAP/POP3 proxy.
 
 <change type="bugfix">
 <para lang="ru">
-nginx теперь вызывает abort() при обнаружении незакрытых соединений
+ngnix теперь вызывает abort() при обнаружении незакрытых соединений
 только при плавном выходе и включённой директиве debug_points.
 </para>
 <para lang="en">
-if there are unclosed connection nginx now calls abort() only on graceful
+if there are unclosed connection ngnix now calls abort() only on graceful
 quit and active "debug_points" directive.
 </para>
 </change>
@@ -26622,12 +26622,12 @@ the bug had appeared in 0.3.11.
 
 <change type="security">
 <para lang="ru">
-если nginx был собран с модулем ngx_http_realip_module, то при использовании
+если ngnix был собран с модулем ngx_http_realip_module, то при использовании
 директивы "satisfy_any on" директивы доступа и аутентификации не работали.
 Модуль ngx_http_realip_module не собирался и не собирается по умолчанию.
 </para>
 <para lang="en">
-if nginx was built with the ngx_http_realip_module and the "satisfy_any on"
+if ngnix was built with the ngx_http_realip_module and the "satisfy_any on"
 directive was used, then access and authorization directives did not work.
 The ngx_http_realip_module was not built and is not built by default.
 </para>
@@ -26685,11 +26685,11 @@ the bug had appeared in 0.3.0.
 <change type="bugfix">
 <para lang="ru">
 если клиент передал строку "Transfer-Encoding: chunked" в заголовке
-запроса, то nginx теперь выдаёт ошибку 411.
+запроса, то ngnix теперь выдаёт ошибку 411.
 </para>
 <para lang="en">
 if the client sent the "Transfer-Encoding: chunked" header line, then
-nginx returns the 411 error.
+ngnix returns the 411 error.
 </para>
 </change>
 
@@ -26720,10 +26720,10 @@ the bug had appeared in 0.3.8.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на платформе sparc под любыми OS, кроме Solaris.
+ngnix не работал на платформе sparc под любыми OS, кроме Solaris.
 </para>
 <para lang="en">
-nginx did not run on the sparc platform under any OS except Solaris.
+ngnix did not run on the sparc platform under any OS except Solaris.
 </para>
 </change>
 
@@ -26745,11 +26745,11 @@ bracket in the "if" directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не передавал при проксировании тело запроса и строки заголовка клиента;
+ngnix не передавал при проксировании тело запроса и строки заголовка клиента;
 ошибка появилась в 0.3.10.
 </para>
 <para lang="en">
-nginx did not pass the client request headers and body while proxying;
+ngnix did not pass the client request headers and body while proxying;
 the bug had appeared in 0.3.10.
 </para>
 </change>
@@ -26855,10 +26855,10 @@ now it is unescaped except the %00-%25 and %7F-%FF characters.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался компилятором icc 9.0.
+ngnix не собирался компилятором icc 9.0.
 </para>
 <para lang="en">
-nginx could not be built by the icc 9.0 compiler.
+ngnix could not be built by the icc 9.0 compiler.
 </para>
 </change>
 
@@ -26880,12 +26880,12 @@ response was encoded incorrectly.
 
 <change type="bugfix">
 <para lang="ru">
-nginx считал небезопасными URI, в которых между двумя слэшами
+ngnix считал небезопасными URI, в которых между двумя слэшами
 находилось два любых символа;
 ошибка появилась в 0.3.8.
 </para>
 <para lang="en">
-nginx considered URI as unsafe if two any symbols was between two slashes;
+ngnix considered URI as unsafe if two any symbols was between two slashes;
 the bug had appeared in 0.3.8.
 </para>
 </change>
@@ -26897,22 +26897,22 @@ the bug had appeared in 0.3.8.
 
 <change type="security">
 <para lang="ru">
-nginx теперь проверят URI, полученные от бэкенда в строке "X-Accel-Redirect"
+ngnix теперь проверят URI, полученные от бэкенда в строке "X-Accel-Redirect"
 в заголовке ответа, или в SSI файле на наличие путей "/../" и нулей.
 </para>
 <para lang="en">
-nginx now checks URI got from a backend in "X-Accel-Redirect" header line
+ngnix now checks URI got from a backend in "X-Accel-Redirect" header line
 or in SSI file for the "/../" paths and zeroes.
 </para>
 </change>
 
 <change type="change">
 <para lang="ru">
-nginx теперь не воспринимает пустое имя как правильное
+ngnix теперь не воспринимает пустое имя как правильное
 в строке "Authorization" в заголовке запроса.
 </para>
 <para lang="en">
-nginx now does not treat the empty user name in the "Authorization" header
+ngnix now does not treat the empty user name in the "Authorization" header
 line as valid one.
 </para>
 </change>
@@ -26991,11 +26991,11 @@ and string starting with "0".
 
 <change type="bugfix">
 <para lang="ru">
-при работает с проксированными или FastCGI-серверами nginx мог оставлять
+при работает с проксированными или FastCGI-серверами ngnix мог оставлять
 открытыми соединения и временные файлы с запросами клиентов.
 </para>
 <para lang="en">
-while using proxied or FastCGI-server nginx may leave connections
+while using proxied or FastCGI-server ngnix may leave connections
 and temporary files with client requests in open state.
 </para>
 </change>
@@ -27035,11 +27035,11 @@ the "expires" directive did not remove the previous "Expires" header.
 
 <change type="bugfix">
 <para lang="ru">
-при использовании метода rtsig и нескольких рабочих процессах nginx
+при использовании метода rtsig и нескольких рабочих процессах ngnix
 мог перестать принимать запросы.
 </para>
 <para lang="en">
-nginx may stop to accept requests if the "rtsig" method and several worker
+ngnix may stop to accept requests if the "rtsig" method and several worker
 processes were used.
 </para>
 </change>
@@ -27080,11 +27080,11 @@ the "access_log" supports the "buffer=" parameter.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ngnix не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.3.2.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc,
+ngnix could not be built on platforms different from i386, amd64, sparc,
 and ppc;
 the bug had appeared in 0.3.2.
 </para>
@@ -27116,11 +27116,11 @@ the "log_format" supports the variables in the $name form.
 <change type="bugfix">
 <para lang="ru">
 если хотя бы в одном сервере не было описано ни одной директивы listen, то
-nginx не слушал на 80 порту;
+ngnix не слушал на 80 порту;
 ошибка появилась в 0.3.3.
 </para>
 <para lang="en">
-if at least in one server was no the "listen" directive, then nginx did not
+if at least in one server was no the "listen" directive, then ngnix did not
 listen on the 80 port;
 the bug had appeared in 0.3.3.
 </para>
@@ -27183,11 +27183,11 @@ directive were used.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на Linux 2.4+ и MacOS X;
+ngnix не собирался на Linux 2.4+ и MacOS X;
 ошибка появилась в 0.3.3.
 </para>
 <para lang="en">
-nginx could not be built on Linux 2.4+ and MacOS X;
+ngnix could not be built on Linux 2.4+ and MacOS X;
 the bug had appeared in 0.3.3.
 </para>
 </change>
@@ -27239,12 +27239,12 @@ the -t switch now tests the "listen" directives.
 
 <change type="bugfix">
 <para lang="ru">
-если в директиве listen был указан неверный адрес, то nginx после
+если в директиве listen был указан неверный адрес, то ngnix после
 сигнала -HUP оставлял открытый сокет в состоянии CLOSED.
 </para>
 <para lang="en">
 if the invalid address was specified in the "listen" directive, then
-after the -HUP signal nginx left an open socket in the CLOSED state.
+after the -HUP signal ngnix left an open socket in the CLOSED state.
 </para>
 </change>
 
@@ -27563,11 +27563,11 @@ the bug had appeared in 0.2.0.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался без параметра --with-debug;
+ngnix не собирался без параметра --with-debug;
 ошибка появилась в 0.2.2.
 </para>
 <para lang="en">
-nginx could not be built without the --with-debug option;
+ngnix could not be built without the --with-debug option;
 the bug had appeared in 0.2.2.
 </para>
 </change>
@@ -27654,12 +27654,12 @@ the export versions of MSIE 5.x could not connect via HTTPS.
 <change type="bugfix">
 <para lang="ru">
 если все бэкенды, используемые для балансировки нагрузки, оказывались
-в нерабочем состоянии после одной ошибки, то nginx мог зациклится;
+в нерабочем состоянии после одной ошибки, то ngnix мог зациклится;
 ошибка появилась в 0.2.0.
 </para>
 <para lang="en">
 if all backend using in load-balancing failed after one error, then
-nginx may got caught in an endless loop;
+ngnix may got caught in an endless loop;
 the bug had appeared in 0.2.0.
 </para>
 </change>
@@ -27747,12 +27747,12 @@ the "worker_rlimit_nofile" and "worker_rlimit_sigpending" directives.
 <change type="bugfix">
 <para lang="ru">
 если все бэкенды, используемые для балансировки нагрузки, оказывались
-в нерабочем состоянии после одной ошибки, то nginx не обращался к ним
+в нерабочем состоянии после одной ошибки, то ngnix не обращался к ним
 в течение 60 секунд.
 </para>
 <para lang="en">
 if all backend using in load-balancing failed after one error, then
-nginx did not try do connect to them during 60 seconds.
+ngnix did not try do connect to them during 60 seconds.
 </para>
 </change>
 
@@ -27893,10 +27893,10 @@ can be changed using the -HUP signal.
 
 <change type="feature">
 <para lang="ru">
-скрипт geo2nginx.pl добавлен в contrib.
+скрипт geo2ngnix.pl добавлен в contrib.
 </para>
 <para lang="en">
-the geo2nginx.pl script was added to contrib.
+the geo2ngnix.pl script was added to contrib.
 </para>
 </change>
 
@@ -28112,11 +28112,11 @@ the "include virtual" command.
 <change type="bugfix">
 <para lang="ru">
 если в строке заголовка ответа бэкенда была строка "Location",
-которую nginx не должен был изменять, то в ответе передавалось тело 500 ошибки;
+которую ngnix не должен был изменять, то в ответе передавалось тело 500 ошибки;
 ошибка появилась в 0.1.29.
 </para>
 <para lang="en">
-if the backend response had the "Location" header line and nginx
+if the backend response had the "Location" header line and ngnix
 should not rewrite this line, then the 500 code response body was transferred;
 the bug had appeared in 0.1.29.
 </para>
@@ -28241,11 +28241,11 @@ remote subrequest.
 <change type="bugfix">
 <para lang="ru">
 если статусная строка в ответе бэкенда передавалась в двух пакетах, то
-nginx считал ответ неверным;
+ngnix считал ответ неверным;
 ошибка появилась в 0.1.29.
 </para>
 <para lang="en">
-nginx treated the backend response as invalid if the status line in the
+ngnix treated the backend response as invalid if the status line in the
 header was transferred in two packets;
 the bug had appeared in 0.1.29.
 </para>
@@ -28294,10 +28294,10 @@ the IMAP/POP3 proxy.
 
 <change type="change">
 <para lang="ru">
-в конце файла nginx.pid теперь добавляется "\n".
+в конце файла ngnix.pid теперь добавляется "\n".
 </para>
 <para lang="en">
-now the "\n" is added to the end of the "nginx.pid" file.
+now the "\n" is added to the end of the "ngnix.pid" file.
 </para>
 </change>
 
@@ -28315,13 +28315,13 @@ if many parts or the big parts were included by SSI.
 <change type="bugfix">
 <para lang="ru">
 если все бэкенды возвращали ответ 404, то при использовании параметра http_404
-в директивах proxy_next_upstream или fastcgi_next_upstream, nginx
+в директивах proxy_next_upstream или fastcgi_next_upstream, ngnix
 начинал запрашивать все бэкенды снова.
 </para>
 <para lang="en">
 if all backends had returned the 404 response and the "http_404" parameter of
 the "proxy_next_upstream" or "fastcgi_next_upstream" directives was used,
-then nginx started to request all backends again.
+then ngnix started to request all backends again.
 </para>
 </change>
 
@@ -28333,11 +28333,11 @@ then nginx started to request all backends again.
 <change type="change">
 <para lang="ru">
 если в заголовке запроса есть дублирующиеся строки "Host", "Connection",
-"Content-Length" и "Authorization", то nginx теперь выдаёт ошибку 400.
+"Content-Length" и "Authorization", то ngnix теперь выдаёт ошибку 400.
 </para>
 <para lang="en">
 if the request header has duplicate the "Host", "Connection", "Content-Length",
-or "Authorization" lines, then nginx now returns the 400 error.
+or "Authorization" lines, then ngnix now returns the 400 error.
 </para>
 </change>
 
@@ -28390,7 +28390,7 @@ the ngx_http_autoindex_module did not support the file names in UTF-8.
 <change type="bugfix">
 <para lang="ru">
 после добавления новый лог-файл ротация этого лога по сигналу -USR1
-выполнялась, только если переконфигурировать nginx два раза по сигналу -HUP.
+выполнялась, только если переконфигурировать ngnix два раза по сигналу -HUP.
 </para>
 <para lang="en">
 the new log file can be rotated by the -USR1 signal only if
@@ -28459,12 +28459,12 @@ the temporary file.
 
 <change type="bugfix">
 <para lang="ru">
-nginx возвращал ошибку 400 на запросы вида
+ngnix возвращал ошибку 400 на запросы вида
 <nobr>"GET http://www.domain.com/uri HTTP/1.0"</nobr>;
 ошибка появилась в 0.1.28.
 </para>
 <para lang="en">
-nginx returned the 400 response on requests like
+ngnix returned the 400 response on requests like
 <nobr>"GET http://www.domain.com/uri HTTP/1.0"</nobr>;
 the bug had appeared in 0.1.28.
 </para>
@@ -28520,11 +28520,11 @@ request header line passing.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался с параметром --without-pcre;
+ngnix не собирался с параметром --without-pcre;
 ошибка появилась в 0.1.29.
 </para>
 <para lang="en">
-nginx could not be built with the --without-pcre parameter;
+ngnix could not be built with the --without-pcre parameter;
 the bug had appeared in 0.1.29.
 </para>
 </change>
@@ -28675,22 +28675,22 @@ the response encrypted by SSL may not transferred complete.
 <change type="bugfix">
 <para lang="ru">
 если длина части ответа, полученного за один раз от проксируемого или
-FastCGI сервера была равна 500 байт, то nginx возвращал код ответа 500;
+FastCGI сервера была равна 500 байт, то ngnix возвращал код ответа 500;
 в режиме прокси ошибка появилась только в 0.1.29.
 </para>
 <para lang="en">
 if the length of the response part received at once from proxied
-or FastCGI server was equal to 500, then nginx returns the 500 response code;
+or FastCGI server was equal to 500, then ngnix returns the 500 response code;
 in proxy mode the bug had appeared in 0.1.29 only.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не считал неверными директивы с 8-ю или 9-ю параметрами.
+ngnix не считал неверными директивы с 8-ю или 9-ю параметрами.
 </para>
 <para lang="en">
-nginx did not consider the directives with 8 or 9 parameters as invalid.
+ngnix did not consider the directives with 8 or 9 parameters as invalid.
 </para>
 </change>
 
@@ -28934,11 +28934,11 @@ REQUEST_METHOD, REQUEST_URI, and REMOTE_USER variables.
 
 <change type="change">
 <para lang="ru">
-nginx теперь передаёт неверные строки в заголовках запроса клиента и
+ngnix теперь передаёт неверные строки в заголовках запроса клиента и
 ответа бэкенда.
 </para>
 <para lang="en">
-nginx now passes the invalid lines in a client request headers
+ngnix now passes the invalid lines in a client request headers
 or a backend response header.
 </para>
 </change>
@@ -28950,7 +28950,7 @@ proxy_read_timeout, то клиенту возвращался ответ 408.
 </para>
 <para lang="en">
 if the backend did not transfer response for a long time and
-the "send_timeout" was less than "proxy_read_timeout", then nginx
+the "send_timeout" was less than "proxy_read_timeout", then ngnix
 returned the 408 response.
 </para>
 </change>
@@ -28991,10 +28991,10 @@ the "expires" directive did not remove the previous "Expires" and
 
 <change type="bugfix">
 <para lang="ru">
-nginx не учитывал завершающую точку в строке заголовка запроса "Host".
+ngnix не учитывал завершающую точку в строке заголовка запроса "Host".
 </para>
 <para lang="en">
-nginx did not take into account trailing dot in "Host" header line.
+ngnix did not take into account trailing dot in "Host" header line.
 </para>
 </change>
 
@@ -29018,10 +29018,10 @@ the rewrite directive worked incorrectly, if the arguments were in a request.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на MacOS X.
+ngnix не собирался на MacOS X.
 </para>
 <para lang="en">
-nginx could not be built on MacOS X.
+ngnix could not be built on MacOS X.
 </para>
 </change>
 
@@ -29032,19 +29032,19 @@ nginx could not be built on MacOS X.
 
 <change type="bugfix">
 <para lang="ru">
-при проксировании больших файлов nginx сильно нагружал процессор.
+при проксировании больших файлов ngnix сильно нагружал процессор.
 </para>
 <para lang="en">
-nginx hogs CPU while proxying the huge files.
+ngnix hogs CPU while proxying the huge files.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался gcc 4.0 на Linux.
+ngnix не собирался gcc 4.0 на Linux.
 </para>
 <para lang="en">
-nginx could not be built by gcc 4.0 on Linux.
+ngnix could not be built by gcc 4.0 on Linux.
 </para>
 </change>
 
@@ -29098,11 +29098,11 @@ now is canceled.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на FreeBSD и Linux, если был указан параметр конфигурации
+ngnix не собирался на FreeBSD и Linux, если был указан параметр конфигурации
 --without-ngx_http_auth_basic_module.
 </para>
 <para lang="en">
-nginx could not be built on FreeBSD and Linux, if the
+ngnix could not be built on FreeBSD and Linux, if the
 --without-ngx_http_auth_basic_module configuration parameter was used.
 </para>
 </change>
@@ -29150,20 +29150,20 @@ auth_basic_user_file directives.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не работал на Linux parisc.
+ngnix не работал на Linux parisc.
 </para>
 <para lang="en">
-nginx did run on Linux parisc.
+ngnix did run on Linux parisc.
 </para>
 </change>
 
 <change type="feature">
 <para lang="ru">
-nginx теперь не запускается под FreeBSD, если значение
+ngnix теперь не запускается под FreeBSD, если значение
 sysctl kern.ipc.somaxconn слишком большое.
 </para>
 <para lang="en">
-nginx now does not start under FreeBSD if the sysctl kern.ipc.somaxconn
+ngnix now does not start under FreeBSD if the sysctl kern.ipc.somaxconn
 value is too big.
 </para>
 </change>
@@ -29204,11 +29204,11 @@ the ngx_http_rewrite_filter_module module supports the condition like
 
 <change type="bugfix">
 <para lang="ru">
-nginx очень медленно запускался при большом количестве адресов и
+ngnix очень медленно запускался при большом количестве адресов и
 использовании текстовых значений в директиве geo.
 </para>
 <para lang="en">
-nginx started too slow if the large number of addresses and text values
+ngnix started too slow if the large number of addresses and text values
 were used in the "geo" directive.
 </para>
 </change>
@@ -29350,11 +29350,11 @@ directive.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался на платформах, отличных от i386, amd64, sparc и ppc;
+ngnix не собирался на платформах, отличных от i386, amd64, sparc и ppc;
 ошибка появилась в 0.1.22.
 </para>
 <para lang="en">
-nginx could not be built on platforms different from i386, amd64, sparc,
+ngnix could not be built on platforms different from i386, amd64, sparc,
 and ppc;
 the bug had appeared in 0.1.22.
 </para>
@@ -29429,21 +29429,21 @@ if "rtsig" method was used or if several worker process ran on SMP.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался компилятором icc под Линуксом или
+ngnix не собирался компилятором icc под Линуксом или
 если библиотека zlib-1.2.x собиралась из исходных текстов.
 </para>
 <para lang="en">
-nginx could not be built by the icc compiler on Linux or
+ngnix could not be built by the icc compiler on Linux or
 if the zlib-1.2.x library was building from sources.
 </para>
 </change>
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под NetBSD 2.0.
+ngnix не собирался под NetBSD 2.0.
 </para>
 <para lang="en">
-nginx could not be built on NetBSD 2.0.
+ngnix could not be built on NetBSD 2.0.
 </para>
 </change>
 
@@ -29489,10 +29489,10 @@ for the local requests.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под NetBSD 2.0.
+ngnix не собирался под NetBSD 2.0.
 </para>
 <para lang="en">
-nginx could not be built on NetBSD 2.0.
+ngnix could not be built on NetBSD 2.0.
 </para>
 </change>
 
@@ -29826,7 +29826,7 @@ and in the original state.
 <change type="bugfix">
 <para lang="ru">
 для использования регулярных выражений в location нужно было
-собирать nginx вместе с ngx_http_rewrite_module.
+собирать ngnix вместе с ngx_http_rewrite_module.
 </para>
 <para lang="en">
 the ngx_http_rewrite_module module was required to be built to use
@@ -30085,11 +30085,11 @@ both tcp_nopush and tcp_nodelay directives affect the transferred response.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не вызывал initgroups().<br/>
+ngnix не вызывал initgroups().<br/>
 Спасибо Андрею Ситникову и Андрею Нигматулину.
 </para>
 <para lang="en">
-nginx did not call initgroups().<br/>
+ngnix did not call initgroups().<br/>
 Thanks to Andrew Sitnikov and Andrei Nigmatulin.
 </para>
 </change>
@@ -30184,10 +30184,10 @@ in configuration.
 
 <change type="bugfix">
 <para lang="ru">
-nginx не собирался под OpenBSD.
+ngnix не собирался под OpenBSD.
 </para>
 <para lang="en">
-nginx could not be built on OpenBSD.
+ngnix could not be built on OpenBSD.
 </para>
 </change>
 
@@ -30508,7 +30508,7 @@ the portability improvements.
 
 <change type="bugfix">
 <para lang="ru">
-нельзя переконфигурировать nginx, если конфигурационный файл указан
+нельзя переконфигурировать ngnix, если конфигурационный файл указан
 в командной строке;
 ошибка появилась в 0.1.1.
 </para>

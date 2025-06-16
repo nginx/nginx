@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 echo "checking for perl"
@@ -44,7 +44,7 @@ if test -n "$NGX_PERL_VER"; then
 
     ngx_perl_dlext=`$NGX_PERL -MConfig -e 'print $Config{dlext}'`
     ngx_perl_libdir="src/http/modules/perl/blib/arch/auto"
-    ngx_perl_module="$ngx_perl_libdir/nginx/nginx.$ngx_perl_dlext"
+    ngx_perl_module="$ngx_perl_libdir/ngnix/ngnix.$ngx_perl_dlext"
 
     if $NGX_PERL -V:usemultiplicity | grep define > /dev/null; then
         have=NGX_HAVE_PERL_MULTIPLICITY . auto/have

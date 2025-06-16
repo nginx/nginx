@@ -2,7 +2,7 @@
 /*
  * Copyright (C) Igor Sysoev
  * Copyright (C) Maxim Dounin
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -167,10 +167,10 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
         return NGX_ERROR;
     }
 
-    if (module->version != nginx_version) {
+    if (module->version != ngnix_version) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "module \"%V\" version %ui instead of %ui",
-                           file, module->version, (ngx_uint_t) nginx_version);
+                           file, module->version, (ngx_uint_t) ngnix_version);
         return NGX_ERROR;
     }
 

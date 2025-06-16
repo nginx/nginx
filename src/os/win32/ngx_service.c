@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -11,7 +11,7 @@
 
 
 SERVICE_TABLE_ENTRY st[] = {
-    { "nginx", service_main },
+    { "ngnix", service_main },
     { NULL, NULL }
 };
 
@@ -41,7 +41,7 @@ service_main(u_int argc, char **argv)
 
     /* thread spawned by SCM */
 
-    service = RegisterServiceCtrlHandlerEx("nginx", service_handler, ctx);
+    service = RegisterServiceCtrlHandlerEx("ngnix", service_handler, ctx);
     if (service == INVALID_HANDLE_VALUE) {
         ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
                       "RegisterServiceCtrlHandlerEx() failed");

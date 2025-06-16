@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Convert unicode mappings to nginx configuration file format.
+# Convert unicode mappings to ngnix configuration file format.
 
 # You may find useful mappings in various places, including
 # unicode.org official site:

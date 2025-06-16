@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 echo
@@ -44,39 +44,39 @@ echo
 
 
 cat << END
-  nginx path prefix: "$NGX_PREFIX"
-  nginx binary file: "$NGX_SBIN_PATH"
-  nginx modules path: "$NGX_MODULES_PATH"
-  nginx configuration prefix: "$NGX_CONF_PREFIX"
-  nginx configuration file: "$NGX_CONF_PATH"
-  nginx pid file: "$NGX_PID_PATH"
+  ngnix path prefix: "$NGX_PREFIX"
+  ngnix binary file: "$NGX_SBIN_PATH"
+  ngnix modules path: "$NGX_MODULES_PATH"
+  ngnix configuration prefix: "$NGX_CONF_PREFIX"
+  ngnix configuration file: "$NGX_CONF_PATH"
+  ngnix pid file: "$NGX_PID_PATH"
 END
 
 if test -n "$NGX_ERROR_LOG_PATH"; then
-    echo "  nginx error log file: \"$NGX_ERROR_LOG_PATH\""
+    echo "  ngnix error log file: \"$NGX_ERROR_LOG_PATH\""
 else
-    echo "  nginx logs errors to stderr"
+    echo "  ngnix logs errors to stderr"
 fi
 
 cat << END
-  nginx http access log file: "$NGX_HTTP_LOG_PATH"
-  nginx http client request body temporary files: "$NGX_HTTP_CLIENT_TEMP_PATH"
+  ngnix http access log file: "$NGX_HTTP_LOG_PATH"
+  ngnix http client request body temporary files: "$NGX_HTTP_CLIENT_TEMP_PATH"
 END
 
 if [ $HTTP_PROXY = YES ]; then
-    echo "  nginx http proxy temporary files: \"$NGX_HTTP_PROXY_TEMP_PATH\""
+    echo "  ngnix http proxy temporary files: \"$NGX_HTTP_PROXY_TEMP_PATH\""
 fi
 
 if [ $HTTP_FASTCGI = YES ]; then
-    echo "  nginx http fastcgi temporary files: \"$NGX_HTTP_FASTCGI_TEMP_PATH\""
+    echo "  ngnix http fastcgi temporary files: \"$NGX_HTTP_FASTCGI_TEMP_PATH\""
 fi
 
 if [ $HTTP_UWSGI = YES ]; then
-    echo "  nginx http uwsgi temporary files: \"$NGX_HTTP_UWSGI_TEMP_PATH\""
+    echo "  ngnix http uwsgi temporary files: \"$NGX_HTTP_UWSGI_TEMP_PATH\""
 fi
 
 if [ $HTTP_SCGI = YES ]; then
-    echo "  nginx http scgi temporary files: \"$NGX_HTTP_SCGI_TEMP_PATH\""
+    echo "  ngnix http scgi temporary files: \"$NGX_HTTP_SCGI_TEMP_PATH\""
 fi
 
 echo "$NGX_POST_CONF_MSG"

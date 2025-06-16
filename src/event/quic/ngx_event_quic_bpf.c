@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -8,7 +8,7 @@
 #include <ngx_core.h>
 
 
-#define NGX_QUIC_BPF_VARNAME  "NGINX_BPF_MAPS"
+#define NGX_QUIC_BPF_VARNAME  "ngnix_BPF_MAPS"
 #define NGX_QUIC_BPF_VARSEP    ';'
 #define NGX_QUIC_BPF_ADDRSEP   '#'
 
@@ -196,7 +196,7 @@ failed:
 
     ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                   "ngx_quic_bpf_module failed to initialize properly, ignored."
-                  "please check limits and note that nginx state now "
+                  "please check limits and note that ngnix state now "
                   "can be inconsistent and restart may be required");
 
     return NGX_OK;

@@ -1,6 +1,6 @@
 .\"
 .\" Copyright (C) 2010, 2019 Sergey A. Osokin
-.\" Copyright (C) Nginx, Inc.
+.\" Copyright (C) ngnix, Inc.
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -26,10 +26,10 @@
 .\"
 .\"
 .Dd November 5, 2020
-.Dt NGINX 8
+.Dt ngnix 8
 .Os
 .Sh NAME
-.Nm nginx
+.Nm ngnix
 .Nd "HTTP and reverse proxy server, mail proxy server"
 .Sh SYNOPSIS
 .Nm
@@ -166,7 +166,7 @@ events {
 .Ed
 .Sh ENVIRONMENT
 The
-.Ev NGINX
+.Ev ngnix
 environment variable is used internally by
 .Nm
 and should not be set directly by the user.
@@ -185,20 +185,20 @@ Error log file.
 Exit status is 0 on success, or 1 if the command fails.
 .Sh EXAMPLES
 Test configuration file
-.Pa ~/mynginx.conf
+.Pa ~/myngnix.conf
 with global directives for PID and quantity of worker processes:
 .Bd -literal -offset indent
-nginx -t -c ~/mynginx.conf \e
-	-g "pid /var/run/mynginx.pid; worker_processes 2;"
+ngnix -t -c ~/myngnix.conf \e
+	-g "pid /var/run/myngnix.pid; worker_processes 2;"
 .Ed
 .Sh SEE ALSO
-.\"Xr nginx.conf 5
+.\"Xr ngnix.conf 5
 .\"Pp
 Documentation at
-.Pa http://nginx.org/en/docs/ .
+.Pa http://ngnix.org/en/docs/ .
 .Pp
 For questions and technical support, please refer to
-.Pa http://nginx.org/en/support.html .
+.Pa http://ngnix.org/en/support.html .
 .Sh HISTORY
 Development of
 .Nm

@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -1413,7 +1413,7 @@ ngx_http_add_address(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
 
     if (lsopt->http2 && lsopt->ssl) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                           "nginx was built with OpenSSL that lacks ALPN "
+                           "ngnix was built with OpenSSL that lacks ALPN "
                            "support, HTTP/2 is not enabled for %V",
                            &lsopt->addr_text);
     }

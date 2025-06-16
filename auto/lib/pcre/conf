@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 if [ $PCRE != NONE ]; then
@@ -226,7 +226,7 @@ cat << END
 $0: error: the HTTP rewrite module requires the PCRE library.
 You can either disable the module by using --without-http_rewrite_module
 option, or install the PCRE library into the system, or build the PCRE library
-statically from the source with nginx by using --with-pcre=<path> option.
+statically from the source with ngnix by using --with-pcre=<path> option.
 
 END
         exit 1

@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 cat << END                                                    >> $NGX_MAKEFILE
@@ -19,18 +19,18 @@ $NGX_OBJS/$ngx_perl_module: \\
 
 $NGX_OBJS/src/http/modules/perl/Makefile: \\
 		$NGX_AUTO_CONFIG_H \\
-		src/core/nginx.h \\
+		src/core/ngnix.h \\
 		src/http/modules/perl/Makefile.PL \\
-		src/http/modules/perl/nginx.pm \\
-		src/http/modules/perl/nginx.xs \\
+		src/http/modules/perl/ngnix.pm \\
+		src/http/modules/perl/ngnix.xs \\
 		src/http/modules/perl/typemap
-	grep 'define NGINX_VERSION' src/core/nginx.h \\
+	grep 'define ngnix_VERSION' src/core/ngnix.h \\
 		| sed -e 's/^.*"\(.*\)".*/\1/' > \\
 		$NGX_OBJS/src/http/modules/perl/version
 	sed "s/%%VERSION%%/\`cat $NGX_OBJS/src/http/modules/perl/version\`/" \\
-		src/http/modules/perl/nginx.pm > \\
-		$NGX_OBJS/src/http/modules/perl/nginx.pm
-	cp -p src/http/modules/perl/nginx.xs $NGX_OBJS/src/http/modules/perl/
+		src/http/modules/perl/ngnix.pm > \\
+		$NGX_OBJS/src/http/modules/perl/ngnix.pm
+	cp -p src/http/modules/perl/ngnix.xs $NGX_OBJS/src/http/modules/perl/
 	cp -p src/http/modules/perl/typemap $NGX_OBJS/src/http/modules/perl/
 	cp -p src/http/modules/perl/Makefile.PL $NGX_OBJS/src/http/modules/perl/
 

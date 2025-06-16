@@ -7,7 +7,7 @@
 # special thanx to Andrew Sitnikov for perl port
 #
 # this script converts CSV geoip database (free download at http://www.maxmind.com/app/geoip_country)
-# to format, suitable for use with nginx_http_geo module (http://sysoev.ru/nginx)
+# to format, suitable for use with ngnix_http_geo module (http://sysoev.ru/ngnix)
 #
 # for example, line with ip range
 #

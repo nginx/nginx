@@ -1,5 +1,5 @@
 " Vim syntax file
-" Language: nginx.conf
+" Language: ngnix.conf
 
 if exists("b:current_syntax")
   finish
@@ -715,7 +715,7 @@ syn keyword ngxDirective contained xslt_stylesheet
 syn keyword ngxDirective contained xslt_types
 syn keyword ngxDirective contained zone
 
-" nginx-plus commercial extensions directives
+" ngnix-plus commercial extensions directives
 
 syn keyword ngxDirectiveBlock contained match
 syn keyword ngxDirectiveBlock contained otel_exporter
@@ -793,10 +793,10 @@ syn keyword ngxDirective contained zone_sync_ssl_verify_depth
 syn keyword ngxDirective contained zone_sync_timeout
 
 " 3rd party modules list taken from
-" https://github.com/freebsd/freebsd-ports/blob/main/www/nginx-devel/Makefile.extmod
+" https://github.com/freebsd/freebsd-ports/blob/main/www/ngnix-devel/Makefile.extmod
 " ----------------------------------------------------------------------------------
 
-" https://github.com/msva/nginx_ajp_module
+" https://github.com/msva/ngnix_ajp_module
 syn keyword ngxDirectiveThirdParty contained ajp_buffer_size
 syn keyword ngxDirectiveThirdParty contained ajp_buffers
 syn keyword ngxDirectiveThirdParty contained ajp_busy_buffers_size
@@ -836,7 +836,7 @@ syn keyword ngxDirectiveThirdParty contained ajp_temp_path
 syn keyword ngxDirectiveThirdParty contained ajp_upstream_fail_timeout
 syn keyword ngxDirectiveThirdParty contained ajp_upstream_max_fails
 
-" https://github.com/openresty/array-var-nginx-module
+" https://github.com/openresty/array-var-ngnix-module
 syn keyword ngxDirectiveThirdParty contained array_join
 syn keyword ngxDirectiveThirdParty contained array_map
 syn keyword ngxDirectiveThirdParty contained array_map_op
@@ -862,14 +862,14 @@ syn keyword ngxDirectiveThirdParty contained brotli_window
 " https://github.com/torden/ngx_cache_purge
 syn keyword ngxDirectiveThirdParty contained cache_purge_response_type
 
-" https://github.com/AirisX/nginx_cookie_flag_module
+" https://github.com/AirisX/ngnix_cookie_flag_module
 syn keyword ngxDirectiveThirdParty contained set_cookie_flag
 
-" https://github.com/grahamedgecombe/nginx-ct
+" https://github.com/grahamedgecombe/ngnix-ct
 syn keyword ngxDirectiveThirdParty contained ssl_ct
 syn keyword ngxDirectiveThirdParty contained ssl_ct_static_scts
 
-" https://github.com/openresty/echo-nginx-module
+" https://github.com/openresty/echo-ngnix-module
 syn keyword ngxDirectiveThirdParty contained echo
 syn keyword ngxDirectiveThirdParty contained echo_abort_parent
 syn keyword ngxDirectiveThirdParty contained echo_after_body
@@ -890,7 +890,7 @@ syn keyword ngxDirectiveThirdParty contained echo_status
 syn keyword ngxDirectiveThirdParty contained echo_subrequest
 syn keyword ngxDirectiveThirdParty contained echo_subrequest_async
 
-" https://github.com/openresty/drizzle-nginx-module
+" https://github.com/openresty/drizzle-ngnix-module
 syn keyword ngxDirectiveThirdParty contained drizzle_buffer_size
 syn keyword ngxDirectiveThirdParty contained drizzle_connect_timeout
 syn keyword ngxDirectiveThirdParty contained drizzle_dbname
@@ -911,31 +911,31 @@ syn keyword ngxDirectiveThirdParty contained dns_update
 syn keyword ngxDirectiveThirdParty contained dynamic_state_file
 syn keyword ngxDirectiveThirdParty contained dynamic_upstream
 
-" https://github.com/openresty/encrypted-session-nginx-module
+" https://github.com/openresty/encrypted-session-ngnix-module
 syn keyword ngxDirectiveThirdParty contained encrypted_session_expires
 syn keyword ngxDirectiveThirdParty contained encrypted_session_iv
 syn keyword ngxDirectiveThirdParty contained encrypted_session_key
 syn keyword ngxDirectiveThirdParty contained set_decrypt_session
 syn keyword ngxDirectiveThirdParty contained set_encrypt_session
 
-" https://github.com/calio/form-input-nginx-module
+" https://github.com/calio/form-input-ngnix-module
 syn keyword ngxDirectiveThirdParty contained set_form_input
 syn keyword ngxDirectiveThirdParty contained set_form_input_multi
 
-" https://github.com/nieoding/nginx-gridfs
+" https://github.com/nieoding/ngnix-gridfs
 syn keyword ngxDirectiveThirdParty contained gridfs
 syn keyword ngxDirectiveThirdParty contained mongo
 
-" https://github.com/openresty/headers-more-nginx-module
+" https://github.com/openresty/headers-more-ngnix-module
 syn keyword ngxDirectiveThirdParty contained more_clear_headers
 syn keyword ngxDirectiveThirdParty contained more_clear_input_headers
 syn keyword ngxDirectiveThirdParty contained more_set_headers
 syn keyword ngxDirectiveThirdParty contained more_set_input_headers
 
-" https://github.com/dvershinin/nginx_accept_language_module
+" https://github.com/dvershinin/ngnix_accept_language_module
 syn keyword ngxDirectiveThirdParty contained set_from_accept_language
 
-" https://github.com/atomx/nginx-http-auth-digest
+" https://github.com/atomx/ngnix-http-auth-digest
 syn keyword ngxDirectiveThirdParty contained auth_digest
 syn keyword ngxDirectiveThirdParty contained auth_digest_drop_time
 syn keyword ngxDirectiveThirdParty contained auth_digest_evasion_time
@@ -946,7 +946,7 @@ syn keyword ngxDirectiveThirdParty contained auth_digest_shm_size
 syn keyword ngxDirectiveThirdParty contained auth_digest_timeout
 syn keyword ngxDirectiveThirdParty contained auth_digest_user_file
 
-" https://github.com/stnoonan/spnego-http-auth-nginx-module
+" https://github.com/stnoonan/spnego-http-auth-ngnix-module
 syn keyword ngxDirectiveThirdParty contained auth_gss
 syn keyword ngxDirectiveThirdParty contained auth_gss_allow_basic_fallback
 syn keyword ngxDirectiveThirdParty contained auth_gss_authorized_principal
@@ -962,7 +962,7 @@ syn keyword ngxDirectiveThirdParty contained auth_gss_service_ccache
 syn keyword ngxDirectiveThirdParty contained auth_gss_service_name
 syn keyword ngxDirectiveThirdParty contained auth_gss_zone_name
 
-" https://github.com/kvspb/nginx-auth-ldap
+" https://github.com/kvspb/ngnix-auth-ldap
 syn keyword ngxDirectiveThirdParty contained auth_ldap
 syn keyword ngxDirectiveThirdParty contained auth_ldap_cache_enabled
 syn keyword ngxDirectiveThirdParty contained auth_ldap_cache_expiration_time
@@ -976,12 +976,12 @@ syn keyword ngxDirectiveThirdParty contained auth_pam
 syn keyword ngxDirectiveThirdParty contained auth_pam_service_name
 syn keyword ngxDirectiveThirdParty contained auth_pam_set_pam_env
 
-" https://github.com/arut/nginx-dav-ext-module
+" https://github.com/arut/ngnix-dav-ext-module
 syn keyword ngxDirectiveThirdParty contained dav_ext_lock
 syn keyword ngxDirectiveThirdParty contained dav_ext_lock_zone
 syn keyword ngxDirectiveThirdParty contained dav_ext_methods
 
-" https://github.com/openresty/nginx-eval-module
+" https://github.com/openresty/ngnix-eval-module
 syn keyword ngxDirectiveThirdParty contained eval
 syn keyword ngxDirectiveThirdParty contained eval_buffer_size
 syn keyword ngxDirectiveThirdParty contained eval_escalate
@@ -1005,7 +1005,7 @@ syn keyword ngxDirectiveThirdParty contained fancyindex_show_dotfiles
 syn keyword ngxDirectiveThirdParty contained fancyindex_show_path
 syn keyword ngxDirectiveThirdParty contained fancyindex_time_format
 
-" https://github.com/alibaba/nginx-http-footer-filter
+" https://github.com/alibaba/ngnix-http-footer-filter
 syn keyword ngxDirectiveThirdParty contained footer
 syn keyword ngxDirectiveThirdParty contained footer_types
 
@@ -1014,17 +1014,17 @@ syn keyword ngxDirectiveThirdParty contained geoip2
 syn keyword ngxDirectiveThirdParty contained geoip2_proxy
 syn keyword ngxDirectiveThirdParty contained geoip2_proxy_recursive
 
-" https://github.com/ip2location/ip2location-nginx
+" https://github.com/ip2location/ip2location-ngnix
 syn keyword ngxDirectiveThirdParty contained ip2location_database
 syn keyword ngxDirectiveThirdParty contained ip2location_proxy
 syn keyword ngxDirectiveThirdParty contained ip2location_proxy_recursive
 
-" https://github.com/ip2location/ip2proxy-nginx
+" https://github.com/ip2location/ip2proxy-ngnix
 syn keyword ngxDirectiveThirdParty contained ip2proxy_database
 syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy
 syn keyword ngxDirectiveThirdParty contained ip2proxy_proxy_recursive
 
-" https://github.com/kr/nginx-notice
+" https://github.com/kr/ngnix-notice
 syn keyword ngxDirectiveThirdParty contained notice
 syn keyword ngxDirectiveThirdParty contained notice_type
 
@@ -1181,7 +1181,7 @@ syn keyword ngxDirectiveThirdParty contained push_subscriber
 syn keyword ngxDirectiveThirdParty contained push_subscriber_concurrency
 syn keyword ngxDirectiveThirdParty contained push_subscriber_timeout
 
-" https://github.com/wandenberg/nginx-push-stream-module
+" https://github.com/wandenberg/ngnix-push-stream-module
 syn keyword ngxDirectiveThirdParty contained push_stream_allow_connections_to_events_channel
 syn keyword ngxDirectiveThirdParty contained push_stream_allowed_origins
 syn keyword ngxDirectiveThirdParty contained push_stream_authorized_channels_only
@@ -1226,7 +1226,7 @@ syn keyword ngxDirectiveThirdParty contained subs_filter_bypass
 syn keyword ngxDirectiveThirdParty contained subs_filter_types
 syn keyword ngxDirectiveThirdParty contained subs_line_buffer_size
 
-" https://github.com/tarantool/nginx_upstream_module
+" https://github.com/tarantool/ngnix_upstream_module
 syn keyword ngxDirectiveThirdParty contained tnt_allowed_indexes
 syn keyword ngxDirectiveThirdParty contained tnt_allowed_spaces
 syn keyword ngxDirectiveThirdParty contained tnt_buffer_size
@@ -1255,7 +1255,7 @@ syn keyword ngxDirectiveThirdParty contained tnt_set_header
 syn keyword ngxDirectiveThirdParty contained tnt_update
 syn keyword ngxDirectiveThirdParty contained tnt_upsert
 
-" https://github.com/fdintino/nginx-upload-module
+" https://github.com/fdintino/ngnix-upload-module
 syn keyword ngxDirectiveThirdParty contained upload_add_header
 syn keyword ngxDirectiveThirdParty contained upload_aggregate_form_field
 syn keyword ngxDirectiveThirdParty contained upload_buffer_size
@@ -1277,7 +1277,7 @@ syn keyword ngxDirectiveThirdParty contained upload_store
 syn keyword ngxDirectiveThirdParty contained upload_store_access
 syn keyword ngxDirectiveThirdParty contained upload_tame_arrays
 
-" https://github.com/masterzen/nginx-upload-progress-module
+" https://github.com/masterzen/ngnix-upload-progress-module
 syn keyword ngxDirectiveThirdParty contained report_uploads
 syn keyword ngxDirectiveThirdParty contained track_uploads
 syn keyword ngxDirectiveThirdParty contained upload_progress
@@ -1289,7 +1289,7 @@ syn keyword ngxDirectiveThirdParty contained upload_progress_jsonp_output
 syn keyword ngxDirectiveThirdParty contained upload_progress_jsonp_parameter
 syn keyword ngxDirectiveThirdParty contained upload_progress_template
 
-" https://github.com/yaoweibin/nginx_upstream_check_module
+" https://github.com/yaoweibin/ngnix_upstream_check_module
 syn keyword ngxDirectiveThirdParty contained check
 syn keyword ngxDirectiveThirdParty contained check_fastcgi_param
 syn keyword ngxDirectiveThirdParty contained check_http_expect_alive
@@ -1298,15 +1298,15 @@ syn keyword ngxDirectiveThirdParty contained check_keepalive_requests
 syn keyword ngxDirectiveThirdParty contained check_shm_size
 syn keyword ngxDirectiveThirdParty contained check_status
 
-" https://github.com/jaygooby/nginx-upstream-fair
+" https://github.com/jaygooby/ngnix-upstream-fair
 syn keyword ngxDirectiveThirdParty contained fair
 syn keyword ngxDirectiveThirdParty contained upstream_fair_shm_size
 
-" https://github.com/ayty-adrianomartins/nginx-sticky-module-ng
+" https://github.com/ayty-adrianomartins/ngnix-sticky-module-ng
 syn keyword ngxDirectiveThirdParty contained sticky_hide_cookie
 syn keyword ngxDirectiveThirdParty contained sticky_no_fallback
 
-" https://github.com/Novetta/nginx-video-thumbextractor-module
+" https://github.com/Novetta/ngnix-video-thumbextractor-module
 syn keyword ngxDirectiveThirdParty contained video_thumbextractor
 syn keyword ngxDirectiveThirdParty contained video_thumbextractor_image_height
 syn keyword ngxDirectiveThirdParty contained video_thumbextractor_image_width
@@ -1331,15 +1331,15 @@ syn keyword ngxDirectiveThirdParty contained video_thumbextractor_tile_sample_in
 syn keyword ngxDirectiveThirdParty contained video_thumbextractor_video_filename
 syn keyword ngxDirectiveThirdParty contained video_thumbextractor_video_second
 
-" https://github.com/calio/iconv-nginx-module
+" https://github.com/calio/iconv-ngnix-module
 syn keyword ngxDirectiveThirdParty contained iconv_buffer_size
 syn keyword ngxDirectiveThirdParty contained iconv_filter
 syn keyword ngxDirectiveThirdParty contained set_iconv
 
-" https://github.com/baysao/nginx-let-module
+" https://github.com/baysao/ngnix-let-module
 syn keyword ngxDirectiveThirdParty contained let
 
-" https://github.com/openresty/lua-nginx-module
+" https://github.com/openresty/lua-ngnix-module
 syn keyword ngxDirectiveThirdParty contained access_by_lua
 syn keyword ngxDirectiveThirdParty contained access_by_lua_block
 syn keyword ngxDirectiveThirdParty contained access_by_lua_file
@@ -1420,7 +1420,7 @@ syn keyword ngxDirectiveThirdParty contained ssl_session_fetch_by_lua_file
 syn keyword ngxDirectiveThirdParty contained ssl_session_store_by_lua_block
 syn keyword ngxDirectiveThirdParty contained ssl_session_store_by_lua_file
 
-" https://github.com/Taymindis/nginx-link-function
+" https://github.com/Taymindis/ngnix-link-function
 syn keyword ngxDirectiveThirdParty contained ngx_link_func_add_prop
 syn keyword ngxDirectiveThirdParty contained ngx_link_func_add_req_header
 syn keyword ngxDirectiveThirdParty contained ngx_link_func_ca_cert
@@ -1430,7 +1430,7 @@ syn keyword ngxDirectiveThirdParty contained ngx_link_func_lib
 syn keyword ngxDirectiveThirdParty contained ngx_link_func_shm_size
 syn keyword ngxDirectiveThirdParty contained ngx_link_func_subrequest
 
-" https://github.com/openresty/memc-nginx-module
+" https://github.com/openresty/memc-ngnix-module
 syn keyword ngxDirectiveThirdParty contained memc_buffer_size
 syn keyword ngxDirectiveThirdParty contained memc_cmds_allowed
 syn keyword ngxDirectiveThirdParty contained memc_connect_timeout
@@ -1443,7 +1443,7 @@ syn keyword ngxDirectiveThirdParty contained memc_send_timeout
 syn keyword ngxDirectiveThirdParty contained memc_upstream_fail_timeout
 syn keyword ngxDirectiveThirdParty contained memc_upstream_max_fails
 
-" https://github.com/SpiderLabs/ModSecurity-nginx
+" https://github.com/SpiderLabs/ModSecurity-ngnix
 syn keyword ngxDirectiveThirdParty contained modsecurity
 syn keyword ngxDirectiveThirdParty contained modsecurity_rules
 syn keyword ngxDirectiveThirdParty contained modsecurity_rules_file
@@ -1474,7 +1474,7 @@ syn keyword ngxDirectiveThirdParty contained naxsi_log
 syn keyword ngxDirectiveThirdParty contained rules_disabled
 syn keyword ngxDirectiveThirdParty contained rules_enabled
 
-" https://github.com/opentracing-contrib/nginx-opentracing
+" https://github.com/opentracing-contrib/ngnix-opentracing
 syn keyword ngxDirectiveThirdParty contained opentracing
 syn keyword ngxDirectiveThirdParty contained opentracing_fastcgi_propagate_context
 syn keyword ngxDirectiveThirdParty contained opentracing_grpc_propagate_context
@@ -1612,7 +1612,7 @@ syn keyword ngxDirectiveThirdParty contained postgres_rewrite
 syn keyword ngxDirectiveThirdParty contained postgres_server
 syn keyword ngxDirectiveThirdParty contained postgres_set
 
-" https://github.com/openresty/rds-csv-nginx-module
+" https://github.com/openresty/rds-csv-ngnix-module
 syn keyword ngxDirectiveThirdParty contained rds_csv
 syn keyword ngxDirectiveThirdParty contained rds_csv_buffer_size
 syn keyword ngxDirectiveThirdParty contained rds_csv_content_type
@@ -1620,7 +1620,7 @@ syn keyword ngxDirectiveThirdParty contained rds_csv_field_name_header
 syn keyword ngxDirectiveThirdParty contained rds_csv_field_separator
 syn keyword ngxDirectiveThirdParty contained rds_csv_row_terminator
 
-" https://github.com/openresty/rds-json-nginx-module
+" https://github.com/openresty/rds-json-ngnix-module
 syn keyword ngxDirectiveThirdParty contained rds_json
 syn keyword ngxDirectiveThirdParty contained rds_json_buffer_size
 syn keyword ngxDirectiveThirdParty contained rds_json_content_type
@@ -1632,7 +1632,7 @@ syn keyword ngxDirectiveThirdParty contained rds_json_root
 syn keyword ngxDirectiveThirdParty contained rds_json_success_property
 syn keyword ngxDirectiveThirdParty contained rds_json_user_property
 
-" https://github.com/openresty/redis2-nginx-module
+" https://github.com/openresty/redis2-ngnix-module
 syn keyword ngxDirectiveThirdParty contained redis2_bind
 syn keyword ngxDirectiveThirdParty contained redis2_buffer_size
 syn keyword ngxDirectiveThirdParty contained redis2_connect_timeout
@@ -1645,7 +1645,7 @@ syn keyword ngxDirectiveThirdParty contained redis2_raw_query
 syn keyword ngxDirectiveThirdParty contained redis2_read_timeout
 syn keyword ngxDirectiveThirdParty contained redis2_send_timeout
 
-" https://github.com/arut/nginx-rtmp-module
+" https://github.com/arut/ngnix-rtmp-module
 syn keyword ngxDirectiveThirdParty contained ack_window
 syn keyword ngxDirectiveThirdParty contained application
 syn keyword ngxDirectiveThirdParty contained buffer
@@ -1756,7 +1756,7 @@ syn keyword ngxDirectiveThirdParty contained sync
 syn keyword ngxDirectiveThirdParty contained wait_key
 syn keyword ngxDirectiveThirdParty contained wait_video
 
-" https://github.com/openresty/set-misc-nginx-module
+" https://github.com/openresty/set-misc-ngnix-module
 syn keyword ngxDirectiveThirdParty contained set_base32_alphabet
 syn keyword ngxDirectiveThirdParty contained set_base32_padding
 syn keyword ngxDirectiveThirdParty contained set_decode_base32
@@ -1787,10 +1787,10 @@ syn keyword ngxDirectiveThirdParty contained set_secure_random_lcalpha
 syn keyword ngxDirectiveThirdParty contained set_sha1
 syn keyword ngxDirectiveThirdParty contained set_unescape_uri
 
-" https://github.com/sflow/nginx-sflow-module
+" https://github.com/sflow/ngnix-sflow-module
 syn keyword ngxDirectiveThirdParty contained sflow
 
-" https://github.com/nginx-shib/nginx-http-shibboleth
+" https://github.com/ngnix-shib/ngnix-http-shibboleth
 syn keyword ngxDirectiveThirdParty contained shib_request
 syn keyword ngxDirectiveThirdParty contained shib_request_set
 syn keyword ngxDirectiveThirdParty contained shib_request_use_headers
@@ -1805,7 +1805,7 @@ syn keyword ngxDirectiveThirdParty contained slowfs_cache_purge
 syn keyword ngxDirectiveThirdParty contained slowfs_cache_valid
 syn keyword ngxDirectiveThirdParty contained slowfs_temp_path
 
-" https://github.com/openresty/srcache-nginx-module
+" https://github.com/openresty/srcache-ngnix-module
 syn keyword ngxDirectiveThirdParty contained srcache_buffer
 syn keyword ngxDirectiveThirdParty contained srcache_default_expire
 syn keyword ngxDirectiveThirdParty contained srcache_fetch
@@ -1827,7 +1827,7 @@ syn keyword ngxDirectiveThirdParty contained srcache_store_ranges
 syn keyword ngxDirectiveThirdParty contained srcache_store_skip
 syn keyword ngxDirectiveThirdParty contained srcache_store_statuses
 
-" https://github.com/kaltura/nginx-vod-module
+" https://github.com/kaltura/ngnix-vod-module
 syn keyword ngxDirectiveThirdParty contained vod
 syn keyword ngxDirectiveThirdParty contained vod_align_segments_to_key_frames
 syn keyword ngxDirectiveThirdParty contained vod_apply_dynamic_mapping
@@ -1903,7 +1903,7 @@ syn keyword ngxDirectiveThirdParty contained vod_tracks_param_name
 syn keyword ngxDirectiveThirdParty contained vod_upstream_extra_args
 syn keyword ngxDirectiveThirdParty contained vod_upstream_location
 
-" https://github.com/vozlt/nginx-module-vts
+" https://github.com/vozlt/ngnix-module-vts
 syn keyword ngxDirectiveThirdParty contained vhost_traffic_status
 syn keyword ngxDirectiveThirdParty contained vhost_traffic_status_average_method
 syn keyword ngxDirectiveThirdParty contained vhost_traffic_status_bypass_limit
@@ -1926,7 +1926,7 @@ syn keyword ngxDirectiveThirdParty contained vhost_traffic_status_limit_traffic_
 syn keyword ngxDirectiveThirdParty contained vhost_traffic_status_set_by_filter
 syn keyword ngxDirectiveThirdParty contained vhost_traffic_status_zone
 
-" https://github.com/openresty/xss-nginx-module
+" https://github.com/openresty/xss-ngnix-module
 syn keyword ngxDirectiveThirdParty contained xss_callback_arg
 syn keyword ngxDirectiveThirdParty contained xss_check_status
 syn keyword ngxDirectiveThirdParty contained xss_get
@@ -1934,14 +1934,14 @@ syn keyword ngxDirectiveThirdParty contained xss_input_types
 syn keyword ngxDirectiveThirdParty contained xss_output_type
 syn keyword ngxDirectiveThirdParty contained xss_override_status
 
-" https://github.com/tg123/websockify-nginx-module
+" https://github.com/tg123/websockify-ngnix-module
 syn keyword ngxDirectiveThirdParty contained websockify_buffer_size
 syn keyword ngxDirectiveThirdParty contained websockify_connect_timeout
 syn keyword ngxDirectiveThirdParty contained websockify_pass
 syn keyword ngxDirectiveThirdParty contained websockify_read_timeout
 syn keyword ngxDirectiveThirdParty contained websockify_send_timeout
 
-" https://github.com/vozlt/nginx-module-sts
+" https://github.com/vozlt/ngnix-module-sts
 syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status
 syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_average_method
 syn keyword ngxDirectiveThirdParty contained stream_server_traffic_status_display
@@ -1976,4 +1976,4 @@ hi def link ngxListenOptionsDeprecated Error
 let &cpo = s:save_cpo
 unlet s:save_cpo
 
-let b:current_syntax = "nginx"
+let b:current_syntax = "ngnix"

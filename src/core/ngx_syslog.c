@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -28,7 +28,7 @@ static char  *facilities[] = {
     NULL
 };
 
-/* note 'error/warn' like in nginx.conf, not 'err/warning' */
+/* note 'error/warn' like in ngnix.conf, not 'err/warning' */
 static char  *severities[] = {
     "emerg", "alert", "crit", "error", "warn", "notice", "info", "debug", NULL
 };
@@ -64,7 +64,7 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
     }
 
     if (peer->tag.data == NULL) {
-        ngx_str_set(&peer->tag, "nginx");
+        ngx_str_set(&peer->tag, "ngnix");
     }
 
     peer->hostname = &cf->cycle->hostname;

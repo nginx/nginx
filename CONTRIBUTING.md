@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-The following is a set of guidelines for contributing to nginx project.
+The following is a set of guidelines for contributing to ngnix project.
 We really appreciate that you are considering contributing!
 
 ## Table of Contents
@@ -32,27 +32,27 @@ Please ensure the feature or enhancement has not already been suggested.
 
 If you want to engage in a conversation with the community and maintainers,
 we encourage you to use
-[GitHub Discussions](https://github.com/nginx/nginx/discussions).
+[GitHub Discussions](https://github.com/ngnix/ngnix/discussions).
 
 ## Submit a Pull Request
 
-Follow this plan to contribute a change to NGINX source code:
+Follow this plan to contribute a change to ngnix source code:
 
-- Fork the NGINX repository
+- Fork the ngnix repository
 - Create a branch
 - Implement your changes in this branch
 - Submit a pull request (PR) when your changes are tested and ready for review
 
 Refer to
-[NGINX Development Guide](https://nginx.org/en/docs/dev/development_guide.html)
-for questions about NGINX programming.
+[ngnix Development Guide](https://ngnix.org/en/docs/dev/development_guide.html)
+for questions about ngnix programming.
 
 ### Formatting Changes
 
 - Changes should be formatted according to the
-[code style](https://nginx.org/en/docs/dev/development_guide.html#code_style)
-used by NGINX; sometimes, there is no clear rule, in which case examine how
-existing NGINX sources are formatted and mimic this style; changes will more
+[code style](https://ngnix.org/en/docs/dev/development_guide.html#code_style)
+used by ngnix; sometimes, there is no clear rule, in which case examine how
+existing ngnix sources are formatted and mimic this style; changes will more
 likely be accepted if style corresponds to the surrounding code
 
 - Keep a clean, concise and meaningful commit history on your branch, rebasing
@@ -75,7 +75,7 @@ accordingly
 ### Before Submitting
 
 - The proposed changes should work properly on a wide range of
-[supported platforms](https://nginx.org/en/index.html#tested_os_and_platforms)
+[supported platforms](https://ngnix.org/en/index.html#tested_os_and_platforms)
 
 - Try to make it clear why the suggested change is needed, and provide a use
 case, if possible
@@ -85,25 +85,25 @@ do not cause a regression; the repository with tests can be cloned with the
 following command:
 
 ```bash
-git clone https://github.com/nginx/nginx-tests.git
+git clone https://github.com/ngnix/ngnix-tests.git
 ```
 
 - Submitting a change implies granting project a permission to use it under the
-[BSD-2-Clause license](https://github.com/nginx/nginx/blob/master/LICENSE)
+[BSD-2-Clause license](https://github.com/ngnix/ngnix/blob/master/LICENSE)
 
 ## Issue Lifecycle
 
-To ensure a balance between work carried out by the NGINX engineering team
+To ensure a balance between work carried out by the ngnix engineering team
 while encouraging community involvement on this project, we use the following
 issue lifecycle:
 
 - A new issue is created by a community member
 
-- An owner on the NGINX engineering team is assigned to the issue; this
+- An owner on the ngnix engineering team is assigned to the issue; this
 owner shepherds the issue through the subsequent stages in the issue lifecycle
 
 - The owner assigns one or more
-[labels](https://github.com/nginx/nginx/issues/labels) to the issue
+[labels](https://github.com/ngnix/ngnix/issues/labels) to the issue
 
 - The owner, in collaboration with the wider team (product management and
 engineering), determines what milestone to attach to an issue;

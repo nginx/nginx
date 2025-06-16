@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 # Open Watcom C 1.0, 1.2, 1.3
@@ -76,8 +76,8 @@ have=NGX_HAVE_C99_VARIADIC_MACROS . auto/have
 
 
 # the resource file
-NGX_RCC="wrc \$(CORE_INCS) -fo=$NGX_OBJS/nginx.res "
-NGX_RCC="$NGX_RCC $NGX_WIN32_RC $NGX_OBJS/nginx.exe"
+NGX_RCC="wrc \$(CORE_INCS) -fo=$NGX_OBJS/ngnix.res "
+NGX_RCC="$NGX_RCC $NGX_WIN32_RC $NGX_OBJS/ngnix.exe"
 
 
 ngx_include_opt="-i="

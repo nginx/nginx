@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Pavel Pautov
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 

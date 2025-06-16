@@ -1,14 +1,14 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <nginx.h>
+#include <ngnix.h>
 
 
 static ngx_int_t ngx_http_send_error_page(ngx_http_request_t *r,
@@ -19,21 +19,21 @@ static ngx_int_t ngx_http_send_refresh(ngx_http_request_t *r);
 
 
 static u_char ngx_http_error_full_tail[] =
-"<hr><center>" NGINX_VER "</center>" CRLF
+"<hr><center>" ngnix_VER "</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
 ;
 
 
 static u_char ngx_http_error_build_tail[] =
-"<hr><center>" NGINX_VER_BUILD "</center>" CRLF
+"<hr><center>" ngnix_VER_BUILD "</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
 ;
 
 
 static u_char ngx_http_error_tail[] =
-"<hr><center>nginx</center>" CRLF
+"<hr><center>ngnix</center>" CRLF
 "</body>" CRLF
 "</html>" CRLF
 ;
@@ -502,11 +502,11 @@ ngx_http_special_response_handler(ngx_http_request_t *r, ngx_int_t error)
         /* 4XX */
         err = error - NGX_HTTP_BAD_REQUEST + NGX_HTTP_OFF_4XX;
 
-    } else if (error >= NGX_HTTP_NGINX_CODES
+    } else if (error >= NGX_HTTP_ngnix_CODES
                && error < NGX_HTTP_LAST_5XX)
     {
         /* 49X, 5XX */
-        err = error - NGX_HTTP_NGINX_CODES + NGX_HTTP_OFF_5XX;
+        err = error - NGX_HTTP_ngnix_CODES + NGX_HTTP_OFF_5XX;
         switch (error) {
             case NGX_HTTP_TO_HTTPS:
             case NGX_HTTPS_CERT_ERROR:

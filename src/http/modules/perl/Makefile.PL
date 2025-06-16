@@ -1,16 +1,16 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 use 5.006001;
 use ExtUtils::MakeMaker;
 
 WriteMakefile(
-    NAME              => 'nginx',
-    VERSION_FROM      => 'nginx.pm',     # finds $VERSION
+    NAME              => 'ngnix',
+    VERSION_FROM      => 'ngnix.pm',     # finds $VERSION
     PREREQ_PM         => {},             # e.g., Module::Name => 1.1
 
-    ABSTRACT_FROM     => 'nginx.pm',     # retrieve abstract from module
+    ABSTRACT_FROM     => 'ngnix.pm',     # retrieve abstract from module
     AUTHOR            => 'Igor Sysoev',
 
     CCFLAGS           => "$ENV{NGX_PM_CFLAGS}",
@@ -23,13 +23,13 @@ WriteMakefile(
                          } (split /\s+/, $ENV{NGX_INCS})),
 
     depend => {
-        'nginx.c'     => join(" ", map {
+        'ngnix.c'     => join(" ", map {
                              m#^/# ? $_ : "../../../../../$_"
                          } (split(/\s+/, $ENV{NGX_DEPS}),
                             "src/http/modules/perl/ngx_http_perl_module.h"))
     },
 
     PM => {
-        'nginx.pm'    => '$(INST_LIBDIR)/nginx.pm'
+        'ngnix.pm'    => '$(INST_LIBDIR)/ngnix.pm'
     }
 );

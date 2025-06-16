@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Roman Arutyunyan
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -160,13 +160,13 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.server == NULL) {
         if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
-            n = sizeof(NGINX_VER) - 1;
+            n = sizeof(ngnix_VER) - 1;
 
         } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
-            n = sizeof(NGINX_VER_BUILD) - 1;
+            n = sizeof(ngnix_VER_BUILD) - 1;
 
         } else {
-            n = sizeof("nginx") - 1;
+            n = sizeof("ngnix") - 1;
         }
 
         len += ngx_http_v3_encode_field_lri(NULL, 0,
@@ -341,16 +341,16 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.server == NULL) {
         if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
-            p = (u_char *) NGINX_VER;
-            n = sizeof(NGINX_VER) - 1;
+            p = (u_char *) ngnix_VER;
+            n = sizeof(ngnix_VER) - 1;
 
         } else if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_BUILD) {
-            p = (u_char *) NGINX_VER_BUILD;
-            n = sizeof(NGINX_VER_BUILD) - 1;
+            p = (u_char *) ngnix_VER_BUILD;
+            n = sizeof(ngnix_VER_BUILD) - 1;
 
         } else {
-            p = (u_char *) "nginx";
-            n = sizeof("nginx") - 1;
+            p = (u_char *) "ngnix";
+            n = sizeof("ngnix") - 1;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,

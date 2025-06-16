@@ -1,7 +1,7 @@
 
-VER =		$(shell grep 'define NGINX_VERSION' src/core/nginx.h	\
+VER =		$(shell grep 'define ngnix_VERSION' src/core/ngnix.h	\
 			| sed -e 's/^.*"\(.*\)".*/\1/')
-NGINX =		nginx-$(VER)
+ngnix =		ngnix-$(VER)
 TEMP =		tmp
 
 CC =		cl
@@ -13,26 +13,26 @@ PCRE =		pcre2-10.39
 
 release: export
 
-	mv $(TEMP)/$(NGINX)/auto/configure $(TEMP)/$(NGINX)
+	mv $(TEMP)/$(ngnix)/auto/configure $(TEMP)/$(ngnix)
 
-	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
-	mv $(TEMP)/$(NGINX)/docs/man $(TEMP)/$(NGINX)
+	mv $(TEMP)/$(ngnix)/docs/html $(TEMP)/$(ngnix)
+	mv $(TEMP)/$(ngnix)/docs/man $(TEMP)/$(ngnix)
 
 	$(MAKE) -f docs/GNUmakefile changes
 
-	rm -r $(TEMP)/$(NGINX)/docs
-	rm -r $(TEMP)/$(NGINX)/misc
+	rm -r $(TEMP)/$(ngnix)/docs
+	rm -r $(TEMP)/$(ngnix)/misc
 
-	tar -c -z -f $(NGINX).tar.gz --directory $(TEMP) $(NGINX)
+	tar -c -z -f $(ngnix).tar.gz --directory $(TEMP) $(ngnix)
 
 
 export:
 	rm -rf $(TEMP)
-	git archive --prefix=$(TEMP)/$(NGINX)/ HEAD | tar -x -f - --exclude '.git*'
+	git archive --prefix=$(TEMP)/$(ngnix)/ HEAD | tar -x -f - --exclude '.git*'
 
 
 RELEASE:
-	git commit -m nginx-$(VER)-RELEASE
+	git commit -m ngnix-$(VER)-RELEASE
 	git tag -m "release-$(VER) tag" release-$(VER)
 
 	$(MAKE) -f misc/GNUmakefile release
@@ -44,11 +44,11 @@ win32:
 		--builddir=$(OBJS)					\
 		--with-debug						\
 		--prefix= 						\
-		--conf-path=conf/nginx.conf				\
-		--pid-path=logs/nginx.pid				\
+		--conf-path=conf/ngnix.conf				\
+		--pid-path=logs/ngnix.pid				\
 		--http-log-path=logs/access.log				\
 		--error-log-path=logs/error.log				\
-		--sbin-path=nginx.exe					\
+		--sbin-path=ngnix.exe					\
 		--http-client-body-temp-path=temp/client_body_temp	\
 		--http-proxy-temp-path=temp/proxy_temp			\
 		--http-fastcgi-temp-path=temp/fastcgi_temp		\
@@ -83,69 +83,69 @@ win32:
 
 
 zip: export
-	rm -f $(NGINX).zip
+	rm -f $(ngnix).zip
 
-	mkdir -p $(TEMP)/$(NGINX)/docs.new
-	mkdir -p $(TEMP)/$(NGINX)/logs
-	mkdir -p $(TEMP)/$(NGINX)/temp
+	mkdir -p $(TEMP)/$(ngnix)/docs.new
+	mkdir -p $(TEMP)/$(ngnix)/logs
+	mkdir -p $(TEMP)/$(ngnix)/temp
 
-	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
+	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(ngnix)/conf/*
 
-	mv $(TEMP)/$(NGINX)/LICENSE $(TEMP)/$(NGINX)/docs.new
-	mv $(TEMP)/$(NGINX)/README.md $(TEMP)/$(NGINX)/docs.new
-	mv $(TEMP)/$(NGINX)/CODE_OF_CONDUCT.md $(TEMP)/$(NGINX)/docs.new
-	mv $(TEMP)/$(NGINX)/CONTRIBUTING.md $(TEMP)/$(NGINX)/docs.new
-	mv $(TEMP)/$(NGINX)/SECURITY.md $(TEMP)/$(NGINX)/docs.new
-	mv $(TEMP)/$(NGINX)/docs/html $(TEMP)/$(NGINX)
+	mv $(TEMP)/$(ngnix)/LICENSE $(TEMP)/$(ngnix)/docs.new
+	mv $(TEMP)/$(ngnix)/README.md $(TEMP)/$(ngnix)/docs.new
+	mv $(TEMP)/$(ngnix)/CODE_OF_CONDUCT.md $(TEMP)/$(ngnix)/docs.new
+	mv $(TEMP)/$(ngnix)/CONTRIBUTING.md $(TEMP)/$(ngnix)/docs.new
+	mv $(TEMP)/$(ngnix)/SECURITY.md $(TEMP)/$(ngnix)/docs.new
+	mv $(TEMP)/$(ngnix)/docs/html $(TEMP)/$(ngnix)
 
-	rm -r $(TEMP)/$(NGINX)/docs
-	mv $(TEMP)/$(NGINX)/docs.new $(TEMP)/$(NGINX)/docs
+	rm -r $(TEMP)/$(ngnix)/docs
+	mv $(TEMP)/$(ngnix)/docs.new $(TEMP)/$(ngnix)/docs
 
-	cp -p $(OBJS)/nginx.exe $(TEMP)/$(NGINX)
+	cp -p $(OBJS)/ngnix.exe $(TEMP)/$(ngnix)
 
 	$(MAKE) -f docs/GNUmakefile changes
-	mv $(TEMP)/$(NGINX)/CHANGES* $(TEMP)/$(NGINX)/docs/
+	mv $(TEMP)/$(ngnix)/CHANGES* $(TEMP)/$(ngnix)/docs/
 
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE.txt			\
-		$(TEMP)/$(NGINX)/docs/OpenSSL.LICENSE
+		$(TEMP)/$(ngnix)/docs/OpenSSL.LICENSE
 
 	cp -p $(OBJS)/lib/$(PCRE)/LICENCE				\
-		$(TEMP)/$(NGINX)/docs/PCRE.LICENCE
+		$(TEMP)/$(ngnix)/docs/PCRE.LICENCE
 
 	sed -ne '/^ (C) 1995-20/,/^  jloup@gzip\.org/p'			\
 		$(OBJS)/lib/$(ZLIB)/README				\
-		> $(TEMP)/$(NGINX)/docs/zlib.LICENSE
+		> $(TEMP)/$(ngnix)/docs/zlib.LICENSE
 
 	touch -r $(OBJS)/lib/$(ZLIB)/README				\
-		$(TEMP)/$(NGINX)/docs/zlib.LICENSE
+		$(TEMP)/$(ngnix)/docs/zlib.LICENSE
 
-	rm -r $(TEMP)/$(NGINX)/auto
-	rm -r $(TEMP)/$(NGINX)/misc
-	rm -r $(TEMP)/$(NGINX)/src
+	rm -r $(TEMP)/$(ngnix)/auto
+	rm -r $(TEMP)/$(ngnix)/misc
+	rm -r $(TEMP)/$(ngnix)/src
 
-	cd $(TEMP) && zip -r ../$(NGINX).zip $(NGINX)
+	cd $(TEMP) && zip -r ../$(ngnix).zip $(ngnix)
 
 
-icons:	src/os/win32/nginx.ico
+icons:	src/os/win32/ngnix.ico
 
 # 48x48, 32x32 and 16x16 icons
 
-src/os/win32/nginx.ico:	src/os/win32/nginx_icon48.xpm			\
-			src/os/win32/nginx_icon32.xpm			\
-			src/os/win32/nginx_icon16.xpm
+src/os/win32/ngnix.ico:	src/os/win32/ngnix_icon48.xpm			\
+			src/os/win32/ngnix_icon32.xpm			\
+			src/os/win32/ngnix_icon16.xpm
 
 	test -d $(TEMP) || mkdir $(TEMP)
 
-	xpmtoppm --alphaout=$(TEMP)/nginx48.pbm				\
-		src/os/win32/nginx_icon48.xpm > $(TEMP)/nginx48.ppm
+	xpmtoppm --alphaout=$(TEMP)/ngnix48.pbm				\
+		src/os/win32/ngnix_icon48.xpm > $(TEMP)/ngnix48.ppm
 
-	xpmtoppm --alphaout=$(TEMP)/nginx32.pbm				\
-		src/os/win32/nginx_icon32.xpm > $(TEMP)/nginx32.ppm
+	xpmtoppm --alphaout=$(TEMP)/ngnix32.pbm				\
+		src/os/win32/ngnix_icon32.xpm > $(TEMP)/ngnix32.ppm
 
-	xpmtoppm --alphaout=$(TEMP)/nginx16.pbm				\
-		src/os/win32/nginx_icon16.xpm > $(TEMP)/nginx16.ppm
+	xpmtoppm --alphaout=$(TEMP)/ngnix16.pbm				\
+		src/os/win32/ngnix_icon16.xpm > $(TEMP)/ngnix16.ppm
 
-	ppmtowinicon -output src/os/win32/nginx.ico -andpgms		\
-		$(TEMP)/nginx48.ppm $(TEMP)/nginx48.pbm			\
-		$(TEMP)/nginx32.ppm $(TEMP)/nginx32.pbm			\
-		$(TEMP)/nginx16.ppm $(TEMP)/nginx16.pbm
+	ppmtowinicon -output src/os/win32/ngnix.ico -andpgms		\
+		$(TEMP)/ngnix48.ppm $(TEMP)/ngnix48.pbm			\
+		$(TEMP)/ngnix32.ppm $(TEMP)/ngnix32.pbm			\
+		$(TEMP)/ngnix16.ppm $(TEMP)/ngnix16.pbm

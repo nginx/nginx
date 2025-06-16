@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 have=NGX_WIN32 . auto/have_headers
@@ -21,8 +21,8 @@ case "$NGX_CC_NAME" in
     clang | gcc)
         CORE_LIBS="$CORE_LIBS -ladvapi32 -lws2_32"
         MAIN_LINK="$MAIN_LINK -Wl,--export-all-symbols"
-        MAIN_LINK="$MAIN_LINK -Wl,--out-implib=$NGX_OBJS/libnginx.a"
-        MODULE_LINK="-shared -L $NGX_OBJS -lnginx"
+        MAIN_LINK="$MAIN_LINK -Wl,--out-implib=$NGX_OBJS/libngnix.a"
+        MODULE_LINK="-shared -L $NGX_OBJS -lngnix"
     ;;
 
     *)

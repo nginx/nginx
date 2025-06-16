@@ -1,13 +1,13 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <nginx.h>
+#include <ngnix.h>
 
 
 ngx_uint_t  ngx_win32_version;
@@ -284,7 +284,7 @@ ngx_os_status(ngx_log_t *log)
 {
     ngx_osviex_stub_t  *osviex_stub;
 
-    ngx_log_error(NGX_LOG_NOTICE, log, 0, NGINX_VER_BUILD);
+    ngx_log_error(NGX_LOG_NOTICE, log, 0, ngnix_VER_BUILD);
 
     if (osviex) {
 

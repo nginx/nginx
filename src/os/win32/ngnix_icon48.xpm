@@ -1,5 +1,5 @@
 /* XPM */
-static char * nginx_xpm[] = {
+static char * ngnix_xpm[] = {
 "48 48 2 2",
 /* colors */
 "   c none",

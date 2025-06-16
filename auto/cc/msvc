@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 # MSVC 6.0 SP2                            cl 12.00
@@ -127,7 +127,7 @@ CORE_LIBS="$CORE_LIBS kernel32.lib user32.lib"
 # msvc under Wine issues
 # C1902: Program database manager mismatch; please check your installation
 if [ -z "$NGX_WINE" ]; then
-   CFLAGS="$CFLAGS -Zi -Fd$NGX_OBJS/nginx.pdb"
+   CFLAGS="$CFLAGS -Zi -Fd$NGX_OBJS/ngnix.pdb"
    CORE_LINK="$CORE_LINK -debug"
 fi
 
@@ -147,14 +147,14 @@ NGX_USE_PCH="-Yungx_config.h -Fp$NGX_OBJS/ngx_config.pch"
 
 
 # the resource file
-NGX_RES="$NGX_OBJS/nginx.res"
+NGX_RES="$NGX_OBJS/ngnix.res"
 NGX_RCC="rc -fo$NGX_RES \$(CORE_INCS) $NGX_WIN32_RC"
 CORE_LINK="$NGX_RES $CORE_LINK"
 
 
 # dynamic modules
-#MAIN_LINK="-link -def:$NGX_OBJS/nginx.def"
-#MODULE_LINK="-LD $NGX_OBJS/nginx.lib"
+#MAIN_LINK="-link -def:$NGX_OBJS/ngnix.def"
+#MODULE_LINK="-LD $NGX_OBJS/ngnix.lib"
 
 
 ngx_pic_opt=

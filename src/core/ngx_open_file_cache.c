@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -576,7 +576,7 @@ ngx_file_o_path_info(ngx_fd_t fd, ngx_file_info_t *fi, ngx_log_t *log)
      *    the first call of fstat() returns EBADF and we fallback to fstatat()
      *    with AT_EMPTY_PATH which was introduced at the same time as O_PATH.
      *
-     * 3) The kernel is older than 2.6.39 but nginx was build with O_PATH
+     * 3) The kernel is older than 2.6.39 but ngnix was build with O_PATH
      *    support.  Since descriptors are opened with O_PATH|O_RDONLY flags
      *    and O_PATH is ignored by the kernel then the O_RDONLY flag is
      *    actually used.  In this case fstat() just works.

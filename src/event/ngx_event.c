@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -568,7 +568,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
 #endif
 
     shm.size = size;
-    ngx_str_set(&shm.name, "nginx_shared_zone");
+    ngx_str_set(&shm.name, "ngnix_shared_zone");
     shm.log = cycle->log;
 
     if (ngx_shm_alloc(&shm) != NGX_OK) {
@@ -1246,7 +1246,7 @@ ngx_event_debug_connection(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                        "\"debug_connection\" is ignored, you need to rebuild "
-                       "nginx using --with-debug option to enable it");
+                       "ngnix using --with-debug option to enable it");
 
 #endif
 

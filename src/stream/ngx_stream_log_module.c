@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -1154,7 +1154,7 @@ process_formats:
 
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "nginx was built without zlib support");
+                               "ngnix was built without zlib support");
             return NGX_CONF_ERROR;
 #endif
         }

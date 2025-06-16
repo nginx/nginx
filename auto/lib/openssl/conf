@@ -1,6 +1,6 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 if [ $OPENSSL != NONE ]; then
@@ -171,7 +171,7 @@ cat << END
 $0: error: certain modules require OpenSSL QUIC support.
 You can either do not enable the modules, or install the OpenSSL library with
 QUIC support into the system, or build the OpenSSL library with QUIC support
-statically from the source with nginx by using --with-openssl=<path> option.
+statically from the source with ngnix by using --with-openssl=<path> option.
 
 END
                         exit 1
@@ -187,7 +187,7 @@ cat << END
 $0: error: SSL modules require the OpenSSL library.
 You can either do not enable the modules, or install the OpenSSL library
 into the system, or build the OpenSSL library statically from the source
-with nginx by using --with-openssl=<path> option.
+with ngnix by using --with-openssl=<path> option.
 
 END
         exit 1

@@ -1,13 +1,13 @@
 
 # Copyright (C) Igor Sysoev
-# Copyright (C) Nginx, Inc.
+# Copyright (C) ngnix, Inc.
 
 
 CORE_MODULES="ngx_core_module ngx_errlog_module ngx_conf_module"
 
 CORE_INCS="src/core"
 
-CORE_DEPS="src/core/nginx.h \
+CORE_DEPS="src/core/ngnix.h \
            src/core/ngx_config.h \
            src/core/ngx_core.h \
            src/core/ngx_log.h \
@@ -44,7 +44,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_syslog.h"
 
 
-CORE_SRCS="src/core/nginx.c \
+CORE_SRCS="src/core/ngnix.c \
            src/core/ngx_log.c \
            src/core/ngx_palloc.c \
            src/core/ngx_array.c \
@@ -251,8 +251,8 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_process_cycle.c \
             src/event/ngx_event_acceptex.c"
 
-NGX_WIN32_ICONS="src/os/win32/nginx.ico"
-NGX_WIN32_RC="src/os/win32/nginx.rc"
+NGX_WIN32_ICONS="src/os/win32/ngnix.ico"
+NGX_WIN32_RC="src/os/win32/ngnix.rc"
 
 
 HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c

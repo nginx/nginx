@@ -1,14 +1,14 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <nginx.h>
+#include <ngnix.h>
 
 
 static void ngx_console_init(ngx_cycle_t *cycle);

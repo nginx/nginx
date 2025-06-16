@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Roman Arutyunyan
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 

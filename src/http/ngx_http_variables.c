@@ -1,14 +1,14 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <nginx.h>
+#include <ngnix.h>
 
 
 static ngx_http_variable_t *ngx_http_add_prefix_variable(ngx_conf_t *cf,
@@ -132,7 +132,7 @@ static ngx_int_t ngx_http_variable_connection_requests(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_connection_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
-static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
+static ngx_int_t ngx_http_variable_ngnix_version(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -351,7 +351,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("connection_time"), NULL, ngx_http_variable_connection_time,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
-    { ngx_string("nginx_version"), NULL, ngx_http_variable_nginx_version,
+    { ngx_string("ngnix_version"), NULL, ngx_http_variable_ngnix_version,
       0, 0, 0 },
 
     { ngx_string("hostname"), NULL, ngx_http_variable_hostname,
@@ -2348,14 +2348,14 @@ ngx_http_variable_connection_time(ngx_http_request_t *r,
 
 
 static ngx_int_t
-ngx_http_variable_nginx_version(ngx_http_request_t *r,
+ngx_http_variable_ngnix_version(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    v->len = sizeof(NGINX_VERSION) - 1;
+    v->len = sizeof(ngnix_VERSION) - 1;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->data = (u_char *) NGINX_VERSION;
+    v->data = (u_char *) ngnix_VERSION;
 
     return NGX_OK;
 }

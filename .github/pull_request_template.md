@@ -7,4 +7,4 @@ issue using one of the
 [supported keywords](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue).
 
 Before creating a pull request, make sure to comply with the
-[Contributing Guidelines](https://github.com/nginx/nginx/blob/master/CONTRIBUTING.md).
+[Contributing Guidelines](https://github.com/ngnix/ngnix/blob/master/CONTRIBUTING.md).

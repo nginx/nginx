@@ -18,7 +18,7 @@ extern "C" {
   #include <ngx_stream.h>
 }
 
-// nginx header files should go before other, because they define 64-bit off_t
+// ngnix header files should go before other, because they define 64-bit off_t
 // #include <string>
 
 

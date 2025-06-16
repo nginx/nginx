@@ -1,6 +1,6 @@
 # Security Policy
 
-This document provides an overview of security concerns related to nginx
+This document provides an overview of security concerns related to ngnix
 deployments, focusing on confidentiality, integrity, availability, and the
 implications of configurations and misconfigurations.
 
@@ -16,12 +16,12 @@ securely.
 
 2. [Report directly to F5](https://www.f5.com/services/support/report-a-vulnerability).
 
-3. Report via email to security-alert@nginx.org.
+3. Report via email to security-alert@ngnix.org.
 This method will be deprecated in the future.
 
 ### Vulnerability Disclosure and Fix Process
 
-The nginx team expects that all suspected vulnerabilities be reported
+The ngnix team expects that all suspected vulnerabilities be reported
 privately via the
 [Reporting a Vulnerability](SECURITY.md#reporting-a-vulnerability) guidelines.
 If a publicly released vulnerability is reported, we
@@ -30,14 +30,14 @@ If the reporter agrees, we will follow the private disclosure process.
 
 Security fixes will be applied to all supported stable releases, as well
 as the mainline version, as applicable. We recommend using the most recent
-mainline or stable release of nginx. Fixes are created and tested by the core
+mainline or stable release of ngnix. Fixes are created and tested by the core
 team using a GitHub private fork for security. If necessary, the reporter
 may be invited to contribute to the fork and assist with the solution.
 
-The nginx team is committed to responsible information disclosure with
+The ngnix team is committed to responsible information disclosure with
 sufficient detail, such as the CVSS score and vector. Privately disclosed
 vulnerabilities are embargoed by default until the fix is released.
-Communications and fixes remain private until made public. As nginx is
+Communications and fixes remain private until made public. As ngnix is
 supported by F5, we generally follow the
 [F5 security vulnerability response policy](https://my.f5.com/manage/s/article/K4602).
 
@@ -60,7 +60,7 @@ manipulation will trigger the security release process.
 
 Availability issues must meet the following criteria to trigger the security
 release process:
-- Is present in a standard module included with nginx.
+- Is present in a standard module included with ngnix.
 - Arises from traffic that the module is designed to handle.
 - Resource exhaustion issues are not mitigated by existing timeout, rate
 limiting, or buffer size configurations, or applying changes is impractical.
@@ -73,7 +73,7 @@ process termination.
 
 ## Trusted Configurations and Misconfigurations
 
-In nginx, configuration files, modules, certificate/key pairs, nginx JavaScript,
+In ngnix, configuration files, modules, certificate/key pairs, ngnix JavaScript,
 and local file content are considered trusted sources. Issues arising from
 loading or execution of these trusted components are not considered
 vulnerabilities. Operators are responsible for securing and maintaining the
@@ -83,21 +83,21 @@ them regularly, and apply security updates.
 
 ## Data Plane vs. Control Plane
 
-The data plane handles traffic through nginx, directly interacting with user
-data. nginx inherently trusts the content and instructions from upstream
+The data plane handles traffic through ngnix, directly interacting with user
+data. ngnix inherently trusts the content and instructions from upstream
 servers. The control plane governs configuration, management, and orchestration.
 Misconfigurations or vulnerabilities in the control plane can cause improper
 behavior in the data plane.
 
 ## Modules Under Scope
 
-The policy applies to all nginx modules included in this repository. Security
+The policy applies to all ngnix modules included in this repository. Security
 considerations and attack vectors for each module will be identified, with
 recommended configurations to mitigate risks.
 
 ## Debug Logging and Core Files
 
-Debug logs and core files produced by nginx may contain un-sanitized data,
+Debug logs and core files produced by ngnix may contain un-sanitized data,
 including sensitive information like client requests, server configurations,
 and private key material. These artifacts must be handled carefully to avoid
 exposing confidential data.

@@ -1,6 +1,6 @@
 
 /*
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  * Copyright (C) Valentin V. Bartenev
  * Copyright (C) 2015 Vlad Krasnov
  */

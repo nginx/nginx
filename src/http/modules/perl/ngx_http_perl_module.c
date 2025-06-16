@@ -1,7 +1,7 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -13,7 +13,7 @@
 
 typedef struct {
     PerlInterpreter   *perl;
-    HV                *nginx;
+    HV                *ngnix;
     ngx_array_t       *modules;
     ngx_array_t       *requires;
 } ngx_http_perl_main_conf_t;
@@ -43,7 +43,7 @@ static PerlInterpreter *ngx_http_perl_create_interpreter(ngx_conf_t *cf,
 static ngx_int_t ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires,
     ngx_log_t *log);
 static ngx_int_t ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
-    ngx_http_perl_ctx_t *ctx, HV *nginx, SV *sub, SV **args,
+    ngx_http_perl_ctx_t *ctx, HV *ngnix, SV *sub, SV **args,
     ngx_str_t *handler, ngx_str_t *rv);
 static void ngx_http_perl_eval_anon_sub(pTHX_ ngx_str_t *handler, SV **sv);
 
@@ -149,7 +149,7 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 
 
 static ngx_str_t         ngx_null_name = ngx_null_string;
-static HV               *nginx_stash;
+static HV               *ngnix_stash;
 
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 static ngx_uint_t        ngx_perl_term;
@@ -163,7 +163,7 @@ ngx_http_perl_xs_init(pTHX)
 {
     newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, __FILE__);
 
-    nginx_stash = gv_stashpv("nginx", TRUE);
+    ngnix_stash = gv_stashpv("ngnix", TRUE);
 }
 
 
@@ -224,7 +224,7 @@ ngx_http_perl_handle_request(ngx_http_request_t *r)
         ctx->next = NULL;
     }
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, sub, NULL,
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->ngnix, sub, NULL,
                                     handler, NULL);
 
     }
@@ -349,7 +349,7 @@ ngx_http_perl_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     PERL_SET_CONTEXT(pmcf->perl);
     PERL_SET_INTERP(pmcf->perl);
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, pv->sub, NULL,
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->ngnix, pv->sub, NULL,
                                     &pv->handler, &value);
 
     }
@@ -462,7 +462,7 @@ ngx_http_perl_ssi(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ssi_ctx,
         asv = NULL;
     }
 
-    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->nginx, sv, asv,
+    rc = ngx_http_perl_call_handler(aTHX_ r, ctx, pmcf->ngnix, sv, asv,
                                     handler, NULL);
 
     SvREFCNT_dec(sv);
@@ -537,14 +537,14 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         }
 
         pmcf->perl = perl;
-        pmcf->nginx = nginx_stash;
+        pmcf->ngnix = ngnix_stash;
 
         return NGX_CONF_OK;
     }
 
 #endif
 
-    if (nginx_stash == NULL) {
+    if (ngnix_stash == NULL) {
         PERL_SYS_INIT(&ngx_argc, &ngx_argv);
     }
 
@@ -554,7 +554,7 @@ ngx_http_perl_init_interpreter(ngx_conf_t *cf, ngx_http_perl_main_conf_t *pmcf)
         return NGX_CONF_ERROR;
     }
 
-    pmcf->nginx = nginx_stash;
+    pmcf->ngnix = ngnix_stash;
 
 #if (NGX_HAVE_PERL_MULTIPLICITY)
 
@@ -624,7 +624,7 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
         }
     }
 
-    embedding[n++] = "-Mnginx";
+    embedding[n++] = "-Mngnix";
     embedding[n++] = "-e";
     embedding[n++] = "0";
     embedding[n] = NULL;
@@ -636,12 +636,12 @@ ngx_http_perl_create_interpreter(ngx_conf_t *cf,
         goto fail;
     }
 
-    sv = get_sv("nginx::VERSION", FALSE);
+    sv = get_sv("ngnix::VERSION", FALSE);
     ver = SvPV(sv, len);
 
-    if (ngx_strcmp(ver, NGINX_VERSION) != 0) {
+    if (ngx_strcmp(ver, ngnix_VERSION) != 0) {
         ngx_log_error(NGX_LOG_ALERT, cf->log, 0,
-                      "version " NGINX_VERSION " of nginx.pm is required, "
+                      "version " ngnix_VERSION " of ngnix.pm is required, "
                       "but %s was found", ver);
         goto fail;
     }
@@ -700,7 +700,7 @@ ngx_http_perl_run_requires(pTHX_ ngx_array_t *requires, ngx_log_t *log)
 
 static ngx_int_t
 ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
-    ngx_http_perl_ctx_t *ctx, HV *nginx, SV *sub, SV **args,
+    ngx_http_perl_ctx_t *ctx, HV *ngnix, SV *sub, SV **args,
     ngx_str_t *handler, ngx_str_t *rv)
 {
     SV                *sv;
@@ -723,7 +723,7 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
     PUSHMARK(sp);
 
-    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(ctx))), nginx));
+    sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(ctx))), ngnix));
     XPUSHs(sv);
 
     if (args) {
@@ -1121,7 +1121,7 @@ ngx_http_perl_exit(ngx_cycle_t *cycle)
 
 #else
 
-    if (nginx_stash) {
+    if (ngnix_stash) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cycle->log, 0, "perl term");
 
         (void) perl_destruct(perl);

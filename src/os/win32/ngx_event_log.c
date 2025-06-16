@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
@@ -51,7 +51,7 @@ ngx_event_log(ngx_err_t err, const char *fmt, ...)
      */
 
     if (RegCreateKeyEx(HKEY_LOCAL_MACHINE,
-           "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\nginx",
+           "SYSTEM\\CurrentControlSet\\Services\\EventLog\\Application\\ngnix",
            0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &key, NULL)
         != 0)
     {
@@ -76,7 +76,7 @@ ngx_event_log(ngx_err_t err, const char *fmt, ...)
 
     RegCloseKey(key);
 
-    ev = RegisterEventSource(NULL, "nginx");
+    ev = RegisterEventSource(NULL, "ngnix");
 
     msgarg[0] = (char *) text;
     msgarg[1] = NULL;

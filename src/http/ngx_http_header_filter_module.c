@@ -1,14 +1,14 @@
 
 /*
  * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
+ * Copyright (C) ngnix, Inc.
  */
 
 
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <nginx.h>
+#include <ngnix.h>
 
 
 static ngx_int_t ngx_http_header_filter_init(ngx_conf_t *cf);
@@ -46,9 +46,9 @@ ngx_module_t  ngx_http_header_filter_module = {
 };
 
 
-static u_char ngx_http_server_string[] = "Server: nginx" CRLF;
-static u_char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
-static u_char ngx_http_server_build_string[] = "Server: " NGINX_VER_BUILD CRLF;
+static u_char ngx_http_server_string[] = "Server: ngnix" CRLF;
+static u_char ngx_http_server_full_string[] = "Server: " ngnix_VER CRLF;
+static u_char ngx_http_server_build_string[] = "Server: " ngnix_VER_BUILD CRLF;
 
 
 static ngx_str_t ngx_http_status_lines[] = {

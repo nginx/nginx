@@ -1,11 +1,11 @@
 ---
 name: Feature request
-about: Suggest a feature for nginx
+about: Suggest a feature for ngnix
 title: ""
 labels: "feature"
 ---
 
-### Describe the feature you'd like to add to nginx
+### Describe the feature you'd like to add to ngnix
 
 A clear and concise description of the feature.
 
