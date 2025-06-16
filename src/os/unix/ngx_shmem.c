@@ -18,7 +18,8 @@ ngx_shm_alloc(ngx_shm_t *shm)
                                 PROT_READ|PROT_WRITE,
                                 MAP_ANON|MAP_SHARED, -1, 0);
 
-    if (shm->addr == NGX_INVALID_SHM) {
+    if (shm->addr == MAP_FAILED) {
+        shm->addr = NGX_INVALID_SHM;
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "mmap(MAP_ANON|MAP_SHARED, %uz) failed", shm->size);
         return NGX_ERROR;
@@ -57,7 +58,8 @@ ngx_shm_alloc(ngx_shm_t *shm)
     shm->addr = (u_char *) mmap(NULL, shm->size, PROT_READ|PROT_WRITE,
                                 MAP_SHARED, fd, 0);
 
-    if (shm->addr == NGX_INVALID_SHM) {
+    if (shm->addr == MAP_FAILED) {
+        shm->addr = NGX_INVALID_SHM;
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno,
                       "mmap(/dev/zero, MAP_SHARED, %uz) failed", shm->size);
     }
@@ -105,7 +107,8 @@ ngx_shm_alloc(ngx_shm_t *shm)
 
     shm->addr = shmat(id, NULL, 0);
 
-    if (shm->addr == NGX_INVALID_SHM) {
+    if (shm->addr == (void *) -1) {
+        shm->addr = NGX_INVALID_SHM;
         ngx_log_error(NGX_LOG_ALERT, shm->log, ngx_errno, "shmat() failed");
     }
 
