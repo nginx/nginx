@@ -27,6 +27,8 @@
 #define NGX_HTTP_V2_NO_TRAILERS           (ngx_http_v2_out_frame_t *) -1
 
 
+static ngx_int_t ngx_http_v2_header_filter(ngx_http_request_t *r);
+
 static ngx_http_v2_out_frame_t *ngx_http_v2_create_headers_frame(
     ngx_http_request_t *r, u_char *pos, u_char *end, ngx_uint_t fin);
 static ngx_http_v2_out_frame_t *ngx_http_v2_create_trailers_frame(
