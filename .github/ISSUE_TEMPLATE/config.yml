@@ -1,0 +1,12 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Talk to the NGINX community!
+    url: https://community.nginx.org
+    about: A community forum for NGINX users, developers, and contributors
+  - name: 📝 Code of Conduct
+    url: https://www.contributor-covenant.org/version/2/1/code_of_conduct
+    about: NGINX follows the Contributor Covenant Code of Conduct to ensure a safe and inclusive community
+  - name: 💼 For commercial & enterprise users
+    url: https://www.f5.com/products/nginx
+    about: F5 offers a wide range of NGINX products for commercial & enterprise users
