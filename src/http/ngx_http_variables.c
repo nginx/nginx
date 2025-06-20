@@ -4,12 +4,10 @@
  * Copyright (C) Nginx, Inc.
  */
 
-
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <nginx.h>
-
 
 static ngx_http_variable_t *ngx_http_add_prefix_variable(ngx_conf_t *cf,
     ngx_str_t *name, ngx_uint_t flags);
@@ -131,7 +129,6 @@ static ngx_int_t ngx_http_variable_connection_requests(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_connection_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
-
 static ngx_int_t ngx_http_variable_nginx_version(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_hostname(ngx_http_request_t *r,
@@ -165,7 +162,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("http_host"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.host), 0, 0 },
-
+	  
     { ngx_string("http_user_agent"), NULL, ngx_http_variable_header,
       offsetof(ngx_http_request_t, headers_in.user_agent), 0, 0 },
 
@@ -397,7 +394,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("arg_"), NULL, ngx_http_variable_argument,
       0, NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_PREFIX, 0 },
-
+	 
       ngx_http_null_variable
 };
 
@@ -1030,7 +1027,6 @@ ngx_http_variable_unknown_header(ngx_http_request_t *r,
     return NGX_OK;
 }
 
-
 static ngx_int_t
 ngx_http_variable_request_line(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -1548,7 +1544,6 @@ ngx_http_variable_set_args(ngx_http_request_t *r,
     r->args.data = v->data;
     r->valid_unparsed_uri = 0;
 }
-
 
 static ngx_int_t
 ngx_http_variable_is_args(ngx_http_request_t *r,
