@@ -129,6 +129,15 @@ static ngx_conf_enum_t  ngx_http_core_server_tokens[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_http_core_not_modified_check[] = {
+    { ngx_string("off"), NGX_HTTP_NMC_OFF },
+    { ngx_string("any"), NGX_HTTP_NMC_ANY },
+    { ngx_string("strict"), NGX_HTTP_NMC_STRICT },
+    { ngx_string("prefer_if_none_match"), NGX_HTTP_NMC_PREFER_INM },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_conf_enum_t  ngx_http_core_if_modified_since[] = {
     { ngx_string("off"), NGX_HTTP_IMS_OFF },
     { ngx_string("exact"), NGX_HTTP_IMS_EXACT },
@@ -641,6 +650,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, server_tokens),
       &ngx_http_core_server_tokens },
+
+    { ngx_string("not_modified_check"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, not_modified_check),
+      &ngx_http_core_not_modified_check },
 
     { ngx_string("if_modified_since"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -3630,6 +3646,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
     clcf->satisfy = NGX_CONF_UNSET_UINT;
     clcf->auth_delay = NGX_CONF_UNSET_MSEC;
+    clcf->not_modified_check = NGX_CONF_UNSET_UINT;
     clcf->if_modified_since = NGX_CONF_UNSET_UINT;
     clcf->max_ranges = NGX_CONF_UNSET_UINT;
     clcf->client_body_in_file_only = NGX_CONF_UNSET_UINT;
@@ -3851,6 +3868,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->satisfy, prev->satisfy,
                               NGX_HTTP_SATISFY_ALL);
     ngx_conf_merge_msec_value(conf->auth_delay, prev->auth_delay, 0);
+    ngx_conf_merge_uint_value(conf->not_modified_check,
+                              prev->not_modified_check, NGX_HTTP_NMC_STRICT);
     ngx_conf_merge_uint_value(conf->if_modified_since, prev->if_modified_since,
                               NGX_HTTP_IMS_EXACT);
     ngx_conf_merge_uint_value(conf->max_ranges, prev->max_ranges,
