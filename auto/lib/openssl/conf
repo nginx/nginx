@@ -12,7 +12,6 @@ if [ $OPENSSL != NONE ]; then
 
     if [ $USE_OPENSSL_QUIC = YES ]; then
         have=NGX_QUIC . auto/have
-        have=NGX_QUIC_OPENSSL_COMPAT . auto/have
     fi
 
     case "$CC" in
@@ -148,14 +147,18 @@ else
 
             if [ $USE_OPENSSL_QUIC = YES ]; then
 
-                ngx_feature="OpenSSL QUIC support"
+                ngx_feature="OpenSSL QUIC API"
                 ngx_feature_name="NGX_QUIC"
-                ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
+                ngx_feature_test="SSL_set_quic_tls_cbs(NULL, NULL, NULL)"
                 . auto/feature
 
                 if [ $ngx_found = no ]; then
-                    have=NGX_QUIC_OPENSSL_COMPAT . auto/have
+                    ngx_feature="BoringSSL-like QUIC API"
+                    ngx_feature_test="SSL_set_quic_method(NULL, NULL)"
+                    . auto/feature
+                fi
 
+                if [ $ngx_found = no ]; then
                     ngx_feature="OpenSSL QUIC compatibility"
                     ngx_feature_test="SSL_CTX_add_custom_ext(NULL, 0, 0,
                                                  NULL, NULL, NULL, NULL, NULL)"

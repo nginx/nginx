@@ -203,6 +203,23 @@ ngx_event_accept(ngx_event_t *ev)
             }
         }
 
+#if (NGX_HAVE_KEEPALIVE_TUNABLE && NGX_DARWIN)
+
+        /* Darwin doesn't inherit TCP_KEEPALIVE from a listening socket */
+
+        if (ls->keepidle) {
+            if (setsockopt(s, IPPROTO_TCP, TCP_KEEPALIVE,
+                           (const void *) &ls->keepidle, sizeof(int))
+                == -1)
+            {
+                ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_socket_errno,
+                              "setsockopt(TCP_KEEPALIVE, %d) failed, ignored",
+                              ls->keepidle);
+            }
+        }
+
+#endif
+
         *log = ls->log;
 
         c->recv = ngx_recv;
