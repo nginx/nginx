@@ -20,6 +20,7 @@
 #define NGX_HTTP_V3_HEADER_METHOD_GET                17
 #define NGX_HTTP_V3_HEADER_SCHEME_HTTP               22
 #define NGX_HTTP_V3_HEADER_SCHEME_HTTPS              23
+#define NGX_HTTP_V3_HEADER_STATUS_103                24
 #define NGX_HTTP_V3_HEADER_STATUS_200                25
 #define NGX_HTTP_V3_HEADER_ACCEPT_ENCODING           31
 #define NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN   53
@@ -640,9 +641,7 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
 
     len += ngx_http_v3_encode_field_section_prefix(NULL, 0, 0, 0);
 
-    len += ngx_http_v3_encode_field_lri(NULL, 0,
-                                        NGX_HTTP_V3_HEADER_STATUS_200,
-                                        NULL, 3);
+    len += ngx_http_v3_encode_field_ri(NULL, 0, NGX_HTTP_V3_HEADER_STATUS_103);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 header len:%uz", len);
@@ -659,10 +658,8 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
                    "http3 output header: \":status: %03ui\"",
                    (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
 
-    b->last = (u_char *) ngx_http_v3_encode_field_lri(b->last, 0,
-                                             NGX_HTTP_V3_HEADER_STATUS_200,
-                                             NULL, 3);
-    b->last = ngx_sprintf(b->last, "%03ui", (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
+    b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
+                                                NGX_HTTP_V3_HEADER_STATUS_103);
 
     part = &r->headers_out.headers.part;
     header = part->elts;
