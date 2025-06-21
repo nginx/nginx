@@ -1192,6 +1192,20 @@ ngx_http_process_request_line(ngx_event_t *rev)
                 r->headers_in.server = host;
             }
 
+            if (r->port_end) {
+                rc = ngx_atoi(r->port_start, r->port_end - r->port_start);
+
+                if (rc < 1 || rc > 65535) {
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "client sent invalid port in request line");
+                    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                    break;
+                }
+
+                r->headers_in.port.len = r->port_end - r->port_start;
+                r->headers_in.port.data = r->port_start;
+            }
+
             if (r->http_version < NGX_HTTP_VERSION_10) {
 
                 if (r->headers_in.server.len == 0
@@ -1270,6 +1284,11 @@ ngx_int_t
 ngx_http_process_request_uri(ngx_http_request_t *r)
 {
     ngx_http_core_srv_conf_t  *cscf;
+
+    if (r->uri_end == NULL) {
+        r->uri_start = (u_char *) "/";
+        r->uri_end = r->uri_start + 1;
+    }
 
     if (r->args_start) {
         r->uri.len = r->args_start - 1 - r->uri_start;
@@ -1768,6 +1787,13 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             }
         }
 
+        if (r->port_end) {
+            r->port_start = new + (r->port_start - old);
+            if (r->port_end) {
+                r->port_end = new + (r->port_end - old);
+            }
+        }
+
         if (r->uri_ext) {
             r->uri_ext = new + (r->uri_ext - old);
         }
@@ -2053,13 +2079,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
                             ngx_atotm(r->headers_in.keep_alive->value.data,
                                       r->headers_in.keep_alive->value.len);
         }
-    }
-
-    if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
     }
 
     if (r->method == NGX_HTTP_TRACE) {
