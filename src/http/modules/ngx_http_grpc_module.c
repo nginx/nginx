@@ -1928,6 +1928,17 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "grpc header done");
 
+                if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+                    if (ctx->end_stream) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream prematurely closed stream");
+                        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                    }
+
+                    ctx->status = 0;
+                    return NGX_HTTP_UPSTREAM_EARLY_HINTS;
+                }
+
                 if (ctx->end_stream) {
                     u->headers_in.content_length_n = 0;
 

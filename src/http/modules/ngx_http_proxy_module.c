@@ -1985,8 +1985,18 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy header done");
 
+            ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
             if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
-                return NGX_OK;
+                ctx->status.code = 0;
+                ctx->status.count = 0;
+                ctx->status.start = NULL;
+                ctx->status.end = NULL;
+
+                r->upstream->process_header =
+                                            ngx_http_proxy_process_status_line;
+                r->state = 0;
+                return NGX_HTTP_UPSTREAM_EARLY_HINTS;
             }
 
             /*
@@ -2035,8 +2045,6 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
              * set u->keepalive if response has no body; this allows to keep
              * connections alive in case of r->header_only or X-Accel-Redirect
              */
-
-            ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
             if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
                 || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
