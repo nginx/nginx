@@ -1123,7 +1123,7 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
-    if (rc == NGX_AGAIN) {
+    if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS) {
         rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
@@ -2533,9 +2533,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             continue;
         }
 
-        if (rc == NGX_OK
-            && u->headers_in.status_n == NGX_HTTP_EARLY_HINTS)
-        {
+        if (rc == NGX_HTTP_UPSTREAM_EARLY_HINTS) {
             rc = ngx_http_upstream_process_early_hints(r, u);
 
             if (rc == NGX_OK) {
@@ -2649,10 +2647,6 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "upstream sent too big early hints");
         }
-    }
-
-    if (u->reinit_request(r) != NGX_OK) {
-        return NGX_ERROR;
     }
 
     ngx_http_clean_header(r);

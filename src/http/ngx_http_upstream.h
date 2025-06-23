@@ -43,6 +43,7 @@
                                              |NGX_HTTP_UPSTREAM_FT_HTTP_429)
 
 #define NGX_HTTP_UPSTREAM_INVALID_HEADER     40
+#define NGX_HTTP_UPSTREAM_EARLY_HINTS        41
 
 
 #define NGX_HTTP_UPSTREAM_IGN_XA_REDIRECT    0x00000002
