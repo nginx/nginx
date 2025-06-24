@@ -110,7 +110,7 @@ zip: export
 	cp -p $(OBJS)/lib/$(OPENSSL)/LICENSE.txt			\
 		$(TEMP)/$(NGINX)/docs/OpenSSL.LICENSE
 
-	cp -p $(OBJS)/lib/$(PCRE)/LICENCE				\
+	cp -p $(OBJS)/lib/$(PCRE)/LICENCE.md				\
 		$(TEMP)/$(NGINX)/docs/PCRE.LICENCE
 
 	sed -ne '/^ (C) 1995-20/,/^  jloup@gzip\.org/p'			\
