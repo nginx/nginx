@@ -153,6 +153,7 @@ syn keyword ngxDirective contained chunked_transfer_encoding
 syn keyword ngxDirective contained client_body_buffer_size
 syn keyword ngxDirective contained client_body_in_file_only
 syn keyword ngxDirective contained client_body_in_single_buffer
+syn keyword ngxDirective contained client_body_temp_access
 syn keyword ngxDirective contained client_body_temp_path
 syn keyword ngxDirective contained client_body_timeout
 syn keyword ngxDirective contained client_header_buffer_size
