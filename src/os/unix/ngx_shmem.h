@@ -13,6 +13,9 @@
 #include <ngx_core.h>
 
 
+#define NGX_INVALID_SHM  NULL
+
+
 typedef struct {
     u_char      *addr;
     size_t       size;

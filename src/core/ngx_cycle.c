@@ -875,7 +875,7 @@ failed:
             i = 0;
         }
 
-        if (shm_zone[i].shm.addr == NULL) {
+        if (shm_zone[i].shm.addr == NGX_INVALID_SHM) {
             continue;
         }
 
@@ -1356,7 +1356,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
 
     shm_zone->data = NULL;
     shm_zone->shm.log = cf->cycle->log;
-    shm_zone->shm.addr = NULL;
+    shm_zone->shm.addr = NGX_INVALID_SHM;
     shm_zone->shm.size = size;
     shm_zone->shm.name = *name;
     shm_zone->shm.exists = 0;
