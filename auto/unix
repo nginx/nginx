@@ -853,6 +853,16 @@ ngx_feature_test="void *p; p = memalign(4096, 4096);
 . auto/feature
 
 
+ngx_feature="malloc_trim()"
+ngx_feature_name="NGX_HAVE_MALLOC_TRIM"
+ngx_feature_run=no
+ngx_feature_incs="#include <malloc.h>"
+ngx_feature_path=
+ngx_feature_libs=
+ngx_feature_test="malloc_trim(0)"
+. auto/feature
+
+
 ngx_feature="mmap(MAP_ANON|MAP_SHARED)"
 ngx_feature_name="NGX_HAVE_MAP_ANON"
 ngx_feature_run=yes
