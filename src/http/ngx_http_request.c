@@ -2739,7 +2739,7 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
                    "http terminate cleanup count:%d blk:%d",
                    mr->count, mr->blocked);
 
-    if (mr->write_event_handler) {
+    if (!mr->connection->error && mr->write_event_handler) {
 
         if (mr->blocked) {
             r = r->connection->data;
