@@ -1003,6 +1003,7 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
 {
     ssize_t                  n;
     ngx_buf_t               *b;
+    ngx_str_t                host;
     ngx_connection_t        *c;
     ngx_http_v3_session_t   *h3c;
     ngx_http_v3_srv_conf_t  *h3scf;
@@ -1034,11 +1035,13 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         goto failed;
     }
 
-    if (r->headers_in.host) {
-        if (r->headers_in.host->value.len != r->headers_in.server.len
-            || ngx_memcmp(r->headers_in.host->value.data,
-                          r->headers_in.server.data,
-                          r->headers_in.server.len)
+    if (r->headers_in.host && r->host_end) {
+
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        if (r->headers_in.host->value.len != host.len
+            || ngx_memcmp(r->headers_in.host->value.data, host.data, host.len)
                != 0)
         {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
