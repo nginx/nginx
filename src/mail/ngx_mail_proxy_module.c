@@ -605,8 +605,12 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         if (pcf->xclient) {
             s->mail_state = ngx_smtp_helo_xclient;
 
-        } else if (s->auth_method == NGX_MAIL_AUTH_NONE) {
-            s->mail_state = ngx_smtp_helo_from;
+        } else if (s->proxy_auth_method == NGX_MAIL_AUTH_NONE) {
+            if (s->smtp_from.len) {
+                s->mail_state = ngx_smtp_helo_from;
+            } else {
+                s->mail_state = ngx_smtp_helo;
+            }
 
         } else if (pcf->smtp_auth) {
             s->mail_state = ngx_smtp_helo_auth;
@@ -667,8 +671,12 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         if (s->smtp_helo.len) {
             s->mail_state = ngx_smtp_xclient_helo;
 
-        } else if (s->auth_method == NGX_MAIL_AUTH_NONE) {
-            s->mail_state = ngx_smtp_xclient_from;
+        } else if (s->proxy_auth_method == NGX_MAIL_AUTH_NONE) {
+            if (s->smtp_from.len) {
+                s->mail_state = ngx_smtp_xclient_from;
+            } else {
+                s->mail_state = ngx_smtp_xclient_helo;
+            }
 
         } else if (pcf->smtp_auth) {
             s->mail_state = ngx_smtp_xclient_auth;
@@ -700,8 +708,12 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
 
         pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
 
-        if (s->auth_method == NGX_MAIL_AUTH_NONE) {
-            s->mail_state = ngx_smtp_helo_from;
+        if (s->proxy_auth_method == NGX_MAIL_AUTH_NONE) {
+            if (s->smtp_from.len) {
+                s->mail_state = ngx_smtp_helo_from;
+            } else {
+                s->mail_state = ngx_smtp_helo;
+            }
 
         } else if (pcf->smtp_auth) {
             s->mail_state = ngx_smtp_helo_auth;
