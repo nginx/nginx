@@ -1184,37 +1184,21 @@ ngx_mail_proxy_handler(ngx_event_t *ev)
         return;
     }
 
-    if (c == s->connection) {
-        if (ev->write) {
-            recv_action = "proxying and reading from upstream";
-            send_action = "proxying and sending to client";
-            src = s->proxy->upstream.connection;
-            dst = c;
-            b = s->proxy->buffer;
-
-        } else {
-            recv_action = "proxying and reading from client";
-            send_action = "proxying and sending to upstream";
-            src = c;
-            dst = s->proxy->upstream.connection;
-            b = s->buffer;
-        }
+    if ((c == s->connection && ev->write)
+        || (c != s->connection && !ev->write))
+    {
+        recv_action = "proxying and reading from upstream";
+        send_action = "proxying and sending to client";
+        src = s->proxy->upstream.connection;
+        dst = s->connection;
+        b = s->proxy->buffer;
 
     } else {
-        if (ev->write) {
-            recv_action = "proxying and reading from client";
-            send_action = "proxying and sending to upstream";
-            src = s->connection;
-            dst = c;
-            b = s->buffer;
-
-        } else {
-            recv_action = "proxying and reading from upstream";
-            send_action = "proxying and sending to client";
-            src = c;
-            dst = s->connection;
-            b = s->proxy->buffer;
-        }
+        recv_action = "proxying and reading from client";
+        send_action = "proxying and sending to upstream";
+        src = s->connection;
+        dst = s->proxy->upstream.connection;
+        b = s->buffer;
     }
 
     do_write = ev->write ? 1 : 0;
