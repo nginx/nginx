@@ -623,6 +623,12 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
             }
 
             if (st->huffman) {
+                if (n > NGX_MAX_INT_T_VALUE / 8) {
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "client sent too large field line");
+                    return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+                }
+
                 n = n * 8 / 5;
                 st->huffstate = 0;
             }
