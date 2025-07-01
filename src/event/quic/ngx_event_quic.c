@@ -355,23 +355,23 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     ngx_quic_init_rtt(qc);
 
-    qc->pto.log = c->log;
+    qc->pto.log = ngx_cycle->log;
     qc->pto.data = c;
     qc->pto.handler = ngx_quic_pto_handler;
 
-    qc->push.log = c->log;
+    qc->push.log = ngx_cycle->log;
     qc->push.data = c;
     qc->push.handler = ngx_quic_push_handler;
 
-    qc->close.log = c->log;
+    qc->close.log = ngx_cycle->log;
     qc->close.data = c;
     qc->close.handler = ngx_quic_close_handler;
 
-    qc->path_validation.log = c->log;
+    qc->path_validation.log = ngx_cycle->log;
     qc->path_validation.data = c;
     qc->path_validation.handler = ngx_quic_path_handler;
 
-    qc->key_update.log = c->log;
+    qc->key_update.log = ngx_cycle->log;
     qc->key_update.data = c;
     qc->key_update.handler = ngx_quic_keys_update;
 
@@ -788,9 +788,9 @@ ngx_quic_close_handler(ngx_event_t *ev)
     ngx_connection_t       *c;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic close handler");
-
     c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic close handler");
 
     if (ev->timedout) {
         ev->timedout = 0;
@@ -1618,9 +1618,9 @@ ngx_quic_push_handler(ngx_event_t *ev)
 {
     ngx_connection_t  *c;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic push handler");
-
     c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic push handler");
 
     if (ngx_quic_output(c) != NGX_OK) {
         ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "output error");
