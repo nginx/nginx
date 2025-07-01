@@ -1110,11 +1110,11 @@ ngx_quic_pto_handler(ngx_event_t *ev)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic pto timer");
-
     c = ev->data;
     qc = ngx_quic_get_connection(c);
     now = ngx_current_msec;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic pto timer");
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
