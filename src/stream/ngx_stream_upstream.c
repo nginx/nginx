@@ -8,7 +8,9 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_stream.h>
-
+#if (NGX_STREAM_SSL)
+#include <openssl/ssl.h>
+#endif
 
 static ngx_int_t ngx_stream_upstream_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
@@ -30,6 +32,47 @@ static char *ngx_stream_upstream_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
 static void *ngx_stream_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_stream_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
 
+#if (NGX_STREAM_SSL)
+extern u_char *last_stream_ssl_protocol;
+extern u_char *last_stream_ssl_cipher;
+
+#endif
+#if (NGX_STREAM_SSL)
+u_char *
+ngx_stream_ssl_get_backend_cipher(ngx_connection_t *c)
+{
+    const SSL_CIPHER *cipher;
+    const char *cipher_name;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    cipher = SSL_get_current_cipher(c->ssl->connection);
+    if (cipher == NULL) {
+        return NULL;
+    }
+
+    cipher_name = SSL_CIPHER_get_name(cipher);
+    return (u_char *) cipher_name;
+}
+#endif
+
+#if (NGX_STREAM_SSL)
+u_char *
+ngx_stream_ssl_get_backend_protocol(ngx_connection_t *c)
+{
+    const char *proto;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    proto = SSL_get_version(c->ssl->connection);
+    return (u_char *) proto;
+}
+
+#endif /* NGX_HTTP_SSL */
 
 static ngx_command_t  ngx_stream_upstream_commands[] = {
 
@@ -70,15 +113,18 @@ static ngx_command_t  ngx_stream_upstream_commands[] = {
 
 
 static ngx_stream_module_t  ngx_stream_upstream_module_ctx = {
-    ngx_stream_upstream_add_variables,     /* preconfiguration */
-    NULL,                                  /* postconfiguration */
 
+    ngx_stream_upstream_add_variables,          /* preconfiguration */
+
+    NULL,                                  /* postconfiguration */
+                               
     ngx_stream_upstream_create_main_conf,  /* create main configuration */
     ngx_stream_upstream_init_main_conf,    /* init main configuration */
 
     NULL,                                  /* create server configuration */
     NULL                                   /* merge server configuration */
 };
+
 
 
 ngx_module_t  ngx_stream_upstream_module = {
@@ -96,12 +142,28 @@ ngx_module_t  ngx_stream_upstream_module = {
     NGX_MODULE_V1_PADDING
 };
 
+static ngx_int_t
+ngx_stream_variable_backend_ssl_protocol(ngx_stream_session_t *s,
+                                         ngx_stream_variable_value_t *v,
+                                         uintptr_t data);
 
+static ngx_int_t
+ngx_stream_variable_backend_ssl_cipher(ngx_stream_session_t *s,
+                                       ngx_stream_variable_value_t *v,
+                                       uintptr_t data);
 static ngx_stream_variable_t  ngx_stream_upstream_vars[] = {
 
     { ngx_string("upstream_addr"), NULL,
       ngx_stream_upstream_addr_variable, 0,
       NGX_STREAM_VAR_NOCACHEABLE, 0 },
+	  
+	  	{ ngx_string("backend_ssl_protocol"), NULL,
+		ngx_stream_variable_backend_ssl_protocol, 0,
+		NGX_STREAM_VAR_NOCACHEABLE, 0 },
+
+	{ ngx_string("backend_ssl_cipher"), NULL,
+		ngx_stream_variable_backend_ssl_cipher, 0,
+		NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("upstream_bytes_sent"), NULL,
       ngx_stream_upstream_bytes_variable, 0,
@@ -202,6 +264,43 @@ ngx_stream_upstream_addr_variable(ngx_stream_session_t *s,
     return NGX_OK;
 }
 
+static ngx_int_t
+ngx_stream_variable_backend_ssl_protocol(ngx_stream_session_t *s,
+                                         ngx_stream_variable_value_t *v,
+                                         uintptr_t data)
+{
+    if (last_stream_ssl_protocol == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = ngx_strlen(last_stream_ssl_protocol);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = last_stream_ssl_protocol;
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_stream_variable_backend_ssl_cipher(ngx_stream_session_t *s,
+                                         ngx_stream_variable_value_t *v,
+                                         uintptr_t data)
+{
+    if (last_stream_ssl_cipher == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->len = ngx_strlen(last_stream_ssl_cipher);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = last_stream_ssl_cipher;
+
+    return NGX_OK;
+}
 
 static ngx_int_t
 ngx_stream_upstream_bytes_variable(ngx_stream_session_t *s,

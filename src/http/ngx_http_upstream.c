@@ -28,7 +28,20 @@ static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 #endif
+static u_char *last_ssl_cipher = NULL;
+static u_char *last_ssl_protocol = NULL;
+static ngx_int_t ssl_protocol_index = NGX_ERROR;
+static ngx_int_t ssl_cipher_index = NGX_ERROR;
+u_char *ngx_ssl_get_backend_protocol(ngx_connection_t *c);
+u_char *ngx_ssl_get_backend_cipher(ngx_connection_t *c);
 
+static ngx_int_t ngx_http_variable_backend_ssl_cipher(ngx_http_request_t *r,
+                                                      ngx_http_variable_value_t *v,
+                                                      uintptr_t data);
+
+static ngx_int_t ngx_http_variable_backend_ssl_protocol(ngx_http_request_t *r,
+                                                        ngx_http_variable_value_t *v,
+                                                        uintptr_t data);
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
 static void ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx);
 static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
@@ -404,6 +417,14 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
     { ngx_string("upstream_addr"), NULL,
       ngx_http_upstream_addr_variable, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
+	  
+	{ ngx_string("backend_ssl_protocol"), NULL,
+      ngx_http_variable_backend_ssl_protocol, 0, 
+	  NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("backend_ssl_cipher"), NULL,
+      ngx_http_variable_backend_ssl_cipher, 0, 
+	  NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("upstream_status"), NULL,
       ngx_http_upstream_status_variable, 0,
@@ -1835,6 +1856,11 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
     long  rc;
 
     if (c->ssl->handshaked) {
+		if (c->ssl && c->ssl->connection) {
+    last_ssl_protocol = (u_char *) SSL_get_version(c->ssl->connection);
+    last_ssl_cipher = (u_char *) SSL_get_cipher_name(c->ssl->connection);
+}
+
 
         if (u->conf->ssl_verify) {
             rc = SSL_get_verify_result(c->ssl->connection);
@@ -2576,9 +2602,32 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
-    if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
-        return;
+if (u->peer.connection && u->peer.connection->ssl && u->peer.connection->ssl->connection) {
+    SSL *ssl_conn = u->peer.connection->ssl->connection;
+
+    const char *proto = SSL_get_version(ssl_conn);
+    const char *cipher = SSL_get_cipher_name(ssl_conn);
+
+    if (ssl_protocol_index != NGX_ERROR) {
+        r->variables[ssl_protocol_index].data = (u_char *) proto;
+        r->variables[ssl_protocol_index].len = ngx_strlen(proto);
+        r->variables[ssl_protocol_index].valid = 1;
+        r->variables[ssl_protocol_index].no_cacheable = 0;
+        r->variables[ssl_protocol_index].not_found = 0;
     }
+
+    if (ssl_cipher_index != NGX_ERROR) {
+        r->variables[ssl_cipher_index].data = (u_char *) cipher;
+        r->variables[ssl_cipher_index].len = ngx_strlen(cipher);
+        r->variables[ssl_cipher_index].valid = 1;
+        r->variables[ssl_cipher_index].no_cacheable = 0;
+        r->variables[ssl_cipher_index].not_found = 0;
+    }
+}
+
+if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
+    return;
+}
 
     ngx_http_upstream_send_response(r, u);
 }
@@ -2868,7 +2917,74 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
     return NGX_DECLINED;
 }
 
+static ngx_int_t
+ngx_http_variable_backend_ssl_protocol(ngx_http_request_t *r,
+                                        ngx_http_variable_value_t *v,
+                                        uintptr_t data)
+{
+    if (last_ssl_protocol == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
 
+    v->data = last_ssl_protocol;
+    v->len = ngx_strlen(last_ssl_protocol);
+    v->valid = 1;
+    v->no_cacheable = 1;
+    v->not_found = 0;
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_variable_backend_ssl_cipher(ngx_http_request_t *r,
+                                      ngx_http_variable_value_t *v,
+                                      uintptr_t data)
+{
+    if (last_ssl_cipher == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = last_ssl_cipher;
+    v->len = ngx_strlen(last_ssl_cipher);
+    v->valid = 1;
+    v->no_cacheable = 1;
+    v->not_found = 0;
+    return NGX_OK;
+}
+
+
+u_char *
+ngx_ssl_get_backend_cipher(ngx_connection_t *c)
+{
+    const SSL_CIPHER *cipher;
+    const char *cipher_name;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    cipher = SSL_get_current_cipher(c->ssl->connection);
+    if (cipher == NULL) {
+        return NULL;
+    }
+
+    cipher_name = SSL_CIPHER_get_name(cipher);
+    return (u_char *) cipher_name;
+}
+
+u_char *
+ngx_ssl_get_backend_protocol(ngx_connection_t *c)
+{
+    const char *proto;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    proto = SSL_get_version(c->ssl->connection);
+    return (u_char *) proto;
+}
 static ngx_int_t
 ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
@@ -5808,7 +5924,6 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     return NGX_OK;
 }
 
-
 static ngx_int_t
 ngx_http_upstream_add_variables(ngx_conf_t *cf)
 {
@@ -5823,6 +5938,17 @@ ngx_http_upstream_add_variables(ngx_conf_t *cf)
         var->get_handler = v->get_handler;
         var->data = v->data;
     }
+ngx_str_t proto_name = ngx_string("backend_ssl_protocol");
+ssl_protocol_index = ngx_http_get_variable_index(cf, &proto_name);
+if (ssl_protocol_index == NGX_ERROR) {
+    return NGX_ERROR;
+}
+
+ngx_str_t cipher_name = ngx_string("backend_ssl_cipher");
+ssl_cipher_index = ngx_http_get_variable_index(cf, &cipher_name);
+if (ssl_cipher_index == NGX_ERROR) {
+    return NGX_ERROR;
+}
 
     return NGX_OK;
 }
