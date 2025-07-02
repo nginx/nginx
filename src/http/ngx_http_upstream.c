@@ -1812,18 +1812,32 @@ ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c)
     ngx_http_upstream_t  *u;
 
     r = c->data;
-
     u = r->upstream;
-    c = r->connection;
+   
+   if (c->ssl && c->ssl->handshaked) {
+        SSL *ssl_conn = c->ssl->connection;
 
-    ngx_http_set_log_request(c->log, r);
+        const char *proto = SSL_get_version(ssl_conn);
+        const char *cipher = SSL_get_cipher_name(ssl_conn);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http upstream ssl handshake: \"%V?%V\"",
-                   &r->uri, &r->args);
+        if (r->upstream_states && r->upstream_states->nelts > 0) {
+            ngx_http_upstream_state_t *state = r->upstream_states->elts;
 
-    ngx_http_upstream_ssl_handshake(r, u, u->peer.connection);
+            state[0].backend_ssl_protocol.len = ngx_strlen(proto);
+            state[0].backend_ssl_protocol.data = ngx_pnalloc(r->pool, state[0].backend_ssl_protocol.len);
+            if (state[0].backend_ssl_protocol.data) {
+                ngx_memcpy(state[0].backend_ssl_protocol.data, proto, state[0].backend_ssl_protocol.len);
+            }
 
+            state[0].backend_ssl_cipher.len = ngx_strlen(cipher);
+            state[0].backend_ssl_cipher.data = ngx_pnalloc(r->pool, state[0].backend_ssl_cipher.len);
+            if (state[0].backend_ssl_cipher.data) {
+                ngx_memcpy(state[0].backend_ssl_cipher.data, cipher, state[0].backend_ssl_cipher.len);
+            }
+        }
+    }
+
+    ngx_http_upstream_ssl_handshake(r, u, c);
     ngx_http_run_posted_requests(c);
 }
 
@@ -2577,7 +2591,6 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
         return;
     }
-
     ngx_http_upstream_send_response(r, u);
 }
 
