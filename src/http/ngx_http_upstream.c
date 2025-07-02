@@ -1812,6 +1812,7 @@ ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c)
     ngx_http_upstream_t  *u;
 
     r = c->data;
+	
     u = r->upstream;
    
    if (c->ssl && c->ssl->handshaked) {
@@ -1838,6 +1839,7 @@ ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c)
     }
 
     ngx_http_upstream_ssl_handshake(r, u, c);
+	
     ngx_http_run_posted_requests(c);
 }
 

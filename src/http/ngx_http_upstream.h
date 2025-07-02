@@ -61,8 +61,8 @@ typedef struct {
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;
     ngx_msec_t                       connect_time;
-	ngx_str_t  						backend_ssl_protocol;
-    ngx_str_t  						backend_ssl_cipher;
+	ngx_str_t  						 backend_ssl_protocol;
+    ngx_str_t  						 backend_ssl_cipher;
     ngx_msec_t                       header_time;
     ngx_msec_t                       queue_time;
     off_t                            response_length;
@@ -268,6 +268,7 @@ typedef struct {
     ngx_uint_t                       conf;
     ngx_uint_t                       redirect;  /* unsigned   redirect:1; */
 } ngx_http_upstream_header_t;
+
 
 typedef struct {
     ngx_list_t                       headers;
