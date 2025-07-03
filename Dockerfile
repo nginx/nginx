@@ -1,11 +1,10 @@
-# Start with a minimal base image
 FROM debian:bookworm-slim
-# Copy the Nginx binary from the build environment
-# Ensure you have already compiled Nginx and have it in your host directory under /usr/local/nginx/sbin/nginx
-COPY ./nginx /usr/local/bin/nginx
 
-# Expose the required ports
+# Copy entire NGINX install directory
+COPY ./nginx /usr/local/nginx
+
 EXPOSE 80 443
 
-# Set the entrypoint and run Nginx in the foreground
-ENTRYPOINT ["/usr/local/bin/nginx", "-g", "daemon off;"]
+# Use full path to NGINX binary and it will find its own config and logs
+ENTRYPOINT ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
+
