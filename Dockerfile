@@ -1,6 +1,5 @@
 # Start with a minimal base image
-FROM debian:bullseye-slim
-
+FROM debian:bookworm-slim
 # Copy the Nginx binary from the build environment
 # Ensure you have already compiled Nginx and have it in your host directory under /usr/local/nginx/sbin/nginx
 COPY ./nginx /usr/local/bin/nginx
