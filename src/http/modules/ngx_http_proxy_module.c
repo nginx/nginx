@@ -2658,7 +2658,24 @@ ngx_http_proxy_process_trailer(ngx_http_request_t *r, ngx_buf_t *buf)
 
         if (rc == NGX_OK) {
 
-            /* a header line has been parsed successfully */
+            /* A trailer line has been parsed successfully.
+             * Do not allow trailers that would, if turned into
+             * headers, interfere with request framing. */
+            switch (r->header_name_end - r->header_name_start) {
+#define X(x)                                                            \
+            case sizeof(x "") - 1:                                      \
+                /* The size is always less than the number of bytes in  \
+                 * the pre-casefolded area. */                          \
+                if (memcmp(r->lowcase_header, x, sizeof(x) - 1) == 0) { \
+                    return NGX_ERROR;                                   \
+                } else break
+                X("transfer-encoding");
+                X("content-length");
+                X("upgrade");
+#undef X
+            default:
+                break;
+            }
 
             h = ngx_list_push(&r->upstream->headers_in.trailers);
             if (h == NULL) {
