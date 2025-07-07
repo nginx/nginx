@@ -1321,7 +1321,10 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     b->last = ngx_copy(b->last, passwd.data, passwd.len);
     *b->last++ = CR; *b->last++ = LF;
 
-    if (s->auth_method != NGX_MAIL_AUTH_PLAIN && s->salt.len) {
+    if ((s->auth_method == NGX_MAIL_AUTH_APOP
+         || s->auth_method == NGX_MAIL_AUTH_CRAM_MD5)
+        && s->salt.len)
+    {
         b->last = ngx_cpymem(b->last, "Auth-Salt: ", sizeof("Auth-Salt: ") - 1);
         b->last = ngx_copy(b->last, s->salt.data, s->salt.len);
 
