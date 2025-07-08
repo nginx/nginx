@@ -191,7 +191,7 @@ ngx_kqueue_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         kev.flags = EV_ADD|EV_ENABLE;
         kev.fflags = 0;
         kev.data = timer;
-        kev.udata = 0;
+        kev.udata = NGX_KQUEUE_UDATA_T (uintptr_t) 0;
 
         ts.tv_sec = 0;
         ts.tv_nsec = 0;
@@ -237,7 +237,7 @@ ngx_kqueue_notify_init(ngx_log_t *log)
     notify_kev.data = 0;
     notify_kev.flags = EV_ADD|EV_CLEAR;
     notify_kev.fflags = 0;
-    notify_kev.udata = 0;
+    notify_kev.udata = NGX_KQUEUE_UDATA_T (uintptr_t) 0;
 
     if (kevent(ngx_kqueue, &notify_kev, 1, NULL, 0, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
