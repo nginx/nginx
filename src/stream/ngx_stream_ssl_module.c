@@ -133,6 +133,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       0,
       NULL },
 
+    { ngx_string("ssl_certificate_compression"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, certificate_compression),
+      NULL },
+
     { ngx_string("ssl_dhparam"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
@@ -881,6 +888,7 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->passwords = NGX_CONF_UNSET_PTR;
     sscf->conf_commands = NGX_CONF_UNSET_PTR;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
+    sscf->certificate_compression = NGX_CONF_UNSET;
     sscf->reject_handshake = NGX_CONF_UNSET;
     sscf->verify = NGX_CONF_UNSET_UINT;
     sscf->verify_depth = NGX_CONF_UNSET_UINT;
@@ -913,6 +921,9 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->prefer_server_ciphers,
                          prev->prefer_server_ciphers, 0);
+
+    ngx_conf_merge_value(conf->certificate_compression,
+                         prev->certificate_compression, 0);
 
     ngx_conf_merge_value(conf->reject_handshake, prev->reject_handshake, 0);
 
@@ -1035,6 +1046,13 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         if (ngx_ssl_certificates(cf, &conf->ssl, conf->certificates,
                                  conf->certificate_keys, conf->passwords)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_certificate_compression(cf, &conf->ssl,
+                                            conf->certificate_compression)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
