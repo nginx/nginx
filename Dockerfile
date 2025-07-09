@@ -7,3 +7,6 @@ EXPOSE 80 443
 
 # Use full path to NGINX binary and it will find its own config and logs
 ENTRYPOINT ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
+
+ENV UPDATED_AT=20250709
+
