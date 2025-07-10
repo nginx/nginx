@@ -129,26 +129,6 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
 fi
 
 
-if [ "$NGX_SYSTEM" = "NetBSD" ]; then
-
-    # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
-
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#define NGX_KQUEUE_UDATA_T
-
-END
-
-else
-    cat << END >> $NGX_AUTO_CONFIG_H
-
-#define NGX_KQUEUE_UDATA_T  (void *)
-
-END
-
-fi
-
-
 ngx_feature="crypt()"
 ngx_feature_name="NGX_HAVE_CRYPT"
 ngx_feature_run=no
