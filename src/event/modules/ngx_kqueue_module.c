@@ -10,6 +10,15 @@
 #include <ngx_event.h>
 
 
+/* NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t" */
+
+#if (__NetBSD__)
+#define NGX_KQUEUE_UDATA_T
+#else
+#define NGX_KQUEUE_UDATA_T  (void *)
+#endif
+
+
 typedef struct {
     ngx_uint_t  changes;
     ngx_uint_t  events;
