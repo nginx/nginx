@@ -40,6 +40,12 @@ typedef struct {
 
     ngx_ssl_cache_t                *certificate_cache;
 
+#if (defined OSSL_ECH_CURRENT_VERSION || defined SSL_R_ECH_REJECTED)
+    ngx_array_t                    *echconfigs;
+    ngx_array_t                    *echconfig_keys;
+    ngx_flag_t                      echconfig_retry;
+#endif
+
     ngx_str_t                       dhparam;
     ngx_str_t                       ecdh_curve;
     ngx_str_t                       client_certificate;
