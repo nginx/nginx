@@ -1034,11 +1034,11 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         goto failed;
     }
 
-    if (r->headers_in.host) {
-        if (r->headers_in.host->value.len != r->headers_in.server.len
+    if (r->headers_in.host && r->host_end) {
+        if (r->headers_in.host->value.len !=
+                                         (size_t) (r->host_end - r->host_start)
             || ngx_memcmp(r->headers_in.host->value.data,
-                          r->headers_in.server.data,
-                          r->headers_in.server.len)
+                          r->host_start, r->host_end - r->host_start)
                != 0)
         {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
