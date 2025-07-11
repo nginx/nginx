@@ -210,9 +210,6 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->quic.stream_reject_code_bidi = NGX_HTTP_V3_ERR_REQUEST_REJECTED;
     h3scf->quic.active_connection_id_limit = NGX_CONF_UNSET_UINT;
 
-    h3scf->quic.init = ngx_http_v3_init;
-    h3scf->quic.shutdown = ngx_http_v3_shutdown;
-
     return h3scf;
 }
 
@@ -223,8 +220,7 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v3_srv_conf_t *prev = parent;
     ngx_http_v3_srv_conf_t *conf = child;
 
-    ngx_http_ssl_srv_conf_t   *sscf;
-    ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_ssl_srv_conf_t  *sscf;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 1);
 
@@ -281,9 +277,6 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         return NGX_CONF_ERROR;
     }
-
-    cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
-    conf->quic.handshake_timeout = cscf->client_header_timeout;
 
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     conf->quic.ssl = &sscf->ssl;
