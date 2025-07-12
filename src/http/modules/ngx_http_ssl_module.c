@@ -405,6 +405,12 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_client_v_end"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_v_end, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_client_v_start_iso8601"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_start_iso8601, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_client_v_end_iso8601"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_client_v_end_iso8601, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_v_remain"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_v_remain, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
