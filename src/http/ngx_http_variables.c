@@ -51,6 +51,8 @@ static ngx_int_t ngx_http_variable_content_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_host(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_binary_remote_addr(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_remote_addr(ngx_http_request_t *r,
@@ -192,6 +194,7 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       offsetof(ngx_http_request_t, headers_in.content_type), 0, 0 },
 
     { ngx_string("host"), NULL, ngx_http_variable_host, 0, 0, 0 },
+    { ngx_string("port"), NULL, ngx_http_variable_port, 0, 0, 0 },
 
     { ngx_string("binary_remote_addr"), NULL,
       ngx_http_variable_binary_remote_addr, 0, 0, 0 },
@@ -1239,6 +1242,20 @@ ngx_http_variable_host(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_port(ngx_http_request_t *r, ngx_http_variable_value_t *v,
+    uintptr_t data)
+{
+    v->len = r->headers_in.port.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = r->headers_in.port.data;
 
     return NGX_OK;
 }

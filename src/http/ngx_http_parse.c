@@ -116,6 +116,13 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_host_end,
         sw_host_ip_literal,
         sw_port,
+        sw_spaces_before_connect_host,
+        sw_connect_host_start,
+        sw_connect_host,
+        sw_connect_host_end,
+        sw_connect_port_start,
+        sw_connect_port,
+        sw_connect_host_ip_literal,
         sw_after_slash_in_uri,
         sw_check_uri,
         sw_uri,
@@ -158,6 +165,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
             if (ch == ' ') {
                 r->method_end = p - 1;
                 m = r->request_start;
+                state = sw_spaces_before_uri;
 
                 switch (p - m) {
 
@@ -247,6 +255,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     if (ngx_str7_cmp(m, 'C', 'O', 'N', 'N', 'E', 'C', 'T', ' '))
                     {
                         r->method = NGX_HTTP_CONNECT;
+                        state = sw_spaces_before_connect_host;
                     }
 
                     break;
@@ -269,7 +278,6 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     break;
                 }
 
-                state = sw_spaces_before_uri;
                 break;
             }
 
@@ -627,6 +635,117 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 break;
+            }
+            break;
+
+        case sw_spaces_before_connect_host:
+
+            if (ch == ' ') {
+                break;
+            }
+
+            /* fall through */
+
+        case sw_connect_host_start:
+
+            r->host_start = p;
+
+            if (ch == '[') {
+                state = sw_connect_host_ip_literal;
+                break;
+            }
+
+            state = sw_connect_host;
+
+            /* fall through */
+
+        case sw_connect_host:
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'z') {
+                break;
+            }
+
+            if ((ch >= '0' && ch <= '9') || ch == '.' || ch == '-') {
+                break;
+            }
+
+            /* fall through */
+
+        case sw_connect_host_end:
+
+            switch (ch) {
+            case ':':
+                r->host_end = p;
+                state = sw_connect_port_start;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_connect_port_start:
+
+            r->port_start = p;
+            state = sw_connect_port;
+
+            /* fall through */
+
+        case sw_connect_port:
+
+            if (ch >= '0' && ch <= '9') {
+                break;
+            }
+
+            r->port_end = p;
+
+            switch (ch) {
+            case ' ':
+                state = sw_http_09;
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+            break;
+
+        case sw_connect_host_ip_literal:
+
+            if (ch >= '0' && ch <= '9') {
+                break;
+            }
+
+            c = (u_char) (ch | 0x20);
+            if (c >= 'a' && c <= 'z') {
+                break;
+            }
+
+            switch (ch) {
+            case ':':
+                break;
+            case ']':
+                state = sw_connect_host_end;
+                break;
+            case '-':
+            case '.':
+            case '_':
+            case '~':
+                /* unreserved */
+                break;
+            case '!':
+            case '$':
+            case '&':
+            case '\'':
+            case '(':
+            case ')':
+            case '*':
+            case '+':
+            case ',':
+            case ';':
+            case '=':
+                /* sub-delims */
+                break;
+            default:
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
 
