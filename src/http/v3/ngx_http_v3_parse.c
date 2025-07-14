@@ -646,16 +646,17 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
             ch = *b->pos++;
 
             if (st->huffman) {
-                if (ngx_http_huff_decode(&st->huffstate, &ch, 1, &st->last,
-                                         st->length == 1, c->log)
-                    != NGX_OK)
-                {
-                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "client sent invalid encoded field line");
-                    return NGX_ERROR;
-                }
+    if (ngx_http_huff_decode(&st->huffstate, &ch, 1, &st->last,
+                             st->length == 1, c->log)
+        != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent invalid encoded field line");
+        return NGX_ERROR;
+    }
 
-            } else {
+} else {
+
                 *st->last++ = ch;
             }
 
