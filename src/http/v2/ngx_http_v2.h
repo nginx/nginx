@@ -416,6 +416,8 @@ ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
 u_char *ngx_http_v2_string_encode(u_char *dst, u_char *src, size_t len,
     u_char *tmp, ngx_uint_t lower);
 
+ngx_int_t ngx_http_v2_proxy_handler(ngx_http_request_t *r);
+
 
 extern ngx_module_t  ngx_http_v2_module;
 
