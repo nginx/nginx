@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#include <zlib.h>
+#endif
+
 
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
@@ -19,6 +23,13 @@ typedef struct {
 
 
 static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+static int ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn,
+    CBB *out, const uint8_t *in, size_t in_len);
+static void *ngx_ssl_cert_compression_alloc(void *opaque, u_int items,
+    u_int size);
+static void ngx_ssl_cert_compression_free(void *opaque, void *address);
+#endif
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
@@ -128,6 +139,7 @@ int  ngx_ssl_ticket_keys_index;
 int  ngx_ssl_ocsp_index;
 int  ngx_ssl_index;
 int  ngx_ssl_certificate_name_index;
+int  ngx_ssl_certificate_comp_index;
 int  ngx_ssl_client_hello_arg_index;
 
 
@@ -267,6 +279,13 @@ ngx_ssl_init(ngx_log_t *log)
                                                            NULL);
 
     if (ngx_ssl_certificate_name_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
+    ngx_ssl_certificate_comp_index = X509_get_ex_new_index(0, NULL, NULL, NULL,
+                                                           NULL);
+    if (ngx_ssl_certificate_comp_index == -1) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "X509_get_ex_new_index() failed");
         return NGX_ERROR;
     }
@@ -729,6 +748,18 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TX_CERTIFICATE_COMPRESSION);
 
+#elif (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+
+    if (SSL_CTX_add_cert_compression_alg(ssl->ctx, TLSEXT_cert_compression_zlib,
+                                         ngx_ssl_cert_compression_callback,
+                                         NULL)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_add_cert_compression_alg() failed");
+        return NGX_ERROR;
+    }
+
 #else
 
     ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
@@ -739,6 +770,155 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     return NGX_OK;
 }
+
+
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+
+static int
+ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn, CBB *out,
+    const uint8_t *in, size_t in_len)
+{
+    int                rc;
+    X509              *cert;
+    u_char            *p;
+    z_stream           zstream;
+    ngx_str_t         *comp, tmp;
+    ngx_pool_t        *pool;
+    ngx_connection_t  *c;
+
+#ifdef OPENSSL_IS_BORINGSSL
+    {
+    SSL_CTX    *ssl_ctx;
+    ngx_ssl_t  *ssl;
+
+    /* BoringSSL doesn't have certificate slots, we take the last set */
+
+    ssl_ctx = SSL_get_SSL_CTX(ssl_conn);
+    ssl = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_index);
+    cert = ((X509 **) ssl->certs.elts)[ssl->certs.nelts - 1];
+    }
+#else
+
+    /*
+     * AWS-LC saves leaf certificate in SSL to associate with SSL_CTX,
+     * see https://github.com/aws/aws-lc/commit/e1ba2b3e5
+     */
+
+    cert = SSL_get_certificate(ssl_conn);
+
+#endif
+
+    comp = X509_get_ex_data(cert, ngx_ssl_certificate_comp_index);
+
+    if (comp != NULL) {
+        return CBB_add_bytes(out, comp->data, comp->len);
+    }
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    pool = ngx_create_pool(256, c->log);
+    if (pool == NULL) {
+        return 0;
+    }
+
+    pool->log = c->log;
+
+    ngx_memzero(&zstream, sizeof(z_stream));
+
+    zstream.zalloc = ngx_ssl_cert_compression_alloc;
+    zstream.zfree = ngx_ssl_cert_compression_free;
+    zstream.opaque = pool;
+
+    rc = deflateInit(&zstream, Z_DEFAULT_COMPRESSION);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "deflateInit() failed: %d", rc);
+        goto error;
+    }
+
+    tmp.len = deflateBound(&zstream, in_len);
+    tmp.data = ngx_palloc(pool, tmp.len);
+    if (tmp.data == NULL) {
+        goto error;
+    }
+
+    zstream.next_in = (u_char *) in;
+    zstream.avail_in = in_len;
+    zstream.next_out = tmp.data;
+    zstream.avail_out = tmp.len;
+
+    rc = deflate(&zstream, Z_FINISH);
+
+    if (rc != Z_STREAM_END) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "deflate(Z_FINISH) failed: %d", rc);
+        goto error;
+    }
+
+    tmp.len -= zstream.avail_out;
+
+    rc = deflateEnd(&zstream);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "deflateEnd() failed: %d", rc);
+        goto error;
+    }
+
+    p = ngx_alloc(sizeof(ngx_str_t) + tmp.len, c->log);
+    if (p == NULL) {
+        goto error;
+    }
+
+    comp = (ngx_str_t *) p;
+
+    comp->len = tmp.len;
+    comp->data = p + sizeof(ngx_str_t);
+
+    ngx_memcpy(comp->data, tmp.data, tmp.len);
+
+    if (X509_set_ex_data(cert, ngx_ssl_certificate_comp_index, p) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_set_ex_data() failed");
+        ngx_free(p);
+    }
+
+    rc = CBB_add_bytes(out, tmp.data, tmp.len);
+
+    ngx_destroy_pool(pool);
+
+    return rc;
+
+error:
+
+    ngx_destroy_pool(pool);
+
+    return 0;
+}
+
+
+static void *
+ngx_ssl_cert_compression_alloc(void *opaque, u_int items, u_int size)
+{
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "cert compression alloc: n:%ud s:%ud", items, size);
+
+    return ngx_palloc(pool, items * size);
+}
+
+
+static void
+ngx_ssl_cert_compression_free(void *opaque, void *address)
+{
+#if 0
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, pool->log, 0,
+                   "cert compression free: %p", address);
+#endif
+}
+
+#endif
 
 
 ngx_int_t
@@ -4951,10 +5131,19 @@ ngx_ssl_cleanup_ctx(void *data)
     ngx_ssl_t  *ssl = data;
 
     X509        *cert;
+    u_char      *p;
     ngx_uint_t   i;
 
     for (i = 0; i < ssl->certs.nelts; i++) {
         cert = ((X509 **) ssl->certs.elts)[i];
+
+        p = X509_get_ex_data(cert, ngx_ssl_certificate_comp_index);
+
+        if (p) {
+            ngx_free(p);
+            X509_set_ex_data(cert, ngx_ssl_certificate_comp_index, NULL);
+        }
+
         X509_free(cert);
     }
 
