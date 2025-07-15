@@ -116,6 +116,10 @@ ngx_int_t ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r,
 ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h);
 
+#if (NGX_HTTP_V2)
+ngx_int_t ngx_http_proxy_v2_handler(ngx_http_request_t *r);
+#endif
+
 
 extern ngx_module_t  ngx_http_proxy_module;
 
