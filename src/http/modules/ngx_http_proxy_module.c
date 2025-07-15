@@ -165,6 +165,9 @@ static ngx_conf_post_t  ngx_http_proxy_ssl_conf_command_post =
 static ngx_conf_enum_t  ngx_http_proxy_http_version[] = {
     { ngx_string("1.0"), NGX_HTTP_VERSION_10 },
     { ngx_string("1.1"), NGX_HTTP_VERSION_11 },
+#if (NGX_HTTP_V2)
+    { ngx_string("2.0"), NGX_HTTP_VERSION_20 },
+#endif
     { ngx_null_string, 0 }
 };
 
@@ -838,6 +841,14 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     ngx_http_proxy_main_conf_t  *pmcf;
 #endif
 
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+#if (NGX_HTTP_V2)
+    if (plcf->http_version == NGX_HTTP_VERSION_20) {
+        return ngx_http_v2_proxy_handler(r);
+    }
+#endif
+
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -850,8 +861,6 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     ctx->connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
     ngx_http_set_ctx(r, ctx, ngx_http_proxy_module);
-
-    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
     u = r->upstream;
 
@@ -3483,6 +3492,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
      *     conf->headers_cache.lengths = NULL;
+     *     conf->host_set = 0;
      *     conf->headers_cache.values = NULL;
      *     conf->headers_cache.hash = { NULL, 0 };
      *     conf->body_lengths = NULL;
@@ -4058,6 +4068,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_CACHE)
         conf->headers_cache = prev->headers_cache;
 #endif
+        conf->host_set = prev->host_set;
     }
 
     rc = ngx_http_proxy_init_headers(cf, conf, &conf->headers,
@@ -4090,6 +4101,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_CACHE)
         prev->headers_cache = conf->headers_cache;
 #endif
+        conf->host_set = prev->host_set;
     }
 
     return NGX_CONF_OK;
@@ -4141,6 +4153,12 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 
         src = conf->headers_source->elts;
         for (i = 0; i < conf->headers_source->nelts; i++) {
+
+            if (src[i].key.len == 4
+                && ngx_strncasecmp(src[i].key.data, (u_char *) "Host", 4) == 0)
+            {
+                conf->host_set = 1;
+            }
 
             s = ngx_array_push(&headers_merged);
             if (s == NULL) {
