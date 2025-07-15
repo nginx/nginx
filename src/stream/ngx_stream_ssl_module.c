@@ -376,6 +376,9 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
     { ngx_string("ssl_client_s_dn"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_subject_dn, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_client_s_san"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_subject_san, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_i_dn"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_issuer_dn, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
