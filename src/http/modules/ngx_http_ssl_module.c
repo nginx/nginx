@@ -396,6 +396,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_client_fingerprint"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_fingerprint, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_client_sha256_fingerprint"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_sha256_fingerprint, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_client_verify"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_verify, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
