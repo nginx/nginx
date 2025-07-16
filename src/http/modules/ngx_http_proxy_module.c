@@ -24,6 +24,24 @@
 #define  NGX_HTTP_PROXY_COOKIE_SAMESITE_OFF     0x0400
 
 
+typedef struct {
+    ngx_http_status_t              status;
+    ngx_http_chunked_t             chunked;
+    ngx_http_proxy_vars_t          vars;
+    off_t                          internal_body_length;
+
+    ngx_chain_t                   *free;
+    ngx_chain_t                   *busy;
+
+    ngx_buf_t                     *trailers;
+
+    unsigned                       head:1;
+    unsigned                       internal_chunked:1;
+    unsigned                       header_sent:1;
+    unsigned                       connection_type:2;
+} ngx_http_proxy_ctx_t;
+
+
 static ngx_int_t ngx_http_proxy_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_body_output_filter(void *data, ngx_chain_t *in);
@@ -872,7 +890,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 #endif
 
     } else {
-        if (ngx_http_proxy_eval(r, ctx, plcf) != NGX_OK) {
+        if (ngx_http_proxy_eval(r, &ctx->vars, plcf) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
@@ -938,7 +956,7 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 
 
 ngx_int_t
-ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
+ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_vars_t *vars,
     ngx_http_proxy_loc_conf_t *plcf)
 {
     u_char               *p;
@@ -1015,9 +1033,9 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
         }
     }
 
-    ctx->vars.key_start = u->schema;
+    vars->key_start = u->schema;
 
-    ngx_http_proxy_set_vars(&url, &ctx->vars);
+    ngx_http_proxy_set_vars(&url, vars);
 
     u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
     if (u->resolved == NULL) {

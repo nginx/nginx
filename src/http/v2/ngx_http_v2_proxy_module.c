@@ -35,7 +35,7 @@ typedef struct {
 
 
 typedef struct {
-    ngx_http_proxy_ctx_t           ctx; /* must be first */
+    ngx_http_proxy_vars_t          vars;
 
     ngx_http_v2_proxy_state_e      state;
     ngx_uint_t                     frame_state;
@@ -229,14 +229,14 @@ ngx_http_v2_proxy_handler(ngx_http_request_t *r)
     u = r->upstream;
 
     if (plcf->proxy_lengths == NULL) {
-        ctx->ctx.vars = plcf->vars;
+        ctx->vars = plcf->vars;
         u->schema = plcf->vars.schema;
 #if (NGX_HTTP_SSL)
         u->ssl = plcf->ssl;
 #endif
 
     } else {
-        if (ngx_http_proxy_eval(r, &ctx->ctx, plcf) != NGX_OK) {
+        if (ngx_http_proxy_eval(r, &ctx->vars, plcf) != NGX_OK) {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
@@ -335,7 +335,7 @@ ngx_http_v2_proxy_create_request(ngx_http_request_t *r)
 
     /* :authority header */
 
-    host = &ctx->ctx.vars.host_header;
+    host = &ctx->vars.host_header;
 
     /* TODO authority */
     if (1) {
