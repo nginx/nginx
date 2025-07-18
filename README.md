@@ -226,5 +226,8 @@ See our [changelog](https://nginx.org/en/CHANGES) to keep track of updates.
 # License
 [2-clause BSD-like license](LICENSE)
 
+# Comments
+- Added few things for testing
+
 ---
 Additional documentation available at: https://nginx.org/en/docs
