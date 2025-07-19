@@ -582,6 +582,16 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
         frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
         frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
 
+        /*
+         * RFC 9000, 9.4. Loss Detection and Congestion Control
+         *
+         * A sender can make exceptions for probe packets so that their loss
+         * detection is independent and does not unduly cause the congestion
+         * controller to reduce its sending rate.
+         */
+
+        frame->ignore_loss = 1;
+
         ngx_memcpy(frame->u.path_challenge.data, path->challenge[n], 8);
 
         /*
