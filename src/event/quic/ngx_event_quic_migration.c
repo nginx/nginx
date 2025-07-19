@@ -581,6 +581,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 
         frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
         frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
+        frame->ignore_congestion = 1;
 
         /*
          * RFC 9000, 9.4. Loss Detection and Congestion Control
