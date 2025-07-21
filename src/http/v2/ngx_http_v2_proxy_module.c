@@ -118,6 +118,8 @@ static ngx_int_t ngx_http_v2_proxy_body_output_filter(void *data,
 static ngx_int_t ngx_http_v2_proxy_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_proxy_filter_init(void *data);
 static ngx_int_t ngx_http_v2_proxy_non_buffered_filter(void *data, ssize_t bytes);
+static ngx_int_t ngx_http_v2_proxy_filter(ngx_event_pipe_t *p,
+    ngx_buf_t *buf);
 
 static ngx_int_t ngx_http_v2_proxy_parse_frame(ngx_http_request_t *r,
     ngx_http_v2_proxy_ctx_t *ctx, ngx_buf_t *b);
@@ -254,6 +256,16 @@ ngx_http_v2_proxy_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_v2_proxy_process_header;
     u->abort_request = ngx_http_v2_proxy_abort_request;
     u->finalize_request = ngx_http_v2_proxy_finalize_request;
+
+    u->buffering = plcf->upstream.buffering;
+
+    u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
+    if (u->pipe == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    u->pipe->input_filter = ngx_http_v2_proxy_filter;
+    u->pipe->input_ctx = ctx;
 
     u->input_filter_init = ngx_http_v2_proxy_filter_init;
     u->input_filter = ngx_http_v2_proxy_non_buffered_filter;
@@ -1630,9 +1642,11 @@ ngx_http_v2_proxy_filter_init(void *data)
 
         u->length = 0;
         ctx->done = 1;
+        u->pipe->length = 0;
 
     } else {
         u->length = 1;
+        u->pipe->length = 1;
     }
 
     return NGX_OK;
@@ -2149,6 +2163,511 @@ ngx_http_v2_proxy_non_buffered_filter(void *data, ssize_t bytes)
         if (ctx->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
             ctx->done = 1;
         }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v2_proxy_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
+{
+    ngx_int_t                 rc;
+    ngx_buf_t                *b, **prev;
+    ngx_chain_t              *cl;
+    ngx_table_elt_t          *h;
+    ngx_http_request_t       *r;
+    ngx_http_upstream_t      *u;
+    ngx_http_v2_proxy_ctx_t  *ctx;
+
+    if (buf->pos == buf->last) {
+        return NGX_OK;
+    }
+
+    if (p->upstream_done) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, p->log, 0,
+                       "http2 proxy data after close");
+        return NGX_OK;
+    }
+
+    if (p->length == 0) {
+        ngx_log_error(NGX_LOG_WARN, p->log, 0,
+                      "upstream sent data after trailers");
+
+        p->upstream_done = 1;
+
+        return NGX_OK;
+    }
+
+    ctx = p->input_ctx;
+
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    r = ctx->request;
+    u = r->upstream;
+
+    b = NULL;
+    prev = &buf->shadow;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "proxy http2 copy filter bytes:%z", buf->last - buf->pos);
+
+    while (buf->pos < buf->last) {
+
+        if (ctx->state < ngx_http_v2_proxy_st_payload) {
+
+            rc = ngx_http_v2_proxy_parse_frame(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+
+                if (ctx->done) {
+
+                    if (ctx->length > 0) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream prematurely closed stream");
+                        return NGX_ERROR;
+                    }
+
+                    p->length = 0;
+                    break;
+                }
+
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if ((ctx->type == NGX_HTTP_V2_CONTINUATION_FRAME
+                 && !ctx->parsing_headers)
+                || (ctx->type != NGX_HTTP_V2_CONTINUATION_FRAME
+                    && ctx->parsing_headers))
+            {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent unexpected http2 frame: %d",
+                              ctx->type);
+                return NGX_ERROR;
+            }
+
+            if (ctx->type == NGX_HTTP_V2_DATA_FRAME) {
+
+                if (ctx->stream_id != ctx->id) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent data frame "
+                                  "for unknown stream %ui",
+                                  ctx->stream_id);
+                    return NGX_ERROR;
+                }
+
+                if (ctx->rest > ctx->recv_window) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream violated stream flow control, "
+                                  "received %uz data frame with window %uz",
+                                  ctx->rest, ctx->recv_window);
+                    return NGX_ERROR;
+                }
+
+                if (ctx->rest > ctx->connection->recv_window) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream violated connection flow control, "
+                                  "received %uz data frame with window %uz",
+                                  ctx->rest, ctx->connection->recv_window);
+                    return NGX_ERROR;
+                }
+
+                ctx->recv_window -= ctx->rest;
+                ctx->connection->recv_window -= ctx->rest;
+            }
+
+            if (ctx->stream_id && ctx->stream_id != ctx->id) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent frame for unknown stream %ui",
+                              ctx->stream_id);
+                return NGX_ERROR;
+            }
+
+            if (ctx->stream_id && ctx->done
+                && ctx->type != NGX_HTTP_V2_RST_STREAM_FRAME
+                && ctx->type != NGX_HTTP_V2_WINDOW_UPDATE_FRAME)
+            {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent frame for closed stream %ui",
+                              ctx->stream_id);
+                return NGX_ERROR;
+            }
+
+            ctx->padding = 0;
+        }
+
+        if (ctx->state == ngx_http_v2_proxy_st_padding) {
+
+            if (buf->last - buf->pos < (ssize_t) ctx->rest) {
+                ctx->rest -= buf->last - buf->pos;
+                buf->pos = buf->last;
+                break;
+            }
+
+            buf->pos += ctx->rest;
+            ctx->rest = 0;
+            ctx->state = ngx_http_v2_proxy_st_start;
+
+            if (ctx->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
+                ctx->done = 1;
+            }
+
+            continue;
+        }
+
+        /* frame payload */
+
+        if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
+
+            rc = ngx_http_v2_proxy_parse_rst_stream(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ctx->error || !ctx->done) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream rejected request with error %ui",
+                              ctx->error);
+                return NGX_ERROR;
+            }
+
+            if (ctx->rst) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent frame for closed stream %ui",
+                              ctx->stream_id);
+                return NGX_ERROR;
+            }
+
+            ctx->rst = 1;
+            continue;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
+
+            rc = ngx_http_v2_proxy_parse_goaway(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (ctx->stream_id < ctx->id) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent goaway with error %ui",
+                              ctx->error);
+                return NGX_ERROR;
+            }
+
+            ctx->goaway = 1;
+            continue;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
+
+            rc = ngx_http_v2_proxy_parse_window_update(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_SETTINGS_FRAME) {
+
+            rc = ngx_http_v2_proxy_parse_settings(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_PING_FRAME) {
+
+            rc = ngx_http_v2_proxy_parse_ping(r, ctx, buf);
+
+            if (rc == NGX_AGAIN) {
+                break;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_PUSH_PROMISE_FRAME) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent unexpected push promise frame");
+            return NGX_ERROR;
+        }
+
+        if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME
+            || ctx->type == NGX_HTTP_V2_CONTINUATION_FRAME)
+        {
+            for ( ;; ) {
+
+                rc = ngx_http_v2_proxy_parse_header(r, ctx, buf);
+
+                if (rc == NGX_AGAIN) {
+                    break;
+                }
+
+                if (rc == NGX_OK) {
+
+                    /* a header line has been parsed successfully */
+
+                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                                   "proxy http2 trailer: \"%V: %V\"",
+                                   &ctx->name, &ctx->value);
+
+                    if (ctx->name.len && ctx->name.data[0] == ':') {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream sent invalid "
+                                      "trailer \"%V: %V\"",
+                                      &ctx->name, &ctx->value);
+                        return NGX_ERROR;
+                    }
+
+                    h = ngx_list_push(&u->headers_in.trailers);
+                    if (h == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                    h->key = ctx->name;
+                    h->value = ctx->value;
+                    h->lowcase_key = h->key.data;
+                    h->hash = ngx_hash_key(h->key.data, h->key.len);
+
+                    continue;
+                }
+
+                if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+
+                    /* a whole header has been parsed successfully */
+
+                    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                                   "proxy http2 trailer done");
+
+                    if (ctx->end_stream) {
+                        ctx->done = 1;
+                        break;
+                    }
+
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent trailer without "
+                                  "end stream flag");
+                    return NGX_ERROR;
+                }
+
+                /* there was error while a header line parsing */
+
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent invalid trailer");
+
+                return NGX_ERROR;
+            }
+
+            if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+                continue;
+            }
+
+            /* rc == NGX_AGAIN */
+
+            if (ctx->rest == 0) {
+                ctx->state = ngx_http_v2_proxy_st_start;
+                continue;
+            }
+
+            break;
+        }
+
+        if (ctx->type != NGX_HTTP_V2_DATA_FRAME) {
+
+            /* priority, unknown frames */
+
+            if (buf->last - buf->pos < (ssize_t) ctx->rest) {
+                ctx->rest -= buf->last - buf->pos;
+                buf->pos = buf->last;
+                break;
+            }
+
+            buf->pos += ctx->rest;
+            ctx->rest = 0;
+            ctx->state = ngx_http_v2_proxy_st_start;
+
+            continue;
+        }
+
+        /*
+         * data frame:
+         *
+         * +---------------+
+         * |Pad Length? (8)|
+         * +---------------+-----------------------------------------------+
+         * |                            Data (*)                         ...
+         * +---------------------------------------------------------------+
+         * |                           Padding (*)                       ...
+         * +---------------------------------------------------------------+
+         */
+
+        if (ctx->flags & NGX_HTTP_V2_PADDED_FLAG) {
+
+            if (ctx->rest == 0) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent too short http2 frame");
+                return NGX_ERROR;
+            }
+
+            if (buf->pos == buf->last) {
+                break;
+            }
+
+            ctx->flags &= ~NGX_HTTP_V2_PADDED_FLAG;
+            ctx->padding = *buf->pos++;
+            ctx->rest -= 1;
+
+            if (ctx->padding > ctx->rest) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent http2 frame with too long "
+                              "padding: %d in frame %uz",
+                              ctx->padding, ctx->rest);
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ctx->rest == ctx->padding) {
+            goto done;
+        }
+
+        if (buf->pos == buf->last) {
+            break;
+        }
+
+        /* copy data frame payload for buffering */
+
+        cl = ngx_chain_get_free_buf(p->pool, &p->free);
+        if (cl == NULL) {
+            return NGX_ERROR;
+        }
+
+        b = cl->buf;
+
+        ngx_memzero(b, sizeof(ngx_buf_t));
+
+        b->pos = buf->pos;
+        b->start = buf->start;
+        b->end = buf->end;
+        b->tag = p->tag;
+        b->temporary = 1;
+        b->recycled = 1;
+
+        *prev = b;
+        prev = &b->shadow;
+
+        if (p->in) {
+            *p->last_in = cl;
+        } else {
+            p->in = cl;
+        }
+        p->last_in = &cl->next;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "proxy http2 copy buf %p", b->pos);
+
+        if (buf->last - buf->pos < (ssize_t) ctx->rest - ctx->padding) {
+
+            ctx->rest -= buf->last - buf->pos;
+            buf->pos = buf->last;
+            b->last = buf->pos;
+
+            if (ctx->length != -1) {
+
+                if (b->last - b->pos > ctx->length) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent response body larger "
+                                  "than indicated content length");
+                    return NGX_ERROR;
+                }
+
+                ctx->length -= b->last - b->pos;
+            }
+
+            break;
+        }
+
+        buf->pos += ctx->rest - ctx->padding;
+        b->last = buf->pos;
+        ctx->rest = ctx->padding;
+
+        if (ctx->length != -1) {
+
+            if (b->last - b->pos > ctx->length) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent response body larger "
+                              "than indicated content length");
+                return NGX_ERROR;
+            }
+
+            ctx->length -= b->last - b->pos;
+        }
+
+    done:
+
+        if (ctx->padding) {
+            ctx->state = ngx_http_v2_proxy_st_padding;
+            continue;
+        }
+
+        ctx->state = ngx_http_v2_proxy_st_start;
+
+        if (ctx->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
+            ctx->done = 1;
+            p->length = 0;
+        }
+    }
+
+    if (b) {
+        b->shadow = buf;
+        b->last_shadow = 1;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
+                       "input buf %p %z", b->pos, b->last - b->pos);
+
+        return NGX_OK;
+    }
+
+    /* there is no data record in the buf, add it to free chain */
+
+    if (ngx_event_pipe_add_free_buf(p, buf) != NGX_OK) {
+        return NGX_ERROR;
     }
 
     return NGX_OK;
@@ -3938,3 +4457,4 @@ ngx_http_v2_proxy_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
                    "finalize proxy http2 request");
     return;
 }
+
