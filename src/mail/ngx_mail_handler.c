@@ -1006,13 +1006,11 @@ ngx_mail_log_error(ngx_log_t *log, u_char *buf, size_t len)
     len -= p - buf;
     buf = p;
 
-    if (s->login.len == 0) {
-        return p;
+    if (s->login.len) {
+        p = ngx_snprintf(buf, len, ", login: \"%V\"", &s->login);
+        len -= p - buf;
+        buf = p;
     }
-
-    p = ngx_snprintf(buf, len, ", login: \"%V\"", &s->login);
-    len -= p - buf;
-    buf = p;
 
     if (s->proxy == NULL) {
         return p;
