@@ -77,6 +77,11 @@ typedef struct {
 } ngx_http_status_t;
 
 
+#if (NGX_HTTP_PROXY)
+#include <ngx_http_proxy_module.h>
+#endif
+
+
 #define ngx_http_get_module_ctx(r, module)  (r)->ctx[module.ctx_index]
 #define ngx_http_set_ctx(r, c, module)      r->ctx[module.ctx_index] = c;
 

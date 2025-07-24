@@ -3888,7 +3888,7 @@ ngx_http_close_connection(ngx_connection_t *c)
 #endif
 
 #if (NGX_HTTP_V3)
-    if (c->quic) {
+    if (c->quic && c->quic->stream) {
         ngx_http_v3_reset_stream(c);
     }
 #endif
