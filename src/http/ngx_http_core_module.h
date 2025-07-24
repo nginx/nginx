@@ -208,6 +208,7 @@ typedef struct {
 #endif
 
     ngx_http_core_loc_conf_t  **named_locations;
+    ngx_flag_t                  reject_leading_trailing_whitespace;
 } ngx_http_core_srv_conf_t;
 
 
