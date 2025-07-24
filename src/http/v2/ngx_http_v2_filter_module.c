@@ -779,6 +779,8 @@ ngx_http_v2_early_hints_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    frame->last->buf->flush = 1;
+
     ngx_http_v2_queue_blocked_frame(h2c, frame);
 
     stream->queued++;
