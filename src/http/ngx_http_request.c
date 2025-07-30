@@ -935,7 +935,8 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
 
 #if (defined TLS1_3_VERSION                                                   \
-     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL)
+     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL     \
+     && !defined OPENSSL_IS_AWSLC)
 
     /*
      * SSL_SESSION_get0_hostname() is only available in OpenSSL 1.1.1+,

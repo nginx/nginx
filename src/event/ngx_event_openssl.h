@@ -27,7 +27,7 @@
 #endif
 #include <openssl/evp.h>
 #if (NGX_QUIC)
-#ifdef OPENSSL_IS_BORINGSSL
+#if (defined OPENSSL_IS_BORINGSSL || defined OPENSSL_IS_AWSLC)
 #include <openssl/hkdf.h>
 #include <openssl/chacha.h>
 #else
