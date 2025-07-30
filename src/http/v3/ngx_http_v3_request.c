@@ -965,7 +965,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
         if (rc == NGX_DECLINED) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid host in request line");
+                          "client sent invalid \":authority\" header");
             goto failed;
         }
 
