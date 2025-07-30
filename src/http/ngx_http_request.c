@@ -890,9 +890,18 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
+    if (c->ssl->sni_accepted) {
+        return SSL_TLSEXT_ERR_OK;
+    }
+
     hc = c->data;
 
-    servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+    if (arg != NULL) {
+        servername = arg;
+
+    } else {
+        servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+    }
 
     if (servername == NULL) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -932,31 +941,6 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         goto done;
     }
 
-    sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
-
-#if (defined TLS1_3_VERSION                                                   \
-     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL)
-
-    /*
-     * SSL_SESSION_get0_hostname() is only available in OpenSSL 1.1.1+,
-     * but servername being negotiated in every TLSv1.3 handshake
-     * is only returned in OpenSSL 1.1.1+ as well
-     */
-
-    if (sscf->verify) {
-        const char  *hostname;
-
-        hostname = SSL_SESSION_get0_hostname(SSL_get0_session(ssl_conn));
-
-        if (hostname != NULL && ngx_strcmp(hostname, servername) != 0) {
-            c->ssl->handshake_rejected = 1;
-            *ad = SSL_AD_ACCESS_DENIED;
-            return SSL_TLSEXT_ERR_ALERT_FATAL;
-        }
-    }
-
-#endif
-
     hc->ssl_servername = ngx_palloc(c->pool, sizeof(ngx_str_t));
     if (hc->ssl_servername == NULL) {
         goto error;
@@ -969,6 +953,8 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
     clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
 
     ngx_set_connection_log(c, clcf->error_log);
+
+    sscf = ngx_http_get_module_srv_conf(cscf->ctx, ngx_http_ssl_module);
 
     c->ssl->buffer_size = sscf->buffer_size;
 
@@ -1018,6 +1004,7 @@ done:
         return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
+    c->ssl->sni_accepted = 1;
     return SSL_TLSEXT_ERR_OK;
 
 error:

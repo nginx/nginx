@@ -1094,6 +1094,58 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
 }
 
 
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+
+int
+ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
+{
+    ngx_ssl_client_hello_arg *cb = arg;
+
+    u_char     *p;
+    size_t      len;
+    ngx_int_t   rc;
+
+    if (SSL_client_hello_get0_ext(ssl_conn, TLSEXT_TYPE_server_name,
+                                  (const unsigned char **) &p, &len)
+        == 0)
+    {
+        p = NULL;
+        goto done;
+    }
+
+    /* RFC 6066 mandates non-zero HostName length, we follow OpenSSL */
+
+    if (len < 5
+        || (size_t) (p[0] << 8) + p[1] + 2 != len
+        || p[2] != TLSEXT_NAMETYPE_host_name
+        || (size_t) (p[3] << 8) + p[4] + 2 + 3 != len)
+    {
+        *ad = SSL_AD_DECODE_ERROR;
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+    len -= 5;
+    p += 5;
+
+    if (len > TLSEXT_MAXLEN_host_name || ngx_strlchr(p, p + len, '\0')) {
+        *ad = SSL_AD_UNRECOGNIZED_NAME;
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+done:
+
+    rc = cb->servername(ssl_conn, ad, p);
+
+    if (rc == SSL_TLSEXT_ERR_ALERT_FATAL) {
+        return SSL_CLIENT_HELLO_ERROR;
+    }
+
+    return SSL_CLIENT_HELLO_SUCCESS;
+}
+
+#endif
+
+
 static int
 ngx_ssl_cmp_x509_name(const X509_NAME *const *a, const X509_NAME *const *b)
 {

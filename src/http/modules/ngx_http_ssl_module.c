@@ -737,6 +737,18 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
 
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+    {
+    ngx_ssl_client_hello_arg  *arg;
+
+    arg = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_client_hello_arg));
+    arg->servername = ngx_http_ssl_servername;
+
+    SSL_CTX_set_client_hello_cb(conf->ssl.ctx, ngx_ssl_client_hello_callback,
+                                arg);
+    }
+#endif
+
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
     if (SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
