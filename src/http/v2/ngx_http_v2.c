@@ -158,6 +158,7 @@ static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_construct_cookie_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_v2_construct_host_header(ngx_http_request_t *r);
 static void ngx_http_v2_run_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_process_request_body(ngx_http_request_t *r,
     u_char *pos, size_t size, ngx_uint_t last, ngx_uint_t flush);
@@ -3517,43 +3518,39 @@ ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 static ngx_int_t
 ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 {
-    ngx_table_elt_t            *h;
-    ngx_http_header_t          *hh;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_int_t  rc;
 
-    static ngx_str_t host = ngx_string("host");
-
-    h = ngx_list_push(&r->headers_in.headers);
-    if (h == NULL) {
-        return NGX_ERROR;
+    if (r->host_start) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate \":authority\" header");
+        return NGX_DECLINED;
     }
 
-    h->hash = ngx_hash(ngx_hash(ngx_hash('h', 'o'), 's'), 't');
+    r->host_start = value->data;
+    r->host_end = value->data + value->len;
 
-    h->key.len = host.len;
-    h->key.data = host.data;
+    rc = ngx_http_validate_host(value, r->pool, 0);
 
-    h->value.len = value->len;
-    h->value.data = value->data;
-
-    h->lowcase_key = host.data;
-
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
-                       h->lowcase_key, h->key.len);
-
-    if (hh == NULL) {
-        return NGX_ERROR;
+    if (rc == NGX_DECLINED) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid \":authority\" header");
+        return NGX_DECLINED;
     }
 
-    if (hh->handler(r, h, hh->offset) != NGX_OK) {
+    if (rc == NGX_ERROR) {
+        ngx_http_v2_close_stream(r->stream, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ABORT;
+    }
+
+    if (ngx_http_set_virtual_server(r, value) == NGX_ERROR) {
         /*
          * request has been finalized already
-         * in ngx_http_process_host()
+         * in ngx_http_set_virtual_server()
          */
         return NGX_ABORT;
     }
+
+    r->headers_in.server = *value;
 
     return NGX_OK;
 }
@@ -3725,7 +3722,54 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
     if (hh->handler(r, h, hh->offset) != NGX_OK) {
         /*
          * request has been finalized already
-         * in ngx_http_process_multi_header_lines()
+         * in ngx_http_process_header_line()
+         */
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v2_construct_host_header(ngx_http_request_t *r)
+{
+    ngx_table_elt_t            *h;
+    ngx_http_header_t          *hh;
+    ngx_http_core_main_conf_t  *cmcf;
+
+    static ngx_str_t host = ngx_string("host");
+
+    h = ngx_list_push(&r->headers_in.headers);
+    if (h == NULL) {
+        ngx_http_v2_close_stream(r->stream, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    h->hash = ngx_hash(ngx_hash(ngx_hash('h', 'o'), 's'), 't');
+
+    h->key.len = host.len;
+    h->key.data = host.data;
+
+    h->value.len = r->host_end - r->host_start;
+    h->value.data = r->host_start;
+
+    h->lowcase_key = host.data;
+
+    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+    hh = ngx_hash_find(&cmcf->headers_in_hash, h->hash,
+                       h->lowcase_key, h->key.len);
+
+    if (hh == NULL) {
+        ngx_http_v2_close_stream(r->stream, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    if (hh->handler(r, h, hh->offset) != NGX_OK) {
+        /*
+         * request has been finalized already
+         * in ngx_http_process_host()
          */
         return NGX_ERROR;
     }
@@ -3737,6 +3781,7 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
+    ngx_str_t                  host;
     ngx_connection_t          *fc;
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
@@ -3764,22 +3809,76 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
-    if (ngx_http_process_request_header(r) != NGX_OK) {
-        goto failed;
-    }
-
-    if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client prematurely closed stream");
-
-        r->stream->skip_data = 1;
-
+    if (r->headers_in.server.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent neither \":authority\" nor \"Host\" header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto failed;
     }
 
-    if (r->headers_in.content_length_n == -1 && !r->stream->in_closed) {
+    if (r->host_end) {
+
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        if (r->headers_in.host) {
+            if (r->headers_in.host->value.len != host.len
+                || ngx_memcmp(r->headers_in.host->value.data, host.data,
+                              host.len)
+                   != 0)
+            {
+                ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                              "client sent \":authority\" and \"Host\" headers "
+                              "with different values");
+                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+                goto failed;
+            }
+
+        } else {
+            /* compatibility for $http_host */
+
+            if (ngx_http_v2_construct_host_header(r) != NGX_OK) {
+                goto failed;
+            }
+        }
+    }
+
+    if (r->headers_in.content_length) {
+        r->headers_in.content_length_n =
+                            ngx_atoof(r->headers_in.content_length->value.data,
+                                      r->headers_in.content_length->value.len);
+
+        if (r->headers_in.content_length_n == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent invalid \"Content-Length\" header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            goto failed;
+        }
+
+        if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client prematurely closed stream");
+
+            r->stream->skip_data = 1;
+
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            goto failed;
+        }
+
+    } else if (!r->stream->in_closed) {
         r->headers_in.chunked = 1;
+    }
+
+    if (r->method == NGX_HTTP_CONNECT) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        goto failed;
+    }
+
+    if (r->method == NGX_HTTP_TRACE) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent TRACE method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        goto failed;
     }
 
     h2c = r->stream->connection;

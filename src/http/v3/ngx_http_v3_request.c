@@ -965,7 +965,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
         if (rc == NGX_DECLINED) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid host in request line");
+                          "client sent invalid \":authority\" header");
             goto failed;
         }
 
@@ -1216,7 +1216,7 @@ ngx_http_v3_construct_cookie_header(ngx_http_request_t *r)
     if (hh->handler(r, h, hh->offset) != NGX_OK) {
         /*
          * request has been finalized already
-         * in ngx_http_process_multi_header_lines()
+         * in ngx_http_process_header_line()
          */
         return NGX_ERROR;
     }
