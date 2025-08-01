@@ -424,6 +424,38 @@ ngx_thread_pool_init_conf(ngx_cycle_t *cycle, void *conf)
 
     for (i = 0; i < tcf->pools.nelts; i++) {
 
+#if (NGX_DYNAMIC_CONF)
+
+        if (cycle->dynamic) {
+            ngx_uint_t                j;
+            ngx_thread_pool_t       **otpp;
+            ngx_thread_pool_conf_t   *otcf;
+
+            otcf = (ngx_thread_pool_conf_t *) ngx_get_conf(
+                                                    cycle->old_cycle->conf_ctx,
+                                                    ngx_thread_pool_module);
+            otpp = otcf->pools.elts;
+
+            for (j = 0; j < otcf->pools.nelts; j++) {
+                if (tpp[i]->name.len == otpp[j]->name.len
+                    && ngx_strncmp(tpp[i]->name.data, otpp[j]->name.data,
+                                   tpp[i]->name.len)
+                       == 0)
+                {
+                    tpp[i] = otpp[j];
+                    break;
+                }
+            }
+
+            if (j == otcf->pools.nelts) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                              "thread pool \"%V\" not found", &tpp[i]->name);
+                return NGX_CONF_ERROR;
+            }
+        }
+
+#endif
+
         if (tpp[i]->threads) {
             continue;
         }

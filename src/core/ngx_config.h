@@ -70,6 +70,10 @@
 #define NGX_CHANGEBIN_SIGNAL     USR2
 #endif
 
+#if (NGX_DYNAMIC_CONF)
+#define NGX_UPDATE_SIGNAL        URG
+#endif
+
 #define ngx_cdecl
 #define ngx_libc_cdecl
 
