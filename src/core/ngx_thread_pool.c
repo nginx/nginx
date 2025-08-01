@@ -463,6 +463,12 @@ ngx_thread_pool(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+#if (NGX_DYNAMIC_CONF)
+    if (cf->cycle->dynamic) {
+        return NGX_CONF_OK;
+    }
+#endif
+
     if (tp->threads) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "duplicate thread pool \"%V\"", &tp->name);
@@ -520,6 +526,22 @@ ngx_thread_pool_add(ngx_cycle_t *cycle, ngx_str_t *name)
     if (name == NULL) {
         name = &ngx_thread_pool_default;
     }
+
+#if (NGX_DYNAMIC_CONF)
+
+    if (cycle->dynamic) {
+        tp = ngx_thread_pool_get(cycle->old_cycle, name);
+
+        if (tp == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "thread pool \"%V\" not found", name);
+            return NULL;
+        }
+
+        return tp;
+    }
+
+#endif
 
     tp = ngx_thread_pool_get(cycle, name);
 

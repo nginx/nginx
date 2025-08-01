@@ -438,6 +438,12 @@ ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_listening_t  *ls;
 #endif
 
+#if (NGX_DYNAMIC_CONF)
+    if (cycle->dynamic) {
+        return NGX_CONF_OK;
+    }
+#endif
+
     if (ngx_get_conf(cycle->conf_ctx, ngx_events_module) == NULL) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
                       "no \"events\" section in configuration");

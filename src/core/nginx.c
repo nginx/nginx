@@ -409,7 +409,11 @@ ngx_show_version_info(void)
             "  -q            : suppress non-error messages "
                                "during configuration testing" NGX_LINEFEED
             "  -s signal     : send signal to a master process: "
-                               "stop, quit, reopen, reload" NGX_LINEFEED
+                               "stop, quit, reopen, reload"
+#if (NGX_DYNAMIC_CONF)
+                               ", update"
+#endif
+                               NGX_LINEFEED
 #ifdef NGX_PREFIX
             "  -p prefix     : set prefix path (default: " NGX_PREFIX ")"
                                NGX_LINEFEED
@@ -920,7 +924,11 @@ ngx_get_options(int argc, char *const *argv)
                 if (ngx_strcmp(ngx_signal, "stop") == 0
                     || ngx_strcmp(ngx_signal, "quit") == 0
                     || ngx_strcmp(ngx_signal, "reopen") == 0
-                    || ngx_strcmp(ngx_signal, "reload") == 0)
+                    || ngx_strcmp(ngx_signal, "reload") == 0
+#if (NGX_DYNAMIC_CONF)
+                    || ngx_strcmp(ngx_signal, "update") == 0
+#endif
+                   )
                 {
                     ngx_process = NGX_PROCESS_SIGNALLER;
                     goto next;
@@ -1148,6 +1156,26 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
 
+#if (NGX_DYNAMIC_CONF)
+
+    if (cycle->dynamic) {
+        ngx_core_conf_t  *occf;
+
+        occf = (ngx_core_conf_t *) ngx_get_conf(cycle->old_cycle->conf_ctx,
+                                                ngx_core_module);
+
+        ccf->username = occf->username;
+        ccf->user = occf->user;
+        ccf->group = occf->group;
+        ccf->pid = occf->pid;
+        ccf->lock_file = occf->lock_file;
+
+        return NGX_CONF_OK;
+    }
+
+#endif
+
+
 #if (NGX_HAVE_CPU_AFFINITY)
 
     if (!ccf->cpu_affinity_auto
@@ -1282,6 +1310,12 @@ ngx_set_user(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     struct passwd    *pwd;
     struct group     *grp;
     ngx_str_t        *value;
+
+#if (NGX_DYNAMIC_CONF)
+    if (cf->cycle->dynamic) {
+        return NGX_CONF_OK;
+    }
+#endif
 
     if (ccf->user != (uid_t) NGX_CONF_UNSET_UINT) {
         return "is duplicate";
@@ -1588,6 +1622,12 @@ ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_uint_t           i;
     ngx_module_t        *module, **modules;
     ngx_pool_cleanup_t  *cln;
+
+#if (NGX_DYNAMIC_CONF)
+    if (cf->cycle->dynamic) {
+        return NGX_CONF_OK;
+    }
+#endif
 
     if (cf->cycle->modules_used) {
         return "is specified too late";

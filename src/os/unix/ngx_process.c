@@ -67,6 +67,13 @@ ngx_signal_t  signals[] = {
       "",
       ngx_signal_handler },
 
+#if (NGX_DYNAMIC_CONF)
+    { ngx_signal_value(NGX_UPDATE_SIGNAL),
+      "SIG" ngx_value(NGX_UPDATE_SIGNAL),
+      "update",
+      ngx_signal_handler },
+#endif
+
     { SIGALRM, "SIGALRM", "", ngx_signal_handler },
 
     { SIGINT, "SIGINT", "", ngx_signal_handler },
@@ -390,6 +397,13 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
             action = ", changing binary";
             break;
 
+#if (NGX_DYNAMIC_CONF)
+        case ngx_signal_value(NGX_UPDATE_SIGNAL):
+            ngx_update = 1;
+            action = ", updating configuration";
+            break;
+#endif
+
         case SIGALRM:
             ngx_sigalrm = 1;
             break;
@@ -430,6 +444,13 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
             ngx_reopen = 1;
             action = ", reopening logs";
             break;
+
+#if (NGX_DYNAMIC_CONF)
+        case ngx_signal_value(NGX_UPDATE_SIGNAL):
+            ngx_update = 1;
+            action = ", updating configuration";
+            break;
+#endif
 
         case ngx_signal_value(NGX_RECONFIGURE_SIGNAL):
         case ngx_signal_value(NGX_CHANGEBIN_SIGNAL):

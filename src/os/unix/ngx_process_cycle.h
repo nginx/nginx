@@ -18,6 +18,7 @@
 #define NGX_CMD_QUIT           3
 #define NGX_CMD_TERMINATE      4
 #define NGX_CMD_REOPEN         5
+#define NGX_CMD_UPDATE         6
 
 
 #define NGX_PROCESS_SINGLE     0
@@ -56,6 +57,9 @@ extern sig_atomic_t    ngx_noaccept;
 extern sig_atomic_t    ngx_reconfigure;
 extern sig_atomic_t    ngx_reopen;
 extern sig_atomic_t    ngx_change_binary;
+#if (NGX_DYNAMIC_CONF)
+extern sig_atomic_t    ngx_update;
+#endif
 
 
 #endif /* _NGX_PROCESS_CYCLE_H_INCLUDED_ */
