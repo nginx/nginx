@@ -5,6 +5,91 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.1" date="2025-08-13">
+
+<change type="change">
+<para lang="ru">
+теперь сжатие сертификатов в протоколе TLSv1.3 по умолчанию запрещено.
+</para>
+<para lang="en">
+now TLSv1.3 certificate compression is disabled by default.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+директива ssl_certificate_compression.
+</para>
+<para lang="en">
+the "ssl_certificate_compression" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+поддержка 0-RTT в QUIC при использовании OpenSSL 3.5.1 и новее.
+</para>
+<para lang="en">
+support for 0-RTT in QUIC when using OpenSSL 3.5.1 or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 и директивы early_hints
+ответ 103 мог буферизироваться.
+</para>
+<para lang="en">
+the 103 response might be buffered
+when using HTTP/2 and the "early_hints" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке заголовков запроса "Host" и ":authority"
+с одинаковыми значениями при использовании HTTP/2;
+ошибка появилась в 1.17.9.
+</para>
+<para lang="en">
+in handling "Host" and ":authority" header lines
+with equal values when using HTTP/2;
+the bug had appeared in 1.17.9.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке заголовка запроса "Host" с портом
+при использовании HTTP/3.
+</para>
+<para lang="en">
+in handling "Host" header lines with a port
+when using HTTP/3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался под NetBSD 10.0.
+</para>
+<para lang="en">
+nginx could not be built on NetBSD 10.0.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в работе параметра none директивы smtp_auth.
+</para>
+<para lang="en">
+in the "none" parameter of the "smtp_auth" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.0" date="2025-06-24">
 
 <change type="feature">
