@@ -7,6 +7,21 @@
 
 <changes ver="1.29.1" date="2025-08-13">
 
+<change type="security">
+<para lang="ru">
+обработка специально созданного логина/пароля при использовании
+метода аутентификации "none" в модуле ngx_mail_smtp_module
+могла приводить к отправке серверу аутентификации
+части содержимого памяти рабочего процесса (CVE-2025-53859).
+</para>
+<para lang="en">
+processing of a specially crafted login/password when using
+the "none" authentication method in the ngx_mail_smtp_module
+might cause worker process memory disclosure
+to the authentication server (CVE-2025-53859).
+</para>
+</change>
+
 <change type="change">
 <para lang="ru">
 теперь сжатие сертификатов в протоколе TLSv1.3 по умолчанию запрещено.
