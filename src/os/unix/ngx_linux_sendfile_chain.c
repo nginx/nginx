@@ -274,6 +274,11 @@ eintr:
                            "sendfile() was interrupted");
             goto eintr;
 
+        case EIO:                /*Unspecified error while reading from in_fd.*/
+            ngx_log_error(NGX_LOG_ERR, c->log, EIO,
+                   "sendfile() reading %s", file->file->name.data);
+            return NGX_ERROR;
+
         default:
             c->write->error = 1;
             ngx_connection_error(c, err, "sendfile() failed");
@@ -357,6 +362,11 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 
             return NGX_AGAIN;
         }
+
+        if (ctx->err == EIO) { /*Unspecified error while reading from in_fd.*/
+            ngx_log_error(NGX_LOG_ERR, c->log, EIO,
+                   "sendfile() reading %s", file->file->name.data);
+            return NGX_ERROR;
 
         if (ctx->err) {
             wev->error = 1;
