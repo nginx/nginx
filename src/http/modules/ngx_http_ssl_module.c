@@ -215,6 +215,15 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, session_tickets),
       NULL },
 
+#ifndef OPENSSL_NO_ECH
+    { ngx_string("ssl_echkeydir"),
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_ssl_srv_conf_t, echkeydir),
+      NULL },
+#endif
+
     { ngx_string("ssl_session_ticket_key"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_array_slot,
@@ -354,6 +363,14 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
     { ngx_string("ssl_curve"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_curve, NGX_HTTP_VAR_CHANGEABLE, 0 },
+#ifndef OPENSSL_NO_ECH
+    { ngx_string("ssl_ech_status"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ech_status, NGX_HTTP_VAR_CHANGEABLE, 0 },
+    { ngx_string("ssl_ech_inner_sni"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ech_inner_sni, NGX_HTTP_VAR_CHANGEABLE, 0 },
+    { ngx_string("ssl_ech_outer_sni"), NULL, ngx_http_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ech_outer_sni, NGX_HTTP_VAR_CHANGEABLE, 0 },
+#endif
 
     { ngx_string("ssl_curves"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_curves, NGX_HTTP_VAR_CHANGEABLE, 0 },
@@ -625,6 +642,9 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->ocsp_responder = { 0, NULL };
      *     sscf->stapling_file = { 0, NULL };
      *     sscf->stapling_responder = { 0, NULL };
+     *     #ifndef OPENSSL_NO_ECH
+     *     sscf->echkeydir = { 0, NULL} ;
+     *     #endif
      */
 
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
@@ -691,6 +711,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
+#ifndef OPENSSL_NO_ECH
+    ngx_conf_merge_str_value(conf->echkeydir, prev->echkeydir, "");
+#endif
 
     ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
                          "");
@@ -867,6 +890,12 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
+#ifndef OPENSSL_NO_ECH
+    if (ngx_ssl_echkeydir(cf, &conf->ssl, &conf->echkeydir) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+#endif
 
     if (ngx_ssl_ecdh_curve(cf, &conf->ssl, &conf->ecdh_curve) != NGX_OK) {
         return NGX_CONF_ERROR;

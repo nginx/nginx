@@ -129,6 +129,10 @@ static u_char *ngx_http_log_body_bytes_sent(ngx_http_request_t *r,
     u_char *buf, ngx_http_log_op_t *op);
 static u_char *ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op);
+#ifndef OPENSSL_NO_ECH
+static u_char *ngx_http_log_ech_status(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op);
+#endif
 
 static ngx_int_t ngx_http_log_variable_compile(ngx_conf_t *cf,
     ngx_http_log_op_t *op, ngx_str_t *value, ngx_uint_t escape);
@@ -230,6 +234,10 @@ static ngx_str_t  ngx_http_combined_fmt =
                "\"$http_referer\" \"$http_user_agent\"");
 
 
+#ifndef OPENSSL_NO_ECH
+#define NGX_ECH_STATUS_LEN 140
+#endif
+
 static ngx_http_log_var_t  ngx_http_log_vars[] = {
     { ngx_string("pipe"), 1, ngx_http_log_pipe },
     { ngx_string("time_local"), sizeof("28/Sep/1970:12:00:00 +0600") - 1,
@@ -245,6 +253,10 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
                           ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           ngx_http_log_request_length },
+#ifndef OPENSSL_NO_ECH
+    { ngx_string("ech_status"), NGX_ECH_STATUS_LEN,
+                          ngx_http_log_ech_status },
+#endif
 
     { ngx_null_string, 0, NULL }
 };
@@ -911,6 +923,59 @@ ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
     return ngx_sprintf(buf, "%O", r->request_length);
 }
 
+#ifndef OPENSSL_NO_ECH
+static u_char *
+ngx_http_log_ech_status(ngx_http_request_t *r, u_char *buf,
+    ngx_http_log_op_t *op)
+{
+    int           echstat = SSL_ECH_STATUS_NOT_TRIED;
+    SSL          *ssl = NULL;
+    char         *sni_ech = NULL, *sni_clr = NULL, *hostheader = NULL;
+    u_char       *sprv = NULL;
+    const char   *str;
+
+    /*
+     * this is a bit oddly structured but is based on what was done for
+     * lighttpd (by it's upstream maintainer) and what we did for haproxy
+     * and re-use makes us all happy 
+     */
+    if (!r || !r->connection || !r->connection->ssl
+        || !r->connection->ssl->connection)
+        return ngx_sprintf(buf, "ECH: no TLS connection");
+    ssl = r->connection->ssl->connection;
+    if (r->headers_in.server.len > 0) 
+        hostheader = (char *)r->headers_in.server.data;
+#define s(x) #x
+    switch ((echstat = SSL_ech_get1_status(ssl, &sni_ech, &sni_clr))) {
+    case SSL_ECH_STATUS_SUCCESS:   str = s(SSL_ECH_STATUS_SUCCESS);   break;
+    case SSL_ECH_STATUS_NOT_TRIED: str = s(SSL_ECH_STATUS_NOT_TRIED); break;
+    case SSL_ECH_STATUS_FAILED:    str = s(SSL_ECH_STATUS_FAILED);    break;
+    case SSL_ECH_STATUS_BAD_NAME:  str = s(SSL_ECH_STATUS_BAD_NAME);  break;
+    case SSL_ECH_STATUS_BAD_CALL:  str = s(SSL_ECH_STATUS_BAD_CALL);  break;
+    case SSL_ECH_STATUS_GREASE:    str = s(SSL_ECH_STATUS_GREASE);    break;
+    case SSL_ECH_STATUS_BACKEND:   str = s(SSL_ECH_STATUS_BACKEND);   break;
+    default:                       str = "ECH status unknown";        break;
+    }
+#undef s
+    /*
+     * We output ECH status, then either the outer SNI or the host header (if
+     * outer SNI is NULL) and the inner SNI if non-NULL.
+     */
+    if (echstat != SSL_ECH_STATUS_SUCCESS) {
+        OPENSSL_free(sni_clr);
+        sni_clr = (char *)SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+    }
+    if (sni_clr != NULL)
+        hostheader = sni_clr;
+    sprv = ngx_sprintf(buf, "ECH: %s/%s/%s", str,
+                       (hostheader == NULL ? "" : hostheader),
+                       (sni_ech == NULL ? "" : sni_ech));
+    OPENSSL_free(sni_ech);
+    if (echstat == SSL_ECH_STATUS_SUCCESS)
+        OPENSSL_free(sni_clr);
+    return sprv;
+}
+#endif
 
 static ngx_int_t
 ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
