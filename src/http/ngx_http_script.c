@@ -1115,6 +1115,11 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         e->sp++;
 
         e->ip += sizeof(ngx_http_script_regex_code_t);
+
+        /* Resolve issue #611 (https://github.com/nginx/nginx/issues/611). */
+        if (NULL == strchr((const char *) e->line.data, '%')) {
+            e->quote = 0;
+        }
         return;
     }
 
