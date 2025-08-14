@@ -555,9 +555,18 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
+    if (c->ssl->sni_accepted) {
+        return SSL_TLSEXT_ERR_OK;
+    }
+
     s = c->data;
 
-    servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+    if (arg) {
+        servername = arg;
+
+    } else {
+        servername = SSL_get_servername(ssl_conn, TLSEXT_NAMETYPE_host_name);
+    }
 
     if (servername == NULL) {
         ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
@@ -596,34 +605,11 @@ ngx_stream_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         goto done;
     }
 
-    sscf = ngx_stream_get_module_srv_conf(cscf->ctx, ngx_stream_ssl_module);
-
-#if (defined TLS1_3_VERSION                                                   \
-     && !defined LIBRESSL_VERSION_NUMBER && !defined OPENSSL_IS_BORINGSSL)
-
-    /*
-     * SSL_SESSION_get0_hostname() is only available in OpenSSL 1.1.1+,
-     * but servername being negotiated in every TLSv1.3 handshake
-     * is only returned in OpenSSL 1.1.1+ as well
-     */
-
-    if (sscf->verify) {
-        const char  *hostname;
-
-        hostname = SSL_SESSION_get0_hostname(SSL_get0_session(ssl_conn));
-
-        if (hostname != NULL && ngx_strcmp(hostname, servername) != 0) {
-            c->ssl->handshake_rejected = 1;
-            *ad = SSL_AD_ACCESS_DENIED;
-            return SSL_TLSEXT_ERR_ALERT_FATAL;
-        }
-    }
-
-#endif
-
     s->srv_conf = cscf->ctx->srv_conf;
 
     ngx_set_connection_log(c, cscf->error_log);
+
+    sscf = ngx_stream_get_module_srv_conf(cscf->ctx, ngx_stream_ssl_module);
 
     if (sscf->ssl.ctx) {
         if (SSL_set_SSL_CTX(ssl_conn, sscf->ssl.ctx) == NULL) {
@@ -663,6 +649,7 @@ done:
         return SSL_TLSEXT_ERR_ALERT_FATAL;
     }
 
+    c->ssl->sni_accepted = 1;
     return SSL_TLSEXT_ERR_OK;
 
 error:
@@ -1000,6 +987,18 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
+
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+    {
+    ngx_ssl_client_hello_arg  *arg;
+
+    arg = ngx_pcalloc(cf->pool, sizeof(ngx_ssl_client_hello_arg));
+    arg->servername = ngx_stream_ssl_servername;
+
+    SSL_CTX_set_client_hello_cb(conf->ssl.ctx, ngx_ssl_client_hello_callback,
+                                arg);
+    }
+#endif
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
     SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
