@@ -4,7 +4,11 @@ FROM debian:bookworm-slim
 COPY ./nginx /usr/local/nginx
 
 EXPOSE 80 443
+#ghello
 
 # Use full path to NGINX binary and it will find its own config and logs
 ENTRYPOINT ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
+
+
+
 
