@@ -1183,6 +1183,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_proxy_create_request(ngx_http_request_t *r)
 {
+    u_char                       *key;
     size_t                        len, uri_len, loc_len, body_len, headers_len,
                                   key_len, val_len;
     uintptr_t                     escape;
@@ -1468,11 +1469,19 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
             continue;
         }
 
+        key = e.pos;
+
         code = *(ngx_http_script_code_pt *) e.ip;
         code((ngx_http_script_engine_t *) &e);
 
         if (e.status) {
             return NGX_ERROR;
+        }
+
+        if (e.pos - key == 7
+            && ngx_strncasecmp(key, (u_char *) "Upgrade", 7) == 0)
+        {
+            ctx->upgrade = 1;
         }
 
         if (ngx_http_script_check_length(&e, 2) != NGX_OK) {
@@ -2040,7 +2049,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             }
 
             if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS
-                && r->headers_in.upgrade)
+                && r->headers_in.upgrade
+                && ctx->upgrade)
             {
                 u->keepalive = 0;
                 u->upgrade = 1;
