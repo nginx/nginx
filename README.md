@@ -86,6 +86,11 @@ NGINX binaries are built and distributed in two versions: stable and mainline. S
 ## Linux binary installation process
 The NGINX binary installation process takes advantage of package managers native to specific Linux distributions. For this reason, first-time installations involve adding the official NGINX package repository to your system's package manager. Follow [these steps](https://nginx.org/en/linux_packages.html) to download, verify, and install NGINX binaries using the package manager appropriate for your Linux distribution.
 
+
+
+
+
+
 ### Upgrades
 Future upgrades to the latest version can be managed using the same package manager without the need to manually download and verify binaries.
 
