@@ -280,7 +280,11 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     }
 
     if (ngx_ext_rename_file(temp, &path, &ext) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        ngx_int_t rc;
+        rc = ngx_http_dav_error(r->connection->log, ngx_errno,
+                                 NGX_HTTP_NOT_FOUND, ngx_rename_file_n,
+                                 path.data);
+        ngx_http_finalize_request(r, rc);
         return;
     }
 
