@@ -24,7 +24,7 @@ uint32_t ngx_utf16_decode(u_short **u, size_t n);
 /* FILE_FLAG_BACKUP_SEMANTICS allows to obtain a handle to a directory */
 
 ngx_fd_t
-ngx_open_file(u_char *name, u_long mode, u_long create, u_long access)
+ngx_open_file(u_char *name, u_long mode, u_long create, u_long access, u_long file_mode)
 {
     size_t      len;
     u_short    *u;
@@ -468,7 +468,7 @@ ngx_create_file_mapping(ngx_file_mapping_t *fm)
     LARGE_INTEGER  size;
 
     fm->fd = ngx_open_file(fm->name, NGX_FILE_RDWR, NGX_FILE_TRUNCATE,
-                           NGX_FILE_DEFAULT_ACCESS);
+                           NGX_FILE_DEFAULT_ACCESS, NGX_FILE_DEFAULT_ACCESS);
 
     if (fm->fd == NGX_INVALID_FILE) {
         ngx_log_error(NGX_LOG_CRIT, fm->log, ngx_errno,
