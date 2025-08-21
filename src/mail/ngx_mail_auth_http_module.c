@@ -964,6 +964,8 @@ ngx_mail_auth_send_error(ngx_mail_session_t *s)
         s->state = 0;
         s->mail_state = 0;
         s->tag.len = 0;
+        s->login.len = 0;
+        s->passwd.len = 0;
 
     } else {
         s->auth_err.len -= s->tag.len;

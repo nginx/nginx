@@ -251,9 +251,11 @@ ngx_mail_imap_auth_state(ngx_event_t *rev)
         return;
 
     case NGX_MAIL_PARSE_INVALID_COMMAND:
-        s->state = 0;
-        ngx_str_set(&s->out, imap_invalid_command);
         s->mail_state = ngx_imap_start;
+        s->state = 0;
+        s->login.len = 0;
+        s->passwd.len = 0;
+        ngx_str_set(&s->out, imap_invalid_command);
         break;
     }
 

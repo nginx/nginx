@@ -778,6 +778,8 @@ ngx_mail_auth_xoauth2(ngx_mail_session_t *s, ngx_connection_t *c, ngx_uint_t n)
             s->quit = s->auth_quit;
             s->state = 0;
             s->mail_state = 0;
+            s->login.len = 0;
+            s->passwd.len = 0;
             ngx_str_null(&s->auth_err);
             return NGX_OK;
         }
@@ -887,6 +889,8 @@ ngx_mail_auth_oauthbearer(ngx_mail_session_t *s, ngx_connection_t *c,
             s->quit = s->auth_quit;
             s->state = 0;
             s->mail_state = 0;
+            s->login.len = 0;
+            s->passwd.len = 0;
             ngx_str_null(&s->auth_err);
             return NGX_OK;
         }
