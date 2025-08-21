@@ -1138,7 +1138,17 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
             r->access_code = 0;
 
             for (h = r->headers_out.www_authenticate; h; h = h->next) {
-                h->hash = 0;
+                // WWW-Authenticate response header is also used to send the
+                // servers Mutual authentication token to client as response to
+                // a request with authentication token. Ref: RFC 4559
+
+                // Below check skips invalidating the header iff it is a
+                // GSSAPI Mutual authentication token.
+                if (ngx_strncmp(h->value.data, "Negotiate ",
+                                ngx_strlen("Negotiate ")) != 0)
+                {
+                    h->hash = 0;
+                }
             }
 
             r->phase_handler = ph->next;
