@@ -1302,11 +1302,9 @@ ngx_mail_log_error(ngx_log_t *log, u_char *buf, size_t len)
         buf = p;
     }
 
-    if (s->proxy == NULL) {
-        return p;
+    if (s->proxy) {
+        p = ngx_snprintf(buf, len, ", upstream: %V", s->proxy->upstream.name);
     }
-
-    p = ngx_snprintf(buf, len, ", upstream: %V", s->proxy->upstream.name);
 
     return p;
 }
