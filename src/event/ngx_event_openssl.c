@@ -5369,7 +5369,8 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 
             ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "SSL subjectAltName: \"%*s\"",
-                           ASN1_STRING_length(str), ASN1_STRING_data(str));
+                           (size_t) ASN1_STRING_length(str),
+                           ASN1_STRING_data(str));
 
             if (ngx_ssl_check_name(name, str) == NGX_OK) {
                 ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -5411,7 +5412,8 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL commonName: \"%*s\"",
-                       ASN1_STRING_length(str), ASN1_STRING_data(str));
+                       (size_t) ASN1_STRING_length(str),
+                       ASN1_STRING_data(str));
 
         if (ngx_ssl_check_name(name, str) == NGX_OK) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
