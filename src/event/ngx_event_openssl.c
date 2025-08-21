@@ -5274,19 +5274,62 @@ ngx_ssl_cleanup_ctx(void *data)
 ngx_int_t
 ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 {
-    X509   *cert;
+    X509       *cert;
+    u_char     *addr, addr6[16];
+    size_t      alen;
+    in_addr_t   addr4;
 
     cert = SSL_get_peer_certificate(c->ssl->connection);
     if (cert == NULL) {
         return NGX_ERROR;
     }
 
+    if (name->len == 0) {
+        goto failed;
+    }
+
+    addr4 = ngx_inet_addr(name->data, name->len);
+
+    if (addr4 != INADDR_NONE) {
+        addr = (u_char *) &addr4;
+        alen = 4;
+
+#if (NGX_HAVE_INET6)
+    } else if (name->data[0] == '[') {
+
+        if (name->data[name->len - 1] != ']') {
+            goto failed;
+        }
+
+        if (ngx_inet6_addr(name->data + 1, name->len - 2, &addr6[0])
+            != NGX_OK)
+        {
+            goto failed;
+        }
+
+        addr = &addr6[0];
+        alen = 16;
+
+#endif
+    } else {
+        addr = NULL;
+        alen = 0;
+    }
+
 #ifdef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 
     /* X509_check_host() is only available in OpenSSL 1.0.2+ */
 
-    if (name->len == 0) {
-        goto failed;
+    if (addr) {
+        if (X509_check_ip(cert, addr, alen, 0) != 1) {
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "X509_check_ip(): no match");
+            goto failed;
+        }
+
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "X509_check_ip(): match");
+        goto found;
     }
 
     if (X509_check_host(cert, (char *) name->data, name->len, 0, NULL) != 1) {
@@ -5303,6 +5346,8 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 #else
     {
     int                      n, i;
+    size_t                   dlen;
+    u_char                  *data;
     X509_NAME               *sname;
     ASN1_STRING             *str;
     X509_NAME_ENTRY         *entry;
@@ -5322,21 +5367,63 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
         for (i = 0; i < n; i++) {
             altname = sk_GENERAL_NAME_value(altnames, i);
 
-            if (altname->type != GEN_DNS) {
-                continue;
-            }
+            if (altname->type == GEN_DNS) {
 
-            str = altname->d.dNSName;
+                str = altname->d.dNSName;
 
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "SSL subjectAltName: \"%*s\"",
-                           ASN1_STRING_length(str), ASN1_STRING_data(str));
+                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL subjectAltName: \"%*s\"",
+                               (size_t) ASN1_STRING_length(str),
+                               ASN1_STRING_data(str));
 
-            if (ngx_ssl_check_name(name, str) == NGX_OK) {
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "SSL subjectAltName: match");
-                GENERAL_NAMES_free(altnames);
-                goto found;
+                if (ngx_ssl_check_name(name, str) == NGX_OK) {
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "SSL subjectAltName: match");
+                    GENERAL_NAMES_free(altnames);
+                    goto found;
+                }
+
+            } else if (altname->type == GEN_IPADD) {
+
+                str = altname->d.iPAddress;
+                data = ASN1_STRING_data(str);
+                dlen = ASN1_STRING_length(str);
+
+#if (NGX_DEBUG)
+                {
+                size_t  al;
+                u_char  at[NGX_INET6_ADDRSTRLEN];
+
+                if (dlen == 4) {
+                    al = ngx_inet_ntop(AF_INET, data, at,
+                                       NGX_INET6_ADDRSTRLEN);
+
+#if (NGX_HAVE_INET6)
+                } else if (dlen == 16) {
+                    al = ngx_inet_ntop(AF_INET6, data, at,
+                                       NGX_INET6_ADDRSTRLEN);
+
+#endif
+                } else {
+                    al = ngx_cpymem(at, "<invalid>", sizeof("<invalid>") - 1)
+                         - at;
+                }
+
+                ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                               "SSL subjectAltName: %*s",
+                               al, at);
+                }
+#endif
+
+                if (addr
+                    && alen == dlen
+                    && ngx_memcmp(addr, data, dlen) == 0)
+                {
+                    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                                   "SSL subjectAltName: match");
+                    GENERAL_NAMES_free(altnames);
+                    goto found;
+                }
             }
         }
 
