@@ -25,6 +25,7 @@ types {
     image/x-jng                                      jng;
     image/x-ms-bmp                                   bmp;
 
+    font/otf                                         otf;
     font/woff                                        woff;
     font/woff2                                       woff2;
 
@@ -35,7 +36,10 @@ types {
     application/pdf                                  pdf;
     application/postscript                           ps eps ai;
     application/rtf                                  rtf;
+    application/vnd.android.package-archive          apk;
     application/vnd.apple.mpegurl                    m3u8;
+    application/vnd.bzip3                            bz3;
+    application/vnd.debian.binary-package            deb udeb;
     application/vnd.google-earth.kml+xml             kml;
     application/vnd.google-earth.kmz                 kmz;
     application/vnd.ms-excel                         xls;
@@ -51,9 +55,15 @@ types {
                                                      xlsx;
     application/vnd.openxmlformats-officedocument.wordprocessingml.document
                                                      docx;
+    application/vnd.tcpdump.pcap                     pcap cap dmp;
+    application/vnd.visio                            vsd vst vsw vss;
     application/vnd.wap.wmlc                         wmlc;
     application/wasm                                 wasm;
     application/x-7z-compressed                      7z;
+    application/x-appimage                           appimage;
+    application/x-bittorrent                         torrent;
+    application/x-bzip                               bz;
+    application/x-bzip2                              bz2;
     application/x-cocoa                              cco;
     application/x-java-archive-diff                  jardiff;
     application/x-java-jnlp-file                     jnlp;
@@ -65,24 +75,34 @@ types {
     application/x-sea                                sea;
     application/x-shockwave-flash                    swf;
     application/x-stuffit                            sit;
+    application/x-tar                                tar;
     application/x-tcl                                tcl tk;
     application/x-x509-ca-cert                       der pem crt;
     application/x-xpinstall                          xpi;
     application/xhtml+xml                            xhtml;
     application/xspf+xml                             xspf;
     application/zip                                  zip;
+    application/zlib                                 zlib;
+    application/zstd                                 zst;
 
     application/octet-stream                         bin exe dll;
-    application/octet-stream                         deb;
     application/octet-stream                         dmg;
+    application/octet-stream                         gz;
     application/octet-stream                         iso img;
+    application/octet-stream                         lz;
+    application/octet-stream                         lzma;
     application/octet-stream                         msi msp msm;
+    application/octet-stream                         ova;
+    application/octet-stream                         txz;
+    application/octet-stream                         xz;
+    application/octet-stream                         zim;
 
     audio/midi                                       mid midi kar;
     audio/mpeg                                       mp3;
     audio/ogg                                        ogg;
     audio/x-m4a                                      m4a;
     audio/x-realaudio                                ra;
+    audio/x-matroska                                 mka;
 
     video/3gpp                                       3gpp 3gp;
     video/mp2t                                       ts;
@@ -92,6 +112,7 @@ types {
     video/webm                                       webm;
     video/x-flv                                      flv;
     video/x-m4v                                      m4v;
+    video/x-matroska                                 mkv;
     video/x-mng                                      mng;
     video/x-ms-asf                                   asx asf;
     video/x-ms-wmv                                   wmv;
