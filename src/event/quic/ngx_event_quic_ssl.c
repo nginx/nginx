@@ -696,6 +696,12 @@ ngx_quic_handshake(ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
     if (qc->error) {
+
+        if (c->ssl->handshake_rejected) {
+            ngx_connection_error(c, 0, "handshake rejected");
+            ERR_clear_error();
+        }
+
         return NGX_ERROR;
     }
 
@@ -706,14 +712,6 @@ ngx_quic_handshake(ngx_connection_t *c)
                        sslerr);
 
         if (sslerr != SSL_ERROR_WANT_READ) {
-
-            if (c->ssl->handshake_rejected) {
-                ngx_connection_error(c, 0, "handshake rejected");
-                ERR_clear_error();
-
-                return NGX_ERROR;
-            }
-
             ngx_ssl_connection_error(c, sslerr, 0, "SSL_do_handshake() failed");
             return NGX_ERROR;
         }
