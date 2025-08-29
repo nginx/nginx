@@ -1054,6 +1054,30 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     }
 
     if (len == 0 && !last) {
+        /*
+         * RFC 9000, 4.1. Data Flow Control
+         *
+         * A sender SHOULD send a STREAM_DATA_BLOCKED or DATA_BLOCKED frame to
+         * indicate to the receiver that it has data to write but is blocked by
+         * flow control limits.
+         */
+        if (qc->streams.send_max_data == qc->streams.send_offset
+            && !qc->streams.flow_control_blocked)
+        {
+            qc->streams.flow_control_blocked = 1;
+
+            frame = ngx_quic_alloc_frame(pc);
+            if (frame == NULL) {
+                return NGX_ERROR;
+            }
+
+            frame->level = ssl_encryption_application;
+            frame->type = NGX_QUIC_FT_DATA_BLOCKED;
+            frame->u.data_blocked.limit = qc->streams.send_max_data;
+
+            ngx_quic_queue_frame(qc, frame);
+        }
+
         return NGX_OK;
     }
 
@@ -1344,6 +1368,8 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     }
 
     qc->streams.send_max_data = f->max_data;
+    qc->streams.flow_control_blocked = 0;
+
     node = ngx_rbtree_min(tree->root, tree->sentinel);
 
     while (node && qc->streams.send_offset < qc->streams.send_max_data) {
