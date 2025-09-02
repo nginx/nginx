@@ -264,7 +264,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         break;
 
     case NGX_HTTP_AUTOINDEX_JSONP:
-        ngx_str_set(&r->headers_out.content_type, "application/javascript");
+        ngx_str_set(&r->headers_out.content_type, "text/javascript");
         break;
 
     case NGX_HTTP_AUTOINDEX_XML:

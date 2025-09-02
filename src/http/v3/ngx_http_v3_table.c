@@ -79,7 +79,7 @@ static ngx_http_v3_field_t  ngx_http_v3_static_table[] = {
     { ngx_string("content-type"),
           ngx_string("application/dns-message") },
     { ngx_string("content-type"),
-          ngx_string("application/javascript") },
+          ngx_string("text/javascript") },
     { ngx_string("content-type"),          ngx_string("application/json") },
     { ngx_string("content-type"),
           ngx_string("application/x-www-form-urlencoded") },
