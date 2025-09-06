@@ -1346,6 +1346,11 @@ ngx_ssl_passwords_cleanup(void *data)
 
 
 #ifndef OPENSSL_NO_ECH
+
+#ifndef PATH_MAX
+#define PATH_MAC 1024
+#endif
+
 /* load key files called <name>.ech we find in the ssl_echkeydir directory */
 static int load_echkeys(ngx_ssl_t *ssl, ngx_str_t *dirname)
 {
@@ -1387,14 +1392,14 @@ static int load_echkeys(ngx_ssl_t *ssl, ngx_str_t *dirname)
                     dirname->data, den);
                 continue;
             }
-            snprintf(privname, PATH_MAX,"%s/%s", dirname->data, den);
+            snprintf(privname, PATH_MAX, "%s/%s", dirname->data, den);
             if (!--maxkeyfiles) {
                 /* so we don't loop forever, ever */
                 ngx_ssl_error(NGX_LOG_ALERT, ssl->log, 0,
                     "load_echkeys, too many private key files to check!");
                 ngx_ssl_error(NGX_LOG_ALERT, ssl->log, 0,
                     "load_echkeys, maxkeyfiles is hardcoded to 1024");
-                 return NGX_ERROR;
+                return NGX_ERROR;
             }
             if (stat(privname, &thestat) == 0) {
                 BIO *in = BIO_new_file(privname, "r");
