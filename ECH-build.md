@@ -109,6 +109,14 @@ publishing service
 parameters](https://datatracker.ietf.org/doc/html/draft-ietf-tls-wkech)
 designed to assist web servers in handling e.g. frequent ECH key rotation.
 
+The `dig` example above assumes support for HTTPS RRs, for earlier 
+versions of `dig` one would see something like:
+
+``
+$ dig +short -t type65 foo.example.com
+\# 165 00010000040004D56C6C65000500820080FE0D003CF700200020189E 5FD51BC7527C67CB4883B4A79CC39642FE446965A473B7AB1E3A45F3 3058000400010001000D636F7665722E6465666F2E69650000FE0D00 3C44002000201DE542C51EF072BD7250FB486E812A697130C844602F D3148347457C685B1916000400010001000D636F7665722E6465666F 2E69650000000600102A00C6C0000001160005000000000010
+```
+
 ## Configuration
 
 To enable ECH for an NGINX instance, configure a directory name via the
