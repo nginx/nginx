@@ -490,7 +490,7 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (value[i].len == 0) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "index \"%V\" in \"index\" directive is invalid",
-                               &value[1]);
+                               &value[i]);
             return NGX_CONF_ERROR;
         }
 
