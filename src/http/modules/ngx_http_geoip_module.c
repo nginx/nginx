@@ -12,6 +12,7 @@
 #include <GeoIP.h>
 #include <GeoIPCity.h>
 
+#include <maxminddb.h>
 
 #define NGX_GEOIP_COUNTRY_CODE   0
 #define NGX_GEOIP_COUNTRY_CODE3  1
@@ -20,6 +21,7 @@
 
 typedef struct {
     GeoIP        *country;
+    MMDB_s       *country_mmdb;
     GeoIP        *org;
     GeoIP        *city;
     ngx_array_t  *proxies;    /* array of ngx_cidr_t */
@@ -235,7 +237,6 @@ static ngx_http_variable_t  ngx_http_geoip_vars[] = {
       ngx_http_null_variable
 };
 
-
 static u_long
 ngx_http_geoip_addr(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
 {
@@ -337,6 +338,94 @@ ngx_http_geoip_addr_v6(ngx_http_request_t *r, ngx_http_geoip_conf_t *gcf)
 #endif
 
 
+// TODO
+// stole from https://gist.github.com/jkomyno/45bee6e79451453c7bbdc22d033a282e
+char *get_ip_str(const struct sockaddr *sa, char *s, size_t maxlen)
+{
+    switch(sa->sa_family) {
+        case AF_INET:
+            inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr),
+                      s, maxlen);
+            break;
+
+        case AF_INET6:
+            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr),
+                      s, maxlen);
+            break;
+
+        default:
+            strncpy(s, "Unknown AF", maxlen);
+            return NULL;
+    }
+
+    return s;
+}
+
+//TODO
+// kde by sa mali davat helper functions?
+void mmdb_country_code_by_ip(ngx_http_request_t *r,
+                             ngx_http_geoip_conf_t *gcf,
+                             ngx_http_variable_value_t *v)
+{
+    u_char ip_str[NGX_INET6_ADDRSTRLEN];
+    ngx_addr_t addr;
+
+    addr.sockaddr = r->connection->sockaddr;
+    addr.socklen = r->connection->socklen;
+
+    if (r->headers_in.x_forwarded_for && gcf->proxies) {
+        (void) ngx_http_get_forwarded_addr(r, &addr, r->headers_in.x_forwarded_for,
+                                           NULL, gcf->proxies, gcf->proxy_recursive);
+    }
+
+    if (get_ip_str(addr.sockaddr, (char *) ip_str, NGX_INET6_ADDRSTRLEN) == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "Couldn't convert sockaddr to string address.");
+        v->not_found = 1;
+        return;
+    };
+
+    int gai_error, mmdb_error;
+    MMDB_lookup_result_s result = MMDB_lookup_string(gcf->country_mmdb,
+                                                     (const char *)ip_str,
+                                                     &gai_error, &mmdb_error);
+    if (gai_error != 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "MMDB_lookup_string() error: %s", MMDB_strerror(gai_error));
+        v->not_found = 1;
+        return;
+    }
+
+    if (mmdb_error != MMDB_SUCCESS) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "MMDB_lookup_string() mmdb_error: %s", MMDB_strerror(mmdb_error));
+        v->not_found = 1;
+        return;
+    }
+
+    if (!result.found_entry) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "Did not found: ");
+        v->not_found = 1;
+        return;
+    }
+
+    MMDB_entry_data_s entry_data;
+    int ret = MMDB_get_value(&result.entry, &entry_data, "country", "iso_code", NULL);
+    if (ret == MMDB_SUCCESS && entry_data.has_data) {
+        v->len = entry_data.data_size;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = (u_char *) entry_data.utf8_string;
+
+        ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                      "Found country code: \"%s\"", entry_data.utf8_string);
+    } else {
+        v->not_found = 1;
+    }
+}
+
 static ngx_int_t
 ngx_http_geoip_country_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -353,8 +442,13 @@ ngx_http_geoip_country_variable(ngx_http_request_t *r,
 
     gcf = ngx_http_get_module_main_conf(r, ngx_http_geoip_module);
 
-    if (gcf->country == NULL) {
+    if (gcf->country == NULL && gcf->country_mmdb == NULL) {
         goto not_found;
+    }
+
+    if (gcf->country_mmdb) {
+        mmdb_country_code_by_ip(r, gcf, v);
+        return NGX_OK;
     }
 
 #if (NGX_HAVE_GEOIP_V6)
@@ -672,6 +766,17 @@ ngx_http_geoip_init_conf(ngx_conf_t *cf, void *conf)
     return NGX_CONF_OK;
 }
 
+// TODO
+// kde je idealne miesto na helper functions? na konci suboru
+
+static bool endsWith(const char *string, const char *suffix) {
+    size_t len_str = strlen(string);
+    size_t len_suffix = strlen(suffix);
+
+    if (len_suffix > len_str) return false;
+    return strcmp(string + (len_str - len_suffix), suffix) == 0;
+}
+
 
 static char *
 ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -686,23 +791,39 @@ ngx_http_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    gcf->country = GeoIP_open((char *) value[1].data, GEOIP_MEMORY_CACHE);
+    // TODO
+    // nemal by som volat dva krat endsWith, zbytocne sa vola strlen 2x
+    if (endsWith((char *) value[1].data, ".mmdb")) {
+        gcf->country_mmdb = ngx_pcalloc(cf->pool, sizeof(MMDB_s));
+        int status = MMDB_open((char *) value[1].data, MMDB_MODE_MMAP, gcf->country_mmdb);
+        if (status != MMDB_SUCCESS) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "Nepodarilo sa otvorit .mmdb subor \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
 
-    if (gcf->country == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "GeoIP_open(\"%V\") failed", &value[1]);
-
-        return NGX_CONF_ERROR;
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "Subor uspesne otvoreny", &value[1]);
+        return NGX_CONF_OK;
     }
 
-    if (cf->args->nelts == 3) {
-        if (ngx_strcmp(value[2].data, "utf8") == 0) {
-            GeoIP_set_charset(gcf->country, GEOIP_CHARSET_UTF8);
+    else {
+        gcf->country = GeoIP_open((char *) value[1].data, GEOIP_MEMORY_CACHE);
 
-        } else {
+        if (gcf->country == NULL) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[2]);
+                               "GeoIP_open(\"%V\") failed", &value[1]);
+
             return NGX_CONF_ERROR;
+        }
+
+        if (cf->args->nelts == 3) {
+            if (ngx_strcmp(value[2].data, "utf8") == 0) {
+                GeoIP_set_charset(gcf->country, GEOIP_CHARSET_UTF8);
+
+            } else {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid parameter \"%V\"", &value[2]);
+                return NGX_CONF_ERROR;
+            }
         }
     }
 
