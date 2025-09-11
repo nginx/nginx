@@ -203,6 +203,7 @@ u_char *ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len);
 #define NGX_ESCAPE_REFRESH        4
 #define NGX_ESCAPE_MEMCACHED      5
 #define NGX_ESCAPE_MAIL_AUTH      6
+#define NGX_ESCAPE_MAIL_XTEXT     7
 
 #define NGX_UNESCAPE_URI       1
 #define NGX_UNESCAPE_REDIRECT  2
