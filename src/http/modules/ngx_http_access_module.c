@@ -14,7 +14,7 @@ typedef struct {
     in_addr_t         mask;
     in_addr_t         addr;
     ngx_uint_t        deny;      /* unsigned  deny:1; */
-    ngx_uint_t        deny_status_code;
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule_t;
 
 #if (NGX_HAVE_INET6)
@@ -23,7 +23,7 @@ typedef struct {
     struct in6_addr   addr;
     struct in6_addr   mask;
     ngx_uint_t        deny;      /* unsigned  deny:1; */
-    ngx_uint_t        deny_status_code;
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule6_t;
 
 #endif
@@ -32,7 +32,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t        deny;      /* unsigned  deny:1; */
-    ngx_uint_t        deny_status_code;
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule_un_t;
 
 #endif
@@ -60,7 +60,7 @@ static ngx_int_t ngx_http_access_unix(ngx_http_request_t *r,
     ngx_http_access_loc_conf_t *alcf);
 #endif
 static ngx_int_t ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny,
-    ngx_uint_t deny_status_code);
+    ngx_int_t deny_status_code);
 static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf);
@@ -281,7 +281,7 @@ ngx_http_access_unix(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf)
 
 static ngx_int_t
 ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny,
-    ngx_uint_t deny_status_code)
+    ngx_int_t deny_status_code)
 {
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -290,11 +290,11 @@ ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny,
 
         if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "access forbidden by rule with status %ui",
+                          "access denied by rule with status %ui",
                           deny_status_code);
         }
 
-        return (ngx_int_t)deny_status_code;
+        return deny_status_code;
     }
 
     return NGX_OK;
@@ -309,7 +309,7 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_int_t                   rc;
     ngx_uint_t                  all;
     ngx_uint_t                  deny;
-    ngx_uint_t                  deny_status_code;
+    ngx_int_t                   deny_status_code;
     ngx_str_t                  *value;
     ngx_cidr_t                  cidr;
     ngx_http_access_rule_t     *rule;
