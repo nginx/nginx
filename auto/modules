@@ -726,10 +726,11 @@ if [ $HTTP = YES ]; then
 
     if [ $HTTP_PROXY = YES ]; then
         have=NGX_HTTP_X_FORWARDED_FOR . auto/have
+        have=NGX_HTTP_PROXY . auto/have
 
         ngx_module_name=ngx_http_proxy_module
         ngx_module_incs=
-        ngx_module_deps=
+        ngx_module_deps=src/http/modules/ngx_http_proxy_module.h
         ngx_module_srcs=src/http/modules/ngx_http_proxy_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_PROXY
@@ -777,6 +778,17 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_grpc_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_GRPC
+
+        . auto/module
+    fi
+
+    if [ $HTTP_V2 = YES ]; then
+        ngx_module_name=ngx_http_v2_proxy_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/v2/ngx_http_v2_proxy_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_V2
 
         . auto/module
     fi
