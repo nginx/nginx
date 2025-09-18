@@ -1494,8 +1494,9 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
 uintptr_t
 ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 {
-    ngx_uint_t      n;
+    u_char          prefix;
     uint32_t       *escape;
+    ngx_uint_t      n;
     static u_char   hex[] = "0123456789ABCDEF";
 
     /*
@@ -1633,11 +1634,36 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
                     /* mail_auth is the same as memcached */
 
+                    /* " ", "+", "=", not allowed */
+
+    static uint32_t   mail_xtext[] = {
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+
+                    /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
+        0x20000801, /* 0010 0000 0000 0000  0000 1000 0000 0001 */
+
+                    /* _^]\ [ZYX WVUT SRQP  ONML KJIH GFED CBA@ */
+        0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
+
+                    /*  ~}| {zyx wvut srqp  onml kjih gfed cba` */
+        0x80000000, /* 1000 0000 0000 0000  0000 0000 0000 0000 */
+
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+        0xffffffff, /* 1111 1111 1111 1111  1111 1111 1111 1111 */
+    };
+
     static uint32_t  *map[] =
-        { uri, args, uri_component, html, refresh, memcached, memcached };
+        { uri, args, uri_component, html, refresh, memcached, memcached,
+          mail_xtext };
+
+    static u_char  map_char[] =
+        { '%', '%', '%', '%', '%', '%', '%', '+' };
 
 
     escape = map[type];
+    prefix = map_char[type];
 
     if (dst == NULL) {
 
@@ -1658,7 +1684,7 @@ ngx_escape_uri(u_char *dst, u_char *src, size_t size, ngx_uint_t type)
 
     while (size) {
         if (escape[*src >> 5] & (1U << (*src & 0x1f))) {
-            *dst++ = '%';
+            *dst++ = prefix;
             *dst++ = hex[*src >> 4];
             *dst++ = hex[*src & 0xf];
             src++;
