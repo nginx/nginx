@@ -973,7 +973,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 #endif
 
-#ifdef OPENSSL_IS_BORINGSSL
+#if (defined OPENSSL_IS_BORINGSSL || defined OPENSSL_IS_AWSLC)
     if (SSL_set_quic_early_data_context(ssl_conn, p, clen) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
                       "quic SSL_set_quic_early_data_context() failed");
