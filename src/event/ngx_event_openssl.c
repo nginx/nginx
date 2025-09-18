@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#include <zlib.h>
+#endif
+
 
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
@@ -19,6 +23,13 @@ typedef struct {
 
 
 static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+static int ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn,
+    CBB *out, const uint8_t *in, size_t in_len);
+static void *ngx_ssl_cert_compression_alloc(void *opaque, u_int items,
+    u_int size);
+static void ngx_ssl_cert_compression_free(void *opaque, void *address);
+#endif
 static int ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store);
 static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
     int ret);
@@ -128,6 +139,7 @@ int  ngx_ssl_ticket_keys_index;
 int  ngx_ssl_ocsp_index;
 int  ngx_ssl_index;
 int  ngx_ssl_certificate_name_index;
+int  ngx_ssl_certificate_comp_index;
 
 
 u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
@@ -270,6 +282,14 @@ ngx_ssl_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
+    ngx_ssl_certificate_comp_index = SSL_CTX_get_ex_new_index(0, NULL, NULL,
+                                                              NULL, NULL);
+    if (ngx_ssl_certificate_comp_index == -1) {
+        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
+                      "SSL_CTX_get_ex_new_index() failed");
+        return NGX_ERROR;
+    }
+
     return NGX_OK;
 }
 
@@ -291,6 +311,14 @@ ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data)
     }
 
     if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_index, ssl) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set_ex_data() failed");
+        return NGX_ERROR;
+    }
+
+    if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_comp_index, NULL)
+        == 0)
+    {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set_ex_data() failed");
         return NGX_ERROR;
@@ -682,6 +710,18 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TX_CERTIFICATE_COMPRESSION);
 
+#elif (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+
+    if (SSL_CTX_add_cert_compression_alg(ssl->ctx, TLSEXT_cert_compression_zlib,
+                                         ngx_ssl_cert_compression_callback,
+                                         NULL)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_add_cert_compression_alg() failed");
+        return NGX_ERROR;
+    }
+
 #else
 
     ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
@@ -692,6 +732,129 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     return NGX_OK;
 }
+
+
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+
+static int
+ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn, CBB *out,
+    const uint8_t *in, size_t in_len)
+{
+    int                rc;
+    u_char            *p;
+    SSL_CTX           *ssl_ctx;
+    z_stream           zstream;
+    ngx_str_t         *comp, tmp;
+    ngx_pool_t        *pool;
+    ngx_connection_t  *c;
+
+    ssl_ctx = SSL_get_SSL_CTX(ssl_conn);
+    comp = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_certificate_comp_index);
+
+    if (comp != NULL) {
+        return CBB_add_bytes(out, comp->data, comp->len);
+    }
+
+    c = ngx_ssl_get_connection(ssl_conn);
+
+    pool = ngx_create_pool(256, c->log);
+    if (pool == NULL) {
+        return 0;
+    }
+
+    pool->log = c->log;
+
+    ngx_memzero(&zstream, sizeof(z_stream));
+
+    zstream.zalloc = ngx_ssl_cert_compression_alloc;
+    zstream.zfree = ngx_ssl_cert_compression_free;
+    zstream.opaque = pool;
+
+    rc = 0;
+
+    tmp.len = compressBound(in_len);
+    tmp.data = ngx_palloc(pool, tmp.len);
+    if (tmp.data == NULL) {
+        goto done;
+    }
+
+    zstream.next_in = (u_char *) in;
+    zstream.avail_in = in_len;
+    zstream.next_out = tmp.data;
+    zstream.avail_out = tmp.len;
+
+    rc = deflateInit(&zstream, Z_DEFAULT_COMPRESSION);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "deflateInit() failed: %d", rc);
+        goto done;
+    }
+
+    rc = deflate(&zstream, Z_FINISH);
+
+    if (rc != Z_STREAM_END) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "deflate(Z_FINISH) failed: %d", rc);
+        goto done;
+    }
+
+    tmp.len -= zstream.avail_out;
+
+    rc = deflateEnd(&zstream);
+
+    if (rc != Z_OK) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0, "deflateEnd() failed: %d", rc);
+        goto done;
+    }
+
+    p = ngx_alloc(sizeof(ngx_str_t) + tmp.len, c->log);
+    if (p == NULL) {
+        goto done;
+    }
+
+    comp = (ngx_str_t *) p;
+
+    comp->len = tmp.len;
+    comp->data = p + sizeof(ngx_str_t);
+
+    ngx_memcpy(comp->data, tmp.data, tmp.len);
+
+    SSL_CTX_set_ex_data(ssl_ctx, ngx_ssl_certificate_comp_index, comp);
+
+    rc = CBB_add_bytes(out, comp->data, comp->len);
+
+done:
+
+    ngx_destroy_pool(pool);
+
+    return rc;
+}
+
+
+static void *
+ngx_ssl_cert_compression_alloc(void *opaque, u_int items, u_int size)
+{
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pool->log, 0,
+                   "cert compression alloc: n:%ud s:%ud", items, size);
+
+    return ngx_palloc(pool, items * size);
+}
+
+
+static void
+ngx_ssl_cert_compression_free(void *opaque, void *address)
+{
+#if 0
+    ngx_pool_t *pool = opaque;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0,
+                   "cert compression free: %p", address);
+#endif
+}
+
+#endif
 
 
 ngx_int_t
@@ -4792,11 +4955,18 @@ ngx_ssl_cleanup_ctx(void *data)
     ngx_ssl_t  *ssl = data;
 
     X509        *cert;
+    ngx_str_t   *comp;
     ngx_uint_t   i;
 
     for (i = 0; i < ssl->certs.nelts; i++) {
         cert = ((X509 **) ssl->certs.elts)[i];
         X509_free(cert);
+    }
+
+    comp = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_comp_index);
+
+    if (comp != NULL) {
+        ngx_free(comp);
     }
 
     SSL_CTX_free(ssl->ctx);
