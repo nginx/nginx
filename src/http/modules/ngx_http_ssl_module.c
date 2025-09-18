@@ -422,6 +422,13 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 static ngx_str_t ngx_http_ssl_sess_id_ctx = ngx_string("HTTP");
 
 
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+static ngx_ssl_client_hello_arg ngx_http_ssl_client_hello_arg = {
+    ngx_http_ssl_servername
+};
+#endif
+
+
 #ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
 
 static int
@@ -747,6 +754,11 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cln->handler = ngx_ssl_cleanup_ctx;
     cln->data = &conf->ssl;
+
+#ifdef SSL_CLIENT_HELLO_SUCCESS
+    SSL_CTX_set_client_hello_cb(conf->ssl.ctx, ngx_ssl_client_hello_callback,
+                                &ngx_http_ssl_client_hello_arg);
+#endif
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
 
