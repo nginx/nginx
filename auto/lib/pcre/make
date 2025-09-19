@@ -90,7 +90,7 @@ $PCRE/src/pcre2.h:	$PCRE/Makefile
 $PCRE/Makefile:	$NGX_MAKEFILE
 	cd $PCRE \\
 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
-	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
+	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" AR="\$(AR)" \\
 	./configure --disable-shared $PCRE_CONF_OPT
 
 $PCRE/.libs/libpcre2-8.a:	$PCRE/Makefile
@@ -156,7 +156,7 @@ $PCRE/pcre.h:	$PCRE/Makefile
 $PCRE/Makefile:	$NGX_MAKEFILE
 	cd $PCRE \\
 	&& if [ -f Makefile ]; then \$(MAKE) distclean; fi \\
-	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" \\
+	&& CC="\$(CC)" CFLAGS="$PCRE_OPT" AR="\$(AR)" \\
 	./configure --disable-shared $PCRE_CONF_OPT
 
 $PCRE/.libs/libpcre.a:	$PCRE/Makefile
