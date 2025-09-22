@@ -298,6 +298,9 @@ void ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
     ngx_ssl_client_hello_arg *cb);
 #ifdef SSL_CLIENT_HELLO_SUCCESS
 int ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
+#elif defined OPENSSL_IS_BORINGSSL
+enum ssl_select_cert_result_t ngx_ssl_select_certificate(
+    const SSL_CLIENT_HELLO *client_hello);
 #endif
 
 ngx_int_t ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c,
