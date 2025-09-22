@@ -1663,6 +1663,11 @@ ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
     SSL_CTX_set_client_hello_cb(ssl_ctx, ngx_ssl_client_hello_callback, NULL);
     SSL_CTX_set_ex_data(ssl_ctx, ngx_ssl_client_hello_arg_index, cb);
 
+#elif defined OPENSSL_IS_BORINGSSL
+
+    SSL_CTX_set_select_certificate_cb(ssl_ctx, ngx_ssl_select_certificate);
+    SSL_CTX_set_ex_data(ssl_ctx, ngx_ssl_client_hello_arg_index, cb);
+
 #endif
 }
 
@@ -1725,6 +1730,37 @@ done:
     }
 
     return SSL_CLIENT_HELLO_SUCCESS;
+}
+
+#elif defined OPENSSL_IS_BORINGSSL
+
+enum ssl_select_cert_result_t ngx_ssl_select_certificate(
+    const SSL_CLIENT_HELLO *client_hello)
+{
+    int                        ad;
+    ngx_int_t                  rc;
+    ngx_ssl_conn_t            *ssl_conn;
+    ngx_connection_t          *c;
+    ngx_ssl_client_hello_arg  *cb;
+
+    ssl_conn = client_hello->ssl;
+    c = ngx_ssl_get_connection(ssl_conn);
+    cb = SSL_CTX_get_ex_data(c->ssl->session_ctx,
+                             ngx_ssl_client_hello_arg_index);
+
+    /*
+     * BoringSSL sends a hardcoded "handshake_failure" alert on errors,
+     * we use it to map SSL_AD_INTERNAL_ERROR.  To preserve other alert
+     * values, error handling is postponed to the servername callback.
+     */
+
+    rc = cb->servername(ssl_conn, &ad, NULL);
+
+    if (rc == SSL_TLSEXT_ERR_ALERT_FATAL && ad == SSL_AD_INTERNAL_ERROR) {
+        return ssl_select_cert_error;
+    }
+
+    return ssl_select_cert_success;
 }
 
 #endif
