@@ -459,6 +459,7 @@ ngx_insert_udp_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    udp->rbtree = &c->listening->rbtree;
     udp->connection = c;
 
     ngx_crc32_init(hash);
@@ -482,7 +483,7 @@ ngx_insert_udp_connection(ngx_connection_t *c)
     cln->data = c;
     cln->handler = ngx_delete_udp_connection;
 
-    ngx_rbtree_insert(&c->listening->rbtree, &udp->node);
+    ngx_rbtree_insert(udp->rbtree, &udp->node);
 
     c->udp = udp;
 
@@ -499,7 +500,7 @@ ngx_delete_udp_connection(void *data)
         return;
     }
 
-    ngx_rbtree_delete(&c->listening->rbtree, &c->udp->node);
+    ngx_rbtree_delete(c->udp->rbtree, &c->udp->node);
 
     c->udp = NULL;
 }

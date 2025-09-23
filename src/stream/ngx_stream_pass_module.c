@@ -222,10 +222,6 @@ ngx_stream_pass_cleanup(void *data)
 static ngx_int_t
 ngx_stream_pass_match(ngx_listening_t *ls, ngx_addr_t *addr)
 {
-    if (ls->type == SOCK_DGRAM) {
-        return NGX_DECLINED;
-    }
-
     if (!ls->wildcard) {
         return ngx_cmp_sockaddr(ls->sockaddr, ls->socklen,
                                 addr->sockaddr, addr->socklen, 1);
