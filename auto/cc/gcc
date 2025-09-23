@@ -8,14 +8,6 @@
 #     4.0.0, 4.0.1, 4.1.0
 
 
-NGX_GCC_VER=`$CC -v 2>&1 | grep 'gcc version' 2>&1 \
-                         | sed -e 's/^.* version \(.*\)/\1/'`
-
-echo " + gcc version: $NGX_GCC_VER"
-
-have=NGX_COMPILER value="\"gcc $NGX_GCC_VER\"" . auto/define
-
-
 # Solaris 7's /usr/ccs/bin/as does not support "-pipe"
 
 CC_TEST_FLAGS="-pipe"
@@ -112,7 +104,7 @@ esac
 
 CC_AUX_FLAGS="$CC_AUX_FLAGS $CPU_OPT"
 
-case "$NGX_GCC_VER" in
+case "$NGX_CC_VER" in
     2.7*)
         # batch build
         CPU_OPT=
@@ -145,7 +137,7 @@ CFLAGS="$CFLAGS -Wall -Wpointer-arith"
 #CFLAGS="$CFLAGS -Winline"
 #CFLAGS="$CFLAGS -Wmissing-prototypes"
 
-case "$NGX_GCC_VER" in
+case "$NGX_CC_VER" in
     2.*)
         # we have a lot of the unused function arguments
         CFLAGS="$CFLAGS -Wno-unused"
