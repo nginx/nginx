@@ -206,6 +206,7 @@ typedef struct {
 #if (NGX_PCRE)
     unsigned                    captures:1;
 #endif
+    unsigned                    allow_connect:1;
 
     ngx_http_core_loc_conf_t  **named_locations;
 } ngx_http_core_srv_conf_t;
