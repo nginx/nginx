@@ -928,33 +928,49 @@ static u_char *
 ngx_http_log_ech_status(ngx_http_request_t *r, u_char *buf,
     ngx_http_log_op_t *op)
 {
-    int           echstat = SSL_ECH_STATUS_NOT_TRIED;
-    SSL          *ssl = NULL;
-    char         *sni_ech = NULL, *sni_clr = NULL, *hostheader = NULL;
-    u_char       *sprv = NULL;
-    const char   *str;
+    int          echstat = SSL_ECH_STATUS_NOT_TRIED;
+    SSL         *ssl = NULL;
+    char        *sni_ech = NULL, *sni_clr = NULL, *hostheader = NULL;
+    u_char      *sprv = NULL;
+    const char  *str;
 
     /*
      * this is a bit oddly structured but is based on what was done for
      * lighttpd (by it's upstream maintainer) and what we did for haproxy
-     * and re-use makes us all happy 
+     * and re-use makes us all happy
      */
     if (!r || !r->connection || !r->connection->ssl
         || !r->connection->ssl->connection)
         return ngx_sprintf(buf, "ECH: no TLS connection");
     ssl = r->connection->ssl->connection;
-    if (r->headers_in.server.len > 0) 
+    if (r->headers_in.server.len > 0)
         hostheader = (char *)r->headers_in.server.data;
 #define s(x) #x
     switch ((echstat = SSL_ech_get1_status(ssl, &sni_ech, &sni_clr))) {
-    case SSL_ECH_STATUS_SUCCESS:   str = s(SSL_ECH_STATUS_SUCCESS);   break;
-    case SSL_ECH_STATUS_NOT_TRIED: str = s(SSL_ECH_STATUS_NOT_TRIED); break;
-    case SSL_ECH_STATUS_FAILED:    str = s(SSL_ECH_STATUS_FAILED);    break;
-    case SSL_ECH_STATUS_BAD_NAME:  str = s(SSL_ECH_STATUS_BAD_NAME);  break;
-    case SSL_ECH_STATUS_BAD_CALL:  str = s(SSL_ECH_STATUS_BAD_CALL);  break;
-    case SSL_ECH_STATUS_GREASE:    str = s(SSL_ECH_STATUS_GREASE);    break;
-    case SSL_ECH_STATUS_BACKEND:   str = s(SSL_ECH_STATUS_BACKEND);   break;
-    default:                       str = "ECH status unknown";        break;
+    case SSL_ECH_STATUS_SUCCESS:
+        str = s(SSL_ECH_STATUS_SUCCESS);
+        break;
+    case SSL_ECH_STATUS_NOT_TRIED:
+        str = s(SSL_ECH_STATUS_NOT_TRIED);
+        break;
+    case SSL_ECH_STATUS_FAILED:
+        str = s(SSL_ECH_STATUS_FAILED);
+        break;
+    case SSL_ECH_STATUS_BAD_NAME:
+        str = s(SSL_ECH_STATUS_BAD_NAME);
+        break;
+    case SSL_ECH_STATUS_BAD_CALL:
+        str = s(SSL_ECH_STATUS_BAD_CALL);
+        break;
+    case SSL_ECH_STATUS_GREASE:
+        str = s(SSL_ECH_STATUS_GREASE);
+        break;
+    case SSL_ECH_STATUS_BACKEND:
+        str = s(SSL_ECH_STATUS_BACKEND);
+        break;
+    default:
+        str = "ECH status unknown";
+        break;
     }
 #undef s
     /*
