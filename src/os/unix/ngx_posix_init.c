@@ -64,6 +64,22 @@ ngx_os_init(ngx_log_t *log)
     }
 #endif
 
+#if (NGX_HAVE_CPU_COUNT)
+
+#if (NGX_HAVE_SCHED_GETAFFINITY)
+    if (ngx_ncpu > 0) {
+        int        err;
+        cpu_set_t  mask;
+
+        err = sched_getaffinity(0, sizeof(mask), &mask);
+        if (err == 0) {
+            ngx_ncpu = CPU_COUNT(&mask);
+        }
+    }
+#endif
+
+#endif
+
     if (ngx_ncpu < 1) {
         ngx_ncpu = 1;
     }
