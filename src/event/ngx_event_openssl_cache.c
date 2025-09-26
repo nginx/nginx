@@ -193,6 +193,7 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     time_t                 mtime;
     uint32_t               hash;
     ngx_int_t              rc;
+    ngx_uint_t             invalidate;
     ngx_file_uniq_t        uniq;
     ngx_file_info_t        fi;
     ngx_ssl_cache_t       *cache, *old_cache;
@@ -202,8 +203,15 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
 
     *err = NULL;
 
+    invalidate = index & NGX_SSL_CACHE_INVALIDATE;
+    index &= ~NGX_SSL_CACHE_INVALIDATE;
+
     if (ngx_ssl_cache_init_key(cf->pool, index, path, &id) != NGX_OK) {
         return NULL;
+    }
+
+    if (id.type == NGX_SSL_CACHE_DATA) {
+        invalidate = 0;
     }
 
     cache = (ngx_ssl_cache_t *) ngx_get_conf(cf->cycle->conf_ctx,
@@ -215,7 +223,12 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
     cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
 
     if (cn != NULL) {
-        return type->ref(err, cn->value);
+        if (!invalidate) {
+            return type->ref(err, cn->value);
+        }
+
+        type->free(cn->value);
+        ngx_rbtree_delete(&cache->rbtree, &cn->node);
     }
 
     value = NULL;
@@ -236,7 +249,7 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
 
     old_cache = ngx_ssl_cache_get_old_conf(cf->cycle);
 
-    if (old_cache && old_cache->inheritable) {
+    if (old_cache && old_cache->inheritable && !invalidate) {
         cn = ngx_ssl_cache_lookup(old_cache, type, &id, hash);
 
         if (cn != NULL) {
