@@ -1,0 +1,41 @@
+---
+name: F5 CLA
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+permissions: read-all
+jobs:
+  f5-cla:
+    name: F5 CLA
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - name: Run F5 Contributor License Agreement (CLA) assistant
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have hereby read the F5 CLA and agree to its terms') || github.event_name == 'pull_request_target'
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
+        with:
+          # Path to the CLA document.
+          path-to-document: https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md
+          # Custom CLA messages.
+          custom-notsigned-prcomment: '🎉 Thank you for your contribution! It appears you have not yet signed the [F5 Contributor License Agreement (CLA)](https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md), which is required for your changes to be incorporated into an F5 Open Source Software (OSS) project. Please kindly read the [F5 CLA](https://github.com/f5/f5-cla/blob/main/docs/f5_cla.md) and reply on a new comment with the following text to agree:'
+          custom-pr-sign-comment: 'I have hereby read the F5 CLA and agree to its terms'
+          custom-allsigned-prcomment: '✅ All required contributors have signed the F5 CLA for this PR. Thank you!'
+          # Remote repository storing CLA signatures.
+          remote-organization-name: f5
+          remote-repository-name: f5-cla-data
+          # Branch where CLA signatures are stored.
+          branch: main
+          path-to-signatures: signatures/signatures.json
+          # Comma separated list of usernames for maintainers or any other individuals who should not be prompted for a CLA.
+          # NOTE: You will want to edit the usernames to suit your project needs.
+          allowlist: bot*
+          # Do not lock PRs after a merge.
+          lock-pullrequest-aftermerge: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.F5_CLA_TOKEN }}
