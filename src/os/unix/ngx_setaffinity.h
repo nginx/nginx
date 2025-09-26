@@ -24,6 +24,10 @@ typedef cpuset_t  ngx_cpuset_t;
 #endif
 
 void ngx_setaffinity(ngx_cpuset_t *cpu_affinity, ngx_log_t *log);
+ngx_int_t ngx_get_cpu_allowed(ngx_cpuset_t *mask, ngx_log_t *log);
+
+
+extern ngx_cpuset_t  ngx_cpu_allowed;
 
 #else
 

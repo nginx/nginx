@@ -39,6 +39,9 @@ ngx_os_init(ngx_log_t *log)
 #if (NGX_HAVE_LEVEL1_DCACHE_LINESIZE)
     long         size;
 #endif
+#if (NGX_HAVE_CPU_AFFINITY)
+    ngx_int_t    ncpu;
+#endif
 
 #if (NGX_HAVE_OS_SPECIFIC_INIT)
     if (ngx_os_specific_init(log) != NGX_OK) {
@@ -67,6 +70,20 @@ ngx_os_init(ngx_log_t *log)
     if (ngx_ncpu < 1) {
         ngx_ncpu = 1;
     }
+
+#if (NGX_HAVE_CPU_AFFINITY)
+    ncpu = ngx_get_cpu_allowed(&ngx_cpu_allowed, log);
+
+    if (ncpu > 0) {
+        ngx_ncpu = ncpu;
+
+    } else {
+        CPU_ZERO(&ngx_cpu_allowed);
+        for (n = 0; n < (ngx_uint_t) ngx_min(ngx_ncpu, CPU_SETSIZE); n++) {
+            CPU_SET(n, &ngx_cpu_allowed);
+        }
+    }
+#endif
 
 #if (NGX_HAVE_LEVEL1_DCACHE_LINESIZE)
     size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);

@@ -1188,6 +1188,11 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_core_conf_t  *ccf = conf;
 
+#if (NGX_HAVE_CPU_AFFINITY)
+    ngx_uint_t        i;
+    ngx_cpuset_t     *mask;
+#endif
+
     ngx_conf_init_value(ccf->daemon, 1);
     ngx_conf_init_value(ccf->master, 1);
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
@@ -1207,6 +1212,23 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
                       "the number of \"worker_processes\" is not equal to "
                       "the number of \"worker_cpu_affinity\" masks, "
                       "using last mask for remaining worker processes");
+    }
+
+    if (ccf->cpu_affinity_auto) {
+        mask = &ccf->cpu_affinity[ccf->cpu_affinity_n - 1];
+
+        for (i = 0; i < CPU_SETSIZE; i++) {
+            if (CPU_ISSET(i, mask) && CPU_ISSET(i, &ngx_cpu_allowed)) {
+                break;
+            }
+        }
+
+        if (i == CPU_SETSIZE) {
+            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                          "\"worker_cpu_affinity\" mask contains no "
+                          "allowed cpus, worker processes will not be "
+                          "bound to specific cpus");
+        }
     }
 
 #endif
@@ -1504,10 +1526,7 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         ccf->cpu_affinity_auto = 1;
 
-        CPU_ZERO(&mask[0]);
-        for (i = 0; i < (ngx_uint_t) ngx_min(ngx_ncpu, CPU_SETSIZE); i++) {
-            CPU_SET(i, &mask[0]);
-        }
+        mask[0] = ngx_cpu_allowed;
 
         n = 2;
 
@@ -1588,7 +1607,10 @@ ngx_get_cpu_affinity(ngx_uint_t n)
 
         for (i = 0, j = n; /* void */ ; i++) {
 
-            if (CPU_ISSET(i % CPU_SETSIZE, mask) && j-- == 0) {
+            if (CPU_ISSET(i % CPU_SETSIZE, mask)
+                && CPU_ISSET(i % CPU_SETSIZE, &ngx_cpu_allowed)
+                && j-- == 0)
+            {
                 break;
             }
 
