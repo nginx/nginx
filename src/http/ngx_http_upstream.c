@@ -1771,6 +1771,23 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         }
     }
 
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+    if (u->ssl_alpn_protocol.len) {
+        if (SSL_set_alpn_protos(c->ssl->connection, u->ssl_alpn_protocol.data,
+                                u->ssl_alpn_protocol.len)
+            != 0)
+        {
+            ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
+                          "SSL_set_alpn_protos() failed");
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
+#endif
+
     if (u->conf->ssl_session_reuse) {
         c->ssl->save_session = ngx_http_upstream_ssl_save_session;
 
