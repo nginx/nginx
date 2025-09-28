@@ -14,6 +14,9 @@ static char *ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static ngx_int_t ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone,
     void *data);
+static ngx_int_t ngx_stream_upstream_zone_servers_equal(
+    ngx_stream_upstream_srv_conf_t *uscf,
+    ngx_stream_upstream_srv_conf_t *ouscf);
 static ngx_stream_upstream_rr_peers_t *ngx_stream_upstream_zone_copy_peers(
     ngx_slab_pool_t *shpool, ngx_stream_upstream_srv_conf_t *uscf,
     ngx_stream_upstream_srv_conf_t *ouscf);
@@ -121,8 +124,6 @@ ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     uscf->shm_zone->init = ngx_stream_upstream_init_zone;
     uscf->shm_zone->data = umcf;
 
-    uscf->shm_zone->noreuse = 1;
-
     return NGX_CONF_OK;
 }
 
@@ -130,16 +131,73 @@ ngx_stream_upstream_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 {
+    ngx_stream_upstream_main_conf_t  *oumcf = data;
+
     size_t                            len;
     ngx_uint_t                        i, j;
     ngx_slab_pool_t                  *shpool;
     ngx_stream_upstream_rr_peers_t   *peers, **peersp;
     ngx_stream_upstream_srv_conf_t   *uscf, *ouscf, **uscfp, **ouscfp;
-    ngx_stream_upstream_main_conf_t  *umcf, *oumcf;
+    ngx_stream_upstream_main_conf_t  *umcf;
 
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
     umcf = shm_zone->data;
     uscfp = umcf->upstreams.elts;
+
+    if (oumcf && shpool->data) {
+
+        for (i = 0; i < umcf->upstreams.nelts; i++) {
+            uscf = uscfp[i];
+
+            if (uscf->shm_zone != shm_zone) {
+                continue;
+            }
+
+            for (j = 0; j < oumcf->upstreams.nelts; j++) {
+                ouscfp = oumcf->upstreams.elts;
+
+                 if (ouscfp[j]->shm_zone == NULL) {
+                     continue;
+                 }
+
+                 if (ouscfp[j]->shm_zone->shm.name.len != shm_zone->shm.name.len
+                     || ngx_memcmp(ouscfp[j]->shm_zone->shm.name.data,
+                                   shm_zone->shm.name.data,
+                                   shm_zone->shm.name.len)
+                        != 0)
+                 {
+                     continue;
+                 }
+
+                 if (ngx_stream_upstream_zone_servers_equal(uscf, ouscfp[j])
+                     == NGX_OK)
+                 {
+                     uscf->peer.data = ouscfp[j]->peer.data;
+                     goto server_found;
+                 }
+            }
+
+            /* new or modified upstream, decline zone reuse */
+
+            for ( /* void */ ; i > 0; i--) {
+                uscf = uscfp[i - 1];
+
+                if (uscf->shm_zone != shm_zone) {
+                    continue;
+                }
+
+                uscf->peer.data = NULL;
+            }
+
+            return NGX_DECLINED;
+
+        server_found:
+
+            continue;
+        }
+
+        return NGX_OK;
+    }
 
     if (shm_zone->shm.exists) {
         peers = shpool->data;
@@ -172,7 +230,6 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
     /* copy peers to shared memory */
 
     peersp = (ngx_stream_upstream_rr_peers_t **) (void *) &shpool->data;
-    oumcf = data;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
         uscf = uscfp[i];
@@ -219,6 +276,66 @@ ngx_stream_upstream_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 
         *peersp = peers;
         peersp = &peers->zone_next;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_upstream_zone_servers_equal(ngx_stream_upstream_srv_conf_t *uscf,
+    ngx_stream_upstream_srv_conf_t *ouscf)
+{
+    ngx_uint_t                     n;
+    ngx_stream_upstream_server_t  *us, *ous;
+
+    if (uscf->host.len != ouscf->host.len
+        || ngx_strncmp(uscf->host.data, ouscf->host.data, uscf->host.len) != 0)
+    {
+        return NGX_DECLINED;
+    }
+
+    if (uscf->servers == NULL
+        || ouscf->servers == NULL
+        || uscf->servers->nelts != ouscf->servers->nelts)
+    {
+        return NGX_DECLINED;
+    }
+
+    us = uscf->servers->elts;
+    ous = ouscf->servers->elts;
+
+    for (n = 0; n < uscf->servers->nelts; n++) {
+
+        if (us->name.len != ous->name.len
+            || ngx_strncmp(us->name.data, ous->name.data, us->name.len) != 0)
+        {
+            return NGX_DECLINED;
+        }
+
+        if (us->host.len != ous->host.len
+            || ngx_strncmp(us->host.data, ous->host.data, us->host.len) != 0)
+        {
+            return NGX_DECLINED;
+        }
+
+        if (us->service.len != ous->service.len
+            || ngx_strncmp(us->service.data, ous->service.data, us->service.len)
+               != 0)
+        {
+            return NGX_DECLINED;
+        }
+
+        if (us->weight != ous->weight
+            || us->max_conns != ous->max_conns
+            || us->max_fails != ous->max_fails
+            || us->fail_timeout != ous->fail_timeout
+            || us->slow_start != ous->slow_start
+            || us->down != ous->down
+            || us->backup != ous->backup)
+        {
+            return NGX_DECLINED;
+        }
     }
 
     return NGX_OK;
