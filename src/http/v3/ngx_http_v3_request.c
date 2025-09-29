@@ -29,30 +29,6 @@ static ngx_int_t ngx_http_v3_request_body_filter(ngx_http_request_t *r,
     ngx_chain_t *in);
 
 
-static const struct {
-    ngx_str_t   name;
-    ngx_uint_t  method;
-} ngx_http_v3_methods[] = {
-
-    { ngx_string("GET"),       NGX_HTTP_GET },
-    { ngx_string("POST"),      NGX_HTTP_POST },
-    { ngx_string("HEAD"),      NGX_HTTP_HEAD },
-    { ngx_string("OPTIONS"),   NGX_HTTP_OPTIONS },
-    { ngx_string("PROPFIND"),  NGX_HTTP_PROPFIND },
-    { ngx_string("PUT"),       NGX_HTTP_PUT },
-    { ngx_string("MKCOL"),     NGX_HTTP_MKCOL },
-    { ngx_string("DELETE"),    NGX_HTTP_DELETE },
-    { ngx_string("COPY"),      NGX_HTTP_COPY },
-    { ngx_string("MOVE"),      NGX_HTTP_MOVE },
-    { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
-    { ngx_string("LOCK"),      NGX_HTTP_LOCK },
-    { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
-    { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-    { ngx_string("TRACE"),     NGX_HTTP_TRACE },
-    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT }
-};
-
-
 void
 ngx_http_v3_init_stream(ngx_connection_t *c)
 {
@@ -704,42 +680,8 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
-
-        if (r->method_name.len) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":method\" header");
+        if (ngx_http_v23_parse_method(r, value) != NGX_OK) {
             goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":method\" header");
-            goto failed;
-        }
-
-        r->method_name = *value;
-
-        for (i = 0; i < sizeof(ngx_http_v3_methods)
-                        / sizeof(ngx_http_v3_methods[0]); i++)
-        {
-            if (value->len == ngx_http_v3_methods[i].name.len
-                && ngx_strncmp(value->data,
-                               ngx_http_v3_methods[i].name.data, value->len)
-                   == 0)
-            {
-                r->method = ngx_http_v3_methods[i].method;
-                break;
-            }
-        }
-
-        for (i = 0; i < value->len; i++) {
-            ch = value->data[i];
-
-            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent invalid method: \"%V\"", value);
-                goto failed;
-            }
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,

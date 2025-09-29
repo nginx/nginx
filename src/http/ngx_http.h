@@ -188,6 +188,11 @@ size_t ngx_http_huff_encode(u_char *src, size_t len, u_char *dst,
  */
 ngx_int_t ngx_http_v23_fixup_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
+/*
+ * Parse an HTTP/2 and/or HTTP/3 method.
+ */
+ngx_int_t
+ngx_http_v23_parse_method(ngx_http_request_t *r, ngx_str_t *value);
 #endif
 
 
