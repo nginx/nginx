@@ -71,6 +71,10 @@ static ngx_int_t ngx_http_variable_scheme(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_https(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_is_request_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static void ngx_http_variable_set_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_is_args(ngx_http_request_t *r,
@@ -230,6 +234,12 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("scheme"), NULL, ngx_http_variable_scheme, 0, 0, 0 },
 
     { ngx_string("https"), NULL, ngx_http_variable_https, 0, 0, 0 },
+
+    { ngx_string("request_port"), NULL,
+      ngx_http_variable_request_port, 0, 0, 0 },
+
+    { ngx_string("is_request_port"), NULL,
+      ngx_http_variable_is_request_port, 0, 0, 0 },
 
     { ngx_string("request_uri"), NULL, ngx_http_variable_request,
       offsetof(ngx_http_request_t, unparsed_uri), 0, 0 },
@@ -1535,6 +1545,51 @@ ngx_http_variable_https(ngx_http_request_t *r,
 #endif
 
     *v = ngx_http_variable_null_value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_uint_t  port;
+
+    v->len = 0;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    v->data = ngx_pnalloc(r->pool, sizeof("65535") - 1);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    port = r->port;
+
+    if (port > 0 && port < 65536) {
+        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_is_request_port(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    if (r->port == 0) {
+        *v = ngx_http_variable_null_value;
+        return NGX_OK;
+    }
+
+    v->len = 1;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = (u_char *) ":";
 
     return NGX_OK;
 }

@@ -979,6 +979,16 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         }
 
         r->headers_in.server = host;
+
+        p = ngx_strlchr(r->host_start + host.len, r->host_end, ':');
+
+        if (p) {
+            rc = ngx_atoi(p + 1, r->host_end - p - 1);
+
+            if (rc > 0 && rc < 65536) {
+                r->port = rc;
+            }
+        }
     }
 
     if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
