@@ -1846,8 +1846,9 @@ static ngx_int_t
 ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
-    ngx_int_t  rc;
-    ngx_str_t  host;
+    u_char     *p;
+    ngx_int_t   rc;
+    ngx_str_t   host;
 
     if (r->headers_in.host) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -1887,6 +1888,17 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
     }
 
     r->headers_in.server = host;
+
+    p = ngx_strlchr(h->value.data + host.len,
+                    h->value.data + h->value.len, ':');
+
+    if (p) {
+        rc = ngx_atoi(p + 1, h->value.data + h->value.len - p - 1);
+
+        if (rc > 0 && rc < 65536) {
+            r->port = rc;
+        }
+    }
 
     return NGX_OK;
 }

@@ -446,6 +446,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_port:
             if (ch >= '0' && ch <= '9') {
+                if (r->port >= 6553 && (r->port > 6553 || (ch - '0') > 5)) {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
+
+                r->port = r->port * 10 + (ch - '0');
                 break;
             }
 
