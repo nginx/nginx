@@ -1233,6 +1233,51 @@ ngx_http_v23_parse_method(ngx_http_request_t *r, ngx_str_t *value)
 }
 
 
+ngx_int_t
+ngx_http_v23_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
+{
+    u_char      c, ch;
+    ngx_uint_t  i;
+
+    if (r->schema.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :scheme header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :scheme header");
+
+        return NGX_DECLINED;
+    }
+
+    for (i = 0; i < value->len; i++) {
+        ch = value->data[i];
+
+        c = (u_char) (ch | 0x20);
+        if (c >= 'a' && c <= 'z') {
+            continue;
+        }
+
+        if (((ch >= '0' && ch <= '9') || ch == '+' || ch == '-' || ch == '.')
+            && i > 0)
+        {
+            continue;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid :scheme header: \"%V\"", value);
+
+        return NGX_DECLINED;
+    }
+
+    r->schema = *value;
+
+    return NGX_OK;
+}
+
 static inline ngx_int_t
 ngx_isspace(u_char ch)
 {
