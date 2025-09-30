@@ -194,6 +194,8 @@ ngx_int_t ngx_http_v23_parse_method(ngx_http_request_t *r,
     ngx_str_t *value);
 ngx_int_t ngx_http_v23_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
+ngx_int_t ngx_http_v23_parse_path(ngx_http_request_t *r,
+    ngx_str_t *value);
 #endif
 
 

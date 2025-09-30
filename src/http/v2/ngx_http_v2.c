@@ -3275,32 +3275,11 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
     return NGX_DECLINED;
 }
-
-
 static ngx_int_t
 ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_str_t *value)
 {
-    if (r->unparsed_uri.len) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate :path header");
 
-        return NGX_DECLINED;
-    }
-
-    if (value->len == 0) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent empty :path header");
-
-        return NGX_DECLINED;
-    }
-
-    r->uri_start = value->data;
-    r->uri_end = value->data + value->len;
-
-    if (ngx_http_parse_uri(r) != NGX_OK) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid :path header: \"%V\"", value);
-
+    if (ngx_http_v23_parse_path(r, value) != NGX_OK) {
         return NGX_DECLINED;
     }
 

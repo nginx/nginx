@@ -687,26 +687,7 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (name->len == 5 && ngx_strncmp(name->data, ":path", 5) == 0) {
-
-        if (r->uri_start) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":path\" header");
-            goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":path\" header");
-            goto failed;
-        }
-
-        r->uri_start = value->data;
-        r->uri_end = value->data + value->len;
-
-        if (ngx_http_parse_uri(r) != NGX_OK) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid \":path\" header: \"%V\"",
-                          value);
+        if (ngx_http_v23_parse_path(r, value) != NGX_OK) {
             goto failed;
         }
 

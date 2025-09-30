@@ -1278,6 +1278,39 @@ ngx_http_v23_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 }
 
 
+ngx_int_t ngx_http_v23_parse_path(ngx_http_request_t *r, ngx_str_t *value)
+{
+    if (r->uri_start) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :path header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :path header");
+
+        return NGX_DECLINED;
+    }
+
+    r->uri_start = value->data;
+    r->uri_end = value->data + value->len;
+
+    if (ngx_http_parse_uri(r) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid :path header: \"%V\"", value);
+
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+#endif
+
+
 ngx_int_t
 ngx_http_parse_uri(ngx_http_request_t *r)
 {
