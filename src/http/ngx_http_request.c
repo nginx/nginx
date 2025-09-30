@@ -9,6 +9,10 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+#if (NGX_HTTP_ACME_TLS && NGX_HTTP_SSL)
+#include "ngx_http_acme_tls.h"
+#endif
+
 
 static void ngx_http_wait_request_handler(ngx_event_t *ev);
 static ngx_http_request_t *ngx_http_alloc_request(ngx_connection_t *c);
@@ -826,27 +830,37 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 
         c->ssl->no_wait_shutdown = 1;
 
-#if (NGX_HTTP_V2                                                              \
-     && defined TLSEXT_TYPE_application_layer_protocol_negotiation)
+#if defined TLSEXT_TYPE_application_layer_protocol_negotiation
         {
         unsigned int             len;
         const unsigned char     *data;
         ngx_http_connection_t   *hc;
+#if (NGX_HTTP_V2)
         ngx_http_v2_srv_conf_t  *h2scf;
+#endif
 
         hc = c->data;
 
+        SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
+
+#if (NGX_HTTP_ACME_TLS && NGX_HTTP_SSL)
+        /* Check for ACME-TLS/1 protocol */
+        if (len == 10 && ngx_strncmp(data, "acme-tls/1", 10) == 0) {
+            ngx_http_acme_tls_proxy(c);
+            return;
+        }
+#endif
+
+#if (NGX_HTTP_V2)
         h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
         if (h2scf->enable || hc->addr_conf->http2) {
-
-            SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
-
             if (len == 2 && data[0] == 'h' && data[1] == '2') {
                 ngx_http_v2_init(c->read);
                 return;
             }
         }
+#endif
         }
 #endif
 
