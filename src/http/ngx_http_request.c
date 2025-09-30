@@ -53,6 +53,23 @@ static u_char *ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len);
 static u_char *ngx_http_log_error_handler(ngx_http_request_t *r,
     ngx_http_request_t *sr, u_char *buf, size_t len);
 
+ngx_int_t ngx_http_check_method(ngx_http_request_t *r)
+{
+    if (r->method == NGX_HTTP_CONNECT) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent CONNECT method");
+        return NGX_ERROR;
+    }
+
+    if (r->method == NGX_HTTP_TRACE) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent TRACE method");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
 #if (NGX_HTTP_SSL)
 static void ngx_http_ssl_handshake(ngx_event_t *rev);
 static void ngx_http_ssl_handshake_handler(ngx_connection_t *c);
@@ -2063,20 +2080,7 @@ ngx_http_process_request_header(ngx_http_request_t *r)
         }
     }
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    if (r->method == NGX_HTTP_CONNECT
-        && (r->http_version != NGX_HTTP_VERSION_11 || !cscf->allow_connect))
-    {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
-    }
-
-    if (r->method == NGX_HTTP_TRACE) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent TRACE method");
+    if (ngx_http_check_method(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         return NGX_ERROR;
     }

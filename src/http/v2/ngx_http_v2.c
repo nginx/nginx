@@ -3673,14 +3673,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->headers_in.chunked = 1;
     }
 
-    if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        goto failed;
-    }
-
-    if (r->method == NGX_HTTP_TRACE) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent TRACE method");
+    if (ngx_http_check_method(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         goto failed;
     }

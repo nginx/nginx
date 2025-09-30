@@ -178,6 +178,7 @@ ngx_int_t ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 #endif
 
+ngx_int_t ngx_http_check_method(ngx_http_request_t *r);
 
 #if (NGX_HTTP_V2 || NGX_HTTP_V3)
 ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
