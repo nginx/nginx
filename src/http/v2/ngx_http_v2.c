@@ -3302,20 +3302,9 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
     ngx_int_t  rc;
     in_port_t  port;
 
-    if (r->host_start) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate \":authority\" header");
-        return NGX_DECLINED;
-    }
-
-    r->host_start = value->data;
-    r->host_end = value->data + value->len;
-
-    rc = ngx_http_validate_host(value, &port, r->pool, 0);
+    rc = ngx_http_v23_parse_authority(r, value);
 
     if (rc == NGX_DECLINED) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid \":authority\" header");
         return NGX_DECLINED;
     }
 
@@ -3564,7 +3553,6 @@ ngx_http_v2_construct_host_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
-    ngx_str_t                  host;
     ngx_connection_t          *fc;
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
@@ -3592,52 +3580,20 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
-    if (r->headers_in.server.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                      "client sent neither \":authority\" nor \"Host\" header");
+    if (ngx_http_v23_validate_headers(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto failed;
     }
 
-    if (r->host_end) {
+    if (r->host_end && !r->headers_in.host) {
+        /* compatibility for $http_host */
 
-        host.len = r->host_end - r->host_start;
-        host.data = r->host_start;
-
-        if (r->headers_in.host) {
-            if (r->headers_in.host->value.len != host.len
-                || ngx_memcmp(r->headers_in.host->value.data, host.data,
-                              host.len)
-                   != 0)
-            {
-                ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                              "client sent \":authority\" and \"Host\" headers "
-                              "with different values");
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                goto failed;
-            }
-
-        } else {
-            /* compatibility for $http_host */
-
-            if (ngx_http_v2_construct_host_header(r) != NGX_OK) {
-                goto failed;
-            }
+        if (ngx_http_v2_construct_host_header(r) != NGX_OK) {
+            goto failed;
         }
     }
 
     if (r->headers_in.content_length) {
-        r->headers_in.content_length_n =
-                            ngx_atoof(r->headers_in.content_length->value.data,
-                                      r->headers_in.content_length->value.len);
-
-        if (r->headers_in.content_length_n == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                          "client sent invalid \"Content-Length\" header");
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-            goto failed;
-        }
-
         if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
             ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                           "client prematurely closed stream");

@@ -867,40 +867,11 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (r->headers_in.server.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "client sent neither \":authority\" nor \"Host\" header");
+    if (ngx_http_v23_validate_headers(r) != NGX_OK) {
         goto failed;
     }
 
-    if (r->headers_in.host && r->host_end) {
-
-        host.len = r->host_end - r->host_start;
-        host.data = r->host_start;
-
-        if (r->headers_in.host->value.len != host.len
-            || ngx_memcmp(r->headers_in.host->value.data, host.data, host.len)
-               != 0)
-        {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent \":authority\" and \"Host\" headers "
-                          "with different values");
-            goto failed;
-        }
-    }
-
     if (r->headers_in.content_length) {
-        r->headers_in.content_length_n =
-                            ngx_atoof(r->headers_in.content_length->value.data,
-                                      r->headers_in.content_length->value.len);
-
-        if (r->headers_in.content_length_n == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client sent invalid \"Content-Length\" header");
-            goto failed;
-        }
-
-    } else {
         b = r->header_in;
         n = b->last - b->pos;
 

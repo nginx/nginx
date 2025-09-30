@@ -1278,6 +1278,80 @@ ngx_http_v23_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 }
 
 
+ngx_int_t ngx_http_v23_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
+{
+    ngx_int_t rc;
+
+    if (r->host_start) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate \":authority\" header");
+        return NGX_DECLINED;
+    }
+
+    r->host_start = value->data;
+    r->host_end = value->data + value->len;
+
+    rc = ngx_http_validate_host(value, r->pool, 0);
+
+    if (rc == NGX_DECLINED) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid \":authority\" header");
+    }
+    return rc;
+}
+
+
+ngx_int_t
+ngx_http_v23_validate_headers(ngx_http_request_t *r)
+{
+    if (r->headers_in.server.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent neither \":authority\" nor \"Host\" header");
+        return NGX_DECLINED;
+    }
+
+    if (r->host_end) {
+        ngx_str_t host;
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        if (r->headers_in.host) {
+            if (r->headers_in.host->value.len != host.len
+                || ngx_memcmp(r->headers_in.host->value.data, host.data,
+                              host.len)
+                   != 0)
+            {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                              "client sent \":authority\" and \"Host\" headers "
+                              "with different values");
+                return NGX_DECLINED;
+            }
+        }
+    }
+
+    if (r->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent HTTP/2 or HTTP/3 request with "
+                      "\"Transfer-Encoding\" header");
+        return NGX_DECLINED;
+    }
+
+    if (r->headers_in.content_length) {
+        r->headers_in.content_length_n =
+                            ngx_atoof(r->headers_in.content_length->value.data,
+                                      r->headers_in.content_length->value.len);
+
+        if (r->headers_in.content_length_n == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid \"Content-Length\" header");
+            return NGX_DECLINED;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 ngx_int_t ngx_http_v23_parse_path(ngx_http_request_t *r, ngx_str_t *value)
 {
     if (r->uri_start) {
