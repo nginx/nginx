@@ -9,6 +9,13 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+// forward declare index module config
+typedef struct {
+    ngx_array_t *index;
+} ngx_http_index_loc_conf_t;
+
+// Declare external reference to the index module symbol
+extern ngx_module_t ngx_http_index_module;
 
 typedef struct {
     ngx_array_t           *lengths;
@@ -249,6 +256,44 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
             continue;
         }
 
+        ngx_http_index_loc_conf_t *ilcf;
+        ilcf = ngx_http_get_module_loc_conf(r, ngx_http_index_module);
+
+        if (of.is_dir && ilcf->index && ilcf->index->nelts > 0) {
+            ngx_str_t *index = ilcf->index->elts;
+            ngx_str_t full;
+
+            ngx_uint_t i;
+            for (i = 0; i < ilcf->index->nelts; i++) {
+                full.len = path.len + 1 + index[i].len;
+                full.data = ngx_pnalloc(r->pool, full.len + 1);
+                if (full.data == NULL) {
+                    return NGX_HTTP_INTERNAL_SERVER_ERROR;
+                }
+
+                ngx_snprintf(full.data, full.len + 1, "%V/%V", &path, &index[i]);
+
+                ngx_memzero(&of, sizeof(ngx_open_file_info_t));
+                of.test_only = 1;
+                of.read_ahead = clcf->read_ahead;
+                of.directio = clcf->directio;
+                of.valid = clcf->open_file_cache_valid;
+                of.min_uses = clcf->open_file_cache_min_uses;
+                of.errors = clcf->open_file_cache_errors;
+                of.events = clcf->open_file_cache_events;
+
+                if (ngx_open_cached_file(clcf->open_file_cache, &full, &of, r->pool) == NGX_OK
+                    && !of.is_dir)
+                {
+                    break; // valid index file found
+                }
+            }
+
+            if (i == ilcf->index->nelts) {
+                // no index file found, skip this try_files candidate
+                continue;
+            }
+        }
         path.len -= root;
         path.data += root;
 
