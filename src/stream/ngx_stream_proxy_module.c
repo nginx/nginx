@@ -711,6 +711,7 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 {
     ngx_int_t                     rc;
     ngx_connection_t             *c, *pc;
+    ngx_event_get_peer_pt         get;
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
@@ -743,7 +744,16 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     u->state->first_byte_time = (ngx_msec_t) -1;
     u->state->response_time = (ngx_msec_t) -1;
 
-    rc = ngx_event_connect_peer(&u->peer);
+    rc = u->peer.get(&u->peer, u->peer.data);
+
+    if (rc == NGX_OK) {
+        get = u->peer.get;
+        u->peer.get = ngx_event_get_peer;
+
+        rc = ngx_event_connect_peer(&u->peer);
+
+        u->peer.get = get;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "proxy connect: %i", rc);
 

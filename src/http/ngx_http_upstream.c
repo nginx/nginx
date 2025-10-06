@@ -1558,6 +1558,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t                  rc;
     ngx_connection_t          *c;
+    ngx_event_get_peer_pt      get;
     ngx_http_core_loc_conf_t  *clcf;
 
     r->connection->log->action = "connecting to upstream";
@@ -1581,7 +1582,16 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->state->connect_time = (ngx_msec_t) -1;
     u->state->header_time = (ngx_msec_t) -1;
 
-    rc = ngx_event_connect_peer(&u->peer);
+    rc = u->peer.get(&u->peer, u->peer.data);
+
+    if (rc == NGX_OK) {
+        get = u->peer.get;
+        u->peer.get = ngx_event_get_peer;
+
+        rc = ngx_event_connect_peer(&u->peer);
+
+        u->peer.get = get;
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http upstream connect: %i", rc);
