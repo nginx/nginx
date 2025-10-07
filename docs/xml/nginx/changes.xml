@@ -8736,7 +8736,7 @@ Thanks to Piotr Sikora.
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
-now nginx can be build with BoringSSL and LibreSSL.<br/>
+now nginx can be built with BoringSSL and LibreSSL.<br/>
 Thanks to Piotr Sikora.
 </para>
 </change>
@@ -26019,7 +26019,7 @@ the ECONNABORTED error log level was changed to "error" from "crit".
 модуль ngx_http_perl_module не собирался без модуля ngx_http_ssi_filter_module.
 </para>
 <para lang="en">
-the ngx_http_perl_module could not be build without
+the ngx_http_perl_module could not be built without
 the ngx_http_ssi_filter_module.
 </para>
 </change>
