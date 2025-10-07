@@ -1,7 +1,8 @@
 FROM debian:bookworm-slim
 
-# Copy entire NGINX install directory
-COPY ./nginx /usr/local/nginx
+# Current Dockerfile inside nginx/
+COPY . /usr/local/nginx
+
 
 EXPOSE 80 443
 
@@ -9,4 +10,6 @@ EXPOSE 80 443
 ENTRYPOINT ["/usr/local/nginx/sbin/nginx", "-g", "daemon off;"]
 
 ENV UPDATED_AT=20250709
+ARG IMAGE_TAG
+RUN echo "Building image: $IMAGE_TAG"
 
