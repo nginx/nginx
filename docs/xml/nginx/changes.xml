@@ -5,6 +5,98 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.2" date="2025-10-07">
+
+<change type="feature">
+<para lang="ru">
+теперь nginx можно собрать с AWS-LC.<br/>
+Спасибо Samuel Chiang.
+</para>
+<para lang="en">
+now nginx can be built with AWS-LC.<br/>
+Thanks Samuel Chiang.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь директива ssl_protocols работает
+в виртуальном сервере, отличном от сервера по умолчанию,
+при использовании OpenSSL 1.1.1 и новее.
+</para>
+<para lang="en">
+now the "ssl_protocols" directive works
+in a virtual server different from the default server
+when using OpenSSL 1.1.1 or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании TLSv1.3 с OpenSSL и клиентских сертификатов
+SSL handshake всегда завершался ошибкой
+при восстановлении сессии с другим значением SNI;
+ошибка появилась в 1.27.4.
+</para>
+<para lang="en">
+SSL handshake always failed
+when using TLSv1.3 with OpenSSL and client certificates
+and resuming a session with a different SNI value;
+the bug had appeared in 1.27.4.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании QUIC и директивы ssl_reject_handshake
+в логах могли появляться сообщения
+"ignoring stale global SSL error";
+ошибка появилась в 1.29.0.<br/>
+Спасибо Владимиру Хомутову.
+</para>
+<para lang="en">
+the "ignoring stale global SSL error"
+alerts might appear in logs
+when using QUIC and the "ssl_reject_handshake" directive;
+the bug had appeared in 1.29.0.<br/>
+Thanks to Vladimir Homutov.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке delta-seconds
+в строке "Cache-Control" в заголовке ответа бэкенда.
+</para>
+<para lang="en">
+in delta-seconds processing
+in the "Cache-Control" backend response header line.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+команда XCLIENT не использовала кодировку xtext.<br/>
+Спасибо Igor Morgenstern из Aisle Research.
+</para>
+<para lang="en">
+an XCLIENT command didn't use the xtext encoding.<br/>
+Thanks to Igor Morgenstern of Aisle Research.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в кешировании SSL-сертификатов во время переконфигурации.
+</para>
+<para lang="en">
+in SSL certificate caching during reconfiguration.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.1" date="2025-08-13">
 
 <change type="security">
