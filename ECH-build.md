@@ -55,6 +55,35 @@ $ make
 This results in an NGINX binary in `objs/nginx` with a statically linked
 OpenSSL, so as not to disturb system libraries.
 
+### BoringSSL
+
+BoringSSL is also supported by curl and also supports ECH, so to build
+with that, instead of our ECH-enabled OpenSSL:
+
+```bash
+    cd $HOME/code
+    git clone https://boringssl.googlesource.com/boringssl
+    cd boringssl
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=$HOME/code/boringssl/inst -DBUILD_SHARED_LIBS=1
+    make
+    ...
+    make install
+```
+
+Then an option to build NGINX is:
+
+```bash
+$ cd /home/user/code
+$ git clone https://github.com/sftcd/nginx.git
+$ cd nginx
+$ ./auto/configure --prefix=nginx --with-cc-opt="-I $HOME/code/boringssl/inst/include" --with-ld-opt="-L $HOME/code//boringssl/inst/lib" --with-http_v2_module --with-http_ssl_module
+$ make
+...stuff...
+```
+
+This results in an NGINX binary in `objs/nginx` with a statically linked
+OpenSSL, so as not to disturb system libraries.
+
 ## ECH Key Generation and Publication
 
 In the remaining, we describe a configuration that uses `example.com` as the
@@ -191,11 +220,14 @@ That results in log lines like the following:
                     "ECH: SUCCESS/foo.example.com/example.com"
 ```
 
-When ECH has succeeded, then the outer SNI and inner SNI are included in that
+When ECH has succeeded with OpenSSL, then the outer SNI and inner SNI are included in that
 order. If a client GREASEd or didn't try ECH at all, and no outer SNI was
 provided, the HTTP host header will be shown instead. Connections that did not
 use TLS show that. The TLS version is not specifically shown, so TLSv1.2
 connections will show up as `NOT_TRIED`.
+
+With BoringSSL, we don't get access to the outer SNI value, so that will
+be shown as `"-'`, nor the more detailed ECH status values (only SUCCESS/FAILED).
 
 At start-up, and on configuration re-load, NGINX will log (to `error.log` at
 the "notice" log level) the names of ECH PEM files successfully loaded and the
@@ -229,6 +261,8 @@ fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_sni;
 ```
 
 ## Code changes
+
+**This section is outdated.**
 
 - New code is protected using `#ifndef OPENSSL_NO_ECH` as is done in the
   OpenSSL ECH feature branch. That is set in `src/event/ngx_event_openssl.h` if
@@ -288,9 +322,9 @@ When ECH PEM files are loaded or re-loaded that's logged to the error log,
 e.g.:
 
 ```
-2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, total keys loaded: 2
 2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, worked for: /home/user/lt/echkeydir/echconfig.pem.ech
 2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, worked for: /home/user/lt/echkeydir/d13.pem.ech
+2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, total keys loaded: 2
 ```
 
 > [!NOTE]
