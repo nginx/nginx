@@ -21,6 +21,8 @@ here.  (For more on ECH "split-mode" see the
 
 ## Build
 
+### OpenSSL
+
 > [!NOTE]
 > ECH is not yet a part of an OpenSSL release, our current goal is that ECH be
 > part of an OpenSSL 4.0 release in spring 2026. 
@@ -125,6 +127,10 @@ files.  The `ssl_echkeydir` directive should be in the "http" section of an
 NGINX configuration as shown in the example below. All ECH PEM files in that
 directory that are successfully decoded will be loaded. 
 
+The NGINX instance also needs to include a virtual server that matches the
+ECH `public_name` so that the ECH fallback can work. The first virtual 
+server in the example below does this.
+
 ```
 http {
     log_format withech '$remote_addr - $remote_user [$time_local] '
@@ -167,31 +173,41 @@ normal `combined` log format:
 ```
     log_format withech '$remote_addr - $remote_user [$time_local] '
                     '"$request" $status $body_bytes_sent '
-                    '"$http_referer" "$http_user_agent" "$ech_status"';
+                    '"$http_referer" "$http_user_agent"
+                    "ECH: $ssl_ech_status/$ssl_server_name/$ssl_ech_outer_sni"';
     access_log          /var/log/nginx/access.log withech;
 ```
 
 That results in log lines like the following:
 
 ```
-127.0.0.1 - - [26/Feb/2025:13:35:52 +0000] "GET / HTTP/1.1" 200 494 "-" "curl/8.12.0-DEV" "ECH: SSL_ECH_STATUS_GREASE/foo.example.com/"
-127.0.0.1 - - [26/Feb/2025:13:39:39 +0000] "GET / HTTP/1.1" 200 494 "-" "curl/8.12.0-DEV" "ECH: SSL_ECH_STATUS_NOT_TRIED/foo.example.com/"
-127.0.0.1 - - [26/Feb/2025:14:08:21 +0000] "GET / HTTP/1.1" 200 494 "-" "curl/8.12.0-DEV" "ECH: SSL_ECH_STATUS_SUCCESS/example.com/foo.example.com"
-127.0.0.1 - - [26/Feb/2025:14:09:58 +0000] "GET / HTTP/1.1" 200 494 "-" "curl/8.12.0-DEV" "ECH: SSL_ECH_STATUS_NOT_TRIED/foo.example.com/"
-127.0.0.1 - - [26/Feb/2025:14:11:47 +0000] "GET / HTTP/1.1" 400 255 "-" "curl/8.12.0-DEV" "ECH: no TLS connection"
+127.0.0.1 - - [12/Oct/2025:18:54:07 +0100] "GET /index.html HTTP/1.1" 200 494 "-" "-"
+                    "ECH: GREASED/foo.example.com/-"
+127.0.0.1 - - [12/Oct/2025:18:54:15 +0100] "GET /index.html HTTP/1.1" 200 486 "-" "-"
+                    "ECH: GREASED/example.com/-"
+127.0.0.1 - - [12/Oct/2025:18:54:23 +0100] "GET /index.html HTTP/1.1" 200 494 "-" "-"
+                    "ECH: SUCCESS/foo.example.com/example.com"
+127.0.0.1 - - [12/Oct/2025:18:54:31 +0100] "GET /index.html HTTP/1.1" 200 494 "-" "-"
+                    "ECH: SUCCESS/foo.example.com/example.com"
 ```
 
 When ECH has succeeded, then the outer SNI and inner SNI are included in that
 order. If a client GREASEd or didn't try ECH at all, and no outer SNI was
 provided, the HTTP host header will be shown instead. Connections that did not
 use TLS show that. The TLS version is not specifically shown, so TLSv1.2
-connections will show up as `SSL_ECH_STATUS_NOT_TRIED`.
+connections will show up as `NOT_TRIED`.
 
 At start-up, and on configuration re-load, NGINX will log (to `error.log` at
 the "notice" log level) the names of ECH PEM files successfully loaded and the
 total number of ECH keys loaded, for each `server` stanza in the configuration.
 Errors in loading keys are also logged and may result in the server not
-starting.
+starting. Example log lines would be:
+
+```
+2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_load_echkeys, worked for: /etc/nginx/echkeydir/echconfig.pem.ech
+2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_load_echkeys, worked for: /etc/nginx/echkeydir/d13.pem.ech
+2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_load_echkeys, total keys loaded: 2
+```
 
 ## CGI variables
 
@@ -208,7 +224,7 @@ NGINX config:
 
 ```
 fastcgi_param SSL_ECH_STATUS $ssl_ech_status;
-fastcgi_param SSL_ECH_INNER_SNI $ssl_ech_inner_sni;
+fastcgi_param SSL_ECH_INNER_SNI $ssl_server_name;
 fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_sni;
 ```
 
