@@ -245,6 +245,7 @@ static ngx_http_log_var_t  ngx_http_log_vars[] = {
                           ngx_http_log_body_bytes_sent },
     { ngx_string("request_length"), NGX_SIZE_T_LEN,
                           ngx_http_log_request_length },
+
     { ngx_null_string, 0, NULL }
 };
 
@@ -909,6 +910,7 @@ ngx_http_log_request_length(ngx_http_request_t *r, u_char *buf,
 {
     return ngx_sprintf(buf, "%O", r->request_length);
 }
+
 
 static ngx_int_t
 ngx_http_log_variable_compile(ngx_conf_t *cf, ngx_http_log_op_t *op,
