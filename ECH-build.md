@@ -25,7 +25,7 @@ here.  (For more on ECH "split-mode" see the
 
 > [!NOTE]
 > ECH is not yet a part of an OpenSSL release, our current goal is that ECH be
-> part of an OpenSSL 4.0 release in spring 2026. 
+> part of an OpenSSL 4.0 release in spring 2026.
 
 There is client and server ECH code in the OpenSSL ECH feature branch at
 [https://github.com/openssl/openssl/tree/feature/ech](https://github.com/openssl/openssl/tree/feature/ech).
@@ -47,7 +47,7 @@ Then an option to build NGINX is:
 $ cd /home/user/code
 $ git clone https://github.com/sftcd/nginx.git
 $ cd nginx
-$ ./auto/configure --with-debug --prefix=nginx --with-http_ssl_module --with-openssl=/home/user/code/openssl-for-nginx --with-openssl-opt="--debug" --with-http_v2_module
+$ ./auto/configure --with-debug --prefix=nginx --with-http_ssl_module --with-openssl=/home/user/code/openssl-for-nginx --with-openssl-opt="--debug" --with-http_v2_module --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module
 $ make
 ...stuff...
 ```
@@ -57,7 +57,7 @@ OpenSSL, so as not to disturb system libraries.
 
 ### BoringSSL
 
-BoringSSL is also supported by curl and also supports ECH, so to build
+BoringSSL is also supported by NGINX and also supports ECH, so to build
 with that, instead of our ECH-enabled OpenSSL:
 
 ```bash
@@ -76,7 +76,7 @@ Then an option to build NGINX is:
 $ cd /home/user/code
 $ git clone https://github.com/sftcd/nginx.git
 $ cd nginx
-$ ./auto/configure --prefix=nginx --with-cc-opt="-I $HOME/code/boringssl/inst/include" --with-ld-opt="-L $HOME/code//boringssl/inst/lib" --with-http_v2_module --with-http_ssl_module
+$ ./auto/configure --prefix=nginx --with-cc-opt="-I $HOME/code/boringssl/inst/include" --with-ld-opt="-L $HOME/code//boringssl/inst/lib" --with-http_v2_module --with-http_ssl_module --with-stream --with-stream_ssl_module --with-stream_ssl_preread_module
 $ make
 ...stuff...
 ```
@@ -193,6 +193,9 @@ http {
     }
 ```
 
+The `ssl_echkeydir` directive can also be used with the
+stream module, in the same manner.
+
 ## Logs
 
 You can log ECH status information in the normal `access.log` by adding
@@ -241,6 +244,18 @@ starting. Example log lines would be:
 2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_load_echkeys, total keys loaded: 2
 ```
 
+## Testing with curl
+
+If you have a build of curl that supports ECH, then you can
+use that. In my local test setup, the following works:
+
+```
+$ ~/code/curl/src/curl --ech ecl:AD7+DQA6EwAgACCJDbbP6N6GbNTQT6v9cwGtT8YUgGCpqLqiNnDnsTIAIAAEAAEAAQALZXhhbXBsZS5jb20AAA==  --connect-to foo.example.com:443:localhost:5443 https://foo.example.com/index.html --cacert cadir/oe.csr -v
+...
+* ECH: result: status is succeeded, inner is foo.example.com, outer is example.com
+...
+```
+
 ## CGI variables
 
 We set the following variables for, e.g. PHP code:
@@ -262,33 +277,38 @@ fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_sni;
 
 ## Code changes
 
-**This section is outdated.**
-
-- New code is protected using `#ifndef OPENSSL_NO_ECH` as is done in the
-  OpenSSL ECH feature branch. That is set in `src/event/ngx_event_openssl.h` if
-  the new ECH symbol `SSL_OP_ECH_GREASE` is not defined in `ssl.h`.  In other
-  words, if NGINX is built using an OpenSSL version that has ECH support, then
-  that will be used. If the OpenSSL version doesn't have ECH then the
-  ECH-specific code in NGINX is compiled out.
+- If the OpenSSL or BoringSSL library has ECH support, then ECH code is
+  compiled.  That is detected if either `SSL_OP_ECH_GREASE` (OpenSSL) or
+  `SSL_R_ECH_REJECTED` (BoringSSL) is defined, which is checked in
+  `src/events/ngx_event_openssl.c`.  In other words, if NGINX is built using an
+  OpenSSL version that has ECH support, then that will be used. If the OpenSSL
+  version doesn't have ECH then most of the ECH-specific code in NGINX is
+  compiled out.
 
 - `src/http/modules/ngx_http_ssl_module.h` and
   `src/http/modules/ngx_http_ssl_module.c` define the new `ssl_echkeydir`
   directive and the variables that become visible to e.g. PHP code.
 
-- `load_echkeys()` in `src/event/ngx_event_openssl.c` loads ECH PEM files as
+- `ngx_ssl_load_echkeys()` in `src/event/ngx_event_openssl.c` loads ECH PEM files as
   directed by the `ssl_echkeydir` directive, and enables shared-mode ECH
   decryption if some ECH keys are loaded. If `ssl_echkeydir` is set, but no keys
-  are loaded, that results in an error and NGINX exits.
+  are loaded, that results in an error and NGINX exits. Similarly, if
+  `ssl_echkeydir` is set, but ECH support is not available, the server will
+  exit. (As BoringSSL doesn't directly support the ECH PEM file format used,
+  `ngx_ssl_ech_boring_read_pem` does the work of OpenSSL's 
+  `OSSL_ECHSTORE_read_pem`.)
 
-- `ngx_ssl_get_ech_status()`, `ngx_ssl_get_ech_inner_sni()` and
-  `ngx_ssl_get_ech_outer_sni()` also in `src/event/ngx_event_openssl.c` provide
-  for setting the CGI variables mentioned above.
+- `ngx_ssl_get_ech_status()` and `ngx_ssl_get_ech_outer_sni()` also in
+  `src/event/ngx_event_openssl.c` provide for setting the CGI variables
+  mentioned above.
 
-- `src/http/modules/ngx_http_log_module.c` contains code to handle the new
-  `$ech_status` log format, mainly in the `ngx_http_log_ech_status()` function.
+- Similar changes are made for the stream module in
+  `src/stream/ngx_stream_ssl_module.c`
+  and `src/stream/ngx_stream_ssl_module.h`.
+
 
 > [!NOTE]
-> `load_echkeys()` will include the public component all loaded keys in the ECH
+> `ngx_ssl_load_echkeys()` will include the public component all loaded keys in the ECH
 > `retry-configs` in the fallback scenario. If desired, we could add a naming
 > convention or additional configuration setting to distinguish which to
 > include in `retry-configs` or not. For now, we assume that'd better be done
@@ -322,9 +342,9 @@ When ECH PEM files are loaded or re-loaded that's logged to the error log,
 e.g.:
 
 ```
-2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, worked for: /home/user/lt/echkeydir/echconfig.pem.ech
-2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, worked for: /home/user/lt/echkeydir/d13.pem.ech
-2023/12/03 20:09:13 [notice] 273779#0: load_echkeys, total keys loaded: 2
+2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_load_echkeys, worked for: /home/user/lt/echkeydir/echconfig.pem.ech
+2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_load_echkeys, worked for: /home/user/lt/echkeydir/d13.pem.ech
+2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_load_echkeys, total keys loaded: 2
 ```
 
 > [!NOTE]
@@ -341,7 +361,7 @@ e.g.:
 To run NGINX in ``gdb`` you probably want to uncomment the ``daemon off;`` and
 ``master_process off;`` lines in your config file. You probably also want to
 build with `CFLAGS="-g -O0"` to turn off optimization, and then, e.g. if you
-wanted to debug into the ``load_echkeys()`` function:
+wanted to debug into the ``ngx_ssl_load_echkeys()`` function:
 
 ```bash
     $ gdb ~/code/nginx/objs/nginx
@@ -361,20 +381,20 @@ wanted to debug into the ``load_echkeys()`` function:
     For help, type "help".
     Type "apropos word" to search for commands related to "word"...
     Reading symbols from /home/user/code/nginx/objs/nginx...
-    (gdb) b load_echkeys 
+    (gdb) b ngx_ssl_load_echkeys 
     Breakpoint 1 at 0x1402e9: file src/event/ngx_event_openssl.c, line 1469.
     (gdb) r -c nginxmin.conf
     Starting program: /home/user/code/nginx/objs/nginx -c nginxmin.conf
     [Thread debugging using libthread_db enabled]
     Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
     
-    Breakpoint 1, load_echkeys (ssl=ssl@entry=0x555555db64d8, dirname=dirname@entry=0x555555db6568)
+    Breakpoint 1, ngx_ssl_load_echkeys (ssl=ssl@entry=0x555555db64d8, dirname=dirname@entry=0x555555db6568)
         at src/event/ngx_event_openssl.c:1469
     1469	{
     (gdb) c
     Continuing.
     
-    Breakpoint 1, load_echkeys (ssl=ssl@entry=0x555555dbad68, dirname=dirname@entry=0x555555dbadf8)
+    Breakpoint 1, ngx_ssl_load_echkeys (ssl=ssl@entry=0x555555dbad68, dirname=dirname@entry=0x555555dbadf8)
         at src/event/ngx_event_openssl.c:1469
     1469	{
     (gdb) c
