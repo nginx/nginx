@@ -121,6 +121,10 @@ static ngx_int_t ngx_http_v2_proxy_non_buffered_filter(void *data,
     ssize_t bytes);
 static ngx_int_t ngx_http_v2_proxy_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
+static ngx_int_t ngx_http_v2_proxy_handle_control_frame(ngx_http_request_t *r,
+    ngx_http_v2_proxy_ctx_t *ctx, ngx_buf_t *b);
+static ngx_int_t ngx_http_v2_proxy_skip_frame(ngx_http_v2_proxy_ctx_t *ctx,
+    ngx_buf_t *b);
 static ngx_int_t ngx_http_v2_proxy_process_frames(ngx_http_request_t *r,
     ngx_http_v2_proxy_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_v2_proxy_output_data(ngx_http_request_t *r,
@@ -1388,101 +1392,18 @@ ngx_http_v2_proxy_process_header(ngx_http_request_t *r)
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
 
-        if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
+        rc = ngx_http_v2_proxy_handle_control_frame(r, ctx, b);
 
-            rc = ngx_http_v2_proxy_parse_goaway(r, ctx, b);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            /*
-             * If stream_id is lower than one we use, our
-             * request won't be processed and needs to be retried.
-             * If stream_id is greater or equal to the one we use,
-             * we can continue normally (except we can't use this
-             * connection for additional requests).  If there is
-             * a real error, the connection will be closed.
-             */
-
-            if (ctx->stream_id < ctx->id) {
-
-                /* TODO: we can retry non-idempotent requests */
-
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent goaway with error %ui",
-                              ctx->error);
-
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            ctx->goaway = 1;
-
-            continue;
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
         }
 
-        if (ctx->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_window_update(r, ctx, b);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            }
-
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_SETTINGS_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_settings(r, ctx, b);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            }
-
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_PING_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_ping(r, ctx, b);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_PUSH_PROMISE_FRAME) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent unexpected push promise frame");
+        if (rc == NGX_ERROR) {
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
+        if (rc == NGX_OK) {
+            continue;
         }
 
         if (ctx->type != NGX_HTTP_V2_HEADERS_FRAME
@@ -1490,15 +1411,11 @@ ngx_http_v2_proxy_process_header(ngx_http_request_t *r)
         {
             /* priority, unknown frames */
 
-            if (b->last - b->pos < (ssize_t) ctx->rest) {
-                ctx->rest -= b->last - b->pos;
-                b->pos = b->last;
+            rc = ngx_http_v2_proxy_skip_frame(ctx, b);
+
+            if (rc == NGX_AGAIN) {
                 return NGX_AGAIN;
             }
-
-            b->pos += ctx->rest;
-            ctx->rest = 0;
-            ctx->state = ngx_http_v2_proxy_st_start;
 
             continue;
         }
@@ -1771,6 +1688,7 @@ ngx_http_v2_proxy_non_buffered_filter(void *data, ssize_t bytes)
                        "proxy http2 output buf %p", b->pos);
 
         rc = ngx_http_v2_proxy_output_data(r, ctx, buf, b);
+
         if (rc == NGX_ERROR || rc == NGX_AGAIN) {
             return rc;
         }
@@ -1881,6 +1799,134 @@ ngx_http_v2_proxy_body_filter(ngx_event_pipe_t *p, ngx_buf_t *buf)
     if (ngx_event_pipe_add_free_buf(p, buf) != NGX_OK) {
         return NGX_ERROR;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v2_proxy_handle_control_frame(ngx_http_request_t *r,
+    ngx_http_v2_proxy_ctx_t *ctx, ngx_buf_t *b)
+{
+    ngx_int_t             rc;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
+
+        rc = ngx_http_v2_proxy_parse_goaway(r, ctx, b);
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        /*
+         * If stream_id is lower than one we use, our
+         * request won't be processed and needs to be retried.
+         * If stream_id is greater or equal to the one we use,
+         * we can continue normally (except we can't use this
+         * connection for additional requests).  If there is
+         * a real error, the connection will be closed.
+         */
+
+        if (ctx->stream_id < ctx->id) {
+
+            /* TODO: we can retry non-idempotent requests */
+
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent goaway with error %ui",
+                          ctx->error);
+
+            return NGX_ERROR;
+        }
+
+        ctx->goaway = 1;
+
+        return NGX_OK;
+    }
+
+    if (ctx->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
+
+        rc = ngx_http_v2_proxy_parse_window_update(r, ctx, b);
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ctx->in) {
+            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+        }
+
+        return NGX_OK;
+    }
+
+    if (ctx->type == NGX_HTTP_V2_SETTINGS_FRAME) {
+
+        rc = ngx_http_v2_proxy_parse_settings(r, ctx, b);
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (ctx->in) {
+            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+        }
+
+        return NGX_OK;
+    }
+
+    if (ctx->type == NGX_HTTP_V2_PING_FRAME) {
+
+        rc = ngx_http_v2_proxy_parse_ping(r, ctx, b);
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+
+        return NGX_OK;
+    }
+
+    if (ctx->type == NGX_HTTP_V2_PUSH_PROMISE_FRAME) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent unexpected push promise frame");
+        return NGX_ERROR;
+    }
+
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_http_v2_proxy_skip_frame(ngx_http_v2_proxy_ctx_t *ctx, ngx_buf_t *b)
+{
+    if (b->last - b->pos < (ssize_t) ctx->rest) {
+        ctx->rest -= b->last - b->pos;
+        b->pos = b->last;
+        return NGX_AGAIN;
+    }
+
+    b->pos += ctx->rest;
+    ctx->rest = 0;
+    ctx->state = ngx_http_v2_proxy_st_start;
 
     return NGX_OK;
 }
@@ -2069,101 +2115,18 @@ ngx_http_v2_proxy_process_frames(ngx_http_request_t *r,
             continue;
         }
 
-        if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
+        rc = ngx_http_v2_proxy_handle_control_frame(r, ctx, buf);
 
-            rc = ngx_http_v2_proxy_parse_goaway(r, ctx, buf);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            /*
-             * If stream_id is lower than one we use, our
-             * request won't be processed and needs to be retried.
-             * If stream_id is greater or equal to the one we use,
-             * we can continue normally (except we can't use this
-             * connection for additional requests).  If there is
-             * a real error, the connection will be closed.
-             */
-
-            if (ctx->stream_id < ctx->id) {
-
-                /* TODO: we can retry non-idempotent requests */
-
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent goaway with error %ui",
-                              ctx->error);
-
-                return NGX_ERROR;
-            }
-
-            ctx->goaway = 1;
-
-            continue;
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
         }
 
-        if (ctx->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_window_update(r, ctx, buf);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            }
-
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_SETTINGS_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_settings(r, ctx, buf);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            }
-
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_PING_FRAME) {
-
-            rc = ngx_http_v2_proxy_parse_ping(r, ctx, buf);
-
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
-            }
-
-            if (rc == NGX_ERROR) {
-                return NGX_ERROR;
-            }
-
-            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
-            continue;
-        }
-
-        if (ctx->type == NGX_HTTP_V2_PUSH_PROMISE_FRAME) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent unexpected push promise frame");
+        if (rc == NGX_ERROR) {
             return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK) {
+            continue;
         }
 
         if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME
@@ -2250,15 +2213,11 @@ ngx_http_v2_proxy_process_frames(ngx_http_request_t *r,
 
             /* priority, unknown frames */
 
-            if (buf->last - buf->pos < (ssize_t) ctx->rest) {
-                ctx->rest -= buf->last - buf->pos;
-                buf->pos = buf->last;
+            rc = ngx_http_v2_proxy_skip_frame(ctx, buf);
+
+            if (rc == NGX_AGAIN) {
                 return NGX_AGAIN;
             }
-
-            buf->pos += ctx->rest;
-            ctx->rest = 0;
-            ctx->state = ngx_http_v2_proxy_st_start;
 
             continue;
         }
