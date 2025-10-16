@@ -63,6 +63,25 @@ int ngx_tcp_push(ngx_socket_t s);
 #endif
 
 
+#if (NGX_HAVE_REUSEPORT)
+
+int ngx_reuseport(ngx_socket_t s);
+int ngx_noreuseport(ngx_socket_t s);
+
+#ifdef SO_REUSEPORT_LB
+
+#define ngx_reuseport_n    "setsockopt(SO_REUSEPORT_LB)"
+#define ngx_noreuseport_n  "setsockopt(!SO_REUSEPORT_LB)"
+
+#else
+
+#define ngx_reuseport_n    "setsockopt(SO_REUSEPORT)"
+#define ngx_noreuseport_n  "setsockopt(!SO_REUSEPORT)"
+
+#endif
+#endif
+
+
 #define ngx_shutdown_socket    shutdown
 #define ngx_shutdown_socket_n  "shutdown()"
 
