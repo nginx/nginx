@@ -5541,6 +5541,32 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#ifdef SSL_get0_signature_name
+
+    const char  *name;
+
+    if (SSL_get0_signature_name(c->ssl->connection, &name)) {
+        s->len = ngx_strlen(name);
+        s->data = ngx_pnalloc(pool, s->len);
+        if (s->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(s->data, name, s->len);
+
+        return NGX_OK;
+    }
+
+#endif
+
+    s->len = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     u_char        *buf;
@@ -6282,6 +6308,32 @@ ngx_ssl_parse_time(
     BIO_free(bio);
 
     return time;
+}
+
+
+ngx_int_t
+ngx_ssl_get_client_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#ifdef SSL_get0_peer_signature_name
+
+    const char  *name;
+
+    if (SSL_get0_peer_signature_name(c->ssl->connection, &name)) {
+        s->len = ngx_strlen(name);
+        s->data = ngx_pnalloc(pool, s->len);
+        if (s->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(s->data, name, s->len);
+
+        return NGX_OK;
+    }
+
+#endif
+
+    s->len = 0;
+    return NGX_OK;
 }
 
 
