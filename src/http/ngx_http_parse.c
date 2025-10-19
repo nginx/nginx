@@ -968,8 +968,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 || (ch >= 0x3b && ch <= 0x40)
                 || (ch >= 0x5b && ch <= 0x5d)
                 || ch == 0x7b
-                || ch == 0x7d
-                ) {
+                || ch == 0x7d)
+            {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
