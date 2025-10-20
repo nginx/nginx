@@ -665,7 +665,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         return;
     }
 
-    if (ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK) {
+    if (!u->conf->local_dynamic
+        && ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK)
+    {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
     }
@@ -1585,6 +1587,13 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     rc = u->peer.get(&u->peer, u->peer.data);
 
     if (rc == NGX_OK) {
+        if (u->conf->local_dynamic
+            && ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK)
+        {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
         get = u->peer.get;
         u->peer.get = ngx_event_get_peer;
 
