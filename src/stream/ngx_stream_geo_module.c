@@ -61,6 +61,7 @@ typedef struct {
     unsigned                           outside_entries:1;
     unsigned                           allow_binary_include:1;
     unsigned                           binary_include:1;
+    unsigned                           no_cacheable:1;
 } ngx_stream_geo_conf_ctx_t;
 
 
@@ -433,6 +434,7 @@ ngx_stream_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                   + sizeof(ngx_stream_variable_value_t)
                   + 0x10000 * sizeof(ngx_stream_geo_range_t *);
     ctx.allow_binary_include = 1;
+    ctx.no_cacheable = 0;
 
     save = *cf;
     cf->pool = pool;
@@ -446,6 +448,10 @@ ngx_stream_geo_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (rv != NGX_CONF_OK) {
         goto failed;
+    }
+
+    if (ctx.no_cacheable) {
+        var->flags |= NGX_STREAM_VAR_NOCACHEABLE;
     }
 
     if (ctx.ranges) {
@@ -581,6 +587,12 @@ ngx_stream_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
             rv = NGX_CONF_OK;
 
+            goto done;
+        }
+
+        else if (ngx_strcmp(value[0].data, "volatile") == 0) {
+            ctx->no_cacheable = 1;
+            rv = NGX_CONF_OK;
             goto done;
         }
     }
