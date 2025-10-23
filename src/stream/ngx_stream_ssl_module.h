@@ -41,6 +41,7 @@ typedef struct {
     ngx_ssl_cache_t  *certificate_cache;
 
     ngx_str_t         dhparam;
+    ngx_str_t         echkeydir;
     ngx_str_t         ecdh_curve;
     ngx_str_t         client_certificate;
     ngx_str_t         trusted_certificate;
