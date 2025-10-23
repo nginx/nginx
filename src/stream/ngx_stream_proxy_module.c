@@ -680,6 +680,7 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     }
 
     if (val.len == 0) {
+        u->peer.local = NULL;
         return NGX_OK;
     }
 
@@ -696,6 +697,7 @@ ngx_stream_proxy_set_local(ngx_stream_session_t *s, ngx_stream_upstream_t *u,
     if (rc != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
                       "invalid local address \"%V\"", &val);
+        u->peer.local = NULL;
         return NGX_OK;
     }
 
