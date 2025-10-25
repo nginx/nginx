@@ -4361,6 +4361,17 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strcmp(value[n].data, "multipath") == 0) {
+#ifdef IPPROTO_MPTCP
+            lsopt.protocol = IPPROTO_MPTCP;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "multipath is not supported "
+                               "on this platform, ignored");
+#endif
+            continue;
+        }
+
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid parameter \"%V\"", &value[n]);
         return NGX_CONF_ERROR;
@@ -4408,6 +4419,12 @@ ngx_http_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (lsopt.proxy_protocol) {
             return "\"proxy_protocol\" parameter is incompatible with \"quic\"";
         }
+
+#ifdef IPPROTO_MPTCP
+        if (lsopt.protocol == IPPROTO_MPTCP) {
+             return "\"multipath\" parameter is incompatible with \"quic\"";
+        }
+#endif
     }
 
     for (n = 0; n < u.naddrs; n++) {
