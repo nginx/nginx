@@ -752,6 +752,7 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 static void
 ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 {
+    unsigned          rnd;
     sigset_t          set;
     ngx_int_t         n;
     ngx_time_t       *tp;
@@ -885,8 +886,19 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
                       "sigprocmask() failed");
     }
 
-    tp = ngx_timeofday();
-    srandom(((unsigned) ngx_pid << 16) ^ tp->sec ^ tp->msec);
+#if (NGX_OPENSSL)
+    if (RAND_bytes((u_char *) &rnd, sizeof(rnd)) <= 0) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "could not generate random bytes for random seed, "
+                      "OpenSSL error: %s",
+                      ERR_error_string(ERR_get_error(), NULL));
+#endif
+        tp = ngx_timeofday();
+        rnd = ((unsigned) ngx_pid << 16) ^ tp->sec ^ tp->msec;
+#if (NGX_OPENSSL)
+    }
+#endif
+    srandom(rnd);
 
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {
