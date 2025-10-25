@@ -237,7 +237,7 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       NULL },
 
     { ngx_string("ssl_ocsp"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, ocsp),

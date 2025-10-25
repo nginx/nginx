@@ -239,7 +239,7 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       NULL },
 
     { ngx_string("ssl_ocsp"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_enum_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_ssl_srv_conf_t, ocsp),
