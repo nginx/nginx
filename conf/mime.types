@@ -35,6 +35,7 @@ types {
     application/pdf                                  pdf;
     application/postscript                           ps eps ai;
     application/rtf                                  rtf;
+    application/vnd.android.package-archive          apk;
     application/vnd.apple.mpegurl                    m3u8;
     application/vnd.google-earth.kml+xml             kml;
     application/vnd.google-earth.kmz                 kmz;
