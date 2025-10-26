@@ -449,6 +449,16 @@ ngx_http_upstream_keepalive_close_handler(ngx_event_t *ev)
         return;
     }
 
+    if (n > 0) {
+        ev->ready = 0;
+
+        if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+            goto close;
+        }
+
+        return;
+    }
+
 close:
 
     item = c->data;
