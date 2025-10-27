@@ -5,6 +5,65 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.3" date="2025-10-28">
+
+<change type="feature">
+<para lang="ru">
+директивы add_header_inherit и add_trailer_inherit.
+</para>
+<para lang="en">
+the "add_header_inherit" and "add_trailer_inherit" directives.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $request_port и $is_request_port.
+</para>
+<para lang="en">
+the $request_port and $is_request_port variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменные $ssl_sigalg и $ssl_client_sigalg.
+</para>
+<para lang="en">
+the $ssl_sigalg and $ssl_client_sigalg variables.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+параметр volatile директивы geo.
+</para>
+<para lang="en">
+the "volatile" parameter of the "geo" directive.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь сжатие сертификатов доступно с BoringSSL.
+</para>
+<para lang="en">
+now certificate compression is available with BoringSSL.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+теперь сжатие сертификатов запрещено при включенном OCSP stapling.
+</para>
+<para lang="en">
+now certificate compression is disabled with OCSP stapling.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.2" date="2025-10-07">
 
 <change type="feature">
