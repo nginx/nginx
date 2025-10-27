@@ -253,7 +253,7 @@ typedef struct {
 
     ngx_str_t                        module;
 
-    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_BEGIN(6)
     NGX_COMPAT_END
 } ngx_http_upstream_conf_t;
 
