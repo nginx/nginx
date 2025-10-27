@@ -688,8 +688,8 @@ ngx_http_headers_create_conf(ngx_conf_t *cf)
      */
 
     conf->expires = NGX_HTTP_EXPIRES_UNSET;
-    conf->headers_inherit = NGX_CONF_UNSET;
-    conf->trailers_inherit = NGX_CONF_UNSET;
+    conf->headers_inherit = NGX_CONF_UNSET_UINT;
+    conf->trailers_inherit = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
