@@ -5,14 +5,6 @@
 
 # Intel C++ compiler 7.1, 8.0, 8.1, 9.0, 11.1
 
-NGX_ICC_VER=`$CC -V 2>&1 | grep 'Version' 2>&1 \
-                         | sed -e 's/^.* Version \([^ ]*\) *Build.*$/\1/'`
-
-echo " + icc version: $NGX_ICC_VER"
-
-have=NGX_COMPILER value="\"Intel C Compiler $NGX_ICC_VER\"" . auto/define
-
-
 # optimizations
 
 CFLAGS="$CFLAGS -O"
@@ -83,7 +75,7 @@ CFLAGS="$CFLAGS -wd1418"
 # external declaration in primary source file
 CFLAGS="$CFLAGS -wd1419"
 
-case "$NGX_ICC_VER" in
+case "$NGX_CC_VER" in
     9.*)
         # "cc" clobber ignored, warnings for Linux's htonl()/htons()
         CFLAGS="$CFLAGS -wd1469"
