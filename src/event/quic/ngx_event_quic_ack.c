@@ -810,8 +810,8 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         case NGX_QUIC_FT_MAX_STREAMS:
         case NGX_QUIC_FT_MAX_STREAMS2:
             f->u.max_streams.limit = f->u.max_streams.bidi
-                                     ? qc->streams.client_max_streams_bidi
-                                     : qc->streams.client_max_streams_uni;
+                                     ? qc->streams.remote_max_streams_bidi
+                                     : qc->streams.remote_max_streams_uni;
             ngx_quic_queue_frame(qc, f);
             break;
 
@@ -1091,11 +1091,10 @@ void ngx_quic_lost_handler(ngx_event_t *ev)
     c = ev->data;
 
     if (ngx_quic_detect_lost(c, NULL) != NGX_OK) {
-        ngx_quic_close_connection(c, NGX_ERROR);
-        return;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "lost detect error");
     }
 
-    ngx_quic_connstate_dbg(c);
+    ngx_quic_end_handler(c);
 }
 
 
@@ -1111,11 +1110,11 @@ ngx_quic_pto_handler(ngx_event_t *ev)
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
-    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0, "quic pto timer");
-
     c = ev->data;
     qc = ngx_quic_get_connection(c);
     now = ngx_current_msec;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic pto timer");
 
     for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
 
@@ -1148,7 +1147,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
             f = ngx_quic_alloc_frame(c);
             if (f == NULL) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "memory error");
+                goto done;
             }
 
             f->level = ctx->level;
@@ -1156,7 +1157,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
             f->ignore_congestion = 1;
 
             if (ngx_quic_frame_sendto(c, f, 0, qc->path) == NGX_ERROR) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "send error");
+                goto done;
             }
         }
     }
@@ -1165,14 +1168,9 @@ ngx_quic_pto_handler(ngx_event_t *ev)
 
     ngx_quic_set_lost_timer(c);
 
-    ngx_quic_connstate_dbg(c);
+done:
 
-    return;
-
-failed:
-
-    ngx_quic_close_connection(c, NGX_ERROR);
-    return;
+    ngx_quic_end_handler(c);
 }
 
 
