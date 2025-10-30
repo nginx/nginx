@@ -8,6 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include "ngx_multirange_slicing.h"
 
 
 typedef struct {
@@ -188,6 +189,7 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
     r->allow_ranges = 1;
     r->subrequest_ranges = 1;
     r->single_range = 1;
+    /* use max_ranges 1; to disable multiranges explicitly */
 
     rc = ngx_http_next_header_filter(r);
 
@@ -205,6 +207,14 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
 
         ctx->end = r->headers_out.content_offset
                    + r->headers_out.content_length_n;
+        if (r->ranges) {
+            ctx->end = cr.complete_length;
+        }
+        /*
+         * otherwise you reach ngx_http_send_special()
+         * from slice body filter too early
+         * and close the request with the body not fully sent
+         */
 
     } else {
         ctx->end = cr.complete_length;
@@ -253,6 +263,47 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    slcf = ngx_http_get_module_loc_conf(r, ngx_http_slice_filter_module);
+
+    if (r->ranges) {
+        ngx_http_range_t *range;
+        range = r->ranges->elts;
+
+        if (range[r->ranges->nelts - 1].boundary_appended) {
+            ngx_http_set_ctx(r, NULL, ngx_http_slice_filter_module);
+            ngx_http_send_special(r, NGX_HTTP_LAST);
+            return rc;
+        }
+
+        /*
+         * ctx->start determines what slice will be opened in the
+         * posted subrequest. Set ctx->start = to the start of
+         * the slice containing the beginning of the lowest
+         * unfulfilled range, or start+fulfilled
+         * to move onto the next slice
+         */
+        for (ngx_uint_t i = 0; i < r->ranges->nelts; i++) {
+            off_t start = 0;
+            off_t bytes_lacking = ((range[i].end - range[i].start) - range[i].fulfilled);
+
+            if (bytes_lacking == 0) {
+                continue;
+            }
+            if (range[i].fulfilled == 0) {
+                start = range[i].start;
+            }
+            if (range[i].fulfilled) {
+                start = range[i].start + range[i].fulfilled;
+            }
+            ctx->start = slcf->size * (start / slcf->size);
+
+            ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                    "multirange[%ui] start:%O end:%O fulfilled:%O | slice next start:%O",
+               i, range[i].start, range[i].end, range[i].fulfilled, ctx->start);
+            break;
+        }
+    }
+
     if (ctx->start >= ctx->end) {
         ngx_http_set_ctx(r, NULL, ngx_http_slice_filter_module);
         ngx_http_send_special(r, NGX_HTTP_LAST);
@@ -272,7 +323,6 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ngx_http_set_ctx(ctx->sr, ctx, ngx_http_slice_filter_module);
 
-    slcf = ngx_http_get_module_loc_conf(r, ngx_http_slice_filter_module);
 
     ctx->range.len = ngx_sprintf(ctx->range.data, "bytes=%O-%O", ctx->start,
                                  ctx->start + (off_t) slcf->size - 1)

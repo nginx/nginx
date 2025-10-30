@@ -566,6 +566,7 @@ struct ngx_http_request_s {
     unsigned                          allow_ranges:1;
     unsigned                          subrequest_ranges:1;
     unsigned                          single_range:1;
+    ngx_array_t                      *ranges; /* ngx_http_range_t* */
     unsigned                          disable_not_modified:1;
     unsigned                          stat_reading:1;
     unsigned                          stat_writing:1;
