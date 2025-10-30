@@ -4553,13 +4553,12 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
             u->state->bytes_sent = u->peer.connection->sent;
         }
 
-        if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_403
-            || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404)
+        if ((u->conf->next_upstream & ft_type) == ft_type)
         {
-            state = NGX_PEER_NEXT;
+            state = NGX_PEER_FAILED;
 
         } else {
-            state = NGX_PEER_FAILED;
+            state = NGX_PEER_NEXT;
         }
 
         u->peer.free(&u->peer, u->peer.data, state);
