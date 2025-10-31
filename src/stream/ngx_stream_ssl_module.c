@@ -147,6 +147,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_srv_conf_t, dhparam),
       NULL },
 
+    { ngx_string("ssl_echfile"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, echfile),
+      NULL },
+
     { ngx_string("ssl_ecdh_curve"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_slot,
@@ -371,6 +378,12 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
 
     { ngx_string("ssl_alpn_protocol"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_alpn_protocol, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_ech_status"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ech_status, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_ech_outer_server_name"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_ech_outer_sni, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_cert"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_certificate, NGX_STREAM_VAR_CHANGEABLE, 0 },
@@ -882,6 +895,7 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->ocsp_responder = { 0, NULL };
      *     sscf->stapling_file = { 0, NULL };
      *     sscf->stapling_responder = { 0, NULL };
+     *     sscf->echfile = { 0, NULL };
      */
 
     sscf->handshake_timeout = NGX_CONF_UNSET_MSEC;
@@ -946,6 +960,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
     ngx_conf_merge_str_value(conf->dhparam, prev->dhparam, "");
+
+    ngx_conf_merge_str_value(conf->echfile, prev->echfile, "");
 
     ngx_conf_merge_str_value(conf->client_certificate, prev->client_certificate,
                          "");
@@ -1119,6 +1135,10 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_echfile(cf, &conf->ssl, &conf->echfile) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
