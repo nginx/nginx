@@ -150,11 +150,11 @@ $ dig +short -t type65 foo.example.com
 
 ## Configuration
 
-To enable ECH for an NGINX instance, configure a directory name via the
-`ssl_echkeydir` directive where that directory contains a set of ECH PEM key
-files.  The `ssl_echkeydir` directive should be in the "http" section of an
-NGINX configuration as shown in the example below. All ECH PEM files in that
-directory that are successfully decoded will be loaded. 
+To enable ECH for an NGINX instance, configure a set of file names via the
+`ssl_echfile` directive where that specifies (via wildcard) a set of ECH PEM key
+files.  The `ssl_echfile` directive can be in the "http" or "server" sections of an
+NGINX configuration as shown in the example below. All ECH PEM files matching
+the (possibly wild-carded) value that are successfully decoded will be loaded. 
 
 The NGINX instance also needs to include a virtual server that matches the
 ECH `public_name` so that the ECH fallback can work. The first virtual 
@@ -166,7 +166,7 @@ http {
                     '"$request" $status $body_bytes_sent '
                     '"$http_referer" "$http_user_agent" "$ech_status"';
     access_log          /var/log/nginx/access.log withech;
-    ssl_echkeydir       /etc/nginx/echkeydir;
+    ssl_echfile       /etc/nginx/echkeydir/*.ech;
     server {
         listen              443 default_server ssl;
         http2 on;
@@ -193,7 +193,7 @@ http {
     }
 ```
 
-The `ssl_echkeydir` directive can also be used with the
+The `ssl_echfile` directive can also be used with the
 stream module, in the same manner.
 
 ## Logs
@@ -206,7 +206,7 @@ normal `combined` log format:
     log_format withech '$remote_addr - $remote_user [$time_local] '
                     '"$request" $status $body_bytes_sent '
                     '"$http_referer" "$http_user_agent"
-                    "ECH: $ssl_ech_status/$ssl_server_name/$ssl_ech_outer_sni"';
+                    "ECH: $ssl_ech_status/$ssl_server_name/$ssl_ech_outer_server_name"';
     access_log          /var/log/nginx/access.log withech;
 ```
 
@@ -272,7 +272,7 @@ NGINX config:
 ```
 fastcgi_param SSL_ECH_STATUS $ssl_ech_status;
 fastcgi_param SSL_ECH_INNER_SNI $ssl_server_name;
-fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_sni;
+fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_server_name;
 ```
 
 ## Code changes
@@ -286,14 +286,14 @@ fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_sni;
   compiled out.
 
 - `src/http/modules/ngx_http_ssl_module.h` and
-  `src/http/modules/ngx_http_ssl_module.c` define the new `ssl_echkeydir`
+  `src/http/modules/ngx_http_ssl_module.c` define the new `ssl_echfile`
   directive and the variables that become visible to e.g. PHP code.
 
 - `ngx_ssl_load_echkeys()` in `src/event/ngx_event_openssl.c` loads ECH PEM files as
-  directed by the `ssl_echkeydir` directive, and enables shared-mode ECH
-  decryption if some ECH keys are loaded. If `ssl_echkeydir` is set, but no keys
+  directed by the `ssl_echfile` directive, and enables shared-mode ECH
+  decryption if some ECH keys are loaded. If `ssl_echfile` is set, but no keys
   are loaded, that results in an error and NGINX exits. Similarly, if
-  `ssl_echkeydir` is set, but ECH support is not available, the server will
+  `ssl_echfile` is set, but ECH support is not available, the server will
   exit. (As BoringSSL doesn't directly support the ECH PEM file format used,
   `ngx_ssl_ech_boring_read_pem` does the work of OpenSSL's 
   `OSSL_ECHSTORE_read_pem`.)
@@ -326,8 +326,8 @@ frequently rotate ECH keys. For example, some widely-used ECH-enabled web
 services rotate ECH keys hourly. That may be done e.g.  via a cronjob and using
 [A well-known URI for publishing service
 parameters](https://datatracker.ietf.org/doc/html/draft-ietf-tls-wkech).  In
-such a setup, the set of ECH PEM files in the `ssl_echkeydir` directory will
-change hourly, with the directory likely to contain perhaps three ECH PEM files
+such a setup, the set of ECH PEM files specified by the `ssl_echfile` value will
+change hourly, perhaps specifying three ECH PEM files
 (curent, hour-before and two-hours before). This creates a need to reload ECH
 PEM files regularly.
 
