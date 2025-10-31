@@ -4710,6 +4710,9 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
     ngx_uint_t  flush;
+    ngx_uint_t                 status, state;
+    ngx_http_upstream_next_t  *un;
+
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
@@ -4745,7 +4748,22 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     u->finalize_request(r, rc);
 
     if (u->peer.free && u->peer.sockaddr) {
-        u->peer.free(&u->peer, u->peer.data, 0);
+        status = u->headers_in.status_n;
+        state = 0
+
+        if (status >= NGX_HTTP_SPECIAL_RESPONSE
+            && status != 403 && status != 404) {
+            for (un = ngx_http_upstream_next_errors; un->status; un++) {
+                if (status != un->status) {
+                    continue;
+                }
+                if (u->conf->next_upstream & un->mask) {
+                    state = NGX_PEER_FAILED;
+                }
+                break;
+            }
+        }
+        u->peer.free(&u->peer, u->peer.data, state);
         u->peer.sockaddr = NULL;
     }
 
