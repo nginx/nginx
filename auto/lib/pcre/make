@@ -37,6 +37,7 @@ if [ $PCRE_LIBRARY = PCRE2 ]; then
                        pcre2_xclass.c"
 
         ngx_pcre_test="pcre2_chkdint.c \
+                       pcre2_compile_cgroup.c \
                        pcre2_compile_class.c \
                        pcre2_convert.c \
                        pcre2_extuni.c \
