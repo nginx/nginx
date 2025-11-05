@@ -383,21 +383,18 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_host_end:
 
+            if (ch == ':') {
+                state = sw_port;
+                break;
+            }
+
             r->host_end = p;
 
             if (r->method == NGX_HTTP_CONNECT) {
-                if (ch == ':') {
-                    state = sw_port;
-                    break;
-                }
-
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
             switch (ch) {
-            case ':':
-                state = sw_port;
-                break;
             case '/':
                 r->uri_start = p;
                 state = sw_after_slash_in_uri;
@@ -465,13 +462,10 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         case sw_port:
             if (ch >= '0' && ch <= '9') {
-                if (r->port >= 6553 && (r->port > 6553 || (ch - '0') > 5)) {
-                    return NGX_HTTP_PARSE_INVALID_REQUEST;
-                }
-
-                r->port = r->port * 10 + (ch - '0');
                 break;
             }
+
+            r->host_end = p;
 
             if (r->method == NGX_HTTP_CONNECT) {
                 if (ch == ' ') {
