@@ -61,6 +61,21 @@ ngx_event_accept(ngx_event_t *ev)
 #if (NGX_HAVE_ACCEPT4)
         if (use_accept4) {
             s = accept4(lc->fd, &sa.sockaddr, &socklen, SOCK_NONBLOCK);
+
+            if (s == -1 && errno == EINVAL) {
+                /* Fallback: certain Linux kernels return EINVAL when SOCK_NONBLOCK is used with accept4() */
+                ngx_log_error(NGX_LOG_NOTICE, ev->log, ngx_errno,
+                              "accept4() failed with EINVAL, falling back to accept()");
+                s = accept(lc->fd, &sa.sockaddr, &socklen);
+                if (s != -1) {
+                    if (fcntl(s, F_SETFL, O_NONBLOCK) == -1) {
+                        ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,
+                                      "fcntl(O_NONBLOCK) failed after fallback accept()");
+                        close(s);
+                        s = -1;
+                    }
+                }
+            }
         } else {
             s = accept(lc->fd, &sa.sockaddr, &socklen);
         }
@@ -68,23 +83,6 @@ ngx_event_accept(ngx_event_t *ev)
         s = accept(lc->fd, &sa.sockaddr, &socklen);
 #endif
 
-        if (s == (ngx_socket_t) -1) {
-            err = ngx_socket_errno;
-
-            if (err == NGX_EAGAIN) {
-                ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, err,
-                               "accept() not ready");
-                return;
-            }
-
-            level = NGX_LOG_ALERT;
-
-            if (err == NGX_ECONNABORTED) {
-                level = NGX_LOG_ERR;
-
-            } else if (err == NGX_EMFILE || err == NGX_ENFILE) {
-                level = NGX_LOG_CRIT;
-            }
 
 #if (NGX_HAVE_ACCEPT4)
             ngx_log_error(level, ev->log, err,
