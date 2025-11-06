@@ -286,7 +286,7 @@ ngx_int_t ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_array_t *paths);
 ngx_int_t ngx_ssl_session_cache_init(ngx_shm_zone_t *shm_zone, void *data);
 
-void ngx_ssl_set_client_hello_callback(SSL_CTX *ssl_ctx,
+ngx_int_t ngx_ssl_set_client_hello_callback(ngx_ssl_t *ssl,
     ngx_ssl_client_hello_arg *cb);
 #ifdef SSL_CLIENT_HELLO_SUCCESS
 int ngx_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg);
