@@ -382,7 +382,7 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
             return NGX_ERROR;
         }
         xmlCtxtUseOptions(ctxt, XML_PARSE_NOENT|XML_PARSE_DTDLOAD
-                                               |XML_PARSE_NOWARNING);
+                                |XML_PARSE_NONET|XML_PARSE_NOWARNING);
 
         ctxt->sax->externalSubset = ngx_http_xslt_sax_external_subset;
         ctxt->sax->setDocumentLocator = NULL;
