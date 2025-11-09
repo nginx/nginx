@@ -11,6 +11,7 @@
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
+#include <libxml/xmlversion.h>
 #include <libxslt/xslt.h>
 #include <libxslt/xsltInternals.h>
 #include <libxslt/transform.h>
@@ -19,6 +20,10 @@
 
 #if (NGX_HAVE_EXSLT)
 #include <libexslt/exslt.h>
+#endif
+
+#if (defined LIBXML_CATALOG_ENABLED && LIBXML_VERSION < 21400)
+#include <libxml/catalog.h>
 #endif
 
 
@@ -59,6 +64,7 @@ typedef struct {
     ngx_array_t               *types_keys;
     ngx_array_t               *params;       /* ngx_http_xslt_param_t */
     ngx_flag_t                 last_modified;
+    ngx_flag_t                 external_entities;
 } ngx_http_xslt_filter_loc_conf_t;
 
 
@@ -81,6 +87,9 @@ static ngx_int_t ngx_http_xslt_add_chunk(ngx_http_request_t *r,
 
 static void ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
     const xmlChar *externalId, const xmlChar *systemId);
+static void ngx_http_xslt_sax_entity_decl(void *data, const xmlChar *name,
+    int type, const xmlChar *publicId, const xmlChar *systemId,
+    xmlChar *content);
 static void ngx_cdecl ngx_http_xslt_sax_error(void *data, const char *msg, ...);
 
 
@@ -122,6 +131,13 @@ static ngx_command_t  ngx_http_xslt_filter_commands[] = {
       ngx_http_xslt_entities,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
+      NULL },
+
+    { ngx_string("xml_external_entities"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_xslt_filter_loc_conf_t, external_entities),
       NULL },
 
     { ngx_string("xslt_stylesheet"),
@@ -385,6 +401,7 @@ ngx_http_xslt_add_chunk(ngx_http_request_t *r, ngx_http_xslt_filter_ctx_t *ctx,
                                 |XML_PARSE_NONET|XML_PARSE_NOWARNING);
 
         ctxt->sax->externalSubset = ngx_http_xslt_sax_external_subset;
+        ctxt->sax->entityDecl = ngx_http_xslt_sax_entity_decl;
         ctxt->sax->setDocumentLocator = NULL;
         ctxt->sax->error = ngx_http_xslt_sax_error;
         ctxt->sax->fatalError = ngx_http_xslt_sax_error;
@@ -457,6 +474,64 @@ ngx_http_xslt_sax_external_subset(void *data, const xmlChar *name,
 #endif
 
     doc->extSubset = dtd;
+}
+
+
+static void
+ngx_http_xslt_sax_entity_decl(void *data, const xmlChar *name, int type,
+    const xmlChar *publicId, const xmlChar *systemId, xmlChar *content)
+{
+    xmlParserCtxtPtr ctxt = data;
+
+    ngx_http_request_t               *r;
+    ngx_http_xslt_filter_ctx_t       *ctx;
+    ngx_http_xslt_filter_loc_conf_t  *conf;
+
+    ctx = ctxt->sax->_private;
+    r = ctx->request;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "xslt filter entityDecl: \"%s\" \"%s\" \"%s\"",
+                   name ? name : (xmlChar *) "",
+                   publicId ? publicId : (xmlChar *) "",
+                   systemId ? systemId : (xmlChar *) "");
+
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_xslt_filter_module);
+
+    if (systemId && !conf->external_entities) {
+
+        /*
+         * If external entiries in the internal DTD subset are disabled,
+         * we remove system identifiers from such entities.  This makes sure
+         * that external entities cannot be used to directly request arbitrary
+         * files, but still can be used with public identifiers, assuming these
+         * are included into XML catalogs on the system.
+         */
+
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "xslt filter external entity ignored: "
+                      "\"%s\" \"%s\" \"%s\"",
+                      name ? name : (xmlChar *) "",
+                      publicId ? publicId : (xmlChar *) "",
+                      systemId ? systemId : (xmlChar *) "");
+
+        if (publicId) {
+            xmlSAX2EntityDecl(data, name, type, publicId, (xmlChar *) "",
+                              content);
+
+        } else if (type == XML_EXTERNAL_GENERAL_PARSED_ENTITY) {
+            xmlSAX2EntityDecl(data, name, XML_INTERNAL_GENERAL_ENTITY,
+                              NULL, NULL, (xmlChar *) "");
+
+        } else if (type == XML_EXTERNAL_PARAMETER_ENTITY) {
+            xmlSAX2EntityDecl(data, name, XML_INTERNAL_PARAMETER_ENTITY,
+                              NULL, NULL, (xmlChar *) "");
+        }
+
+        return;
+    }
+
+    xmlSAX2EntityDecl(data, name, type, publicId, systemId, content);
 }
 
 
@@ -1096,6 +1171,7 @@ ngx_http_xslt_filter_create_conf(ngx_conf_t *cf)
      */
 
     conf->last_modified = NGX_CONF_UNSET;
+    conf->external_entities = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1128,6 +1204,7 @@ ngx_http_xslt_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     ngx_conf_merge_value(conf->last_modified, prev->last_modified, 0);
+    ngx_conf_merge_value(conf->external_entities, prev->external_entities, 0);
 
     return NGX_CONF_OK;
 }
@@ -1140,6 +1217,10 @@ ngx_http_xslt_filter_preconfiguration(ngx_conf_t *cf)
 
 #if (NGX_HAVE_EXSLT)
     exsltRegisterAll();
+#endif
+
+#if (defined LIBXML_CATALOG_ENABLED && LIBXML_VERSION < 21400)
+    xmlCatalogSetDefaults(XML_CATA_ALLOW_GLOBAL);
 #endif
 
     return NGX_OK;
