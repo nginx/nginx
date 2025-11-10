@@ -1888,7 +1888,7 @@ ngx_ssl_set_client_hello_callback(ngx_ssl_t *ssl, ngx_ssl_client_hello_arg *cb)
 
 #elif defined OPENSSL_IS_BORINGSSL
 
-    SSL_CTX_set_select_certificate_cb(ssl_ctx, ngx_ssl_select_certificate);
+    SSL_CTX_set_select_certificate_cb(ssl->ctx, ngx_ssl_select_certificate);
 
     if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_client_hello_arg_index, cb) == 0)
     {
