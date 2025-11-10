@@ -14,6 +14,11 @@
 #endif
 
 
+/* check defines from <openssl/ssl.h> for OpenSSL ECH support */
+#if !defined(OPENSSL_NO_ECH) && defined(SSL_OP_ECH_GREASE)
+#define NGX_ECH
+#endif
+
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
 
@@ -1650,6 +1655,112 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 #endif
 
     return NGX_OK;
+}
+
+
+#ifdef NGX_ECH
+
+static ngx_int_t
+ngx_ssl_load_one_echkey(ngx_ssl_t *ssl, ngx_str_t *filename, void *echstore, 
+                        int for_retry)
+{
+    BIO             *in;
+    ngx_int_t        rv;
+    OSSL_ECHSTORE   *es;
+
+    rv = NGX_ERROR;
+    in = BIO_new_file((char *)filename->data, "r");
+    if (in == NULL)
+        return NGX_ERROR;
+    es = (OSSL_ECHSTORE*) echstore;
+    if (1 == OSSL_ECHSTORE_read_pem(es, in, for_retry))
+        rv = NGX_OK;
+    BIO_free_all(in);
+    return rv;
+}
+#endif /* NGX_ECH */
+
+
+ngx_int_t
+ngx_ssl_echfiles(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *filenames)
+{
+#ifdef NGX_ECH
+    int             somekeyworked, numkeys, for_retry;
+    void           *genechstore;
+    ngx_int_t       rv;
+    ngx_str_t      *filename;
+    ngx_uint_t      i;
+    OSSL_ECHSTORE  *es;
+
+    if (!filenames) {
+        return NGX_OK;
+    }
+
+    es = OSSL_ECHSTORE_new(NULL, NULL);
+    if (es == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "ngx_ssl_echfiles, error allocating store" );
+        return NGX_ERROR;
+    }
+    rv = NGX_ERROR;
+    genechstore = (void *)es;
+    somekeyworked = 0;
+    numkeys = 0;
+
+    /* process each ssl_echfile directive file name */
+    filename = filenames->elts;
+    /* mark the first named file(s) as being for re-try */
+    for_retry = OSSL_ECH_FOR_RETRY;
+    for (i = 0; i < filenames->nelts; i++, filename++) {
+        if (filename->len == 0) {
+            continue;
+        }
+        if (ngx_conf_full_name(cf->cycle, filename, 1) != NGX_OK) {
+            goto cleanup;
+        }
+
+        if (ngx_ssl_load_one_echkey(ssl, filename, genechstore,
+                                    for_retry) != NGX_OK) {
+            ngx_ssl_error(NGX_LOG_ALERT, ssl->log, 0,
+                          "ngx_ssl_echfiles, failed for: %s",
+                          filename->data);
+            goto cleanup;
+        } else {
+            ngx_ssl_error(NGX_LOG_NOTICE, ssl->log, 0,
+                         "ngx_ssl_echfiles, worked for: %s",
+                         filename->data);
+            somekeyworked = 1;
+            numkeys++;
+        }
+
+        if (somekeyworked == 0) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "ngx_ssl_echfiles loaded no keys but ECH configured");
+            return NGX_ERROR;
+        }
+
+        /* subsequent times around the loop not returned for retries */
+        for_retry = OSSL_ECH_NO_RETRY;
+    }
+
+    if (OSSL_ECHSTORE_num_keys(es, &numkeys) != 1
+        || 1 != SSL_CTX_set1_echstore(ssl->ctx, es)) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "ngx_ssl_echfiles OSSL_ECHSTORE_num_keys failed");
+        goto cleanup;
+    }
+    ngx_ssl_error(NGX_LOG_NOTICE, ssl->log, 0,
+                  "ngx_ssl_echfiles, total keys loaded: %d", numkeys);
+    rv = NGX_OK;
+cleanup:
+    OSSL_ECHSTORE_free(es);
+    return rv;
+
+#else
+    ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                  "ngx_ssl_echfiles: ECH configured but not supported");
+    return NGX_ERROR;
+#endif
 }
 
 
@@ -5691,6 +5802,84 @@ ngx_ssl_get_alpn_protocol(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 #endif
 
     s->len = 0;
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_ssl_get_ech_status(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#ifdef NGX_ECH
+#ifndef OPENSSL_IS_BORINGSSL
+    int    echrv;
+    char  *inner_sni, *outer_sni;
+
+    inner_sni = NULL;
+    outer_sni = NULL;
+    echrv = SSL_ech_get1_status(c->ssl->connection, &inner_sni, &outer_sni);
+    switch (echrv) {
+    case SSL_ECH_STATUS_NOT_TRIED:
+        ngx_str_set(s, "NOT_TRIED");
+        break;
+    case SSL_ECH_STATUS_FAILED:
+        ngx_str_set(s, "FAILED");
+        break;
+    case SSL_ECH_STATUS_BAD_NAME:
+        ngx_str_set(s, "WORKED_BAD_NAME");
+        break;
+    case SSL_ECH_STATUS_SUCCESS:
+        ngx_str_set(s, "SUCCESS");
+        break;
+    case SSL_ECH_STATUS_GREASE:
+        ngx_str_set(s, "GREASED");
+        break;
+    case SSL_ECH_STATUS_BACKEND:
+        ngx_str_set(s, "INNER");
+        break;
+    default:
+        ngx_str_set(s, "STATUS_ERROR");
+        break;
+    }
+    OPENSSL_free(inner_sni);
+    OPENSSL_free(outer_sni);
+#else
+    if (SSL_ech_accepted(c->ssl->connection)) {
+        ngx_str_set(s, "SUCCESS");
+    } else {
+        ngx_str_set(s, "FAILED");
+    }
+#endif
+
+#endif
+    return NGX_OK;
+}
+
+ngx_int_t
+ngx_ssl_get_ech_outer_sni(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#if defined(NGX_ECH) && !defined(OPENSSL_IS_BORINGSSL)
+    int    echrv;
+    char  *inner_sni, *outer_sni;
+
+    inner_sni = NULL;
+    outer_sni = NULL;
+    echrv = SSL_ech_get1_status(c->ssl->connection, &inner_sni, &outer_sni);
+    if (echrv == SSL_ECH_STATUS_SUCCESS && outer_sni) {
+        s->len = ngx_strlen(outer_sni);
+        s->data = ngx_pnalloc(pool, s->len);
+        if (s->data == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(s->data, outer_sni, s->len);
+    } else {
+        ngx_str_set(s, "");
+    }
+    OPENSSL_free(inner_sni);
+    OPENSSL_free(outer_sni);
+#else
+    /* boring doesn't give us the outer SNI */
+    ngx_str_set(s, "");
+#endif
     return NGX_OK;
 }
 
