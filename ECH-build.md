@@ -79,8 +79,8 @@ used for NGINX configuration.
 ~# mkdir -p /etc/nginx/echkeydir
 ~# chmod 700 /etc/nginx/echkeydir
 ~# cd /etc/nginx/echkeydir
-~# $OSSL ech -public-name example.com -o example.com.pem.ech
-~# cat example.com.pem.ech
+~# $OSSL ech -public-name example.com -o example.com.pem
+~# cat example.com.pem
 -----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VuBCIEIJi22Im2rJ/lJqzNFZdGfsVfmknXAc8xz3fYPhD0Na5I
 -----END PRIVATE KEY-----
@@ -90,18 +90,13 @@ AQALZXhhbXBsZS5vcmcAAA==
 -----END ECHCONFIG-----
 ```
 
-> [!NOTE]
-> The January 2025 lighttpd web server release included ECH and adopted a
-> naming convention for ECH PEM files that their names ought end in `.ech`.
-> This PR follows that covention.
-
 The ECHConfig value then needs to be published in an HTTPS resource record in
 the DNS, so as to be accessible as shown below:
 
 ```bash
 $ dig +short HTTPS foo.example.com
 1 . ech=AD7+DQA6QwAgACA8mxkEsSTp2xXC/RUFCC6CZMMgdM4x1iTWKu3EONjbMAAEAAEAAQALZXhhbXBsZS5vcmcAAA==
-$ 
+$
 ```
 
 Various other fields may be included in an HTTPS resource record. For many
@@ -111,7 +106,7 @@ publishing service
 parameters](https://datatracker.ietf.org/doc/html/draft-ietf-tls-wkech)
 designed to assist web servers in handling e.g. frequent ECH key rotation.
 
-The `dig` example above assumes support for HTTPS RRs, for earlier 
+The `dig` example above assumes support for HTTPS RRs, for earlier
 versions of `dig` one would see something like:
 
 ``
@@ -122,8 +117,8 @@ $ dig +short -t type65 foo.example.com
 ## Configuration
 
 To enable ECH for an NGINX instance, configure a set of file names via one or
-more `ssl_echfile` directives where that specifies a set of ECH PEM key files.
-The `ssl_echfile` directives can be in the "http" or "server" sections of an
+more `ssl_ech_file` directives where that specifies a set of ECH PEM key files.
+The `ssl_ech_file` directives can be in the "http" or "server" sections of an
 NGINX configuration as shown in the example below.
 
 The NGINX deployment needs to include a virtual server that matches the ECH
@@ -136,12 +131,13 @@ http {
                     '"$request" $status $body_bytes_sent '
                     '"$http_referer" "$http_user_agent" "$ech_status"';
     access_log          /var/log/nginx/access.log withech;
-    ssl_echfile       /etc/nginx/echkeydir/first.ech;
+    ssl_ech_file        /etc/nginx/echkeydir/first.ech;
     server {
         listen              443 default_server ssl;
         http2 on;
         ssl_certificate     /etc/nginx/example.com.crt;
-        ssl_echfile       /etc/nginx/otherechkeydir/other.ech;
+        ssl_ech_file        /etc/nginx/echkeydir/second.ech;
+        ssl_ech_file        /etc/nginx/echkeydir/third.ech;
         ssl_certificate_key /etc/nginx/example.com.priv;
         ssl_protocols       TLSv1.3;
         server_name         example.com;
@@ -164,7 +160,7 @@ http {
     }
 ```
 
-The `ssl_echfile` directive can also be used with the
+The `ssl_ech_file` directive can also be used with the
 stream module, in the same manner.
 
 ## Logs
@@ -203,17 +199,8 @@ connections will show up as `NOT_TRIED`.
 With BoringSSL, we don't get access to the outer SNI value, so that will
 be shown as `"-'`, nor the more detailed ECH status values (only SUCCESS/FAILED).
 
-At start-up, and on configuration re-load, NGINX will log (to `error.log` at
-the "notice" log level) the names of ECH PEM files successfully loaded and the
-total number of ECH keys loaded, for each `server` stanza in the configuration.
-Errors in loading keys are also logged and may result in the server not
-starting. Example log lines would be:
-
-```
-2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_echfiles, worked for: /etc/nginx/echkeydir/echconfig.pem.ech
-2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_echfiles, worked for: /etc/nginx/echkeydir/d13.pem.ech
-2025/10/12 18:54:07 [notice] 768265#0: ngx_ssl_echfiles, total keys loaded: 2
-```
+At start-up, NGINX will log (to `error.log` at the "emerg" log level) the names
+of ECH PEM files that can't be loaded and the server will exit.
 
 ## Testing with curl
 
@@ -257,17 +244,17 @@ fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_server_name;
   compiled out.
 
 - `src/http/modules/ngx_http_ssl_module.h` and
-  `src/http/modules/ngx_http_ssl_module.c` define the new `ssl_echfile`
+  `src/http/modules/ngx_http_ssl_module.c` define the new `ssl_ech_file`
   directive and the variables that become visible to e.g. PHP code.
 
-- `ngx_ssl_echfiles()` in `src/event/ngx_event_openssl.c` loads ECH PEM files as
-  directed by `ssl_echfile` directives, and enables shared-mode ECH
-  decryption if some ECH keys are loaded. If `ssl_echfile` is set, but no keys
+- `ngx_ssl_ech_files()` in `src/event/ngx_event_openssl.c` loads ECH PEM files as
+  directed by `ssl_ech_file` directives, and enables shared-mode ECH
+  decryption if some ECH keys are loaded. If `ssl_ech_file` is set, but no keys
   are loaded, that results in an error and NGINX exits. Similarly, if
-  `ssl_echfile` is set, but ECH support is not available, the server will
+  `ssl_ech_file` is set, but ECH support is not available, the server will
   exit.
 
-- When a set of `ssl_echfile` directives is provided, only the ECHConfig
+- When a set of `ssl_ech_file` directives is provided, only the ECHConfig
   values from the first loaded of those will be returned to clients as
   part of the ECH fallback pattern.
 
@@ -279,7 +266,6 @@ fastcgi_param SSL_ECH_OUTER_SNI $ssl_ech_outer_server_name;
   `src/stream/ngx_stream_ssl_module.c`
   and `src/stream/ngx_stream_ssl_module.h`.
 
-
 ## Reloading ECH keys
 
 ECH uses a form of ephemeral-static (Elliptic curve) Diffie-Hellman key
@@ -288,7 +274,7 @@ frequently rotate ECH keys. For example, some widely-used ECH-enabled web
 services rotate ECH keys hourly. That may be done e.g.  via a cronjob and using
 [A well-known URI for publishing service
 parameters](https://datatracker.ietf.org/doc/html/draft-ietf-tls-wkech).  In
-such a setup, the set of ECH PEM files specified by the `ssl_echfile` value will
+such a setup, the set of ECH PEM files specified by the `ssl_ech_file` values will
 change hourly, perhaps specifying three ECH PEM files
 (curent, hour-before and two-hours before). This creates a need to reload ECH
 PEM files regularly.
@@ -300,22 +286,13 @@ configuration, so if `$PIDFILE` is a file with the NGINX server process-id:
 $ kill -SIGHUP `cat $PIDFILE`
 ```
 
-When ECH PEM files are loaded or re-loaded that's logged to the error log,
-e.g.:
-
-```
-2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_echfiles, worked for: /home/user/lt/echkeydir/echconfig.pem.ech
-2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_echfiles, worked for: /home/user/lt/echkeydir/d13.pem.ech
-2023/12/03 20:09:13 [notice] 273779#0: ngx_ssl_echfiles, total keys loaded: 2
-```
-
 > [!NOTE]
 > The ECH integration released by the lighttpd web server in January 2025
 > allows configuration of a timer used to cause ECH PEM files to be reloaded if
 > those have changed. This PR does not include that functionality but it could
 > be added if desired, e.g. if regularly reloading the entire NGINX
-> configuration is considered undesirable. See the [lighttpd
-> code](https://github.com/lighttpd/lighttpd1.4/blob/master/src/mod_openssl.c#L799)
+> configuration is considered undesirable. See the
+> [lighttpd code](https://github.com/lighttpd/lighttpd1.4/blob/master/src/mod_openssl.c#L799)
 > for details.
 
 ## Debugging
@@ -323,7 +300,7 @@ e.g.:
 To run NGINX in ``gdb`` you probably want to uncomment the ``daemon off;`` and
 ``master_process off;`` lines in your config file. You probably also want to
 build with `CFLAGS="-g -O0"` to turn off optimization, and then, e.g. if you
-wanted to debug into the ``ngx_ssl_echfiles()`` function:
+wanted to debug into the ``ngx_ssl_ech_files()`` function:
 
 ```bash
     $ gdb ~/code/nginx/objs/nginx
@@ -343,20 +320,20 @@ wanted to debug into the ``ngx_ssl_echfiles()`` function:
     For help, type "help".
     Type "apropos word" to search for commands related to "word"...
     Reading symbols from /home/user/code/nginx/objs/nginx...
-    (gdb) b ngx_ssl_echfiles 
+    (gdb) b ngx_ssl_ech_files
     Breakpoint 1 at 0x1402e9: file src/event/ngx_event_openssl.c, line 1469.
     (gdb) r -c nginxmin.conf
     Starting program: /home/user/code/nginx/objs/nginx -c nginxmin.conf
     [Thread debugging using libthread_db enabled]
     Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
     
-    Breakpoint 1, ngx_ssl_echfiles (ssl=ssl@entry=0x555555db64d8, dirname=dirname@entry=0x555555db6568)
+    Breakpoint 1, ngx_ssl_ech_files (ssl=ssl@entry=0x555555db64d8, dirname=dirname@entry=0x555555db6568)
         at src/event/ngx_event_openssl.c:1469
     1469	{
     (gdb) c
     Continuing.
     
-    Breakpoint 1, ngx_ssl_echfiles (ssl=ssl@entry=0x555555dbad68, dirname=dirname@entry=0x555555dbadf8)
+    Breakpoint 1, ngx_ssl_ech_files (ssl=ssl@entry=0x555555dbad68, dirname=dirname@entry=0x555555dbadf8)
         at src/event/ngx_event_openssl.c:1469
     1469	{
     (gdb) c

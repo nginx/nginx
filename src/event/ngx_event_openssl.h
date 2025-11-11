@@ -271,7 +271,7 @@ ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
     ngx_array_t *passwords);
 ngx_int_t ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file);
-ngx_int_t ngx_ssl_echfiles(ngx_conf_t *cf, ngx_ssl_t *ssl,
+ngx_int_t ngx_ssl_ech_files(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_array_t *filename);
 ngx_int_t ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name);
 ngx_int_t ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl,

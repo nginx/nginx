@@ -215,11 +215,11 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       offsetof(ngx_http_ssl_srv_conf_t, session_tickets),
       NULL },
 
-    { ngx_string("ssl_echfile"),
+    { ngx_string("ssl_ech_file"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_str_array_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
-      offsetof(ngx_http_ssl_srv_conf_t, echfiles),
+      offsetof(ngx_http_ssl_srv_conf_t, ech_files),
       NULL },
 
     { ngx_string("ssl_session_ticket_key"),
@@ -666,7 +666,7 @@ ngx_http_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->ocsp_cache_zone = NGX_CONF_UNSET_PTR;
     sscf->stapling = NGX_CONF_UNSET;
     sscf->stapling_verify = NGX_CONF_UNSET;
-    sscf->echfiles = NGX_CONF_UNSET_PTR;
+    sscf->ech_files = NGX_CONF_UNSET_PTR;
 
     return sscf;
 }
@@ -892,9 +892,9 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
-    ngx_conf_merge_ptr_value(conf->echfiles, prev->echfiles, NULL);
+    ngx_conf_merge_ptr_value(conf->ech_files, prev->ech_files, NULL);
 
-    if (ngx_ssl_echfiles(cf, &conf->ssl, conf->echfiles) != NGX_OK) {
+    if (ngx_ssl_ech_files(cf, &conf->ssl, conf->ech_files) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
