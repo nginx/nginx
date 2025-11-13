@@ -217,6 +217,9 @@ ngx_http_v2_proxy_handler(ngx_http_request_t *r)
     ngx_http_upstream_t        *u;
     ngx_http_v2_proxy_ctx_t    *ctx;
     ngx_http_proxy_loc_conf_t  *plcf;
+#if (NGX_HTTP_CACHE)
+    ngx_http_proxy_main_conf_t *pmcf;
+#endif
 
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -259,6 +262,13 @@ ngx_http_v2_proxy_handler(ngx_http_request_t *r)
     u->output.tag = (ngx_buf_tag_t) &ngx_http_v2_proxy_module;
 
     u->conf = &plcf->upstream;
+
+#if (NGX_HTTP_CACHE)
+    pmcf = ngx_http_get_module_main_conf(r, ngx_http_proxy_module);
+
+    u->caches = &pmcf->caches;
+    u->create_key = ngx_http_proxy_create_key;
+#endif
 
     u->create_request = ngx_http_v2_proxy_create_request;
     u->reinit_request = ngx_http_v2_proxy_reinit_request;
@@ -332,7 +342,11 @@ ngx_http_v2_proxy_create_request(ngx_http_request_t *r)
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
+#if (NGX_HTTP_CACHE)
+    headers = u->cacheable ? &plcf->headers_cache : &plcf->headers;
+#else
     headers = &plcf->headers;
+#endif
 
     if (u->method.len) {
         /* HEAD was changed to GET to cache response */
@@ -1391,9 +1405,27 @@ ngx_http_v2_proxy_process_header(ngx_http_request_t *r)
 
         /* frame payload */
 
-        if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
+        if (u->peer.connection) {
 
-            rc = ngx_http_v2_proxy_parse_rst_stream(r, ctx, b);
+            if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
+                rc = ngx_http_v2_proxy_parse_rst_stream(r, ctx, b);
+
+                if (rc == NGX_AGAIN) {
+                    return NGX_AGAIN;
+                }
+
+                if (rc == NGX_ERROR) {
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream rejected request with error %ui",
+                              ctx->error);
+
+                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+            }
+
+            rc = ngx_http_v2_proxy_process_control_frame(r, ctx, b);
 
             if (rc == NGX_AGAIN) {
                 return NGX_AGAIN;
@@ -1403,25 +1435,9 @@ ngx_http_v2_proxy_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream rejected request with error %ui",
-                          ctx->error);
-
-            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-        }
-
-        rc = ngx_http_v2_proxy_process_control_frame(r, ctx, b);
-
-        if (rc == NGX_AGAIN) {
-            return NGX_AGAIN;
-        }
-
-        if (rc == NGX_ERROR) {
-            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-        }
-
-        if (rc == NGX_OK) {
-            continue;
+            if (rc == NGX_OK) {
+                continue;
+            }
         }
 
         if (ctx->type != NGX_HTTP_V2_HEADERS_FRAME
@@ -4054,6 +4070,15 @@ ngx_http_v2_proxy_get_connection_data(ngx_http_request_t *r,
 
     c = pc->connection;
 
+    if (c == NULL) {
+        ctx->connection = ngx_palloc(r->pool, sizeof(ngx_http_v2_proxy_conn_t));
+        if (ctx->connection == NULL) {
+            return NGX_ERROR;
+        }
+
+        goto done;
+    }
+
     if (pc->cached) {
 
         /*
@@ -4091,6 +4116,8 @@ ngx_http_v2_proxy_get_connection_data(ngx_http_request_t *r,
 
     cln->handler = ngx_http_v2_proxy_cleanup;
     ctx->connection = cln->data;
+
+done:
 
     ctx->connection->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->connection->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
