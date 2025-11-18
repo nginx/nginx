@@ -5,13 +5,20 @@
  */
 
 
+#include <netinet/in.h>
 #include <ngx_config.h>
 #include <ngx_core.h>
+#include <stdarg.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 
 #define NGX_PROXY_PROTOCOL_AF_INET          1
 #define NGX_PROXY_PROTOCOL_AF_INET6         2
 
+#define NGX_PROXY_PROTOCOL_V2_SIG "\x0D\x0A\x0D\x0A\x00\x0D\x0A\x51\x55\x49\x54\x0A"
 
 #define ngx_proxy_protocol_parse_uint16(p)                                    \
     ( ((uint16_t) (p)[0] << 8)                                                \
@@ -319,6 +326,82 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
     lport = ngx_inet_get_port(c->local_sockaddr);
 
     return ngx_slprintf(buf, last, " %ui %ui" CRLF, port, lport);
+}
+
+u_char *
+ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
+  u_char *buf_ptr = buf;
+  ngx_uint_t port, lport;
+
+  if (last-buf < NGX_PROXY_PROTOCOL_V2_MAX_HEADER) {
+    ngx_log_error(NGX_LOG_ALERT, c->log, 0, "the buffer is to small for proxy protocol v2");
+    return NULL;
+  }
+
+  buf_ptr = ngx_cpymem(buf_ptr, NGX_PROXY_PROTOCOL_V2_SIG, 12);
+  
+  *buf_ptr++ = 0x21;
+
+  port = ngx_inet_get_port(c->sockaddr);
+  lport = ngx_inet_get_port(c->local_sockaddr);
+
+  switch (c->sockaddr->sa_family) {
+    case AF_INET: {
+      *buf_ptr++ = 0x11;
+
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x0C;
+
+      struct sockaddr_in *sin;
+      sin = (struct sockaddr_in *) c->sockaddr;
+
+      struct sockaddr_in *lsin;
+      lsin = (struct sockaddr_in *) c->local_sockaddr;
+
+      buf_ptr = ngx_cpymem(buf_ptr, &sin->sin_addr.s_addr, 4);
+      buf_ptr = ngx_cpymem(buf_ptr, &lsin->sin_addr.s_addr, 4);
+
+      *buf_ptr++ = (u_char) (port >> 8);
+      *buf_ptr++ = (u_char) port;
+
+      *buf_ptr++ = (u_char) (lport >> 8);
+      *buf_ptr++ = (u_char) lport;
+
+      break;
+    }
+#if (NGX_HAVE_INET6)
+    case AF_INET6: {
+      *buf_ptr++ = 0x21;
+
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x24;
+
+      struct sockaddr_in6 *sin6;
+      sin6 = (struct sockaddr_in6 *) c->sockaddr;
+
+      struct sockaddr_in6 *lsin6;
+      lsin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+      buf_ptr = ngx_cpymem(buf_ptr, &sin6->sin6_addr, 16);
+      buf_ptr = ngx_cpymem(buf_ptr, &lsin6->sin6_addr, 16);
+
+      *buf_ptr++ = (u_char)(port >> 8);
+      *buf_ptr++ = (u_char) port;
+
+      *buf_ptr++ = (u_char)(lport >> 8);
+      *buf_ptr++ = (u_char) lport;
+      break;
+    }
+#endif
+    default: {
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x00;
+      break;
+    }
+  }
+
+  return buf_ptr;
 }
 
 
