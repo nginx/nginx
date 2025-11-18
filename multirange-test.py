@@ -3,7 +3,6 @@ import re
 import random
 import signal
 import subprocess
-from pathlib import Path
 
 quit_received = False
 two_o_sixes = 0
@@ -16,14 +15,12 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-cache_dir = Path('/mnt/disk1/cache/')
-
 ORIGIN='http://127.0.0.1:8080/'
 CACHE='http://sliced/'
 uri = 'f2p24b'
 origin_file_size = 16777216
 #max_distance = origin_file_size//25
-max_distance = 1000
+max_distance = 10000
 
 range_start = 'bytes='
 
@@ -33,7 +30,7 @@ comp = True
 
 while (comp and not quit_received):
     range_header = range_start
-    rangecount = random.randint(2,6)
+    rangecount = random.randint(2,12)
 
     for i in (range(rangecount)):
         a = random.randint(1, origin_file_size - max_distance)
@@ -77,17 +74,16 @@ while (comp and not quit_received):
 
     if(cache_response.status_code == 206 == origin_response.status_code):
         two_o_sixes += 1
+        comp =  stripped_cache_response == stripped_origin_response
     elif (cache_response.status_code == 200 == origin_response.status_code):
         two_o_os += 1
+        comp =  cache_response.content == origin_response.content
     else:
         print(cache_response.status_code, origin_response.status_code, range_header)
         quit()
 
 
-    comp =  stripped_cache_response == stripped_origin_response
-    #print(comp, '\n')
-
-    print('.', end='.', flush=True)
+    print('(', origin_response.status_code, rangecount, '),', end='', flush=True)
 
     if not (comp):
         print(range_header)
@@ -99,7 +95,4 @@ while (comp and not quit_received):
 
 
     if (random.choice([True, False])):
-        subprocess.run('find /mnt/disk*/cache/ -type f -delete', shell=True, check=True) #faster
-       # for file_path in cache_dir.rglob('*'):
-       #     if file_path.is_file():
-       #         file_path.unlink()
+        subprocess.run('find /mnt/disk*/cache/ -type f -delete', shell=True, check=True)
