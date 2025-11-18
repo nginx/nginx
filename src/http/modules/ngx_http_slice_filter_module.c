@@ -516,6 +516,20 @@ ngx_http_slice_get_start(ngx_http_request_t *r)
 
     p = h->value.data + 6;
 
+    /*
+     * multirange
+     * It's easy in principle to make this function return the start of the
+     * slice needed for the first range.  The problem is that if the sum
+     * of ranges is greater than the file, and the response is going
+     * to be 200, not 206, then the range module won't be called at all, and
+     * slice body filter will assume it is iterating  over slices starting at 0.
+     *
+     * Another limitation is observed with open ranges like '-5'
+     * -5 = last 5 bytes but it returns 0 so first slice is opened and skipped.
+     * This thing is called too early to know anything about the size of the
+     * full file. It's building the proxy_cache_key.
+     */
+
     if (ngx_strchr(p, ',')) {
         return 0;
     }
