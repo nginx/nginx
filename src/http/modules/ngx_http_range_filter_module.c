@@ -1473,7 +1473,12 @@ ngx_http_multirange_slice_range(ngx_http_request_t *r,
         sr->end = sr->end * 10 + (*p++ - '0');
 
         if ((sr->end > sr->start) && (sr->end - sr->start) >= cache_length) {
-            break;
+        /*
+         * slice range can be greater than the file, that's fine
+         * The configured slice size can be greater than an origin file.
+         * When $slice_range is generated the origin size file is unknown.
+         */
+            break; /* hmmm, think again? */
         }
     }
 
@@ -1485,11 +1490,11 @@ ngx_http_multirange_slice_range(ngx_http_request_t *r,
      * EDIT: the cache_length condition saves that case
      */
 
-    if ((sr->end - sr->start) > cache_length) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                "multirange: slice range:%O-%O(%O) > cache length:%O",
-                sr->start, sr->end, sr->end - sr->start, cache_length);
-    }
+   if ((sr->end - sr->start) > cache_length) {
+       ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+               "multirange: slice range:%O-%O(%O) > cache length:%O",
+               sr->start, sr->end, sr->end - sr->start, cache_length);
+   }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
             "multirange: slice_range->start: %O | slice_range->end %O",

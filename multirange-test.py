@@ -3,6 +3,9 @@ import re
 import random
 import signal
 import subprocess
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 quit_received = False
 two_o_sixes = 0
@@ -18,9 +21,10 @@ signal.signal(signal.SIGINT, signal_handler)
 ORIGIN='http://127.0.0.1:8080/'
 CACHE='http://sliced/'
 uri = 'f2p24b'
-origin_file_size = 16777216
-#max_distance = origin_file_size//25
-max_distance = 10000
+
+origin_head_response = requests.head(f'{ORIGIN}{uri}')
+origin_file_size = int(origin_head_response.headers.get('Content-Length'))
+max_distance = origin_file_size//10
 
 range_start = 'bytes='
 
@@ -50,7 +54,11 @@ while (comp and not quit_received):
             c = ""
 
 
-        range_header += f'{a}-{b}'
+        if (random.choice([True, False])):
+            range_header += f'{a}-{b}'
+        else:
+            range_header += f'{b}-{a}'
+
         if ((i+1) < rangecount):
             range_header += ','
 
