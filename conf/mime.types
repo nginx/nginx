@@ -35,6 +35,8 @@ types {
     application/pdf                                  pdf;
     application/postscript                           ps eps ai;
     application/rtf                                  rtf;
+    application/sarif+json                           sarif;
+    application/sarif-external-properties+json       sarif-external-properties+json;
     application/vnd.apple.mpegurl                    m3u8;
     application/vnd.google-earth.kml+xml             kml;
     application/vnd.google-earth.kmz                 kmz;
