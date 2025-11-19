@@ -1433,13 +1433,16 @@ static ngx_int_t
 ngx_http_multirange_slice_range(ngx_http_request_t *r,
         ngx_http_slice_range_t **slice_range)
 {
-    ngx_str_t                proxy_key, *keys;
     off_t                    cache_length;
-    size_t                   i;
+    ngx_str_t                proxy_key;
     ngx_http_slice_range_t  *sr;
     u_char                  *p;
 
-    /* ((ngx_str_t *)r->cache->keys.elts)[0] ;ex: "/f1024|bytes=500-999" */
+    /*
+     * This string is generated in slice filter module, not provided by users
+     * so I don't need to be too paranoid about it.
+     * ((ngx_str_t *)r->cache->keys.elts)[0] ;ex: "/f1024|bytes=500-999"
+     */
 
     *slice_range = ngx_pcalloc(r->pool, sizeof(ngx_http_slice_range_t));
     if (*slice_range == NULL) {
@@ -1449,40 +1452,30 @@ ngx_http_multirange_slice_range(ngx_http_request_t *r,
 
     cache_length = r->cache->length - r->cache->body_start - 1;
 
-    keys = r->cache->keys.elts;
-    proxy_key = keys[0];
+    proxy_key = ((ngx_str_t *) r->cache->keys.elts)[0];
+    p = (u_char *) ngx_strstr(proxy_key.data, "bytes=");
 
-
-    for (i = 0; i < proxy_key.len; i++) {
-        p = &proxy_key.data[i];
-        if (*p != 'b') {
-            continue;
-        }
-
-        if (i + 6 > proxy_key.len) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    if (p == NULL) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                 "multirange: slice range not in cache key: \"%V\"", &proxy_key);
-            return NGX_DECLINED;
-        }
-
-        if (ngx_strncmp(p, "bytes=", 6) == 0) {
-            i += 6;
-            p = &proxy_key.data[i];
-            break;
-        }
-    }
-
-    if (i == proxy_key.len) { /* no bytes= found in key */
         return NGX_DECLINED;
     }
 
+    p = &p[sizeof("bytes=") - 1];
 
     while (*p >= '0' && *p <= '9') {
         sr->start = sr->start * 10 + (*p++ - '0');
-        i++;
     }
 
     p++; /* skip the '-' */
+
+    while (*p >= '0' && *p <= '9') {
+        sr->end = sr->end * 10 + (*p++ - '0');
+
+        if ((sr->end > sr->start) && (sr->end - sr->start) >= cache_length) {
+            break;
+        }
+    }
 
     /*
      * I'm assuming $slice_range is the last var in the cache key here
@@ -1491,11 +1484,11 @@ ngx_http_multirange_slice_range(ngx_http_request_t *r,
      * $request_uri|$slice_range$pid breaks it
      * EDIT: the cache_length condition saves that case
      */
-    while (*p >= '0' && *p <= '9' && ++i < proxy_key.len) {
-        sr->end = sr->end * 10 + (*p++ - '0');
-        if ((sr->end > sr->start) && (sr->end - sr->start) >= cache_length) {
-            break;
-        }
+
+    if ((sr->end - sr->start) > cache_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "multirange: slice range:%O-%O(%O) > cache length:%O",
+                sr->start, sr->end, sr->end - sr->start, cache_length);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1504,3 +1497,4 @@ ngx_http_multirange_slice_range(ngx_http_request_t *r,
 
     return NGX_OK;
 }
+
