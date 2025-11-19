@@ -3518,8 +3518,8 @@ ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
 static ngx_int_t
 ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 {
-    u_char     *p;
-    ngx_int_t   rc;
+    ngx_int_t  rc;
+    in_port_t  port;
 
     if (r->host_start) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3530,7 +3530,7 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
     r->host_start = value->data;
     r->host_end = value->data + value->len;
 
-    rc = ngx_http_validate_host(value, r->pool, 0);
+    rc = ngx_http_validate_host(value, &port, r->pool, 0);
 
     if (rc == NGX_DECLINED) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3552,16 +3552,7 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
     }
 
     r->headers_in.server = *value;
-
-    p = ngx_strlchr(r->host_start + value->len, r->host_end, ':');
-
-    if (p) {
-        rc = ngx_atoi(p + 1, r->host_end - p - 1);
-
-        if (rc > 0 && rc < 65536) {
-            r->port = rc;
-        }
-    }
+    r->port = port;
 
     return NGX_OK;
 }
