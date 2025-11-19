@@ -96,6 +96,14 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->handler) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                "skip try files handler since a handler is configured");
+        return NGX_DECLINED;
+    }
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "try files handler");
 
@@ -106,9 +114,6 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
     path.data = NULL;
 
     tf = tlcf->try_files;
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
     alias = clcf->alias;
 
     for ( ;; ) {
