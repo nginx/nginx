@@ -1008,7 +1008,9 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     {
     static ngx_ssl_client_hello_arg cb = { ngx_stream_ssl_servername };
 
-    ngx_ssl_set_client_hello_callback(conf->ssl.ctx, &cb);
+    if (ngx_ssl_set_client_hello_callback(&conf->ssl, &cb) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     SSL_CTX_set_tlsext_servername_callback(conf->ssl.ctx,
                                            ngx_stream_ssl_servername);

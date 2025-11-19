@@ -13,13 +13,6 @@
 # Sun C 5.13 SunOS_i386 2014/10/20        Oracle Solaris Studio 12.4
 # Sun C 5.14 SunOS_i386 2016/05/31        Oracle Developer Studio 12.5
 
-NGX_SUNC_VER=`$CC -V 2>&1 | grep 'Sun C' 2>&1 \
-                          | sed -e 's/^.* Sun C \(.*\)/\1/'`
-
-echo " + Sun C version: $NGX_SUNC_VER"
-
-have=NGX_COMPILER value="\"Sun C $NGX_SUNC_VER\"" . auto/define
-
 
 cat << END > $NGX_AUTOTEST.c
 
