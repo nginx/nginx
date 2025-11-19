@@ -126,6 +126,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       0,
       NULL },
 
+    { ngx_string("ssl_ech_file"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_array_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, ech_files),
+      NULL },
+
     { ngx_string("ssl_password_file"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_stream_ssl_password_file,
@@ -145,13 +152,6 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       ngx_conf_set_str_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_ssl_srv_conf_t, dhparam),
-      NULL },
-
-    { ngx_string("ssl_ech_file"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_srv_conf_t, ech_files),
       NULL },
 
     { ngx_string("ssl_ecdh_curve"),
@@ -383,7 +383,8 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
       (uintptr_t) ngx_ssl_get_ech_status, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_ech_outer_server_name"), NULL, ngx_stream_ssl_variable,
-      (uintptr_t) ngx_ssl_get_ech_outer_sni, NGX_STREAM_VAR_CHANGEABLE, 0 },
+      (uintptr_t) ngx_ssl_get_ech_outer_server_name,
+      NGX_STREAM_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_cert"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_certificate, NGX_STREAM_VAR_CHANGEABLE, 0 },
@@ -901,6 +902,7 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->certificates = NGX_CONF_UNSET_PTR;
     sscf->certificate_keys = NGX_CONF_UNSET_PTR;
     sscf->certificate_cache = NGX_CONF_UNSET_PTR;
+    sscf->ech_files = NGX_CONF_UNSET_PTR;
     sscf->passwords = NGX_CONF_UNSET_PTR;
     sscf->conf_commands = NGX_CONF_UNSET_PTR;
     sscf->prefer_server_ciphers = NGX_CONF_UNSET;
@@ -916,7 +918,6 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
     sscf->ocsp_cache_zone = NGX_CONF_UNSET_PTR;
     sscf->stapling = NGX_CONF_UNSET;
     sscf->stapling_verify = NGX_CONF_UNSET;
-    sscf->ech_files = NGX_CONF_UNSET_PTR;
 
     return sscf;
 }
@@ -956,6 +957,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->certificate_cache, prev->certificate_cache,
                          NULL);
+
+    ngx_conf_merge_ptr_value(conf->ech_files, prev->ech_files, NULL);
 
     ngx_conf_merge_ptr_value(conf->passwords, prev->passwords, NULL);
 
@@ -1135,8 +1138,6 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
-
-    ngx_conf_merge_ptr_value(conf->ech_files, prev->ech_files, NULL);
 
     if (ngx_ssl_ech_files(cf, &conf->ssl, conf->ech_files) != NGX_OK) {
         return NGX_CONF_ERROR;

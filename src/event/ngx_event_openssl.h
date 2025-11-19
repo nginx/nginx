@@ -342,8 +342,8 @@ ngx_int_t ngx_ssl_get_server_name(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_ech_status(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
-ngx_int_t ngx_ssl_get_ech_outer_sni(ngx_connection_t *c, ngx_pool_t *pool,
-    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_ech_outer_server_name(ngx_connection_t *c,
+    ngx_pool_t *pool, ngx_str_t *s);
 ngx_int_t ngx_ssl_get_alpn_protocol(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_raw_certificate(ngx_connection_t *c, ngx_pool_t *pool,
