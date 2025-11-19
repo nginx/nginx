@@ -2102,6 +2102,8 @@ static char *ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent,
 
   ngx_conf_merge_value(conf->proxy_protocol, prev->proxy_protocol, 0);
 
+  ngx_conf_merge_uint_value(conf->protocol_version, prev->protocol_version, 1);
+
   ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 
   ngx_conf_merge_value(conf->socket_keepalive, prev->socket_keepalive, 0);

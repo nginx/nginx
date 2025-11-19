@@ -4,15 +4,8 @@
  * Copyright (C) Nginx, Inc.
  */
 
-
-#include <netinet/in.h>
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include <stdarg.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
 
 
 #define NGX_PROXY_PROTOCOL_AF_INET          1
@@ -333,13 +326,12 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
   u_char *buf_ptr = buf;
   ngx_uint_t port, lport;
 
-  if (last-buf < NGX_PROXY_PROTOCOL_V2_MAX_HEADER) {
-    ngx_log_error(NGX_LOG_ALERT, c->log, 0, "the buffer is to small for proxy protocol v2");
+  if (last - buf < NGX_PROXY_PROTOCOL_V2_MAX_HEADER) {
+    ngx_log_error(NGX_LOG_ALERT, c->log, 0, "the buffer is too small for proxy protocol v2");
     return NULL;
   }
 
   buf_ptr = ngx_cpymem(buf_ptr, NGX_PROXY_PROTOCOL_V2_SIG, 12);
-  
   *buf_ptr++ = 0x21;
 
   port = ngx_inet_get_port(c->sockaddr);
@@ -371,8 +363,6 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
     }
 #if (NGX_HAVE_INET6)
     case AF_INET6: {
-      *buf_ptr++ = 0x21;
-
       *buf_ptr++ = 0x00;
       *buf_ptr++ = 0x24;
 
@@ -397,7 +387,8 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
       *buf_ptr++ = 0x00;
       *buf_ptr++ = 0x00;
       *buf_ptr++ = 0x00;
-      break;
+      ngx_log_error(NGX_LOG_ALERT, c->log, 0, "unsupported address family");
+      return NULL;
     }
   }
 
