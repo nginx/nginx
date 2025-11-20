@@ -138,6 +138,10 @@ ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
             if (module->type != type) {
                 continue;
             }
+            
+            if (module->ctx_index == NGX_MODULE_UNSET_INDEX) {
+                continue;
+            }
 
             if (module->ctx_index > max) {
                 max = module->ctx_index;
