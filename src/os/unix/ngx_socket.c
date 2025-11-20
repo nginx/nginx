@@ -114,3 +114,37 @@ ngx_tcp_push(ngx_socket_t s)
 }
 
 #endif
+
+
+#if (NGX_HAVE_REUSEPORT)
+
+int
+ngx_reuseport(ngx_socket_t s)
+{
+    int  reuseport = 1;
+
+#ifdef SO_REUSEPORT_LB
+    return setsockopt(s, SOL_SOCKET, SO_REUSEPORT_LB,
+                      (const void *) &reuseport, sizeof(int));
+#else
+    return setsockopt(s, SOL_SOCKET, SO_REUSEPORT,
+                      (const void *) &reuseport, sizeof(int));
+#endif
+}
+
+
+int
+ngx_noreuseport(ngx_socket_t s)
+{
+    int  reuseport = 0;
+
+#ifdef SO_REUSEPORT_LB
+    return setsockopt(s, SOL_SOCKET, SO_REUSEPORT_LB,
+                      (const void *) &reuseport, sizeof(int));
+#else
+    return setsockopt(s, SOL_SOCKET, SO_REUSEPORT,
+                      (const void *) &reuseport, sizeof(int));
+#endif
+}
+
+#endif
