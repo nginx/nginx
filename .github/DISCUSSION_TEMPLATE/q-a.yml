@@ -1,0 +1,15 @@
+---
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For NGINX troubleshooting/technical help, please visit our community forum instead of asking your questions here. We will politely redirect these types of questions to the forum.
+  - type: textarea
+    id: q-a
+    attributes:
+      label: What question do you have?
+      description: Please provide as much context as possible. Remember that only questions related to the NGINX codebase will be addressed on GitHub. For anything else, please visit our [community forum](https://community.nginx.org/).
+      value: |
+        I would like to know...
+    validations:
+      required: true
