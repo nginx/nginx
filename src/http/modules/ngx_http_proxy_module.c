@@ -2119,7 +2119,7 @@ ngx_http_proxy_input_filter_init(void *data)
         /* chunked */
 
         u->pipe->input_filter = ngx_http_proxy_chunked_filter;
-        u->pipe->length = 3; /* "0" LF LF */
+        u->pipe->length = 5; /* "0" CRLF CRLF */
 
         u->input_filter = ngx_http_proxy_non_buffered_chunked_filter;
         u->length = 1;
