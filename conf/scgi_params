@@ -15,3 +15,5 @@ scgi_param  REMOTE_ADDR        $remote_addr;
 scgi_param  REMOTE_PORT        $remote_port;
 scgi_param  SERVER_PORT        $server_port;
 scgi_param  SERVER_NAME        $server_name;
+
+scgi_param  HTTP_HOST          $host$is_request_port$request_port;
