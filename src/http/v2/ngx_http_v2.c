@@ -4113,15 +4113,14 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
                 n = size;
             }
 
-            if (n > 0) {
-                rb->buf->last = ngx_cpymem(rb->buf->last, pos, n);
-            }
-
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                            "http2 request body recv %uz", n);
 
-            pos += n;
-            size -= n;
+            if (n > 0) {
+                rb->buf->last = ngx_cpymem(rb->buf->last, pos, n);
+                pos += n;
+                size -= n;
+            }
 
             if (size == 0 && last) {
                 rb->rest = 0;
