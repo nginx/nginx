@@ -117,6 +117,8 @@ static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_filter_init(void *data);
 static ngx_int_t ngx_http_proxy_v2_non_buffered_filter(void *data,
     ssize_t bytes);
+static ngx_int_t ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
+    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 
 static ngx_int_t ngx_http_proxy_v2_parse_frame(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
@@ -1714,7 +1716,6 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
     ngx_int_t                 rc;
     ngx_buf_t                *b, *buf;
     ngx_chain_t              *cl, **ll;
-    ngx_table_elt_t          *h;
     ngx_http_upstream_t      *u;
     ngx_http_proxy_v2_ctx_t  *ctx;
 
@@ -1736,6 +1737,85 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
     for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) {
         ll = &cl->next;
     }
+
+    for ( ;; ) {
+
+        rc = ngx_http_proxy_v2_process_frames(r, ctx, b);
+
+        if (rc == NGX_OK) {
+
+            cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
+            if (cl == NULL) {
+                return NGX_ERROR;
+            }
+
+            *ll = cl;
+            ll = &cl->next;
+
+            buf = cl->buf;
+
+            buf->flush = 1;
+            buf->memory = 1;
+
+            buf->pos = b->pos;
+            buf->tag = u->output.tag;
+
+            if (b->last - b->pos >= (ssize_t) ctx->rest - ctx->padding) {
+                b->pos += ctx->rest - ctx->padding;
+                buf->last = b->pos;
+                ctx->rest = ctx->padding;
+
+            } else {
+                ctx->rest -= b->last - b->pos;
+                b->pos = b->last;
+                buf->last = b->pos;
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy output buf %p", buf->pos);
+
+            if (ctx->length != -1) {
+
+                if (buf->last - buf->pos > ctx->length) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent response body larger "
+                                  "than indicated content length");
+                    return NGX_ERROR;
+                }
+
+                ctx->length -= buf->last - buf->pos;
+            }
+
+            continue;
+        }
+
+        if (rc == NGX_DONE) {
+            u->length = 0;
+            break;
+        }
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        /* invalid response */
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
+    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+{
+    ngx_int_t             rc;
+    ngx_table_elt_t      *h;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
 
     for ( ;; ) {
 
@@ -1765,8 +1845,6 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
                         return NGX_AGAIN;
                     }
 
-                    u->length = 0;
-
                     if (ctx->in == NULL
                         && ctx->output_closed
                         && !ctx->output_blocked
@@ -1776,7 +1854,7 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
                         u->keepalive = 1;
                     }
 
-                    break;
+                    return NGX_DONE;
                 }
 
                 return NGX_AGAIN;
@@ -2145,85 +2223,28 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
             continue;
         }
 
-        if (ctx->rest == ctx->padding) {
-            goto done;
+        if (ctx->padding == ctx->rest) {
+
+            if (ctx->padding) {
+                ctx->state = ngx_http_proxy_v2_st_padding;
+
+            } else {
+                ctx->state = ngx_http_proxy_v2_st_start;
+
+                if (ctx->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
+                    ctx->done = 1;
+                }
+            }
+
+            continue;
         }
 
         if (b->pos == b->last) {
             return NGX_AGAIN;
         }
 
-        cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
-        if (cl == NULL) {
-            return NGX_ERROR;
-        }
-
-        *ll = cl;
-        ll = &cl->next;
-
-        buf = cl->buf;
-
-        buf->flush = 1;
-        buf->memory = 1;
-
-        buf->pos = b->pos;
-        buf->tag = u->output.tag;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http proxy output buf %p", buf->pos);
-
-        if (b->last - b->pos < (ssize_t) ctx->rest - ctx->padding) {
-
-            ctx->rest -= b->last - b->pos;
-            b->pos = b->last;
-            buf->last = b->pos;
-
-            if (ctx->length != -1) {
-
-                if (buf->last - buf->pos > ctx->length) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent response body larger "
-                                  "than indicated content length");
-                    return NGX_ERROR;
-                }
-
-                ctx->length -= buf->last - buf->pos;
-            }
-
-            return NGX_AGAIN;
-        }
-
-        b->pos += ctx->rest - ctx->padding;
-        buf->last = b->pos;
-        ctx->rest = ctx->padding;
-
-        if (ctx->length != -1) {
-
-            if (buf->last - buf->pos > ctx->length) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent response body larger "
-                              "than indicated content length");
-                return NGX_ERROR;
-            }
-
-            ctx->length -= buf->last - buf->pos;
-        }
-
-    done:
-
-        if (ctx->padding) {
-            ctx->state = ngx_http_proxy_v2_st_padding;
-            continue;
-        }
-
-        ctx->state = ngx_http_proxy_v2_st_start;
-
-        if (ctx->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
-            ctx->done = 1;
-        }
+        return NGX_OK;
     }
-
-    return NGX_OK;
 }
 
 
