@@ -1741,9 +1741,12 @@ cleanup:
     return rc;
 
 #else
-    ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
-                  "\"ssl_ech_file\" is not supported on this platform, "
-                  "ignored");
+    if (filenames != NULL) {
+        ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
+                      "\"ssl_ech_file\" is not supported on this platform, "
+                      "ignored");
+    }
+
     return NGX_OK;
 #endif
 }
