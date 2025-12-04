@@ -1,0 +1,106 @@
+---
+name: 🐛 Bug report
+description: Create a report to help us improve
+labels: bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+        Before you continue filling out this report, please take a moment to check that your bug has not been [already reported on GitHub][issue search], is reproducible with the latest version of nginx, and does not involve any third-party modules 🙌
+
+        Remember to redact any sensitive information such as authentication credentials and/or license keys!
+
+        **Note:** If you are seeking community support, please start a new topic in the [NGINX Community forum][forum]. If you wish to discuss the codebase, please start a new thread via [GitHub discussions][discussions].
+
+        [issue search]: https://github.com/nginx/nginx/search?q=is%3Aissue&type=issues
+        [discussions]: https://github.com/nginx/nginx/discussions
+        [forum]: https://community.nginx.org
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: Bug Overview
+      description: A clear and concise overview of the bug.
+      placeholder: When I do "X", "Y" happens instead of "Z".
+    validations:
+      required: true
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: When I do "X", I expect "Z" to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce the Bug
+      description: Detail the series of steps required to reproduce the bug.
+      placeholder: When I run "X" using [...], "X" fails with "Y" error message. If I check the terminal outputs and/or logs, I see the following info.
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: NGINX Configuration
+      description: Please provide your NGINX configuration. Minimize it to the smallest possible configuration that reproduces the issue.
+      value: |
+        ```
+        # Your NGINX configuration
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: NGINX version and build configuration options
+      description: Please provide details about your NGINX build.
+      value: |
+        The output of `nginx -V`: [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment where NGINX is being built and/or deployed
+      description: Please provide details about your environment.
+      value: |
+        - Target deployment platform: [e.g. AWS/GCP/local cluster/etc...]
+        - Target OS: [e.g. RHEL 9/Ubuntu 24.04/etc...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Architecture where NGINX is being built and/or deployed
+      description: Please provide details about your deployment environment.
+      value: |
+        The output of `uname -a`: [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: NGINX Debug Log
+      description: Please provide your NGINX debug log. See this [doc](http://nginx.org/en/docs/debugging_log.html) for details on how to enable it.
+      value: |
+        ```
+        # Your NGINX debug log
+        ```
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
+      placeholder: Feel free to add any other context/information/screenshots/etc... that you think might be relevant to this issue in here.
