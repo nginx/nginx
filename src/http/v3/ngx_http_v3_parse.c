@@ -20,8 +20,6 @@ static void ngx_http_v3_parse_end_local(ngx_buf_t *b, ngx_buf_t *loc,
     ngx_uint_t *n);
 static ngx_int_t ngx_http_v3_parse_skip(ngx_buf_t *b, ngx_uint_t *length);
 
-static ngx_int_t ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
-    ngx_http_v3_parse_varlen_int_t *st, ngx_buf_t *b);
 static ngx_int_t ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
     ngx_http_v3_parse_prefix_int_t *st, ngx_uint_t prefix, ngx_buf_t *b);
 
@@ -42,23 +40,13 @@ static ngx_int_t ngx_http_v3_parse_field_pbi(ngx_connection_t *c,
 static ngx_int_t ngx_http_v3_parse_field_lpbi(ngx_connection_t *c,
     ngx_http_v3_parse_field_t *st, ngx_buf_t *b);
 
-static ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c,
-    ngx_http_v3_parse_control_t *st, ngx_buf_t *b);
 static ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
     ngx_http_v3_parse_settings_t *st, ngx_buf_t *b);
 
-static ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c,
-    ngx_http_v3_parse_encoder_t *st, ngx_buf_t *b);
 static ngx_int_t ngx_http_v3_parse_field_inr(ngx_connection_t *c,
     ngx_http_v3_parse_field_t *st, ngx_buf_t *b);
 static ngx_int_t ngx_http_v3_parse_field_iln(ngx_connection_t *c,
     ngx_http_v3_parse_field_t *st, ngx_buf_t *b);
-
-static ngx_int_t ngx_http_v3_parse_decoder(ngx_connection_t *c,
-    ngx_http_v3_parse_decoder_t *st, ngx_buf_t *b);
-
-static ngx_int_t ngx_http_v3_parse_lookup(ngx_connection_t *c,
-    ngx_uint_t dynamic, ngx_uint_t index, ngx_str_t *name, ngx_str_t *value);
 
 
 static void
@@ -94,7 +82,7 @@ ngx_http_v3_parse_skip(ngx_buf_t *b, ngx_uint_t *length)
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_v3_parse_varlen_int(ngx_connection_t *c,
     ngx_http_v3_parse_varlen_int_t *st, ngx_buf_t *b)
 {
@@ -220,8 +208,6 @@ ngx_http_v3_parse_prefix_int(ngx_connection_t *c,
             if (st->shift == 56
                 && ((ch & 0x80) || (st->value & 0xc000000000000000)))
             {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client exceeded integer size limit");
                 return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
             }
 
@@ -248,8 +234,10 @@ ngx_int_t
 ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
     ngx_buf_t *b)
 {
-    ngx_buf_t  loc;
-    ngx_int_t  rc;
+    ngx_buf_t                   loc;
+    ngx_int_t                   rc;
+    ngx_http_v3_parse_field_t  *f;
+
     enum {
         sw_start = 0,
         sw_type,
@@ -348,14 +336,32 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
                 return rc;
             }
 
+            st->field_rep.max_literal = st->max_literal;
+
             st->state = sw_verify;
             break;
 
         case sw_verify:
 
-            rc = ngx_http_v3_check_insert_count(c, st->prefix.insert_count);
-            if (rc != NGX_OK) {
-                return rc;
+            if (st->prefix.insert_count > 0) {
+                rc = st->process_insert_count(st->data,
+                                              &st->prefix.insert_count);
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+
+                st->insert_count = st->prefix.insert_count;
+
+                if (st->prefix.sign) {
+                    if (st->insert_count <= st->prefix.delta_base) {
+                        return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+                    }
+
+                    st->base = st->insert_count - st->prefix.delta_base - 1;
+
+                } else {
+                    st->base = st->insert_count + st->prefix.delta_base;
+                }
             }
 
             st->state = sw_field_rep;
@@ -366,8 +372,7 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
 
             ngx_http_v3_parse_start_local(b, &loc, st->length);
 
-            rc = ngx_http_v3_parse_field_rep(c, &st->field_rep, st->prefix.base,
-                                             &loc);
+            rc = ngx_http_v3_parse_field_rep(c, &st->field_rep, st->base, &loc);
 
             ngx_http_v3_parse_end_local(b, &loc, &st->length);
 
@@ -379,25 +384,26 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
                 return rc;
             }
 
+            f = &st->field_rep.field;
+
+            rc = st->process_header(st->data, f->has_name ? &f->name : NULL,
+                                    f->has_value ? &f->value : NULL,
+                                    f->index, f->dynamic);
+            if (rc != NGX_OK) {
+                return rc;
+            }
+
             if (st->length == 0) {
                 goto done;
             }
 
-            return NGX_OK;
+            break;
         }
     }
 
 done:
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse headers done");
-
-    if (st->prefix.insert_count > 0) {
-        if (ngx_http_v3_send_ack_section(c, c->quic->id) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        ngx_http_v3_ack_insert_count(c, st->prefix.insert_count);
-    }
 
     st->state = sw_start;
     return NGX_DONE;
@@ -468,27 +474,10 @@ ngx_http_v3_parse_field_section_prefix(ngx_connection_t *c,
 
 done:
 
-    rc = ngx_http_v3_decode_insert_count(c, &st->insert_count);
-    if (rc != NGX_OK) {
-        return rc;
-    }
-
-    if (st->sign) {
-        if (st->insert_count <= st->delta_base) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent negative base");
-            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
-        }
-
-        st->base = st->insert_count - st->delta_base - 1;
-
-    } else {
-        st->base = st->insert_count + st->delta_base;
-    }
-
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, c->log, 0,
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                   "http3 parse field section prefix done "
-                  "insert_count:%ui, sign:%ui, delta_base:%ui, base:%ui",
-                  st->insert_count, st->sign, st->delta_base, st->base);
+                  "insert_count:%ui, sign:%ui, delta_base:%ui",
+                  st->insert_count, st->sign, st->delta_base);
 
     st->state = sw_start;
     return NGX_DONE;
@@ -521,9 +510,8 @@ ngx_http_v3_parse_field_rep(ngx_connection_t *c,
 
         ch = *b->pos;
 
-        ngx_memzero(&st->field, sizeof(ngx_http_v3_parse_field_t));
-
         st->field.base = base;
+        st->field.max_literal = st->max_literal;
 
         if (ch & 0x80) {
             /* Indexed Field Line */
@@ -594,9 +582,8 @@ static ngx_int_t
 ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
     ngx_buf_t *b)
 {
-    u_char                     ch;
-    ngx_uint_t                 n;
-    ngx_http_core_srv_conf_t  *cscf;
+    u_char      ch;
+    ngx_uint_t  n;
     enum {
         sw_start = 0,
         sw_value
@@ -614,14 +601,6 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
 
             n = st->length;
 
-            cscf = ngx_http_v3_get_module_srv_conf(c, ngx_http_core_module);
-
-            if (n > cscf->large_client_header_buffers.size) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "client sent too large field line");
-                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
-            }
-
             if (st->huffman) {
                 if (n > NGX_MAX_INT_T_VALUE / 8) {
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -633,6 +612,7 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
                 st->huffstate = 0;
             }
 
+            /* XXX this allocation is bad in uni streams */
             st->last = ngx_pnalloc(c->pool, n + 1);
             if (st->last == NULL) {
                 return NGX_ERROR;
@@ -656,8 +636,6 @@ ngx_http_v3_parse_literal(ngx_connection_t *c, ngx_http_v3_parse_literal_t *st,
                                          st->length == 1, c->log)
                     != NGX_OK)
                 {
-                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                                  "client sent invalid encoded field line");
                     return NGX_ERROR;
                 }
 
@@ -734,14 +712,11 @@ done:
                    "http3 parse field ri done %s%ui]",
                    st->dynamic ? "dynamic[-" : "static[", st->index);
 
+    st->has_name = 0;
+    st->has_value = 0;
+
     if (st->dynamic) {
         st->index = st->base - st->index - 1;
-    }
-
-    rc = ngx_http_v3_parse_lookup(c, st->dynamic, st->index, &st->name,
-                                  &st->value);
-    if (rc != NGX_OK) {
-        return rc;
     }
 
     st->state = sw_start;
@@ -820,6 +795,11 @@ ngx_http_v3_parse_field_lri(ngx_connection_t *c,
                 goto done;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field value too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_value;
             break;
 
@@ -842,13 +822,11 @@ done:
                    st->dynamic ? "dynamic[-" : "static[",
                    st->index, &st->value);
 
+    st->has_name = 0;
+    st->has_value = 1;
+
     if (st->dynamic) {
         st->index = st->base - st->index - 1;
-    }
-
-    rc = ngx_http_v3_parse_lookup(c, st->dynamic, st->index, &st->name, NULL);
-    if (rc != NGX_OK) {
-        return rc;
     }
 
     st->state = sw_start;
@@ -903,6 +881,11 @@ ngx_http_v3_parse_field_l(ngx_connection_t *c,
                 return NGX_ERROR;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field name too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_name;
             break;
 
@@ -943,6 +926,11 @@ ngx_http_v3_parse_field_l(ngx_connection_t *c,
                 goto done;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field value too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_value;
             break;
 
@@ -963,6 +951,11 @@ done:
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 parse field l done \"%V\" \"%V\"",
                    &st->name, &st->value);
+
+    st->has_name = 1;
+    st->has_value = 1;
+    st->index = 0;
+    st->dynamic = 0;
 
     st->state = sw_start;
     return NGX_DONE;
@@ -1009,11 +1002,10 @@ done:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http3 parse field pbi done dynamic[+%ui]", st->index);
 
-    rc = ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name,
-                                  &st->value);
-    if (rc != NGX_OK) {
-        return rc;
-    }
+    st->has_name = 0;
+    st->has_value = 0;
+    st->index += st->base;
+    st->dynamic = 1;
 
     st->state = sw_start;
     return NGX_DONE;
@@ -1084,6 +1076,11 @@ ngx_http_v3_parse_field_lpbi(ngx_connection_t *c,
                 goto done;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field value too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_value;
             break;
 
@@ -1105,61 +1102,17 @@ done:
                    "http3 parse field lpbi done dynamic[+%ui] \"%V\"",
                    st->index, &st->value);
 
-    rc = ngx_http_v3_parse_lookup(c, 1, st->base + st->index, &st->name, NULL);
-    if (rc != NGX_OK) {
-        return rc;
-    }
+    st->has_name = 0;
+    st->has_value = 1;
+    st->index += st->base;
+    st->dynamic = 1;
 
     st->state = sw_start;
     return NGX_DONE;
 }
 
 
-static ngx_int_t
-ngx_http_v3_parse_lookup(ngx_connection_t *c, ngx_uint_t dynamic,
-    ngx_uint_t index, ngx_str_t *name, ngx_str_t *value)
-{
-    u_char  *p;
-
-    if (!dynamic) {
-        if (ngx_http_v3_lookup_static(c, index, name, value) != NGX_OK) {
-            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
-        }
-
-        return NGX_OK;
-    }
-
-    if (ngx_http_v3_lookup(c, index, name, value) != NGX_OK) {
-        return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
-    }
-
-    if (name) {
-        p = ngx_pnalloc(c->pool, name->len + 1);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(p, name->data, name->len);
-        p[name->len] = '\0';
-        name->data = p;
-    }
-
-    if (value) {
-        p = ngx_pnalloc(c->pool, value->len + 1);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        ngx_memcpy(p, value->data, value->len);
-        p[value->len] = '\0';
-        value->data = p;
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
+ngx_int_t
 ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
     ngx_buf_t *b)
 {
@@ -1246,6 +1199,9 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
             switch (st->type) {
 
             case NGX_HTTP_V3_FRAME_SETTINGS:
+                st->settings.set_param = st->set_param;
+                st->settings.data = st->data;
+
                 st->state = sw_settings;
                 break;
 
@@ -1335,7 +1291,7 @@ ngx_http_v3_parse_settings(ngx_connection_t *c,
                 return rc;
             }
 
-            if (ngx_http_v3_set_param(c, st->id, st->vlint.value) != NGX_OK) {
+            if (st->set_param(st->data, st->id, st->vlint.value) != NGX_OK) {
                 return NGX_HTTP_V3_ERR_SETTINGS_ERROR;
             }
 
@@ -1352,7 +1308,7 @@ done:
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
     ngx_buf_t *b)
 {
@@ -1376,6 +1332,8 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
             if (b->pos == b->last) {
                 return NGX_AGAIN;
             }
+
+            st->field.max_literal = st->max_literal;
 
             ch = *b->pos;
 
@@ -1410,6 +1368,12 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
                 return rc;
             }
 
+            rc = st->ref_insert(st->data, st->field.dynamic, st->field.index,
+                                &st->field.value);
+            if (rc != NGX_OK) {
+                return rc;
+            }
+
             st->state = sw_start;
             break;
 
@@ -1417,6 +1381,11 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
 
             rc = ngx_http_v3_parse_field_iln(c, &st->field, b);
             if (rc != NGX_DONE) {
+                return rc;
+            }
+
+            rc = st->insert(st->data, &st->field.name, &st->field.value);
+            if (rc != NGX_OK) {
                 return rc;
             }
 
@@ -1430,7 +1399,7 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
                 return rc;
             }
 
-            rc = ngx_http_v3_set_capacity(c, st->pint.value);
+            rc = st->set_capacity(st->data, st->pint.value);
             if (rc != NGX_OK) {
                 return rc;
             }
@@ -1445,7 +1414,7 @@ ngx_http_v3_parse_encoder(ngx_connection_t *c, ngx_http_v3_parse_encoder_t *st,
                 return rc;
             }
 
-            rc = ngx_http_v3_duplicate(c, st->pint.value);
+            rc = st->duplicate(st->data, st->pint.value);
             if (rc != NGX_OK) {
                 return rc;
             }
@@ -1528,6 +1497,11 @@ ngx_http_v3_parse_field_inr(ngx_connection_t *c,
                 goto done;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field value too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_value;
             break;
 
@@ -1549,11 +1523,6 @@ done:
                    "http3 parse field inr done %s[%ui] \"%V\"",
                    st->dynamic ? "dynamic" : "static",
                    st->index, &st->value);
-
-    rc = ngx_http_v3_ref_insert(c, st->dynamic, st->index, &st->value);
-    if (rc != NGX_OK) {
-        return rc;
-    }
 
     st->state = sw_start;
     return NGX_DONE;
@@ -1607,6 +1576,11 @@ ngx_http_v3_parse_field_iln(ngx_connection_t *c,
                 return NGX_ERROR;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field name too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_name;
             break;
 
@@ -1647,6 +1621,11 @@ ngx_http_v3_parse_field_iln(ngx_connection_t *c,
                 goto done;
             }
 
+            if (st->literal.length > st->max_literal) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0, "field value too large");
+                return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+            }
+
             st->state = sw_value;
             break;
 
@@ -1668,17 +1647,12 @@ done:
                    "http3 parse field iln done \"%V\":\"%V\"",
                    &st->name, &st->value);
 
-    rc = ngx_http_v3_insert(c, &st->name, &st->value);
-    if (rc != NGX_OK) {
-        return rc;
-    }
-
     st->state = sw_start;
     return NGX_DONE;
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
     ngx_buf_t *b)
 {
@@ -1730,7 +1704,7 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
                 return rc;
             }
 
-            rc = ngx_http_v3_ack_section(c, st->pint.value);
+            rc = st->ack_section(st->data, st->pint.value);
             if (rc != NGX_OK) {
                 return rc;
             }
@@ -1745,7 +1719,7 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
                 return rc;
             }
 
-            rc = ngx_http_v3_cancel_stream(c, st->pint.value);
+            rc = st->cancel_stream(st->data, st->pint.value);
             if (rc != NGX_OK) {
                 return rc;
             }
@@ -1760,7 +1734,7 @@ ngx_http_v3_parse_decoder(ngx_connection_t *c, ngx_http_v3_parse_decoder_t *st,
                 return rc;
             }
 
-            rc = ngx_http_v3_inc_insert_count(c, st->pint.value);
+            rc = st->inc_insert_count(st->data, st->pint.value);
             if (rc != NGX_OK) {
                 return rc;
             }
@@ -1806,7 +1780,8 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
             st->type = st->vlint.value;
 
             if (st->type == NGX_HTTP_V3_FRAME_HEADERS) {
-                /* trailers */
+                /* parse trailers later */
+                b->pos--;
                 goto done;
             }
 
@@ -1862,81 +1837,4 @@ done:
 
     st->state = sw_start;
     return NGX_DONE;
-}
-
-
-ngx_int_t
-ngx_http_v3_parse_uni(ngx_connection_t *c, ngx_http_v3_parse_uni_t *st,
-    ngx_buf_t *b)
-{
-    ngx_int_t  rc;
-    enum {
-        sw_start = 0,
-        sw_type,
-        sw_control,
-        sw_encoder,
-        sw_decoder,
-        sw_unknown
-    };
-
-    for ( ;; ) {
-
-        switch (st->state) {
-        case sw_start:
-
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse uni");
-
-            st->state = sw_type;
-
-            /* fall through */
-
-        case sw_type:
-
-            rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, b);
-            if (rc != NGX_DONE) {
-                return rc;
-            }
-
-            rc = ngx_http_v3_register_uni_stream(c, st->vlint.value);
-            if (rc != NGX_OK) {
-                return rc;
-            }
-
-            switch (st->vlint.value) {
-            case NGX_HTTP_V3_STREAM_CONTROL:
-                st->state = sw_control;
-                break;
-
-            case NGX_HTTP_V3_STREAM_ENCODER:
-                st->state = sw_encoder;
-                break;
-
-            case NGX_HTTP_V3_STREAM_DECODER:
-                st->state = sw_decoder;
-                break;
-
-            default:
-                st->state = sw_unknown;
-            }
-
-            break;
-
-        case sw_control:
-
-            return ngx_http_v3_parse_control(c, &st->u.control, b);
-
-        case sw_encoder:
-
-            return ngx_http_v3_parse_encoder(c, &st->u.encoder, b);
-
-        case sw_decoder:
-
-            return ngx_http_v3_parse_decoder(c, &st->u.decoder, b);
-
-        case sw_unknown:
-
-            b->pos = b->last;
-            return NGX_AGAIN;
-        }
-    }
 }
