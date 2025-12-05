@@ -260,6 +260,7 @@ static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
     { ngx_string("invalid_header"), NGX_HTTP_UPSTREAM_FT_INVALID_HEADER },
     { ngx_string("non_idempotent"), NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT },
     { ngx_string("http_500"), NGX_HTTP_UPSTREAM_FT_HTTP_500 },
+    { ngx_string("http_501"), NGX_HTTP_UPSTREAM_FT_HTTP_501 },
     { ngx_string("http_502"), NGX_HTTP_UPSTREAM_FT_HTTP_502 },
     { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
     { ngx_string("http_504"), NGX_HTTP_UPSTREAM_FT_HTTP_504 },
