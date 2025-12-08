@@ -476,7 +476,7 @@ extern ngx_atomic_t  *ngx_stat_writing;
 extern ngx_atomic_t  *ngx_stat_waiting;
 
 #endif
-
+extern ngx_pid_t     *ngx_active_workers_pids;
 
 #define NGX_UPDATE_TIME         1
 #define NGX_POST_EVENTS         2
