@@ -185,7 +185,13 @@ ngx_quic_cbs_release_rcd(ngx_ssl_conn_t *ssl_conn, size_t bytes_read, void *arg)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_cbs_release_rcd len:%uz", bytes_read);
 
+    /* already closed on handshake failure */
+
     qc = ngx_quic_get_connection(c);
+    if (qc == NULL) {
+        return 1;
+    }
+
     ctx = ngx_quic_get_send_ctx(qc, qc->read_level);
 
     cl = ngx_quic_read_buffer(c, &ctx->crypto, bytes_read);
