@@ -535,7 +535,7 @@ ngx_stream_upstream_init_chash_peer(ngx_stream_session_t *s,
     }
 #endif
 
-    if (hcf->points->number) {
+    if (hcf->points && hcf->points->number) {
         hp->hash = ngx_stream_upstream_find_chash_point(hcf->points, hash);
     }
 
