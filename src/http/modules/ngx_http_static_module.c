@@ -163,6 +163,12 @@ ngx_http_static_handler(ngx_http_request_t *r)
             len = r->uri.len + 1;
             location = path.data + root;
 
+        if (location == NULL) {
+                ngx_http_clear_location(r);
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+
             *last = '/';
 
         } else {
@@ -189,6 +195,17 @@ ngx_http_static_handler(ngx_http_request_t *r)
             *last = '/';
 
             if (r->args.len) {
+
+                if (last == NULL) {
+                ngx_http_clear_location(r);
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            
+            if ((size_t)((location + len) - (last + 1)) < r->args.len) {
+                ngx_http_clear_location(r);
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
                 *++last = '?';
                 ngx_memcpy(++last, r->args.data, r->args.len);
             }
