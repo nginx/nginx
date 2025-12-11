@@ -3246,6 +3246,10 @@ ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
     u_char      ch;
     ngx_uint_t  i;
 
+    if (s->len < 1) {
+        return NGX_ERROR;
+    }
+
     for (i = 0; i < s->len; i++) {
         ch = s->data[i];
 
