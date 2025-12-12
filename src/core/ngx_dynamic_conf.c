@@ -27,6 +27,9 @@ typedef struct {
 
 typedef struct {
     ngx_str_t                 threads;
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+    ngx_flag_t                preload;
+#endif
     ngx_thread_pool_t        *thread_pool;
     ngx_dynamic_conf_ctx_t   *ctx;
 #if (NGX_DEBUG)
@@ -37,6 +40,9 @@ typedef struct {
 
 static void *ngx_dynamic_conf_create_conf(ngx_cycle_t *cycle);
 static char *ngx_dynamic_conf_init_conf(ngx_cycle_t *cycle, void *conf);
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+static ngx_int_t ngx_dynamic_conf_init_worker(ngx_cycle_t *cycle);
+#endif
 static void ngx_dynamic_conf_exit_worker(ngx_cycle_t *cycle);
 static void ngx_dynamic_conf_load_handler(void *data, ngx_log_t *log);
 static void ngx_dynamic_conf_loaded(ngx_event_t *event);
@@ -54,6 +60,15 @@ static ngx_command_t  ngx_dynamic_conf_commands[] = {
       0,
       offsetof(ngx_dynamic_conf_t, threads),
       NULL },
+
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+    { ngx_string("dynamic_conf_preload"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      0,
+      offsetof(ngx_dynamic_conf_t, preload),
+      NULL },
+#endif
 
       ngx_null_command
 };
@@ -73,7 +88,11 @@ ngx_module_t  ngx_dynamic_conf_module = {
     NGX_CORE_MODULE,                       /* module type */
     NULL,                                  /* init master */
     NULL,                                  /* init module */
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+    ngx_dynamic_conf_init_worker,          /* init process */
+#else
     NULL,                                  /* init process */
+#endif
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
     ngx_dynamic_conf_exit_worker,          /* exit process */
@@ -98,6 +117,10 @@ ngx_dynamic_conf_create_conf(ngx_cycle_t *cycle)
      *     dcf->threads = { 0, NULL };
      */
 
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+    dcf->preload = NGX_CONF_UNSET;
+#endif
+
     return dcf;
 }
 
@@ -106,6 +129,10 @@ static char *
 ngx_dynamic_conf_init_conf(ngx_cycle_t *cycle, void *conf)
 {
     ngx_dynamic_conf_t  *dcf = conf;
+
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+    ngx_conf_init_value(dcf->preload, 0);
+#endif
 
     if (dcf->threads.data == NULL) {
         dcf->thread_pool = ngx_thread_pool_add(cycle, NULL);
@@ -120,6 +147,68 @@ ngx_dynamic_conf_init_conf(ngx_cycle_t *cycle, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+#if (NGX_DYNAMIC_CONF_PRELOAD)
+
+static ngx_int_t
+ngx_dynamic_conf_init_worker(ngx_cycle_t *cycle)
+{
+    ngx_pool_t              *pool;
+    ngx_dynamic_conf_t      *dcf;
+    ngx_dynamic_conf_ctx_t  *ctx;
+
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE)
+    {
+        return NGX_OK;
+    }
+
+    dcf = (ngx_dynamic_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                              ngx_dynamic_conf_module);
+
+    if (!dcf->preload) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_CORE, cycle->log, 0, "dynamic conf preload");
+
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, cycle->log);
+    if (pool == NULL) {
+        return NGX_ERROR;
+    }
+
+    ctx = ngx_pcalloc(pool, sizeof(ngx_dynamic_conf_ctx_t));
+    if (ctx == NULL) {
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    ctx->pool = pool;
+    ctx->log = cycle->log;
+    ctx->main_cycle = cycle;
+#if (NGX_DEBUG)
+    ctx->id = dcf->id++;
+#endif
+
+    ngx_dynamic_conf_load_handler(ctx, cycle->log);
+
+    if (ctx->cycle == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, ctx->log, 0,
+                      "dynamic configuration preload failed");
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    ngx_dynamic_conf_install(ctx);
+
+    dcf->ctx = ctx;
+    ctx->count = 1;
+
+    return NGX_OK;
+}
+
+#endif
 
 
 static void
