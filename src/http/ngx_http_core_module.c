@@ -4832,10 +4832,10 @@ ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_OK;
             }
 
-            tp = ngx_thread_pool_add(cf, &name);
+            tp = ngx_thread_pool_add(cf->cycle, &name);
 
         } else {
-            tp = ngx_thread_pool_add(cf, NULL);
+            tp = ngx_thread_pool_add(cf->cycle, NULL);
         }
 
         if (tp == NULL) {
