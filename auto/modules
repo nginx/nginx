@@ -102,7 +102,16 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
+    if [ $HTTP_V2 = YES ]; then
+        have=NGX_HTTP_V2_SUPPORT . auto/have
+        USE_HTTP_V2=YES
+
+        HTTP_INCS="$HTTP_INCS $HTTP_V2_INCS"
+        HTTP_DEPS="$HTTP_DEPS $HTTP_V2_DEPS"
+        HTTP_SRCS="$HTTP_SRCS $HTTP_V2_SRCS"
+    fi
+
+    if [ $USE_HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
         HTTP_SRCS="$HTTP_SRCS $HTTP_HUFF_SRCS"
     fi
 
@@ -425,12 +434,9 @@ if [ $HTTP = YES ]; then
         have=NGX_HTTP_V2 . auto/have
 
         ngx_module_name=ngx_http_v2_module
-        ngx_module_incs=src/http/v2
-        ngx_module_deps="src/http/v2/ngx_http_v2.h \
-                         src/http/v2/ngx_http_v2_module.h"
+        ngx_module_incs=
+        ngx_module_deps=src/http/v2/ngx_http_v2_module.h
         ngx_module_srcs="src/http/v2/ngx_http_v2.c \
-                         src/http/v2/ngx_http_v2_table.c \
-                         src/http/v2/ngx_http_v2_encode.c \
                          src/http/v2/ngx_http_v2_module.c"
         ngx_module_libs=
         ngx_module_link=$HTTP_V2

@@ -259,3 +259,8 @@ HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 HTTP_HUFF_SRCS="src/http/ngx_http_huff_decode.c
                 src/http/ngx_http_huff_encode.c"
+
+HTTP_V2_INCS=src/http/v2
+HTTP_V2_DEPS=src/http/v2/ngx_http_v2.h
+HTTP_V2_SRCS="src/http/v2/ngx_http_v2_table.c
+              src/http/v2/ngx_http_v2_encode.c"
