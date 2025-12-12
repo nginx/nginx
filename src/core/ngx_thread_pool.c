@@ -37,9 +37,6 @@ struct ngx_thread_pool_s {
     ngx_str_t                 name;
     ngx_uint_t                threads;
     ngx_int_t                 max_queue;
-
-    u_char                   *file;
-    ngx_uint_t                line;
 };
 
 
@@ -442,8 +439,7 @@ ngx_thread_pool_init_conf(ngx_cycle_t *cycle, void *conf)
         }
 
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "unknown thread pool \"%V\" in %s:%ui",
-                      &tpp[i]->name, tpp[i]->file, tpp[i]->line);
+                      "unknown thread pool \"%V\"", &tpp[i]->name);
 
         return NGX_CONF_ERROR;
     }
@@ -461,7 +457,7 @@ ngx_thread_pool(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
-    tp = ngx_thread_pool_add(cf, &value[1]);
+    tp = ngx_thread_pool_add(cf->cycle, &value[1]);
 
     if (tp == NULL) {
         return NGX_CONF_ERROR;
@@ -516,7 +512,7 @@ ngx_thread_pool(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 
 ngx_thread_pool_t *
-ngx_thread_pool_add(ngx_conf_t *cf, ngx_str_t *name)
+ngx_thread_pool_add(ngx_cycle_t *cycle, ngx_str_t *name)
 {
     ngx_thread_pool_t       *tp, **tpp;
     ngx_thread_pool_conf_t  *tcf;
@@ -525,22 +521,20 @@ ngx_thread_pool_add(ngx_conf_t *cf, ngx_str_t *name)
         name = &ngx_thread_pool_default;
     }
 
-    tp = ngx_thread_pool_get(cf->cycle, name);
+    tp = ngx_thread_pool_get(cycle, name);
 
     if (tp) {
         return tp;
     }
 
-    tp = ngx_pcalloc(cf->pool, sizeof(ngx_thread_pool_t));
+    tp = ngx_pcalloc(cycle->pool, sizeof(ngx_thread_pool_t));
     if (tp == NULL) {
         return NULL;
     }
 
     tp->name = *name;
-    tp->file = cf->conf_file->file.name.data;
-    tp->line = cf->conf_file->line;
 
-    tcf = (ngx_thread_pool_conf_t *) ngx_get_conf(cf->cycle->conf_ctx,
+    tcf = (ngx_thread_pool_conf_t *) ngx_get_conf(cycle->conf_ctx,
                                                   ngx_thread_pool_module);
 
     tpp = ngx_array_push(&tcf->pools);
