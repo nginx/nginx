@@ -102,7 +102,7 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_V2 = YES ]; then
+    if [ $HTTP_V2 = YES -o $HTTP_PROXY = YES ]; then
         have=NGX_HTTP_V2_SUPPORT . auto/have
         USE_HTTP_V2=YES
 
@@ -741,6 +741,15 @@ if [ $HTTP = YES ]; then
         ngx_module_link=$HTTP_PROXY
 
         . auto/module
+
+        ngx_module_name=ngx_http_proxy_v2_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_proxy_v2_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_PROXY
+
+        . auto/module
     fi
 
     if [ $HTTP_FASTCGI = YES ]; then
@@ -783,17 +792,6 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_grpc_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_GRPC
-
-        . auto/module
-    fi
-
-    if [ $HTTP_PROXY = YES -a $HTTP_V2 = YES ]; then
-        ngx_module_name=ngx_http_proxy_v2_module
-        ngx_module_incs=
-        ngx_module_deps=
-        ngx_module_srcs=src/http/modules/ngx_http_proxy_v2_module.c
-        ngx_module_libs=
-        ngx_module_link=$HTTP_V2
 
         . auto/module
     fi
