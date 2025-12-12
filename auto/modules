@@ -102,7 +102,7 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_V2 = YES -o $HTTP_PROXY = YES ]; then
+    if [ $HTTP_V2 = YES -o $HTTP_PROXY = YES -o $HTTP_GRPC = YES ]; then
         have=NGX_HTTP_V2_SUPPORT . auto/have
         USE_HTTP_V2=YES
 
@@ -785,7 +785,7 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
-    if [ $HTTP_GRPC = YES -a $HTTP_V2 = YES ]; then
+    if [ $HTTP_GRPC = YES ]; then
         ngx_module_name=ngx_http_grpc_module
         ngx_module_incs=
         ngx_module_deps=
