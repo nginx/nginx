@@ -453,9 +453,18 @@ static ngx_str_t ngx_http_scgi_hide_headers[] = {
 };
 
 
+static ngx_keyval_t  ngx_http_scgi_headers[] = {
+    { ngx_string("HTTP_HOST"),
+      ngx_string("$host$is_request_port$request_port") },
+    { ngx_null_string, ngx_null_string }
+};
+
+
 #if (NGX_HTTP_CACHE)
 
 static ngx_keyval_t  ngx_http_scgi_cache_headers[] = {
+    { ngx_string("HTTP_HOST"),
+      ngx_string("$host$is_request_port$request_port") },
     { ngx_string("HTTP_IF_MODIFIED_SINCE"),
       ngx_string("$upstream_cache_last_modified") },
     { ngx_string("HTTP_IF_UNMODIFIED_SINCE"), ngx_string("") },
@@ -1675,7 +1684,8 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->params_source = prev->params_source;
     }
 
-    rc = ngx_http_scgi_init_params(cf, conf, &conf->params, NULL);
+    rc = ngx_http_scgi_init_params(cf, conf, &conf->params,
+                                   ngx_http_scgi_headers);
     if (rc != NGX_OK) {
         return NGX_CONF_ERROR;
     }
