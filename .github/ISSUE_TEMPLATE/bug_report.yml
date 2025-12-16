@@ -58,7 +58,7 @@ body:
       required: true
 
   - type: textarea
-    id: environment
+    id: version
     attributes:
       label: NGINX version and build configuration options
       description: Please provide details about your NGINX build.
@@ -79,7 +79,7 @@ body:
       required: true
 
   - type: textarea
-    id: environment
+    id: architecture
     attributes:
       label: Architecture where NGINX is being built and/or deployed
       description: Please provide details about your deployment environment.
