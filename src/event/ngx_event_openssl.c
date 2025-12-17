@@ -4012,6 +4012,7 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_TLSV1_ALERT_USER_CANCELLED                 /* 1090 */
             || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION               /* 1100 */
 #endif
+            || n == 1121 /* SSL_R_TLSV1_ALERT_ECH_REQUIRED */
             )
         {
             switch (c->log_error) {
