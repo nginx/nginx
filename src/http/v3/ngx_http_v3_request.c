@@ -995,6 +995,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
 failed:
 
+    ngx_quic_reset_stream(r->connection, NGX_HTTP_V3_ERR_MESSAGE_ERROR);
     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
     return NGX_ERROR;
 }
@@ -1103,6 +1104,7 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
 
 failed:
 
+    ngx_quic_reset_stream(r->connection, NGX_HTTP_V3_ERR_MESSAGE_ERROR);
     ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
     return NGX_ERROR;
 }
