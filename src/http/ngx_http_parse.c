@@ -2038,7 +2038,80 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
 
             while (start < end && *start == ' ') { start++; }
 
-            for (last = start; last < end && *last != ';'; last++) {
+            for (last = start; last < end && *last != ','; last++) {
+                /* void */
+            }
+
+            value->len = last - start;
+            value->data = start;
+
+            return h;
+
+        skip:
+
+            while (start < end) {
+                ch = *start++;
+                if (ch == ',') {
+                    break;
+                }
+            }
+
+            while (start < end && *start == ' ') { start++; }
+        }
+    }
+
+    return NULL;
+}
+
+
+ngx_table_elt_t *
+ngx_http_parse_request_cookie_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
+{
+    u_char           *start, *last, *end, ch;
+    ngx_table_elt_t  *h;
+
+    for (h = headers; h; h = h->next) {
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "parse header: \"%V: %V\"", &h->key, &h->value);
+
+        if (name->len > h->value.len) {
+            continue;
+        }
+
+        start = h->value.data;
+        end = h->value.data + h->value.len;
+
+        while (start < end) {
+
+            if (ngx_strncasecmp(start, name->data, name->len) != 0) {
+                goto skip;
+            }
+
+            for (start += name->len; start < end && *start == ' '; start++) {
+                /* void */
+            }
+
+            if (value == NULL) {
+                if (start == end || *start == ';' || *start == ',') {
+                    return h;
+                }
+
+                goto skip;
+            }
+
+            if (start == end || *start++ != '=') {
+                /* the invalid header value */
+                goto skip;
+            }
+
+            while (start < end && *start == ' ') { start++; }
+
+            for (last = start;
+                 last < end && *last != ';' && *last != ',';
+                 last++)
+            {
                 /* void */
             }
 
