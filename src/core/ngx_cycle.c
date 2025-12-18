@@ -351,8 +351,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
 
-    if (ngx_create_paths(cycle, ccf->user) != NGX_OK) {
-        goto failed;
+    if (!ngx_test_config) {
+        if (ngx_create_paths(cycle, ccf->user) != NGX_OK) {
+            goto failed;
+        }
     }
 
 
