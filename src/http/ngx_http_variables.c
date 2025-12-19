@@ -1088,7 +1088,7 @@ ngx_http_variable_cookie(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     s.len = name->len - (sizeof("cookie_") - 1);
     s.data = name->data + sizeof("cookie_") - 1;
 
-    if (ngx_http_parse_multi_header_lines(r, r->headers_in.cookie, &s, &cookie)
+    if (ngx_http_parse_cookie_lines(r, r->headers_in.cookie, &s, &cookie)
         == NULL)
     {
         v->not_found = 1;
