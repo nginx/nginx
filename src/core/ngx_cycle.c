@@ -434,6 +434,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         }
 
         shm_zone[i].shm.log = cycle->log;
+        shm_zone[i].skip_inherit = 0;
 
         opart = &old_cycle->shared_memory.part;
         oshm_zone = opart->elts;
@@ -461,6 +462,10 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 != 0)
             {
                 continue;
+            }
+
+            if (shm_zone[i].tag == oshm_zone[n].tag && oshm_zone[i].skip_inherit) {
+                break;
             }
 
             if (shm_zone[i].tag == oshm_zone[n].tag && shm_zone[i].noreuse) {
@@ -1363,6 +1368,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
     shm_zone->init = NULL;
     shm_zone->tag = tag;
     shm_zone->noreuse = 0;
+    shm_zone->skip_inherit = 0;
 
     return shm_zone;
 }
