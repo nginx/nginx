@@ -18,6 +18,10 @@ typedef struct {
 #endif
 } ngx_stream_upstream_local_t;
 
+typedef struct {
+    u_char  *protocol;
+    u_char  *cipher;
+} ngx_stream_proxy_ssl_ctx_t;
 
 typedef struct {
     ngx_msec_t                       connect_timeout;
@@ -83,6 +87,11 @@ static void ngx_stream_proxy_next_upstream(ngx_stream_session_t *s);
 static void ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc);
 static u_char *ngx_stream_proxy_log_error(ngx_log_t *log, u_char *buf,
     size_t len);
+
+//static u_char ssl_proto_buf[32];
+//static u_char ssl_cipher_buf[64];
+u_char *last_stream_ssl_protocol = NULL;
+u_char *last_stream_ssl_cipher = NULL;
 
 static void *ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent,
@@ -1241,17 +1250,56 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
 static void
 ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
 {
+	  if (pc->ssl && pc->ssl->connection) {
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
+                      "[stream-debug] handshake function called, handshaked=%d",
+                      pc->ssl->handshaked);
+    }
     long                          rc;
     ngx_stream_session_t         *s;
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
 
     s = pc->data;
+	ngx_stream_proxy_ssl_ctx_t *ctx;
+
+ctx = ngx_pcalloc(s->connection->pool, sizeof(ngx_stream_proxy_ssl_ctx_t));
+if (ctx == NULL) {
+    goto failed;
+}
+ngx_stream_set_ctx(s, ctx, ngx_stream_proxy_module);
+
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
     if (pc->ssl->handshaked) {
+#if (NGX_STREAM_SSL)
+if (pc->ssl && pc->ssl->connection) {
+    const char *proto = SSL_get_version(pc->ssl->connection);
+    if (proto) {
+        ngx_str_t proto_str = ngx_string(proto);
+ctx->protocol = ngx_pstrdup(s->connection->pool, &proto_str);
+last_stream_ssl_protocol = ctx->protocol;
+    }
 
+    const SSL_CIPHER *cipher = SSL_get_current_cipher(pc->ssl->connection);
+    if (cipher) {
+        const char *name = SSL_CIPHER_get_name(cipher);
+        ngx_str_t cipher_str = ngx_string(name);
+ctx->cipher = ngx_pstrdup(s->connection->pool, &cipher_str);
+last_stream_ssl_cipher = ctx->cipher; 
+    }
+
+    ngx_log_error(NGX_LOG_ERR, pc->log, 0,
+                  "[stream-ssl] protocol='%s' cipher='%s'",
+                  ctx->protocol ? (char *)ctx->protocol : "(null)",
+                  ctx->cipher ? (char *)ctx->cipher : "(null)");
+}
+#endif
+
+    }
+
+    if (pc->ssl && pc->ssl->handshaked) {
         if (pscf->ssl_verify) {
             rc = SSL_get_verify_result(pc->ssl->connection);
 
@@ -1277,14 +1325,12 @@ ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc)
         }
 
         ngx_stream_proxy_init_upstream(s);
-
         return;
     }
 
 failed:
-
     ngx_stream_proxy_next_upstream(s);
-}
+}       
 
 
 static void
