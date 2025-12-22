@@ -533,7 +533,7 @@ ngx_http_upstream_init_chash_peer(ngx_http_request_t *r,
     }
 #endif
 
-    if (hcf->points->number) {
+    if (hcf->points != NULL && hcf->points->number) {
         hp->hash = ngx_http_upstream_find_chash_point(hcf->points, hash);
     }
 
