@@ -15,9 +15,6 @@
 
 
 void ngx_http_v3_init_uni_stream(ngx_connection_t *c);
-ngx_int_t ngx_http_v3_register_uni_stream(ngx_connection_t *c, uint64_t type);
-
-ngx_int_t ngx_http_v3_cancel_stream(ngx_connection_t *c, ngx_uint_t stream_id);
 
 ngx_connection_t *ngx_http_v3_get_uni_stream(ngx_connection_t *c,
     ngx_uint_t type);

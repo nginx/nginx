@@ -59,7 +59,6 @@ static int ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
 
 #endif
 
-static ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
 static ngx_int_t ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level);
 
 
@@ -85,18 +84,20 @@ ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
 
     *consumed = 0;
 
-    SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
+    if (qc->is_server) {
+        SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
 
-    if (alpn_len == 0) {
-        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
-        qc->error_reason = "missing ALPN extension";
+        if (alpn_len == 0) {
+            qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
+            qc->error_reason = "missing ALPN extension";
 
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic missing ALPN extension");
-        return 1;
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic missing ALPN extension");
+            return 1;
+        }
     }
 
-    if (!qc->client_tp_done) {
+    if (!qc->peer_tp_done) {
         /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
         qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
         qc->error_reason = "missing transport parameters";
@@ -295,7 +296,7 @@ ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
         return 1;
     }
 
-    qc->client_tp_done = 1;
+    qc->peer_tp_done = 1;
 
     return 1;
 }
@@ -491,68 +492,75 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic ngx_quic_add_handshake_data");
 
-    if (!qc->client_tp_done) {
-        /*
-         * things to do once during handshake: check ALPN and transport
-         * parameters; we want to break handshake if something is wrong
-         * here;
-         */
+    if (!qc->peer_tp_done) {
 
-        SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
+        if (qc->is_server) {
+            /*
+             * things to do once during handshake: check ALPN and transport
+             * parameters; we want to break handshake if something is wrong
+             * here;
+             */
 
-        if (alpn_len == 0) {
-            if (qc->error == 0) {
-                qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
-                qc->error_reason = "missing ALPN extension";
+            SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
 
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "quic missing ALPN extension");
+            if (alpn_len == 0) {
+                if (qc->error == 0) {
+                    qc->error =
+                           NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
+                    qc->error_reason = "missing ALPN extension";
+
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "quic missing ALPN extension");
+                }
+
+                return 1;
+            }
+        }
+
+        if (qc->received > 0) {
+            SSL_get_peer_quic_transport_params(ssl_conn, &client_params,
+                                               &client_params_len);
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic SSL_get_peer_quic_transport_params():"
+                           " params_len:%ui", client_params_len);
+
+            if (client_params_len == 0) {
+                /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
+
+                if (qc->error == 0) {
+                    qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
+                    qc->error_reason = "missing transport parameters";
+
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "missing transport parameters");
+                }
+
+                return 1;
             }
 
-            return 1;
-        }
+            p = (u_char *) client_params;
+            end = p + client_params_len;
 
-        SSL_get_peer_quic_transport_params(ssl_conn, &client_params,
-                                           &client_params_len);
+            /* defaults for parameters not sent by client */
+            ngx_memcpy(&ctp, &qc->ctp, sizeof(ngx_quic_tp_t));
 
-        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic SSL_get_peer_quic_transport_params():"
-                       " params_len:%ui", client_params_len);
+            if (ngx_quic_parse_transport_params(p, end, &ctp, qc->is_server,
+                                                c->log)
+                != NGX_OK)
+            {
+                qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
+                qc->error_reason = "failed to process transport parameters";
 
-        if (client_params_len == 0) {
-            /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
-
-            if (qc->error == 0) {
-                qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
-                qc->error_reason = "missing transport parameters";
-
-                ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                              "missing transport parameters");
+                return 1;
             }
 
-            return 1;
+            if (ngx_quic_apply_transport_params(c, &ctp) != NGX_OK) {
+                return 1;
+            }
+
+            qc->peer_tp_done = 1;
         }
-
-        p = (u_char *) client_params;
-        end = p + client_params_len;
-
-        /* defaults for parameters not sent by client */
-        ngx_memcpy(&ctp, &qc->ctp, sizeof(ngx_quic_tp_t));
-
-        if (ngx_quic_parse_transport_params(p, end, &ctp, c->log)
-            != NGX_OK)
-        {
-            qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-            qc->error_reason = "failed to process transport parameters";
-
-            return 1;
-        }
-
-        if (ngx_quic_apply_transport_params(c, &ctp) != NGX_OK) {
-            return 1;
-        }
-
-        qc->client_tp_done = 1;
     }
 
     ctx = ngx_quic_get_send_ctx(qc, level);
@@ -681,14 +689,15 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    return ngx_quic_handshake(c);
+    return ngx_quic_do_handshake(c);
 }
 
 
-static ngx_int_t
-ngx_quic_handshake(ngx_connection_t *c)
+ngx_int_t
+ngx_quic_do_handshake(ngx_connection_t *c)
 {
     int                     n, sslerr;
+    ngx_int_t               rc;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -732,11 +741,9 @@ ngx_quic_handshake(ngx_connection_t *c)
 
     if (!SSL_is_init_finished(ssl_conn)) {
         if (ngx_quic_keys_available(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA, 0)
-            && qc->client_tp_done)
+            && qc->peer_tp_done)
         {
-            if (ngx_quic_init_streams(c) != NGX_OK) {
-                return NGX_ERROR;
-            }
+            goto done;
         }
 
         return NGX_OK;
@@ -746,21 +753,37 @@ ngx_quic_handshake(ngx_connection_t *c)
     ngx_ssl_handshake_log(c);
 #endif
 
-    c->ssl->handshaked = 1;
-
-    frame = ngx_quic_alloc_frame(c);
-    if (frame == NULL) {
-        return NGX_ERROR;
+    if (qc->handshaked) {
+        return NGX_OK;
     }
 
-    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
-    frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
-    ngx_quic_queue_frame(qc, frame);
+    qc->handshaked = 1;
 
-    if (qc->conf->retry) {
-        if (ngx_quic_send_new_token(c, qc->path) != NGX_OK) {
+    if (qc->is_server) {
+        frame = ngx_quic_alloc_frame(c);
+        if (frame == NULL) {
             return NGX_ERROR;
         }
+
+        frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
+        frame->type = NGX_QUIC_FT_HANDSHAKE_DONE;
+        ngx_quic_queue_frame(qc, frame);
+
+        if (qc->conf->retry) {
+            if (ngx_quic_send_new_token(c, qc->path) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+
+        /*
+         * RFC 9001, 4.9.2.  Discarding Handshake Keys
+         *
+         * An endpoint MUST discard its Handshake keys
+         * when the TLS handshake is confirmed.
+         */
+        ngx_quic_discard_ctx(c, NGX_QUIC_ENCRYPTION_HANDSHAKE);
+
+        ngx_quic_discover_path_mtu(c, qc->path);
     }
 
     /*
@@ -771,24 +794,24 @@ ngx_quic_handshake(ngx_connection_t *c)
 
     ngx_post_event(&qc->key_update, &ngx_posted_events);
 
-    /*
-     * RFC 9001, 4.9.2.  Discarding Handshake Keys
-     *
-     * An endpoint MUST discard its Handshake keys
-     * when the TLS handshake is confirmed.
-     */
-    ngx_quic_discard_ctx(c, NGX_QUIC_ENCRYPTION_HANDSHAKE);
-
-    ngx_quic_discover_path_mtu(c, qc->path);
-
     /* start accepting clients on negotiated number of server ids */
     if (ngx_quic_create_sockets(c) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    if (ngx_quic_init_streams(c) != NGX_OK) {
+done:
+
+    rc = ngx_ssl_ocsp_validate(c);
+
+    if (rc == NGX_ERROR) {
         return NGX_ERROR;
     }
+
+    if (rc == NGX_AGAIN) {
+        return NGX_OK;
+    }
+
+    c->ssl->handshaked = 1;
 
     return NGX_OK;
 }
@@ -849,7 +872,33 @@ ngx_quic_crypto_provide(ngx_connection_t *c, ngx_uint_t level)
 
 
 ngx_int_t
-ngx_quic_init_connection(ngx_connection_t *c)
+ngx_quic_handle_handshake_done_frame(ngx_connection_t *c)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->is_server) {
+        return NGX_ERROR;
+    }
+
+    /*
+     * RFC 9001, 4.1.2  Handshake Confirmed.
+     *
+     * At the client, the handshake is considered confirmed
+     * when a HANDSHAKE_DONE frame is received.
+     */
+
+    ngx_quic_discard_ctx(c, NGX_QUIC_ENCRYPTION_HANDSHAKE);
+
+    ngx_quic_discover_path_mtu(c, qc->path);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_quic_init_connection(ngx_connection_t *c, ngx_uint_t flags)
 {
     u_char                 *p;
     size_t                  clen;
@@ -888,11 +937,9 @@ ngx_quic_init_connection(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
 
-    if (ngx_ssl_create_connection(qc->conf->ssl, c, 0) != NGX_OK) {
+    if (ngx_ssl_create_connection(qc->conf->ssl, c, flags) != NGX_OK) {
         return NGX_ERROR;
     }
-
-    c->ssl->no_wait_shutdown = 1;
 
     ssl_conn = c->ssl->connection;
 
@@ -947,7 +994,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen);
+    len = ngx_quic_create_transport_params(NULL, NULL, &qc->tp, &clen,
+                                           qc->is_server);
     /* always succeeds */
 
     p = ngx_pnalloc(c->pool, len);
@@ -955,7 +1003,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    len = ngx_quic_create_transport_params(p, p + len, &qc->tp, NULL);
+    len = ngx_quic_create_transport_params(p, p + len, &qc->tp, NULL,
+                                           qc->is_server);
     if (len < 0) {
         return NGX_ERROR;
     }
