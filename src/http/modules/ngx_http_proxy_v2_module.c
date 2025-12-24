@@ -974,6 +974,17 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    if (!ctx->header_sent) {
+        /* cleanup after previously unsent request body */
+
+        while (ctx->in) {
+            ln = ctx->in;
+            ctx->in = ctx->in->next;
+
+            ngx_free_chain(r->pool, ln);
+        }
+    }
+
     if (in) {
         if (ngx_chain_add_copy(r->pool, &ctx->in, in) != NGX_OK) {
             return NGX_ERROR;
