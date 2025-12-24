@@ -272,7 +272,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
 {
     u_char                       *p;
     off_t                         start, end, size, content_length, cutoff,
-                                  cutlim;
+                                  cutlim, multirange_boundary_size;
     ngx_uint_t                    suffix;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *mctx;
@@ -399,6 +399,18 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
 
     if (ctx->ranges.nelts == 0) {
         return NGX_HTTP_RANGE_NOT_SATISFIABLE;
+    }
+
+    if (ctx->ranges.nelts > 1) {
+        multirange_boundary_size = sizeof(CRLF "--") - 1 + NGX_ATOMIC_T_LEN
+            + sizeof(CRLF "Content-Type: ") - 1 + r->headers_out.content_type.len
+            + sizeof(CRLF "Content-Range: bytes ") - 1;
+
+        size += multirange_boundary_size * ctx->ranges.nelts;
+
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                "multirange: ranges total size:%O, content length: %O",
+                size, content_length);
     }
 
     if (size > content_length) {
