@@ -974,6 +974,21 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
         return NGX_ERROR;
     }
 
+    if (!ctx->header_sent) {
+        /* cleanup after previously unsent request body */
+
+        while (ctx->in) {
+            ln = ctx->in;
+            ctx->in = ctx->in->next;
+
+            ngx_free_chain(r->pool, ln);
+        }
+
+        for (ln = ctx->busy; ln; ln = ln->next) {
+            ln->buf->pos = ln->buf->last;
+        }
+    }
+
     if (in) {
         if (ngx_chain_add_copy(r->pool, &ctx->in, in) != NGX_OK) {
             return NGX_ERROR;
@@ -1186,6 +1201,10 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
         if (in->buf->last_buf) {
             last = 1;
+        }
+
+        if (!ngx_buf_special(in->buf) && !in->buf->in_file) {
+            in->buf->last_buf = 0;
         }
 
         ln = in;
