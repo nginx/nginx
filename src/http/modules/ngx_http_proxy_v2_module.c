@@ -1199,6 +1199,10 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
             last = 1;
         }
 
+        if (!ngx_buf_special(in->buf) && !in->buf->in_file) {
+            in->buf->last_buf = 0;
+        }
+
         ln = in;
         in = in->next;
 
