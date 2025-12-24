@@ -2169,7 +2169,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
 
         if ((p & NGX_HTTP_GZIP_PROXIED_NO_CACHE)
             && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_cache,
-                                                 NULL)
+                                                 NULL, ',')
                != NULL)
         {
             goto ok;
@@ -2177,7 +2177,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
 
         if ((p & NGX_HTTP_GZIP_PROXIED_NO_STORE)
             && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_no_store,
-                                                 NULL)
+                                                 NULL, ',')
                != NULL)
         {
             goto ok;
@@ -2185,7 +2185,7 @@ ngx_http_gzip_ok(ngx_http_request_t *r)
 
         if ((p & NGX_HTTP_GZIP_PROXIED_PRIVATE)
             && ngx_http_parse_multi_header_lines(r, cc, &ngx_http_gzip_private,
-                                                 NULL)
+                                                 NULL, ',')
                != NULL)
         {
             goto ok;
