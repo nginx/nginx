@@ -983,6 +983,10 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
             ngx_free_chain(r->pool, ln);
         }
+
+        for (ln = ctx->busy; ln; ln = ln->next) {
+            ln->buf->pos = ln->buf->last;
+        }
     }
 
     if (in) {
