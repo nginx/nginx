@@ -64,6 +64,13 @@ typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
 
+typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
+typedef ngx_int_t (*ngx_http_output_body_filter_pt)
+    (ngx_http_request_t *r, ngx_chain_t *chain);
+typedef ngx_int_t (*ngx_http_request_body_filter_pt)
+    (ngx_http_request_t *r, ngx_chain_t *chain);
+
+
 typedef struct {
     struct sockaddr           *sockaddr;
     socklen_t                  socklen;
@@ -175,6 +182,10 @@ typedef struct {
     ngx_array_t               *ports;
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
+
+    ngx_http_output_header_filter_pt  top_header_filter;
+    ngx_http_output_body_filter_pt    top_body_filter;
+    ngx_http_request_body_filter_pt   top_request_body_filter;
 } ngx_http_core_main_conf_t;
 
 
@@ -522,13 +533,6 @@ ngx_int_t ngx_http_named_location(ngx_http_request_t *r, ngx_str_t *name);
 
 
 ngx_http_cleanup_t *ngx_http_cleanup_add(ngx_http_request_t *r, size_t size);
-
-
-typedef ngx_int_t (*ngx_http_output_header_filter_pt)(ngx_http_request_t *r);
-typedef ngx_int_t (*ngx_http_output_body_filter_pt)
-    (ngx_http_request_t *r, ngx_chain_t *chain);
-typedef ngx_int_t (*ngx_http_request_body_filter_pt)
-    (ngx_http_request_t *r, ngx_chain_t *chain);
 
 
 ngx_int_t ngx_http_output_filter(ngx_http_request_t *r, ngx_chain_t *chain);

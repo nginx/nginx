@@ -14,6 +14,7 @@
 static void ngx_quic_close_accepted_connection(ngx_connection_t *c);
 static ngx_connection_t *ngx_quic_lookup_connection(ngx_listening_t *ls,
     ngx_str_t *key, struct sockaddr *local_sockaddr, socklen_t local_socklen);
+static ngx_int_t ngx_quic_insert_connection(ngx_connection_t *c);
 
 
 void
@@ -333,6 +334,11 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         }
 #endif
 
+        if (ngx_quic_insert_connection(c) != NGX_OK) {
+            ngx_quic_close_accepted_connection(c);
+            return;
+        }
+
         log->data = NULL;
         log->handler = NULL;
 
@@ -417,4 +423,25 @@ ngx_quic_lookup_connection(ngx_listening_t *ls, ngx_str_t *key,
     }
 
     return NULL;
+}
+
+
+static ngx_int_t
+ngx_quic_insert_connection(ngx_connection_t *c)
+{
+    ngx_quic_socket_t  *qsock;
+
+    qsock = ngx_pcalloc(c->pool, sizeof(ngx_quic_socket_t));
+    if (qsock == NULL) {
+        return NGX_ERROR;
+    }
+
+    qsock->sid.seqnum = NGX_QUIC_UNSET_PN;
+
+    qsock->udp.rbtree = &c->listening->rbtree;
+    qsock->udp.connection = c;
+
+    c->udp = &qsock->udp;
+
+    return NGX_OK;
 }

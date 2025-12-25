@@ -1729,6 +1729,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     ngx_log_handler_pt            handler;
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
+    ngx_stream_core_main_conf_t  *cmcf;
 
     u = s->upstream;
 
@@ -1777,6 +1778,8 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         send_action = "proxying and sending to upstream";
     }
 
+    cmcf = ngx_stream_get_module_main_conf(s, ngx_stream_core_module);
+
     for ( ;; ) {
 
         if (do_write && dst) {
@@ -1784,7 +1787,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
             if (*out || *busy || dst->buffered) {
                 c->log->action = send_action;
 
-                rc = ngx_stream_top_filter(s, *out, from_upstream);
+                rc = cmcf->top_filter(s, *out, from_upstream);
 
                 if (rc == NGX_ERROR) {
                     ngx_stream_proxy_finalize(s, NGX_STREAM_OK);
