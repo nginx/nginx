@@ -82,7 +82,7 @@ ngx_shm_alloc(ngx_shm_t *shm)
     shm->addr = MapViewOfFileEx(shm->handle, FILE_MAP_WRITE, 0, 0, 0, base);
 
     if (shm->addr != NULL) {
-        base += ngx_align(size, ngx_allocation_granularity);
+        base += ngx_align(shm->size, ngx_allocation_granularity);
         return NGX_OK;
     }
 
