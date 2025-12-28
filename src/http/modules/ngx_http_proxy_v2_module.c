@@ -136,6 +136,7 @@ static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
     ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
     ngx_str_t *s);
+static ngx_int_t ngx_http_proxy_v2_is_space(u_char ch);
 static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_goaway(ngx_http_request_t *r,
@@ -3246,6 +3247,10 @@ ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
     u_char      ch;
     ngx_uint_t  i;
 
+    if (s->len < 1) {
+        return NGX_ERROR;
+    }
+
     for (i = 0; i < s->len; i++) {
         ch = s->data[i];
 
@@ -3267,10 +3272,21 @@ ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
 
 
 static ngx_int_t
+ngx_http_proxy_v2_is_space(u_char ch)
+{
+    return ch == ' ' || ch == '\t';
+}
+
+
+static ngx_int_t
 ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r, ngx_str_t *s)
 {
     u_char      ch;
     ngx_uint_t  i;
+
+    if (s->len == 0) {
+        return NGX_OK;
+    }
 
     for (i = 0; i < s->len; i++) {
         ch = s->data[i];
@@ -3278,6 +3294,11 @@ ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r, ngx_str_t *s)
         if (ch == '\0' || ch == CR || ch == LF) {
             return NGX_ERROR;
         }
+    }
+
+    if (ngx_http_proxy_v2_is_space(s->data[0]) ||
+        ngx_http_proxy_v2_is_space(s->data[s->len - 1])) {
+        return NGX_ERROR
     }
 
     return NGX_OK;
