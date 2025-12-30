@@ -36,6 +36,8 @@ typedef struct {
 
     ngx_buf_t    *in;
     ngx_chain_t  *out;
+
+    ngx_uint_t    reloaded;
 } ngx_control_request_t;
 
 
@@ -61,6 +63,9 @@ static ngx_int_t ngx_control_api_endpoints(ngx_control_request_t *r,
     ngx_int_t npaths);
 static ngx_int_t ngx_control_show_processes(ngx_control_request_t *r);
 static ngx_int_t ngx_control_show_version(ngx_control_request_t *r);
+static ngx_int_t ngx_control_reload_config(ngx_control_request_t *r);
+static void ngx_control_log_capture(ngx_log_t *log, ngx_uint_t l,
+                                    u_char *buf, size_t len);
 
 static ngx_int_t ngx_control_parse_request_line(ngx_control_request_t *r);
 static ngx_int_t ngx_control_send_json(ngx_control_request_t *r, ngx_int_t code,
@@ -292,7 +297,7 @@ ngx_int_t
 ngx_control_handle_events(void)
 {
     int                     ready, revents;
-    ngx_uint_t              i;
+    ngx_uint_t              i, reloaded;
     struct pollfd          *pfd;
     ngx_control_request_t  *r;
 
@@ -309,6 +314,8 @@ ngx_control_handle_events(void)
         }
     }
 
+    reloaded = 0;
+
     for (i = 0; i < ngx_control_pollfd_n; /* void */) {
 
         r = &ngx_control_requests[i];
@@ -318,6 +325,10 @@ ngx_control_handle_events(void)
         ngx_log_debug4(NGX_LOG_DEBUG_EVENT, ngx_cycle->log, 0,
                        "control: i:%ui fd:%d e:%d re:%d",
                        i, pfd->fd, pfd->events, pfd->revents);
+
+        if (i) {
+            r->pool->log = ngx_cycle->log;
+        }
 
         if ((revents & (POLLERR|POLLHUP|POLLNVAL)) && i != 0) {
             ngx_control_close(r);
@@ -332,9 +343,12 @@ ngx_control_handle_events(void)
             }
 
             if (ngx_control_handle_read(r) != NGX_AGAIN) {
+                reloaded |= r->reloaded;
                 ngx_control_close(r);
                 continue;
             }
+
+            reloaded |= r->reloaded;
         }
 
         if (revents & POLLOUT) {
@@ -347,7 +361,7 @@ ngx_control_handle_events(void)
         i++;
     }
 
-    return NGX_OK;
+    return reloaded ? NGX_DONE : NGX_OK;
 }
 
 
@@ -553,7 +567,7 @@ ngx_control_content(ngx_control_request_t *r)
 
     static const char  *root_endpoints[] = { "1" };
     static const char  *api_endpoints[] = { "control", "nginx" };
-    static const char  *control_endpoints[] = { "processes" };
+    static const char  *control_endpoints[] = { "processes", "config" };
 
     p = r->path.data;
     len = r->path.len;
@@ -601,6 +615,17 @@ ngx_control_content(ngx_control_request_t *r)
             }
 
             return ngx_control_api_endpoints(r, control_endpoints, 1);
+        }
+
+        break;
+
+    case 17:
+        if (ngx_strncmp(p, "/1/control/config", len) == 0) {
+            if (r->method != NGX_CTRL_PATCH) {
+                return ngx_control_send_response(r, NGX_CTRL_BAD_METHOD, NULL);
+            }
+
+            return ngx_control_reload_config(r);
         }
 
         break;
@@ -831,6 +856,114 @@ ngx_control_show_version(ngx_control_request_t *r)
     }
 
     return ngx_control_send_json(r, NGX_CTRL_OK, resp);
+}
+
+
+static ngx_data_item_t *
+ngx_control_json_logs(ngx_array_t *logs)
+{
+    ngx_str_t        *l;
+    ngx_uint_t        i;
+    ngx_data_item_t  *obj, *log_list, *log;
+
+    static ngx_str_t  logs_field = ngx_string("logs");
+
+    obj = ngx_data_new_object(logs->pool);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    log_list = ngx_data_new_list(logs->pool);
+    if (log_list == NULL) {
+        return NULL;
+    }
+
+    l = logs->elts;
+    for (i = 0; i < logs->nelts; i++) {
+        log = ngx_data_string_handler((uintptr_t) &l[i], logs->pool, NULL);
+        if (log == NULL) {
+            return NULL;
+        }
+
+        ngx_data_add_item(log_list, NULL, log);
+    }
+
+    ngx_data_add_item(obj, &logs_field, log_list);
+
+    return obj;
+}
+
+
+static ngx_int_t
+ngx_control_reload_config(ngx_control_request_t *r)
+{
+    ngx_int_t         status;
+    ngx_log_t         log, *tmp;
+    ngx_cycle_t      *cycle;
+    ngx_array_t       log_store;
+    ngx_data_item_t  *obj;
+
+    status = NGX_CTRL_OK;
+
+    if (ngx_array_init(&log_store, r->pool, 3, sizeof(ngx_str_t)) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    ngx_memzero(&log, sizeof(ngx_log_t));
+    log.wdata = &log_store;
+    log.writer = ngx_control_log_capture;
+    log.log_level = NGX_LOG_DEBUG;
+
+    tmp = ngx_cycle->log;
+    log.next = tmp;
+    ngx_cycle->log = &log;
+    cycle = ngx_init_cycle((ngx_cycle_t *) ngx_cycle);
+    if (cycle == NULL) {
+        status = NGX_CTRL_UNPROCESSABLE;
+        ngx_cycle->log = tmp;
+
+    } else {
+        ngx_cycle = cycle;
+        r->reloaded = 1;
+        r->pool->log = ngx_cycle->log;
+    }
+
+    obj = ngx_control_json_logs(&log_store);
+    if (obj == NULL) {
+        return NGX_ERROR;
+    }
+
+    return ngx_control_send_json(r, status, obj);
+}
+
+
+static void
+ngx_control_log_capture(ngx_log_t *log, ngx_uint_t lvl, u_char *buf, size_t len)
+{
+    u_char       *log_data;
+    ngx_str_t    *log_str;
+    ngx_array_t  *store;
+
+    if (lvl > NGX_LOG_WARN) {
+        return;
+    }
+
+    store = log->wdata;
+
+    log_data = ngx_pnalloc(store->pool, len);
+    if (log_data == NULL) {
+        return;
+    }
+
+    log_str = ngx_array_push(store);
+    if (log_str == NULL) {
+        return;
+    }
+
+    ngx_memcpy(log_data, buf, len);
+
+    log_str->data = log_data;
+    log_str->len = len;
 }
 
 
