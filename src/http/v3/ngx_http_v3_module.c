@@ -212,6 +212,7 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
 
     h3scf->quic.init = ngx_http_v3_init;
     h3scf->quic.shutdown = ngx_http_v3_shutdown;
+    h3scf->quic.handle_stream = ngx_http_init_connection;
 
     return h3scf;
 }

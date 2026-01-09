@@ -46,6 +46,7 @@
 
 typedef ngx_int_t (*ngx_quic_init_pt)(ngx_connection_t *c);
 typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
+typedef void (*ngx_quic_handle_stream_pt)(ngx_connection_t *c);
 
 
 typedef enum {
@@ -96,6 +97,7 @@ typedef struct {
 
     ngx_quic_init_pt               init;
     ngx_quic_shutdown_pt           shutdown;
+    ngx_quic_handle_stream_pt      handle_stream;
 
     u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];

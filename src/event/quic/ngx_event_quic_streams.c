@@ -554,11 +554,14 @@ ngx_quic_reject_stream(ngx_connection_t *c, uint64_t id)
 static void
 ngx_quic_init_stream_handler(ngx_event_t *ev)
 {
-    ngx_connection_t   *c;
-    ngx_quic_stream_t  *qs;
+    ngx_connection_t       *c, *pc;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
 
     c = ev->data;
     qs = c->quic;
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic init stream");
 
@@ -571,7 +574,7 @@ ngx_quic_init_stream_handler(ngx_event_t *ev)
 
     ngx_queue_remove(&qs->queue);
 
-    c->listening->handler(c);
+    qc->conf->handle_stream(c);
 }
 
 
