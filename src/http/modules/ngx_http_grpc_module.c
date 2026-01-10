@@ -62,8 +62,7 @@ typedef struct {
     size_t                     send_window;
     size_t                     recv_window;
     ngx_uint_t                 last_stream_id;
-
-    void                      *data;   // ngx_http_grpc_ctx_t*
+    void                      *data;
 } ngx_http_grpc_conn_t;
 
 
@@ -220,6 +219,7 @@ static ngx_int_t ngx_http_grpc_set_ssl(ngx_conf_t *cf,
 #endif
 
 static void ngx_http_grpc_ctx_cleanup(void *data);
+
 
 static ngx_conf_bitmask_t  ngx_http_grpc_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
@@ -551,10 +551,10 @@ static ngx_int_t
 ngx_http_grpc_handler(ngx_http_request_t *r)
 {
     ngx_int_t                  rc;
+    ngx_pool_cleanup_t        *cln;
     ngx_http_upstream_t       *u;
     ngx_http_grpc_ctx_t       *ctx;
     ngx_http_grpc_loc_conf_t  *glcf;
-    ngx_pool_cleanup_t        *cln;
 
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -4297,17 +4297,19 @@ ngx_http_grpc_get_connection_data(ngx_http_request_t *r,
 static void
 ngx_http_grpc_cleanup(void *data)
 {
+    ngx_http_grpc_ctx_t   *ctx;
+    ngx_http_grpc_conn_t  *conn;
+
 #if 0
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "grpc cleanup");
 #endif
 
     /*
-     * clear ctx->connection when the connection is freed to avoid dangling references;
-     * otherwise, it may be reused in certain scenarios, and cause crash.
-    */
-    ngx_http_grpc_ctx_t             *ctx;
-    ngx_http_grpc_conn_t            *conn;
+     * clear ctx->connection when the connection is freed to
+     * avoid dangling references; otherwise, it maybe reused
+     * in certain scenarios, and cause crash.
+     */
 
     conn = data;
 
@@ -4912,12 +4914,15 @@ ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static void
 ngx_http_grpc_ctx_cleanup(void *data)
 {
-    ngx_http_grpc_ctx_t *ctx = data;
+    ngx_http_grpc_ctx_t  *ctx;
+
+    ctx = data;
 
     /*
-     * if ctx is freed prior to the upstream connection, set ctx->connection->data
-     * to NULL to avoid dangling references.
-    */
+     * if ctx is freed prior to the upstream connection,
+     * set ctx->connection->data to NULL to avoid
+     * dangling references.
+     */
 
     if (ctx && ctx->connection) {
         ctx->connection->data = NULL;
