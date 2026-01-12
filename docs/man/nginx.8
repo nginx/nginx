@@ -188,7 +188,7 @@ Test configuration file
 .Pa ~/mynginx.conf
 with global directives for PID and quantity of worker processes:
 .Bd -literal -offset indent
-nginx -t -c ~/mynginx.conf \e
+nginx -t -q -c ~/mynginx.conf \e
 	-g "pid /var/run/mynginx.pid; worker_processes 2;"
 .Ed
 .Sh SEE ALSO
