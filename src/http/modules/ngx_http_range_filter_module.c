@@ -273,7 +273,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
     u_char                       *p;
     off_t                         start, end, size, content_length, cutoff,
                                   cutlim;
-    ngx_uint_t                    suffix;
+    ngx_uint_t                    suffix, max_ranges;
     ngx_http_range_t             *range;
     ngx_http_range_filter_ctx_t  *mctx;
 
@@ -294,6 +294,8 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
 
     p = r->headers_in.range->value.data + 6;
     size = 0;
+    max_ranges = ranges;
+
     content_length = r->headers_out.content_length_n;
 
     cutoff = NGX_MAX_OFF_T_VALUE / 10;
@@ -401,8 +403,21 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
         return NGX_HTTP_RANGE_NOT_SATISFIABLE;
     }
 
+    if (ctx->ranges.nelts == 1) {
+        return NGX_OK;
+    }
+
     if (size > content_length) {
         return NGX_DECLINED;
+    }
+
+    if (max_ranges == NGX_MAX_INT32_VALUE) {
+        size += ctx->ranges.nelts * 256;
+        content_length += 4096;
+
+        if (size > content_length) {
+            return NGX_DECLINED;
+        }
     }
 
     return NGX_OK;
