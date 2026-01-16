@@ -26,7 +26,6 @@
 #define NGX_QUIC_SEND_CTX_LAST               (NGX_QUIC_ENCRYPTION_LAST - 1)
 
 
-typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef struct ngx_quic_server_id_s   ngx_quic_server_id_t;
 typedef struct ngx_quic_client_id_s   ngx_quic_client_id_t;
 typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
@@ -67,8 +66,7 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
         : (((level) == NGX_QUIC_ENCRYPTION_HANDSHAKE) ? &((qc)->send_ctx[1])  \
                                                       : &((qc)->send_ctx[2]))
 
-#define ngx_quic_get_connection(c)                                            \
-    (((c)->udp) ? (((ngx_quic_socket_t *)((c)->udp))->quic) : NULL)
+#define ngx_quic_get_connection(c)           ((c)->quic->connection)
 
 #define ngx_quic_get_socket(c)               ((ngx_quic_socket_t *)((c)->udp))
 
@@ -156,18 +154,15 @@ typedef struct {
     uint64_t                          send_offset;
     uint64_t                          send_max_data;
 
-    uint64_t                          server_max_streams_uni;
-    uint64_t                          server_max_streams_bidi;
-    uint64_t                          server_streams_uni;
-    uint64_t                          server_streams_bidi;
+    uint64_t                          local_max_streams_uni;
+    uint64_t                          local_max_streams_bidi;
+    uint64_t                          local_streams_uni;
+    uint64_t                          local_streams_bidi;
 
-    uint64_t                          client_max_streams_uni;
-    uint64_t                          client_max_streams_bidi;
-    uint64_t                          client_streams_uni;
-    uint64_t                          client_streams_bidi;
-
-    ngx_uint_t                        initialized;
-                                                 /* unsigned  initialized:1; */
+    uint64_t                          remote_max_streams_uni;
+    uint64_t                          remote_max_streams_bidi;
+    uint64_t                          remote_streams_uni;
+    uint64_t                          remote_streams_bidi;
 } ngx_quic_streams_t;
 
 
@@ -290,17 +285,19 @@ struct ngx_quic_connection_s {
     ngx_uint_t                        error_ftype;
     const char                       *error_reason;
 
-    ngx_uint_t                        shutdown_code;
-    const char                       *shutdown_reason;
-
+    unsigned                          initialized:1;
+    unsigned                          handshaked:1;
+    unsigned                          is_server:1;
+    unsigned                          scid_set:1;
     unsigned                          error_app:1;
     unsigned                          send_timer_set:1;
+    unsigned                          lingering:1;
     unsigned                          closing:1;
     unsigned                          shutdown:1;
     unsigned                          draining:1;
     unsigned                          key_phase:1;
     unsigned                          validated:1;
-    unsigned                          client_tp_done:1;
+    unsigned                          peer_tp_done:1;
 
 #if (NGX_QUIC_OPENSSL_API)
     unsigned                          read_level:2;
@@ -309,11 +306,13 @@ struct ngx_quic_connection_s {
 };
 
 
+ngx_int_t ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b);
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
-void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
-void ngx_quic_shutdown_quic(ngx_connection_t *c);
+void ngx_quic_end_handler(ngx_connection_t *c);
+void ngx_quic_set_error(ngx_connection_t *c, ngx_uint_t err,
+    const char *reason);
 
 #if (NGX_DEBUG)
 void ngx_quic_connstate_dbg(ngx_connection_t *c);
