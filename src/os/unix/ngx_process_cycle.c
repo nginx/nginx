@@ -10,6 +10,10 @@
 #include <ngx_event.h>
 #include <ngx_channel.h>
 
+#if (NGX_DYNAMIC_CONF)
+#include <ngx_dynamic_conf.h>
+#endif
+
 
 static void ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n,
     ngx_int_t type);
@@ -42,6 +46,10 @@ sig_atomic_t  ngx_debug_quit;
 ngx_uint_t    ngx_exiting;
 sig_atomic_t  ngx_reconfigure;
 sig_atomic_t  ngx_reopen;
+
+#if (NGX_DYNAMIC_CONF)
+sig_atomic_t  ngx_update;
+#endif
 
 sig_atomic_t  ngx_change_binary;
 ngx_pid_t     ngx_new_binary;
@@ -95,6 +103,9 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     sigaddset(&set, ngx_signal_value(NGX_TERMINATE_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
     sigaddset(&set, ngx_signal_value(NGX_CHANGEBIN_SIGNAL));
+#if (NGX_DYNAMIC_CONF)
+    sigaddset(&set, ngx_signal_value(NGX_UPDATE_SIGNAL));
+#endif
 
     if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
@@ -259,6 +270,16 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
                                         ngx_signal_value(NGX_REOPEN_SIGNAL));
         }
 
+#if (NGX_DYNAMIC_CONF)
+        if (ngx_update) {
+            ngx_update = 0;
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                          "updating configuration");
+            ngx_signal_worker_processes(cycle,
+                                        ngx_signal_value(NGX_UPDATE_SIGNAL));
+        }
+#endif
+
         if (ngx_change_binary) {
             ngx_change_binary = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "changing binary");
@@ -327,7 +348,19 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, (ngx_uid_t) -1);
+#if (NGX_DYNAMIC_CONF)
+            ngx_dynamic_conf_reopen_files(cycle);
+#endif
         }
+
+#if (NGX_DYNAMIC_CONF)
+        if (ngx_update) {
+            ngx_update = 0;
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                          "updating configuration");
+            (void) ngx_dynamic_conf_update(cycle);
+        }
+#endif
     }
 }
 
@@ -457,6 +490,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
         ch.command = NGX_CMD_REOPEN;
         break;
 
+#if (NGX_DYNAMIC_CONF)
+    case ngx_signal_value(NGX_UPDATE_SIGNAL):
+        ch.command = NGX_CMD_UPDATE;
+        break;
+#endif
+
     default:
         ch.command = 0;
     }
@@ -498,7 +537,12 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
                                   &ch, sizeof(ngx_channel_t), cycle->log)
                 == NGX_OK)
             {
-                if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+                if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)
+#if (NGX_DYNAMIC_CONF)
+                    && signo != ngx_signal_value(NGX_UPDATE_SIGNAL)
+#endif
+                   )
+                {
                     ngx_processes[i].exiting = 1;
                 }
 
@@ -523,9 +567,14 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
             continue;
         }
 
-        if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)) {
+        if (signo != ngx_signal_value(NGX_REOPEN_SIGNAL)
+#if (NGX_DYNAMIC_CONF)
+            && signo != ngx_signal_value(NGX_UPDATE_SIGNAL)
+#endif
+           )
+       {
             ngx_processes[i].exiting = 1;
-        }
+       }
     }
 }
 
@@ -744,7 +793,19 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
             ngx_reopen = 0;
             ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "reopening logs");
             ngx_reopen_files(cycle, -1);
+#if (NGX_DYNAMIC_CONF)
+            ngx_dynamic_conf_reopen_files(cycle);
+#endif
         }
+
+#if (NGX_DYNAMIC_CONF)
+        if (ngx_update) {
+            ngx_update = 0;
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0,
+                          "updating configuration");
+            (void) ngx_dynamic_conf_update(cycle);
+        }
+#endif
     }
 }
 
@@ -1055,6 +1116,12 @@ ngx_channel_handler(ngx_event_t *ev)
         case NGX_CMD_REOPEN:
             ngx_reopen = 1;
             break;
+
+#if (NGX_DYNAMIC_CONF)
+        case NGX_CMD_UPDATE:
+            ngx_update = 1;
+            break;
+#endif
 
         case NGX_CMD_OPEN_CHANNEL:
 

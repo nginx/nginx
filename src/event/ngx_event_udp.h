@@ -25,6 +25,7 @@
 
 struct ngx_udp_connection_s {
     ngx_rbtree_node_t   node;
+    ngx_rbtree_t       *rbtree;
     ngx_connection_t   *connection;
     ngx_buf_t          *buffer;
     ngx_str_t           key;

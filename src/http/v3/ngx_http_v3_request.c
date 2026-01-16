@@ -1723,7 +1723,7 @@ done:
         rb->rest = (off_t) cscf->large_client_header_buffers.size;
     }
 
-    rc = ngx_http_top_request_body_filter(r, out);
+    rc = ngx_http_safe_top_request_body_filter(r, out);
 
     ngx_chain_update_chains(r->pool, &rb->free, &rb->busy, &out,
                             (ngx_buf_tag_t) &ngx_http_read_client_request_body);

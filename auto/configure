@@ -59,8 +59,8 @@ if [ "$NGX_PLATFORM" != win32 ]; then
     . auto/unix
 fi
 
-. auto/threads
 . auto/modules
+. auto/threads
 . auto/lib/conf
 
 case ".$NGX_PREFIX" in

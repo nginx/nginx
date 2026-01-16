@@ -41,6 +41,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     void                *rv, *data;
     char               **senv;
     ngx_uint_t           i, n;
+    ngx_int_t            rc;
     ngx_log_t           *log;
     ngx_time_t          *tp;
     ngx_conf_t           conf;
@@ -476,9 +477,18 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                 shm_zone[i].shm.handle = oshm_zone[n].shm.handle;
 #endif
 
-                if (shm_zone[i].init(&shm_zone[i], oshm_zone[n].data)
-                    != NGX_OK)
-                {
+                rc = shm_zone[i].init(&shm_zone[i], oshm_zone[n].data);
+
+                if (rc == NGX_DECLINED) {
+                    shm_zone[i].shm.addr = NULL;
+#if (NGX_WIN32)
+                    shm_zone[i].shm.handle = NULL;
+#endif
+                    data = oshm_zone[n].data;
+                    break;
+                }
+
+                if (rc != NGX_OK) {
                     goto failed;
                 }
 
