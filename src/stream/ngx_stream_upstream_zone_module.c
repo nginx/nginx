@@ -29,6 +29,7 @@ static void ngx_stream_upstream_zone_set_single(
 static void ngx_stream_upstream_zone_remove_peer_locked(
     ngx_stream_upstream_rr_peers_t *peers, ngx_stream_upstream_rr_peer_t *peer);
 static ngx_int_t ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle);
+static void ngx_stream_upstream_zone_exit_worker(ngx_cycle_t *cycle);
 static void ngx_stream_upstream_zone_resolve_timer(ngx_event_t *event);
 static void ngx_stream_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx);
 
@@ -68,7 +69,7 @@ ngx_module_t  ngx_stream_upstream_zone_module = {
     ngx_stream_upstream_zone_init_worker,  /* init process */
     NULL,                                  /* init thread */
     NULL,                                  /* exit thread */
-    NULL,                                  /* exit process */
+    ngx_stream_upstream_zone_exit_worker,  /* exit process */
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
@@ -691,6 +692,66 @@ ngx_stream_upstream_zone_init_worker(ngx_cycle_t *cycle)
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_stream_upstream_zone_exit_worker(ngx_cycle_t *cycle)
+{
+    ngx_uint_t                        i;
+    ngx_event_t                      *event;
+    ngx_stream_upstream_rr_peer_t    *peer;
+    ngx_stream_upstream_rr_peers_t   *peers;
+    ngx_stream_upstream_srv_conf_t   *uscf, **uscfp;
+    ngx_stream_upstream_main_conf_t  *umcf;
+
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE)
+    {
+        return;
+    }
+
+    umcf = ngx_stream_cycle_get_module_main_conf(cycle,
+                                                 ngx_stream_upstream_module);
+
+    if (umcf == NULL) {
+        return;
+    }
+
+    uscfp = umcf->upstreams.elts;
+
+    for (i = 0; i < umcf->upstreams.nelts; i++) {
+
+        uscf = uscfp[i];
+
+        if (uscf->shm_zone == NULL) {
+            continue;
+        }
+
+        peers = uscf->peer.data;
+
+        do {
+            ngx_stream_upstream_rr_peers_wlock(peers);
+
+            for (peer = peers->resolve; peer; peer = peer->next) {
+
+                if (peer->host->worker != ngx_worker) {
+                    continue;
+                }
+
+                event = &peer->host->event;
+
+                if (event->timer_set) {
+                    ngx_del_timer(event);
+                }
+            }
+
+            ngx_stream_upstream_rr_peers_unlock(peers);
+
+            peers = peers->next;
+
+        } while (peers);
+    }
 }
 
 
