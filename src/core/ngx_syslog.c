@@ -261,11 +261,10 @@ ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
 
     peer = log->wdata;
 
-    if (peer->busy) {
+    if (peer->busy || !ngx_atomic_cmp_set(&peer->busy, 0, 1)) {
         return;
     }
 
-    peer->busy = 1;
     peer->severity = level - 1;
 
     p = ngx_syslog_add_header(peer, msg);

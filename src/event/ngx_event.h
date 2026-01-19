@@ -185,9 +185,9 @@ typedef struct {
 } ngx_event_actions_t;
 
 
-extern ngx_event_actions_t   ngx_event_actions;
+extern ngx_thread_local ngx_event_actions_t   ngx_event_actions;
 #if (NGX_HAVE_EPOLLRDHUP)
-extern ngx_uint_t            ngx_use_epoll_rdhup;
+extern ngx_thread_local ngx_uint_t            ngx_use_epoll_rdhup;
 #endif
 
 
@@ -413,7 +413,7 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
 #define ngx_del_timer        ngx_event_del_timer
 
 
-extern ngx_os_io_t  ngx_io;
+extern ngx_thread_local ngx_os_io_t  ngx_io;
 
 #define ngx_recv             ngx_io.recv
 #define ngx_recv_chain       ngx_io.recv_chain
@@ -459,12 +459,12 @@ extern ngx_atomic_t          *ngx_connection_counter;
 
 extern ngx_atomic_t          *ngx_accept_mutex_ptr;
 extern ngx_shmtx_t            ngx_accept_mutex;
-extern ngx_uint_t             ngx_use_accept_mutex;
-extern ngx_uint_t             ngx_accept_events;
-extern ngx_uint_t             ngx_accept_mutex_held;
-extern ngx_msec_t             ngx_accept_mutex_delay;
-extern ngx_int_t              ngx_accept_disabled;
-extern ngx_uint_t             ngx_use_exclusive_accept;
+extern ngx_thread_local ngx_uint_t             ngx_use_accept_mutex;
+extern ngx_thread_local ngx_uint_t             ngx_accept_events;
+extern ngx_thread_local ngx_uint_t             ngx_accept_mutex_held;
+extern ngx_thread_local ngx_msec_t             ngx_accept_mutex_delay;
+extern ngx_thread_local ngx_int_t              ngx_accept_disabled;
+extern ngx_thread_local ngx_uint_t             ngx_use_exclusive_accept;
 
 
 #if (NGX_STAT_STUB)
@@ -485,7 +485,7 @@ extern ngx_atomic_t  *ngx_stat_waiting;
 
 
 extern sig_atomic_t           ngx_event_timer_alarm;
-extern ngx_uint_t             ngx_event_flags;
+extern ngx_thread_local ngx_uint_t             ngx_event_flags;
 extern ngx_module_t           ngx_events_module;
 extern ngx_module_t           ngx_event_core_module;
 

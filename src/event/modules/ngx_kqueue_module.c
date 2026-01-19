@@ -48,15 +48,15 @@ static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-int                    ngx_kqueue = -1;
+ngx_thread_local int                    ngx_kqueue = -1;
 
-static struct kevent  *change_list;
-static struct kevent  *event_list;
-static ngx_uint_t      max_changes, nchanges, nevents;
+static ngx_thread_local struct kevent  *change_list;
+static ngx_thread_local struct kevent  *event_list;
+static ngx_thread_local ngx_uint_t      max_changes, nchanges, nevents;
 
 #ifdef EVFILT_USER
-static ngx_event_t     notify_event;
-static struct kevent   notify_kev;
+static ngx_thread_local ngx_event_t     notify_event;
+static ngx_thread_local struct kevent   notify_kev;
 #endif
 
 

@@ -28,6 +28,11 @@
 
 
 typedef struct {
+    ngx_uint_t  reset_index;
+} ngx_http_userid_main_conf_t;
+
+
+typedef struct {
     ngx_uint_t  enable;
     ngx_uint_t  flags;
 
@@ -63,6 +68,7 @@ static ngx_int_t ngx_http_userid_create_uid(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_userid_add_variables(ngx_conf_t *cf);
 static ngx_int_t ngx_http_userid_init(ngx_conf_t *cf);
+static void *ngx_http_userid_create_main_conf(ngx_conf_t *cf);
 static void *ngx_http_userid_create_conf(ngx_conf_t *cf);
 static char *ngx_http_userid_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
@@ -77,9 +83,9 @@ static ngx_int_t ngx_http_userid_init_worker(ngx_cycle_t *cycle);
 
 
 
-static uint32_t  start_value;
-static uint32_t  sequencer_v1 = 1;
-static uint32_t  sequencer_v2 = 0x03030302;
+static ngx_thread_local uint32_t  start_value;
+static ngx_thread_local uint32_t  sequencer_v1 = 1;
+static ngx_thread_local uint32_t  sequencer_v2 = 0x03030302;
 
 
 static u_char expires[] = "; expires=Thu, 31-Dec-37 23:55:55 GMT";
@@ -190,7 +196,7 @@ static ngx_http_module_t  ngx_http_userid_filter_module_ctx = {
     ngx_http_userid_add_variables,         /* preconfiguration */
     ngx_http_userid_init,                  /* postconfiguration */
 
-    NULL,                                  /* create main configuration */
+    ngx_http_userid_create_main_conf,      /* create main configuration */
     NULL,                                  /* init main configuration */
 
     NULL,                                  /* create server configuration */
@@ -220,7 +226,6 @@ ngx_module_t  ngx_http_userid_filter_module = {
 static ngx_str_t   ngx_http_userid_got = ngx_string("uid_got");
 static ngx_str_t   ngx_http_userid_set = ngx_string("uid_set");
 static ngx_str_t   ngx_http_userid_reset = ngx_string("uid_reset");
-static ngx_uint_t  ngx_http_userid_reset_index;
 
 
 static ngx_int_t
@@ -523,12 +528,13 @@ static ngx_int_t
 ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
     ngx_http_userid_conf_t *conf)
 {
-    ngx_connection_t           *c;
-    struct sockaddr_in         *sin;
-    ngx_http_variable_value_t  *vv;
+    ngx_connection_t             *c;
+    struct sockaddr_in           *sin;
+    ngx_http_variable_value_t    *vv;
+    ngx_http_userid_main_conf_t  *umcf;
 #if (NGX_HAVE_INET6)
-    u_char                     *p;
-    struct sockaddr_in6        *sin6;
+    u_char                       *p;
+    struct sockaddr_in6          *sin6;
 #endif
 
     if (ctx->uid_set[3] != 0) {
@@ -537,7 +543,9 @@ ngx_http_userid_create_uid(ngx_http_request_t *r, ngx_http_userid_ctx_t *ctx,
 
     if (ctx->uid_got[3] != 0) {
 
-        vv = ngx_http_get_indexed_variable(r, ngx_http_userid_reset_index);
+        umcf = ngx_http_get_module_main_conf(r, ngx_http_userid_filter_module);
+
+        vv = ngx_http_get_indexed_variable(r, umcf->reset_index);
 
         if (vv == NULL || vv->not_found) {
             return NGX_ERROR;
@@ -676,8 +684,9 @@ ngx_http_userid_reset_variable(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_userid_add_variables(ngx_conf_t *cf)
 {
-    ngx_int_t             n;
-    ngx_http_variable_t  *var;
+    ngx_int_t                     n;
+    ngx_http_variable_t          *var;
+    ngx_http_userid_main_conf_t  *umcf;
 
     var = ngx_http_add_variable(cf, &ngx_http_userid_got, 0);
     if (var == NULL) {
@@ -706,9 +715,32 @@ ngx_http_userid_add_variables(ngx_conf_t *cf)
         return NGX_ERROR;
     }
 
-    ngx_http_userid_reset_index = n;
+    umcf = ngx_http_conf_get_module_main_conf(cf,
+                                              ngx_http_userid_filter_module);
+
+    umcf->reset_index = n;
 
     return NGX_OK;
+}
+
+
+static void *
+ngx_http_userid_create_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_userid_main_conf_t  *conf;
+
+    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_userid_main_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    /*
+     * set by ngx_pcalloc():
+     *
+     *     conf->reset_index = 0;
+     */
+
+    return conf;
 }
 
 

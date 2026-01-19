@@ -558,7 +558,7 @@ failed:
 static ngx_int_t
 ngx_file_o_path_info(ngx_fd_t fd, ngx_file_info_t *fi, ngx_log_t *log)
 {
-    static ngx_uint_t  use_fstat = 1;
+    static volatile ngx_uint_t  use_fstat = 1;
 
     /*
      * In Linux 2.6.39 the O_PATH flag was introduced that allows to obtain

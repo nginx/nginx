@@ -34,6 +34,9 @@ ngx_int_t ngx_thread_cond_wait(ngx_thread_cond_t *cond, ngx_thread_mutex_t *mtx,
     ngx_log_t *log);
 
 
+#define ngx_thread_local
+
+
 #if (NGX_LINUX)
 
 typedef pid_t      ngx_tid_t;
@@ -61,6 +64,8 @@ ngx_tid_t ngx_thread_tid(void);
 #define ngx_log_tid           ngx_thread_tid()
 
 #else
+
+#define ngx_thread_local
 
 #define ngx_log_tid           0
 #define NGX_TID_T_FMT         "%d"

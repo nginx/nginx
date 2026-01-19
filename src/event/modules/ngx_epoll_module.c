@@ -130,28 +130,28 @@ static void ngx_epoll_eventfd_handler(ngx_event_t *ev);
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
-static int                  ep = -1;
-static struct epoll_event  *event_list;
-static ngx_uint_t           nevents;
+static ngx_thread_local int                  ep = -1;
+static ngx_thread_local struct epoll_event  *event_list;
+static ngx_thread_local ngx_uint_t           nevents;
 
 #if (NGX_HAVE_EVENTFD)
-static int                  notify_fd = -1;
-static ngx_event_t          notify_event;
-static ngx_connection_t     notify_conn;
+static ngx_thread_local int                  notify_fd = -1;
+static ngx_thread_local ngx_event_t          notify_event;
+static ngx_thread_local ngx_connection_t     notify_conn;
 #endif
 
 #if (NGX_HAVE_FILE_AIO)
 
-int                         ngx_eventfd = -1;
-aio_context_t               ngx_aio_ctx = 0;
+ngx_thread_local int                         ngx_eventfd = -1;
+ngx_thread_local aio_context_t               ngx_aio_ctx = 0;
 
-static ngx_event_t          ngx_eventfd_event;
-static ngx_connection_t     ngx_eventfd_conn;
+static ngx_thread_local ngx_event_t          ngx_eventfd_event;
+static ngx_thread_local ngx_connection_t     ngx_eventfd_conn;
 
 #endif
 
 #if (NGX_HAVE_EPOLLRDHUP)
-ngx_uint_t                  ngx_use_epoll_rdhup;
+ngx_thread_local ngx_uint_t                  ngx_use_epoll_rdhup;
 #endif
 
 static ngx_str_t      epoll_name = ngx_string("epoll");

@@ -28,7 +28,7 @@
  */
 
 
-extern int  ngx_kqueue;
+extern ngx_thread_local int  ngx_kqueue;
 
 
 static ssize_t ngx_file_aio_result(ngx_file_t *file, ngx_event_aio_t *aio,

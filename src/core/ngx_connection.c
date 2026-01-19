@@ -10,7 +10,7 @@
 #include <ngx_event.h>
 
 
-ngx_os_io_t  ngx_io;
+ngx_thread_local ngx_os_io_t  ngx_io;
 
 
 static void ngx_drain_connections(ngx_cycle_t *cycle);

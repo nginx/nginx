@@ -214,7 +214,7 @@ static ngx_str_t  ngx_http_gzip_ratio = ngx_string("gzip_ratio");
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
-static ngx_uint_t  ngx_http_gzip_assume_zlib_ng;
+static volatile ngx_uint_t  ngx_http_gzip_assume_zlib_ng;
 
 
 static ngx_int_t

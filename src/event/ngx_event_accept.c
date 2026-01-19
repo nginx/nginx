@@ -31,7 +31,7 @@ ngx_event_accept(ngx_event_t *ev)
     ngx_connection_t  *c, *lc;
     ngx_event_conf_t  *ecf;
 #if (NGX_HAVE_ACCEPT4)
-    static ngx_uint_t  use_accept4 = 1;
+    static volatile ngx_uint_t  use_accept4 = 1;
 #endif
 
     if (ev->timedout) {

@@ -36,12 +36,13 @@ static char *ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
 static ngx_uint_t     ngx_timer_resolution;
+
 sig_atomic_t          ngx_event_timer_alarm;
 
 static ngx_uint_t     ngx_event_max_module;
 
-ngx_uint_t            ngx_event_flags;
-ngx_event_actions_t   ngx_event_actions;
+ngx_thread_local ngx_uint_t            ngx_event_flags;
+ngx_thread_local ngx_event_actions_t   ngx_event_actions;
 
 
 static ngx_atomic_t   connection_counter = 1;
@@ -50,12 +51,12 @@ ngx_atomic_t         *ngx_connection_counter = &connection_counter;
 
 ngx_atomic_t         *ngx_accept_mutex_ptr;
 ngx_shmtx_t           ngx_accept_mutex;
-ngx_uint_t            ngx_use_accept_mutex;
-ngx_uint_t            ngx_accept_events;
-ngx_uint_t            ngx_accept_mutex_held;
-ngx_msec_t            ngx_accept_mutex_delay;
-ngx_int_t             ngx_accept_disabled;
-ngx_uint_t            ngx_use_exclusive_accept;
+ngx_thread_local ngx_uint_t            ngx_use_accept_mutex;
+ngx_thread_local ngx_uint_t            ngx_accept_events;
+ngx_thread_local ngx_uint_t            ngx_accept_mutex_held;
+ngx_thread_local ngx_msec_t            ngx_accept_mutex_delay;
+ngx_thread_local ngx_int_t             ngx_accept_disabled;
+ngx_thread_local ngx_uint_t            ngx_use_exclusive_accept;
 
 
 #if (NGX_STAT_STUB)

@@ -77,7 +77,7 @@ typedef struct {
 } ngx_http_sub_ctx_t;
 
 
-static ngx_uint_t ngx_http_sub_cmp_index;
+static ngx_thread_local ngx_uint_t ngx_http_sub_cmp_index;
 
 
 static ngx_int_t ngx_http_sub_output(ngx_http_request_t *r,

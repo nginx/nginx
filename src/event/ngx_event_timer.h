@@ -25,7 +25,7 @@ void ngx_event_expire_timers(void);
 ngx_int_t ngx_event_no_timers_left(void);
 
 
-extern ngx_rbtree_t  ngx_event_timer_rbtree;
+extern ngx_thread_local ngx_rbtree_t  ngx_event_timer_rbtree;
 
 
 static ngx_inline void

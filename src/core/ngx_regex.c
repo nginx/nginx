@@ -26,6 +26,7 @@ static void * ngx_libc_cdecl ngx_regex_malloc(size_t size);
 static void ngx_libc_cdecl ngx_regex_free(void *p);
 #endif
 static void ngx_regex_cleanup(void *data);
+static void ngx_regex_thread_cleanup(void *data);
 
 static ngx_int_t ngx_regex_module_init(ngx_cycle_t *cycle);
 
@@ -72,14 +73,14 @@ ngx_module_t  ngx_regex_module = {
 };
 
 
-static ngx_pool_t             *ngx_regex_pool;
+static ngx_thread_local ngx_pool_t             *ngx_regex_pool;
 static ngx_list_t             *ngx_regex_studies;
-static ngx_uint_t              ngx_regex_direct_alloc;
+static ngx_thread_local ngx_uint_t              ngx_regex_direct_alloc;
 
 #if (NGX_PCRE2)
-static pcre2_compile_context  *ngx_regex_compile_context;
-static pcre2_match_data       *ngx_regex_match_data;
-static ngx_uint_t              ngx_regex_match_data_size;
+static ngx_thread_local pcre2_compile_context  *ngx_regex_compile_context;
+static ngx_thread_local pcre2_match_data       *ngx_regex_match_data;
+static ngx_thread_local ngx_uint_t              ngx_regex_match_data_size;
 #endif
 
 
@@ -392,9 +393,10 @@ nomem:
 ngx_int_t
 ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_uint_t size)
 {
-    size_t      *ov;
-    ngx_int_t    rc;
-    ngx_uint_t   n, i;
+    size_t              *ov;
+    ngx_int_t            rc;
+    ngx_uint_t           n, i;
+    ngx_pool_cleanup_t  *cln;
 
     /*
      * The pcre2_match() function might allocate memory for backtracking
@@ -403,6 +405,8 @@ ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_uint_t size)
      */
 
     ngx_regex_malloc_init(NULL);
+
+    cln = NULL;
 
     if (ngx_regex_match_data == NULL
         || size > ngx_regex_match_data_size)
@@ -422,6 +426,10 @@ ngx_regex_exec(ngx_regex_t *re, ngx_str_t *s, int *captures, ngx_uint_t size)
         if (ngx_regex_match_data == NULL) {
             rc = PCRE2_ERROR_NOMEMORY;
             goto failed;
+        }
+
+        if (cln) {
+            cln->handler = ngx_regex_thread_cleanup;
         }
     }
 
@@ -592,6 +600,14 @@ ngx_regex_cleanup(void *data)
      */
 
     ngx_regex_studies = NULL;
+
+    ngx_regex_thread_cleanup(NULL);
+}
+
+
+static void
+ngx_regex_thread_cleanup(void *data)
+{
 
 #if (NGX_PCRE2)
 

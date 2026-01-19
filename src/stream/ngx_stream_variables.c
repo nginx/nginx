@@ -142,7 +142,7 @@ ngx_stream_variable_value_t  ngx_stream_variable_true_value =
     ngx_stream_variable("1");
 
 
-static ngx_uint_t  ngx_stream_variable_depth = 100;
+static ngx_thread_local ngx_uint_t  ngx_stream_variable_depth = 100;
 
 
 ngx_stream_variable_t *

@@ -143,7 +143,7 @@ int  ngx_ssl_certificate_comp_index;
 int  ngx_ssl_client_hello_arg_index;
 
 
-u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
+ngx_thread_local u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
 
 
 ngx_int_t

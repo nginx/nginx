@@ -10,8 +10,8 @@
 #include <ngx_event.h>
 
 
-ngx_rbtree_t              ngx_event_timer_rbtree;
-static ngx_rbtree_node_t  ngx_event_timer_sentinel;
+ngx_thread_local ngx_rbtree_t              ngx_event_timer_rbtree;
+static ngx_thread_local ngx_rbtree_node_t  ngx_event_timer_sentinel;
 
 /*
  * the event timer rbtree may contain the duplicate keys, however,

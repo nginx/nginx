@@ -37,7 +37,7 @@ ngx_event_recvmsg(ngx_event_t *ev)
     ngx_listening_t   *ls;
     ngx_event_conf_t  *ecf;
     ngx_connection_t  *c, *lc;
-    static u_char      buffer[65535];
+    static ngx_thread_local u_char      buffer[65535];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
     u_char             msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];

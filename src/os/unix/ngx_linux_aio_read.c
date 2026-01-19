@@ -10,8 +10,8 @@
 #include <ngx_event.h>
 
 
-extern int            ngx_eventfd;
-extern aio_context_t  ngx_aio_ctx;
+extern ngx_thread_local int            ngx_eventfd;
+extern ngx_thread_local aio_context_t  ngx_aio_ctx;
 
 
 static void ngx_file_aio_event_handler(ngx_event_t *ev);

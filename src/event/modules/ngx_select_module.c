@@ -22,15 +22,15 @@ static void ngx_select_repair_fd_sets(ngx_cycle_t *cycle);
 static char *ngx_select_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-static fd_set         master_read_fd_set;
-static fd_set         master_write_fd_set;
-static fd_set         work_read_fd_set;
-static fd_set         work_write_fd_set;
+static ngx_thread_local fd_set         master_read_fd_set;
+static ngx_thread_local fd_set         master_write_fd_set;
+static ngx_thread_local fd_set         work_read_fd_set;
+static ngx_thread_local fd_set         work_write_fd_set;
 
-static ngx_int_t      max_fd;
-static ngx_uint_t     nevents;
+static ngx_thread_local ngx_int_t      max_fd;
+static ngx_thread_local ngx_uint_t     nevents;
 
-static ngx_event_t  **event_index;
+static ngx_thread_local ngx_event_t  **event_index;
 
 
 static ngx_str_t           select_name = ngx_string("select");

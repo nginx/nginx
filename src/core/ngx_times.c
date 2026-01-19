@@ -23,16 +23,16 @@ static ngx_msec_t ngx_monotonic_time(time_t sec, ngx_uint_t msec);
 
 #define NGX_TIME_SLOTS   64
 
-static ngx_uint_t        slot;
-static ngx_atomic_t      ngx_time_lock;
+static ngx_thread_local ngx_uint_t        slot;
+static ngx_thread_local ngx_atomic_t      ngx_time_lock;
 
-volatile ngx_msec_t      ngx_current_msec;
-volatile ngx_time_t     *ngx_cached_time;
-volatile ngx_str_t       ngx_cached_err_log_time;
-volatile ngx_str_t       ngx_cached_http_time;
-volatile ngx_str_t       ngx_cached_http_log_time;
-volatile ngx_str_t       ngx_cached_http_log_iso8601;
-volatile ngx_str_t       ngx_cached_syslog_time;
+ngx_thread_local volatile ngx_msec_t      ngx_current_msec;
+ngx_thread_local volatile ngx_time_t     *ngx_cached_time;
+ngx_thread_local volatile ngx_str_t       ngx_cached_err_log_time;
+ngx_thread_local volatile ngx_str_t       ngx_cached_http_time;
+ngx_thread_local volatile ngx_str_t       ngx_cached_http_log_time;
+ngx_thread_local volatile ngx_str_t       ngx_cached_http_log_iso8601;
+ngx_thread_local volatile ngx_str_t       ngx_cached_syslog_time;
 
 #if !(NGX_WIN32)
 
@@ -42,20 +42,20 @@ volatile ngx_str_t       ngx_cached_syslog_time;
  * GMT offset value. Fortunately the value is changed only two times a year.
  */
 
-static ngx_int_t         cached_gmtoff;
+static ngx_thread_local ngx_int_t         cached_gmtoff;
 #endif
 
-static ngx_time_t        cached_time[NGX_TIME_SLOTS];
-static u_char            cached_err_log_time[NGX_TIME_SLOTS]
-                                    [sizeof("1970/09/28 12:00:00")];
-static u_char            cached_http_time[NGX_TIME_SLOTS]
-                                    [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
-static u_char            cached_http_log_time[NGX_TIME_SLOTS]
-                                    [sizeof("28/Sep/1970:12:00:00 +0600")];
-static u_char            cached_http_log_iso8601[NGX_TIME_SLOTS]
-                                    [sizeof("1970-09-28T12:00:00+06:00")];
-static u_char            cached_syslog_time[NGX_TIME_SLOTS]
-                                    [sizeof("Sep 28 12:00:00")];
+static ngx_thread_local ngx_time_t     cached_time[NGX_TIME_SLOTS];
+static ngx_thread_local u_char         cached_err_log_time[NGX_TIME_SLOTS]
+                                              [sizeof("1970/09/28 12:00:00")];
+static ngx_thread_local u_char         cached_http_time[NGX_TIME_SLOTS]
+                                     [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
+static ngx_thread_local u_char          cached_http_log_time[NGX_TIME_SLOTS]
+                                        [sizeof("28/Sep/1970:12:00:00 +0600")];
+static ngx_thread_local u_char         cached_http_log_iso8601[NGX_TIME_SLOTS]
+                                         [sizeof("1970-09-28T12:00:00+06:00")];
+static ngx_thread_local u_char         cached_syslog_time[NGX_TIME_SLOTS]
+                                                   [sizeof("Sep 28 12:00:00")];
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };

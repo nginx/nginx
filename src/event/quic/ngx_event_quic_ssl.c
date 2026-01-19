@@ -883,7 +883,7 @@ ngx_quic_init_connection(ngx_connection_t *c)
         { 0, NULL }
     };
 #else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
-    static SSL_QUIC_METHOD  quic_method;
+    static ngx_thread_local SSL_QUIC_METHOD  quic_method;
 #endif
 
     qc = ngx_quic_get_connection(c);

@@ -21,8 +21,8 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-static struct pollfd  *event_list;
-static ngx_uint_t      nevents;
+static ngx_thread_local struct pollfd  *event_list;
+static ngx_thread_local ngx_uint_t      nevents;
 
 
 static ngx_str_t           poll_name = ngx_string("poll");
