@@ -106,6 +106,8 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
 
     ev->handler = ngx_file_aio_event_handler;
 
+    ngx_save_cycle(ev->cycle);
+
     piocb[0] = &aio->aiocb;
 
     if (io_submit(ngx_aio_ctx, 1, piocb) == 1) {

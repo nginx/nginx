@@ -83,6 +83,8 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 
     ngx_rbtree_insert(&ngx_event_timer_rbtree, &ev->timer);
 
+    ngx_save_cycle(ev->cycle);
+
     ev->timer_set = 1;
 }
 

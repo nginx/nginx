@@ -116,6 +116,8 @@ struct ngx_event_s {
     /* the posted queue */
     ngx_queue_t      queue;
 
+    ngx_cycle_t     *cycle;
+
 #if 0
 
     /* the threads support */

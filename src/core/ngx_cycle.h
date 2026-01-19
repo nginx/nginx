@@ -124,6 +124,14 @@ typedef struct {
 
 #define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
 
+#define ngx_save_cycle(cycle)                                                 \
+    cycle = (ngx_cycle_t *) ngx_cycle
+
+#define ngx_set_cycle(cycle)                                                  \
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, (cycle)->log, 0,                      \
+                   "cycle p:%p", cycle);                                      \
+    ngx_cycle = cycle
+
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
 ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);

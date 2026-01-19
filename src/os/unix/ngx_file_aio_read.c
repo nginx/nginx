@@ -141,6 +141,8 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     ev->ready = 0;
     ev->complete = 0;
 
+    ngx_save_cycle(ev->cycle);
+
     return ngx_file_aio_result(aio->file, aio, ev);
 }
 

@@ -631,6 +631,9 @@ ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     }
 
     ev->active = 1;
+
+    ngx_save_cycle(ev->cycle);
+
 #if 0
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
 #endif
@@ -716,6 +719,9 @@ ngx_epoll_add_connection(ngx_connection_t *c)
 
     c->read->active = 1;
     c->write->active = 1;
+
+    ngx_save_cycle(c->read->cycle);
+    ngx_save_cycle(c->write->cycle);
 
     return NGX_OK;
 }
@@ -891,6 +897,8 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             rev->ready = 1;
             rev->available = -1;
 
+            ngx_set_cycle(rev->cycle);
+
             if (flags & NGX_POST_EVENTS) {
                 queue = rev->accept ? &ngx_posted_accept_events
                                     : &ngx_posted_events;
@@ -922,6 +930,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 #if (NGX_THREADS)
             wev->complete = 1;
 #endif
+            ngx_set_cycle(wev->cycle);
 
             if (flags & NGX_POST_EVENTS) {
                 ngx_post_event(wev, &ngx_posted_events);
@@ -1001,6 +1010,8 @@ ngx_epoll_eventfd_handler(ngx_event_t *ev)
 
                 aio = e->data;
                 aio->res = event[i].res;
+
+                ngx_set_cycle(e->cycle);
 
                 ngx_post_event(e, &ngx_posted_events);
             }

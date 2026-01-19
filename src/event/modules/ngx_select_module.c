@@ -159,6 +159,8 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     ev->active = 1;
 
+    ngx_save_cycle(ev->cycle);
+
     event_index[nevents] = ev;
     ev->index = nevents;
     nevents++;
@@ -331,6 +333,8 @@ ngx_select_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
         if (found) {
             ev->ready = 1;
             ev->available = -1;
+
+            ngx_set_cycle(ev->cycle);
 
             queue = ev->accept ? &ngx_posted_accept_events
                                : &ngx_posted_events;

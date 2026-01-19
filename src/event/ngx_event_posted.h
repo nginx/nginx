@@ -18,6 +18,7 @@
                                                                               \
     if (!(ev)->posted) {                                                      \
         (ev)->posted = 1;                                                     \
+        ngx_save_cycle((ev)->cycle);                                          \
         ngx_queue_insert_tail(q, &(ev)->queue);                               \
                                                                               \
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, (ev)->log, 0, "post event %p", ev);\

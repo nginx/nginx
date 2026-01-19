@@ -261,6 +261,8 @@ ngx_kqueue_notify_init(ngx_log_t *log)
     notify_kev.fflags = NOTE_TRIGGER;
     notify_kev.udata = NGX_KQUEUE_UDATA_T ((uintptr_t) &notify_event);
 
+    ngx_save_cycle(notify_event.cycle);
+
     return NGX_OK;
 }
 
@@ -300,6 +302,8 @@ ngx_kqueue_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     ev->active = 1;
     ev->disabled = 0;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
+
+    ngx_save_cycle(ev->cycle);
 
 #if 0
 
@@ -665,6 +669,8 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                           event_list[i].filter);
             continue;
         }
+
+        ngx_set_cycle(ev->cycle);
 
         if (flags & NGX_POST_EVENTS) {
             queue = ev->accept ? &ngx_posted_accept_events

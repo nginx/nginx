@@ -120,6 +120,8 @@ ngx_poll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     ev->active = 1;
 
+    ngx_save_cycle(ev->cycle);
+
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                       "poll event fd:%d ev:%i is already set", c->fd, event);
@@ -375,6 +377,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             queue = ev->accept ? &ngx_posted_accept_events
                                : &ngx_posted_events;
 
+            ngx_set_cycle(ev->cycle);
+
             ngx_post_event(ev, queue);
         }
 
@@ -383,6 +387,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             ev = c->write;
             ev->ready = 1;
+
+            ngx_set_cycle(ev->cycle);
 
             ngx_post_event(ev, &ngx_posted_events);
         }
