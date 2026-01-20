@@ -53,6 +53,10 @@ static ngx_int_t ngx_http_optimize_servers(ngx_conf_t *cf,
     ngx_http_core_main_conf_t *cmcf, ngx_array_t *ports);
 static ngx_int_t ngx_http_server_names(ngx_conf_t *cf,
     ngx_http_core_main_conf_t *cmcf, ngx_http_conf_addr_t *addr);
+#if (NGX_HTTP_V3)
+static ngx_int_t ngx_http_merge_quic_servers(ngx_conf_t *cf,
+    ngx_array_t *ports);
+#endif
 static ngx_int_t ngx_http_cmp_conf_addrs(const void *one, const void *two);
 static int ngx_libc_cdecl ngx_http_cmp_dns_wildcards(const void *one,
     const void *two);
@@ -1498,6 +1502,13 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
     }
 
     port = ports->elts;
+
+#if (NGX_HTTP_V3)
+    if (ngx_http_merge_quic_servers(cf, ports) != NGX_OK) {
+        return NGX_ERROR;
+    }
+#endif
+
     for (p = 0; p < ports->nelts; p++) {
 
         ngx_sort(port[p].addrs.elts, (size_t) port[p].addrs.nelts,
@@ -1530,6 +1541,98 @@ ngx_http_optimize_servers(ngx_conf_t *cf, ngx_http_core_main_conf_t *cmcf,
 
     return NGX_OK;
 }
+
+
+#if (NGX_HTTP_V3)
+static ngx_int_t
+ngx_http_merge_quic_servers(ngx_conf_t *cf, ngx_array_t *ports)
+{
+    ngx_uint_t                  dp, sp, da, sa, i, j;
+    ngx_http_conf_addr_t       *daddr, *saddr;
+    ngx_http_conf_port_t       *port;
+    ngx_http_core_srv_conf_t  **ds, **dst, **ss;
+
+    port = ports->elts;
+
+    for (dp = 0; dp < ports->nelts; dp++) {
+
+        if (port[dp].type != SOCK_DGRAM) {
+            continue;
+        }
+
+        daddr = port[dp].addrs.elts;
+        if (daddr == NULL) {
+            continue;
+        }
+
+        for (sp = 0; sp < ports->nelts; sp++) {
+
+            if (port[sp].type != SOCK_STREAM
+                || port[sp].port != port[dp].port
+                || port[sp].family != port[dp].family)
+            {
+                continue;
+            }
+
+            saddr = port[sp].addrs.elts;
+            if (saddr == NULL) {
+                continue;
+            }
+
+            for (da = 0; da < port[dp].addrs.nelts; da++) {
+
+                if (!daddr[da].opt.quic) {
+                    continue;
+                }
+
+                for (sa = 0; sa < port[sp].addrs.nelts; sa++) {
+
+                    if (!saddr[sa].opt.ssl) {
+                        continue;
+                    }
+
+                    if (ngx_cmp_sockaddr(daddr[da].opt.sockaddr,
+                                         daddr[da].opt.socklen,
+                                         saddr[sa].opt.sockaddr,
+                                         saddr[sa].opt.socklen, 0)
+                        != NGX_OK)
+                    {
+                        continue;
+                    }
+
+                    ss = saddr[sa].servers.elts;
+                    if (ss == NULL) {
+                        continue;
+                    }
+
+                    for (i = 0; i < saddr[sa].servers.nelts; i++) {
+
+                        ds = daddr[da].servers.elts;
+                        for (j = 0; j < daddr[da].servers.nelts; j++) {
+                            if (ds[j] == ss[i]) {
+                                break;
+                            }
+                        }
+
+                        if (j != daddr[da].servers.nelts) {
+                            continue;
+                        }
+
+                        dst = ngx_array_push(&daddr[da].servers);
+                        if (dst == NULL) {
+                            return NGX_ERROR;
+                        }
+
+                        *dst = ss[i];
+                    }
+                }
+            }
+        }
+    }
+
+    return NGX_OK;
+}
+#endif
 
 
 static ngx_int_t
