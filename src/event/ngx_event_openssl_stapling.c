@@ -37,11 +37,12 @@ typedef struct {
 
     u_char                      *name;
 
+    ngx_atomic_t                 loading;
+
     time_t                       valid;
     time_t                       refresh;
 
     unsigned                     verify:1;
-    unsigned                     loading:1;
 } ngx_ssl_stapling_t;
 
 
@@ -662,7 +663,11 @@ ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple)
         return;
     }
 
-    staple->loading = 1;
+    if (!ngx_atomic_cmp_set(&staple->loading, 0, 1)) {
+        return;
+    }
+
+    ngx_memory_barrier();
 
     ctx = ngx_ssl_ocsp_start(ngx_cycle->log);
     if (ctx == NULL) {
@@ -739,16 +744,22 @@ ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx)
      * but not earlier than in 5 minutes, and at least in an hour
      */
 
-    staple->loading = 0;
     staple->refresh = ngx_max(ngx_min(ctx->valid - 300, now + 3600), now + 300);
+
+    ngx_memory_barrier();
+
+    staple->loading = 0;
 
     ngx_ssl_ocsp_done(ctx);
     return;
 
 error:
 
-    staple->loading = 0;
     staple->refresh = now + 300;
+
+    ngx_memory_barrier();
+
+    staple->loading = 0;
 
     ngx_ssl_ocsp_done(ctx);
 }

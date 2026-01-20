@@ -21,6 +21,8 @@
 #define NGX_MIN_READ_AHEAD  (128 * 1024)
 
 
+static ngx_open_file_cache_ctx_t *ngx_open_file_cache_get_cache(
+    ngx_open_file_cache_t *cache);
 static void ngx_open_file_cache_cleanup(void *data);
 #if (NGX_HAVE_OPENAT)
 static ngx_fd_t ngx_openat_file_owner(ngx_fd_t at_fd, const u_char *name,
@@ -37,41 +39,66 @@ static ngx_int_t ngx_file_info_wrapper(ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_file_info_t *fi, ngx_log_t *log);
 static ngx_int_t ngx_open_and_stat_file(ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_log_t *log);
-static void ngx_open_file_add_event(ngx_open_file_cache_t *cache,
+static void ngx_open_file_add_event(ngx_open_file_cache_ctx_t *cache,
     ngx_cached_open_file_t *file, ngx_open_file_info_t *of, ngx_log_t *log);
 static void ngx_open_file_cleanup(void *data);
-static void ngx_close_cached_file(ngx_open_file_cache_t *cache,
+static void ngx_close_cached_file(ngx_open_file_cache_ctx_t *cache,
     ngx_cached_open_file_t *file, ngx_uint_t min_uses, ngx_log_t *log);
 static void ngx_open_file_del_event(ngx_cached_open_file_t *file);
-static void ngx_expire_old_cached_files(ngx_open_file_cache_t *cache,
+static void ngx_expire_old_cached_files(ngx_open_file_cache_ctx_t *cache,
     ngx_uint_t n, ngx_log_t *log);
 static void ngx_open_file_cache_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 static ngx_cached_open_file_t *
-    ngx_open_file_lookup(ngx_open_file_cache_t *cache, ngx_str_t *name,
+    ngx_open_file_lookup(ngx_open_file_cache_ctx_t *cache, ngx_str_t *name,
     uint32_t hash);
 static void ngx_open_file_cache_remove(ngx_event_t *ev);
 
 
 ngx_open_file_cache_t *
-ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
+ngx_open_file_cache_init(ngx_conf_t *cf, ngx_uint_t max, time_t inactive)
 {
-    ngx_pool_cleanup_t     *cln;
     ngx_open_file_cache_t  *cache;
 
-    cache = ngx_palloc(pool, sizeof(ngx_open_file_cache_t));
+    cache = ngx_palloc(cf->pool, sizeof(ngx_open_file_cache_t));
     if (cache == NULL) {
         return NULL;
     }
 
-    ngx_rbtree_init(&cache->rbtree, &cache->sentinel,
-                    ngx_open_file_cache_rbtree_insert_value);
-
-    ngx_queue_init(&cache->expire_queue);
-
-    cache->current = 0;
     cache->max = max;
     cache->inactive = inactive;
+    cache->ctx_id = ngx_cycle_ctx_add(cf);
+
+    return cache;
+}
+
+static ngx_open_file_cache_ctx_t *
+ngx_open_file_cache_get_cache(ngx_open_file_cache_t *cache)
+{
+    ngx_pool_t                 *pool;
+    ngx_pool_cleanup_t         *cln;
+    ngx_open_file_cache_ctx_t  *ctx;
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, cache->ctx_id);
+    if (ctx) {
+        return ctx;
+    }
+
+    pool = ngx_get_cyclex(ngx_cycle)->pool;
+
+    ctx = ngx_palloc(pool, sizeof(ngx_open_file_cache_ctx_t));
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    ngx_rbtree_init(&ctx->rbtree, &ctx->sentinel,
+                    ngx_open_file_cache_rbtree_insert_value);
+
+    ngx_queue_init(&ctx->expire_queue);
+
+    ctx->current = 0;
+    ctx->max = cache->max;
+    ctx->inactive = cache->inactive;
 
     cln = ngx_pool_cleanup_add(pool, 0);
     if (cln == NULL) {
@@ -79,16 +106,18 @@ ngx_open_file_cache_init(ngx_pool_t *pool, ngx_uint_t max, time_t inactive)
     }
 
     cln->handler = ngx_open_file_cache_cleanup;
-    cln->data = cache;
+    cln->data = ctx;
 
-    return cache;
+    ngx_set_cycle_ctx(ngx_cycle, cache->ctx_id, ctx);
+
+    return ctx;
 }
 
 
 static void
 ngx_open_file_cache_cleanup(void *data)
 {
-    ngx_open_file_cache_t  *cache = data;
+    ngx_open_file_cache_ctx_t  *cache = data;
 
     ngx_queue_t             *q;
     ngx_cached_open_file_t  *file;
@@ -141,7 +170,7 @@ ngx_open_file_cache_cleanup(void *data)
 
 
 ngx_int_t
-ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
+ngx_open_cached_file(ngx_open_file_cache_t *ofc, ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_pool_t *pool)
 {
     time_t                          now;
@@ -151,12 +180,13 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
     ngx_pool_cleanup_t             *cln;
     ngx_cached_open_file_t         *file;
     ngx_pool_cleanup_file_t        *clnf;
+    ngx_open_file_cache_ctx_t      *cache;
     ngx_open_file_cache_cleanup_t  *ofcln;
 
     of->fd = NGX_INVALID_FILE;
     of->err = 0;
 
-    if (cache == NULL) {
+    if (ofc == NULL) {
 
         if (of->test_only) {
 
@@ -196,6 +226,8 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
 
         return rc;
     }
+
+    cache = ngx_open_file_cache_get_cache(ofc);
 
     cln = ngx_pool_cleanup_add(pool, sizeof(ngx_open_file_cache_cleanup_t));
     if (cln == NULL) {
@@ -951,7 +983,7 @@ done:
  */
 
 static void
-ngx_open_file_add_event(ngx_open_file_cache_t *cache,
+ngx_open_file_add_event(ngx_open_file_cache_ctx_t *cache,
     ngx_cached_open_file_t *file, ngx_open_file_info_t *of, ngx_log_t *log)
 {
     ngx_open_file_cache_event_t  *fev;
@@ -1029,7 +1061,7 @@ ngx_open_file_cleanup(void *data)
 
 
 static void
-ngx_close_cached_file(ngx_open_file_cache_t *cache,
+ngx_close_cached_file(ngx_open_file_cache_ctx_t *cache,
     ngx_cached_open_file_t *file, ngx_uint_t min_uses, ngx_log_t *log)
 {
     ngx_log_debug5(NGX_LOG_DEBUG_CORE, log, 0,
@@ -1092,7 +1124,7 @@ ngx_open_file_del_event(ngx_cached_open_file_t *file)
 
 
 static void
-ngx_expire_old_cached_files(ngx_open_file_cache_t *cache, ngx_uint_t n,
+ngx_expire_old_cached_files(ngx_open_file_cache_ctx_t *cache, ngx_uint_t n,
     ngx_log_t *log)
 {
     time_t                   now;
@@ -1184,7 +1216,7 @@ ngx_open_file_cache_rbtree_insert_value(ngx_rbtree_node_t *temp,
 
 
 static ngx_cached_open_file_t *
-ngx_open_file_lookup(ngx_open_file_cache_t *cache, ngx_str_t *name,
+ngx_open_file_lookup(ngx_open_file_cache_ctx_t *cache, ngx_str_t *name,
     uint32_t hash)
 {
     ngx_int_t                rc;

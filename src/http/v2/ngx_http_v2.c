@@ -221,13 +221,15 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     h2mcf = ngx_http_get_module_main_conf(hc->conf_ctx, ngx_http_v2_module);
 
-    if (h2mcf->recv_buffer == NULL) {
-        h2mcf->recv_buffer = ngx_palloc(ngx_cycle->pool,
-                                        h2mcf->recv_buffer_size);
-        if (h2mcf->recv_buffer == NULL) {
+    if (ngx_get_cycle_ctx(ngx_cycle, h2mcf->recv_buffer_id) == NULL) {
+        p = ngx_palloc(ngx_get_cyclex(ngx_cycle)->pool,
+                       h2mcf->recv_buffer_size);
+        if (p == NULL) {
             ngx_http_close_connection(c);
             return;
         }
+
+        ngx_set_cycle_ctx(ngx_cycle, h2mcf->recv_buffer_id, p);
     }
 
     h2c = ngx_pcalloc(c->pool, sizeof(ngx_http_v2_connection_t));
@@ -395,7 +397,7 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
     available = h2mcf->recv_buffer_size - NGX_HTTP_V2_STATE_BUFFER_SIZE;
 
     do {
-        p = h2mcf->recv_buffer;
+        p = ngx_get_cycle_ctx(ngx_cycle, h2mcf->recv_buffer_id);
         end = ngx_cpymem(p, h2c->state.buffer, h2c->state.buffer_used);
 
         n = c->recv(c, end, available);

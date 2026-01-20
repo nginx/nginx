@@ -5072,7 +5072,7 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    clcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
+    clcf->open_file_cache = ngx_open_file_cache_init(cf, max, inactive);
     if (clcf->open_file_cache) {
         return NGX_CONF_OK;
     }

@@ -70,7 +70,6 @@ ngx_http_v3_init_stream(ngx_connection_t *c)
 
     if (c->quic == NULL) {
         h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
-        h3scf->quic.idle_timeout = clcf->keepalive_timeout;
 
         ngx_quic_run(c, &h3scf->quic);
         return;

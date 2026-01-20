@@ -63,9 +63,12 @@ struct ngx_stream_upstream_rr_peer_s {
 #if (NGX_STREAM_UPSTREAM_ZONE)
     unsigned                         zombie:1;
 
-    ngx_atomic_t                     lock;
     ngx_uint_t                       refs;
     ngx_stream_upstream_host_t      *host;
+#endif
+
+#if (NGX_THREADS || NGX_STREAM_UPSTREAM_ZONE)
+    ngx_atomic_t                     lock;
 #endif
 
     ngx_stream_upstream_rr_peer_t   *next;
@@ -80,10 +83,13 @@ struct ngx_stream_upstream_rr_peers_s {
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
     ngx_slab_pool_t                 *shpool;
-    ngx_atomic_t                     rwlock;
     ngx_uint_t                      *config;
     ngx_stream_upstream_rr_peer_t   *resolve;
     ngx_stream_upstream_rr_peers_t  *zone_next;
+#endif
+
+#if (NGX_THREADS || NGX_STREAM_UPSTREAM_ZONE)
+    ngx_atomic_t                     rwlock;
 #endif
 
     ngx_uint_t                       total_weight;
@@ -100,39 +106,35 @@ struct ngx_stream_upstream_rr_peers_s {
 };
 
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_THREADS || NGX_STREAM_UPSTREAM_ZONE)
 
 #define ngx_stream_upstream_rr_peers_rlock(peers)                             \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_rlock(&peers->rwlock);                                     \
-    }
+    ngx_rwlock_rlock(&peers->rwlock)
 
 #define ngx_stream_upstream_rr_peers_wlock(peers)                             \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_wlock(&peers->rwlock);                                     \
-    }
+    ngx_rwlock_wlock(&peers->rwlock)
 
 #define ngx_stream_upstream_rr_peers_unlock(peers)                            \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_unlock(&peers->rwlock);                                    \
-    }
-
+    ngx_rwlock_unlock(&peers->rwlock)
 
 #define ngx_stream_upstream_rr_peer_lock(peers, peer)                         \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_wlock(&peer->lock);                                        \
-    }
+    ngx_rwlock_wlock(&peer->lock)
 
 #define ngx_stream_upstream_rr_peer_unlock(peers, peer)                       \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_unlock(&peer->lock);                                       \
-    }
+    ngx_rwlock_unlock(&peer->lock)
 
+#else
+
+#define ngx_stream_upstream_rr_peers_rlock(peers)
+#define ngx_stream_upstream_rr_peers_wlock(peers)
+#define ngx_stream_upstream_rr_peers_unlock(peers)
+#define ngx_stream_upstream_rr_peer_lock(peers, peer)
+#define ngx_stream_upstream_rr_peer_unlock(peers, peer)
+
+#endif
+
+
+#if (NGX_STREAM_UPSTREAM_ZONE)
 
 #define ngx_stream_upstream_rr_peer_ref(peers, peer)                          \
     (peer)->refs++;
@@ -194,11 +196,6 @@ ngx_stream_upstream_rr_peer_unref(ngx_stream_upstream_rr_peers_t *peers,
 
 #else
 
-#define ngx_stream_upstream_rr_peers_rlock(peers)
-#define ngx_stream_upstream_rr_peers_wlock(peers)
-#define ngx_stream_upstream_rr_peers_unlock(peers)
-#define ngx_stream_upstream_rr_peer_lock(peers, peer)
-#define ngx_stream_upstream_rr_peer_unlock(peers, peer)
 #define ngx_stream_upstream_rr_peer_ref(peers, peer)
 #define ngx_stream_upstream_rr_peer_unref(peers, peer)  NGX_OK
 

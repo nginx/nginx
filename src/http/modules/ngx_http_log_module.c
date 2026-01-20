@@ -45,14 +45,22 @@ typedef struct {
 
 
 typedef struct {
-    u_char                     *start;
-    u_char                     *pos;
-    u_char                     *last;
-
-    ngx_event_t                *event;
+    ngx_uint_t                  ctx_id;
     ngx_msec_t                  flush;
     ngx_int_t                   gzip;
+    size_t                      size;
 } ngx_http_log_buf_t;
+
+
+typedef struct {
+    u_char                      *start;
+    u_char                      *pos;
+    u_char                      *last;
+
+    ngx_event_t                 *event;
+    ngx_msec_t                   flush;
+    ngx_int_t                    gzip;
+} ngx_http_log_buf_ctx_t;
 
 
 typedef struct {
@@ -95,6 +103,7 @@ typedef struct {
 #define NGX_HTTP_LOG_ESCAPE_NONE     2
 
 
+static ngx_http_log_buf_ctx_t *ngx_http_log_get_buffer(ngx_open_file_t *file);
 static void ngx_http_log_write(ngx_http_request_t *r, ngx_http_log_t *log,
     u_char *buf, size_t len);
 static ssize_t ngx_http_log_script_write(ngx_http_request_t *r,
@@ -260,7 +269,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
     ngx_uint_t                i, l;
     ngx_http_log_t           *log;
     ngx_http_log_op_t        *op;
-    ngx_http_log_buf_t       *buffer;
+    ngx_http_log_buf_ctx_t   *buffer;
     ngx_http_log_loc_conf_t  *lcf;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -321,7 +330,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
 
         len += NGX_LINEFEED_SIZE;
 
-        buffer = log[l].file ? log[l].file->data : NULL;
+        buffer = log[l].file ? ngx_http_log_get_buffer(log[l].file) : NULL;
 
         if (buffer) {
 
@@ -399,6 +408,60 @@ ngx_http_log_handler(ngx_http_request_t *r)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_http_log_buf_ctx_t *
+ngx_http_log_get_buffer(ngx_open_file_t *file)
+{
+    ngx_pool_t              *pool;
+    ngx_http_log_buf_t      *buffer;
+    ngx_http_log_buf_ctx_t  *ctx;
+
+    buffer = file->data;
+
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, buffer->ctx_id);
+    if (ctx) {
+        return ctx;
+    }
+
+    pool = ngx_get_cyclex(ngx_cycle)->pool;
+
+    ctx = ngx_pcalloc(pool, sizeof(ngx_http_log_buf_ctx_t));
+    if (ctx == NULL) {
+        return NULL;
+    }
+
+    ctx->start = ngx_pnalloc(pool, buffer->size);
+    if (ctx->start == NULL) {
+        return NULL;
+    }
+
+    ctx->flush = buffer->flush;
+    ctx->gzip = buffer->gzip;
+
+    ctx->pos = ctx->start;
+    ctx->last = ctx->start + buffer->size;
+
+    if (buffer->flush) {
+        ctx->event = ngx_pcalloc(pool, sizeof(ngx_event_t));
+        if (ctx->event == NULL) {
+            return NULL;
+        }
+
+        ctx->event->data = file;
+        ctx->event->handler = ngx_http_log_flush_handler;
+        ctx->event->log = pool->log;
+        ctx->event->cancelable = 1;
+    }
+
+    ngx_set_cycle_ctx(ngx_cycle, buffer->ctx_id, ctx);
+
+    return ctx;
 }
 
 
@@ -718,11 +781,14 @@ ngx_http_log_gzip_free(void *opaque, void *address)
 static void
 ngx_http_log_flush(ngx_open_file_t *file, ngx_log_t *log)
 {
-    size_t               len;
-    ssize_t              n;
-    ngx_http_log_buf_t  *buffer;
+    size_t                   len;
+    ssize_t                  n;
+    ngx_http_log_buf_ctx_t  *buffer;
 
-    buffer = file->data;
+    buffer = ngx_http_log_get_buffer(file);
+    if (buffer == NULL) {
+        return;
+    }
 
     len = buffer->pos - buffer->start;
 
@@ -1482,7 +1548,7 @@ process_formats:
         if (log->file->data) {
             buffer = log->file->data;
 
-            if (buffer->last - buffer->start != size
+            if (buffer->size != (size_t) size
                 || buffer->flush != flush
                 || buffer->gzip != gzip)
             {
@@ -1501,28 +1567,9 @@ process_formats:
             return NGX_CONF_ERROR;
         }
 
-        buffer->start = ngx_pnalloc(cf->pool, size);
-        if (buffer->start == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        buffer->pos = buffer->start;
-        buffer->last = buffer->start + size;
-
-        if (flush) {
-            buffer->event = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
-            if (buffer->event == NULL) {
-                return NGX_CONF_ERROR;
-            }
-
-            buffer->event->data = log->file;
-            buffer->event->handler = ngx_http_log_flush_handler;
-            buffer->event->log = &cf->cycle->new_log;
-            buffer->event->cancelable = 1;
-
-            buffer->flush = flush;
-        }
-
+        buffer->ctx_id = ngx_cycle_ctx_add(cf);
+        buffer->size = size;
+        buffer->flush = flush;
         buffer->gzip = gzip;
 
         log->file->flush = ngx_http_log_flush;
@@ -1850,7 +1897,7 @@ ngx_http_log_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    llcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
+    llcf->open_file_cache = ngx_open_file_cache_init(cf, max, inactive);
 
     if (llcf->open_file_cache) {
 

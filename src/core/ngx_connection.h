@@ -48,8 +48,7 @@ struct ngx_listening_s {
 
     ngx_listening_t    *previous;
 
-    ngx_rbtree_t        rbtree;
-    ngx_rbtree_node_t   sentinel;
+    ngx_uint_t          ctx_id;
 
     ngx_uint_t          worker;
 
@@ -89,6 +88,12 @@ struct ngx_listening_s {
 #endif
 
 };
+
+
+typedef struct {
+    ngx_rbtree_t        rbtree;
+    ngx_rbtree_node_t   sentinel;
+} ngx_listening_ctx_t;
 
 
 typedef enum {

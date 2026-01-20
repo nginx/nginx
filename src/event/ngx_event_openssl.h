@@ -182,6 +182,12 @@ typedef struct {
 
 
 typedef struct {
+    ngx_array_t                 keys;
+    ngx_atomic_t                lock;
+} ngx_ssl_ticket_keys_t;
+
+
+typedef struct {
     ngx_rbtree_t                session_rbtree;
     ngx_rbtree_node_t           sentinel;
     ngx_queue_t                 expire_queue;

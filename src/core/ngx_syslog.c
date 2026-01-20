@@ -16,6 +16,8 @@
 
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);
+static ssize_t ngx_syslog_send_unlocked(ngx_syslog_peer_t *peer, u_char *buf,
+    size_t len);
 static ngx_int_t ngx_syslog_init_peer(ngx_syslog_peer_t *peer);
 static void ngx_syslog_cleanup(void *data);
 static u_char *ngx_syslog_log_error(ngx_log_t *log, u_char *buf, size_t len);
@@ -265,6 +267,8 @@ ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
         return;
     }
 
+    ngx_memory_barrier();
+
     peer->severity = level - 1;
 
     p = ngx_syslog_add_header(peer, msg);
@@ -278,7 +282,9 @@ ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
 
     p = ngx_snprintf(p, len, "%s", buf);
 
-    (void) ngx_syslog_send(peer, msg, p - msg);
+    (void) ngx_syslog_send_unlocked(peer, msg, p - msg);
+
+    ngx_memory_barrier();
 
     peer->busy = 0;
 }
@@ -286,6 +292,29 @@ ngx_syslog_writer(ngx_log_t *log, ngx_uint_t level, u_char *buf,
 
 ssize_t
 ngx_syslog_send(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
+{
+    ssize_t  n;
+
+    /* TODO better locking */
+
+    if (peer->busy || !ngx_atomic_cmp_set(&peer->busy, 0, 1)) {
+        return len;
+    }
+
+    ngx_memory_barrier();
+
+    n = ngx_syslog_send_unlocked(peer, buf, len);
+
+    ngx_memory_barrier();
+
+    peer->busy = 0;
+
+    return n;
+}
+
+
+static ssize_t
+ngx_syslog_send_unlocked(ngx_syslog_peer_t *peer, u_char *buf, size_t len)
 {
     ssize_t  n;
 
@@ -374,6 +403,8 @@ ngx_syslog_cleanup(void *data)
 
     /* prevents further use of this peer */
     peer->busy = 1;
+
+    ngx_memory_barrier();
 
     if (peer->conn.fd == (ngx_socket_t) -1) {
         return;

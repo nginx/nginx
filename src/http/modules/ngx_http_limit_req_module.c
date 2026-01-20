@@ -43,7 +43,7 @@ typedef struct {
     /* integer value, 1 corresponds to 0.001 r/s */
     ngx_uint_t                   rate;
     ngx_http_complex_value_t     key;
-    ngx_http_limit_req_node_t   *node;
+    ngx_uint_t                   node;
 } ngx_http_limit_req_ctx_t;
 
 
@@ -475,7 +475,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
 
             lr->count++;
 
-            ctx->node = lr;
+            ngx_set_cycle_ctx(ngx_cycle, ctx->node, lr);
 
             return NGX_AGAIN;
         }
@@ -526,7 +526,7 @@ ngx_http_limit_req_lookup(ngx_http_limit_req_limit_t *limit, ngx_uint_t hash,
     lr->last = 0;
     lr->count = 1;
 
-    ctx->node = lr;
+    ngx_set_cycle_ctx(ngx_cycle, ctx->node, lr);
 
     return NGX_AGAIN;
 }
@@ -554,7 +554,7 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 
     while (n--) {
         ctx = limits[n].shm_zone->data;
-        lr = ctx->node;
+        lr = ngx_get_cycle_ctx(ngx_cycle, ctx->node);
 
         if (lr == NULL) {
             continue;
@@ -587,7 +587,7 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
-        ctx->node = NULL;
+        ngx_set_cycle_ctx(ngx_cycle, ctx->node, NULL);
 
         if ((ngx_uint_t) excess <= limits[n].delay) {
             continue;
@@ -609,22 +609,25 @@ ngx_http_limit_req_account(ngx_http_limit_req_limit_t *limits, ngx_uint_t n,
 static void
 ngx_http_limit_req_unlock(ngx_http_limit_req_limit_t *limits, ngx_uint_t n)
 {
-    ngx_http_limit_req_ctx_t  *ctx;
+    ngx_http_limit_req_ctx_t   *ctx;
+    ngx_http_limit_req_node_t  *lr;
 
     while (n--) {
         ctx = limits[n].shm_zone->data;
 
-        if (ctx->node == NULL) {
+        lr = ngx_get_cycle_ctx(ngx_cycle, ctx->node);
+
+        if (lr == NULL) {
             continue;
         }
 
         ngx_shmtx_lock(&ctx->shpool->mutex);
 
-        ctx->node->count--;
+        lr->count--;
 
         ngx_shmtx_unlock(&ctx->shpool->mutex);
 
-        ctx->node = NULL;
+        lr = NULL;
     }
 }
 
@@ -848,6 +851,8 @@ ngx_http_limit_req_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ctx == NULL) {
         return NGX_CONF_ERROR;
     }
+
+    ctx->node = ngx_cycle_ctx_add(cf);
 
     ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
 

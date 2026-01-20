@@ -76,6 +76,9 @@ struct ngx_ssl_cache_s {
     ngx_uint_t                  max;
     time_t                      valid;
     time_t                      inactive;
+
+    /* TODO contention on spin lock */
+    ngx_atomic_t                lock;
 };
 
 
@@ -335,6 +338,8 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
 
     hash = ngx_murmur_hash2(id.data, id.len);
 
+    ngx_rwlock_rlock(&cache->lock);
+
     cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
 
     if (cn != NULL) {
@@ -386,6 +391,8 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
 
                 ngx_free(cn);
 
+                ngx_rwlock_unlock(&cache->lock);
+
                 return value;
             }
 
@@ -396,6 +403,8 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
 
         goto found;
     }
+
+    ngx_rwlock_unlock(&cache->lock);
 
     value = type->create(&id, err, &data);
 
@@ -431,6 +440,8 @@ ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
         }
     }
 
+    ngx_rwlock_wlock(&cache->lock);
+
     ngx_ssl_cache_expire(cache, 1, pool->log);
 
     if (cache->current >= cache->max) {
@@ -446,6 +457,8 @@ found:
     cn->accessed = now;
 
     ngx_queue_insert_head(&cache->expire_queue, &cn->queue);
+
+    ngx_rwlock_unlock(&cache->lock);
 
     return type->ref(err, cn->value);
 }

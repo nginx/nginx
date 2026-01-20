@@ -24,20 +24,21 @@ static ngx_connection_t *ngx_lookup_udp_connection(ngx_listening_t *ls,
 void
 ngx_event_recvmsg(ngx_event_t *ev)
 {
-    ssize_t            n;
-    ngx_buf_t          buf;
-    ngx_log_t         *log;
-    ngx_err_t          err;
-    socklen_t          socklen, local_socklen;
-    ngx_event_t       *rev, *wev;
-    ngx_cyclex_t      *cyclex;
-    struct iovec       iov[1];
-    struct msghdr      msg;
-    ngx_sockaddr_t     sa, lsa;
-    struct sockaddr   *sockaddr, *local_sockaddr;
-    ngx_listening_t   *ls;
-    ngx_event_conf_t  *ecf;
-    ngx_connection_t  *c, *lc;
+    ssize_t               n;
+    ngx_buf_t             buf;
+    ngx_log_t            *log;
+    ngx_err_t             err;
+    socklen_t             socklen, local_socklen;
+    ngx_event_t          *rev, *wev;
+    ngx_cyclex_t         *cyclex;
+    struct iovec          iov[1];
+    struct msghdr         msg;
+    ngx_sockaddr_t        sa, lsa;
+    struct sockaddr      *sockaddr, *local_sockaddr;
+    ngx_listening_t      *ls;
+    ngx_event_conf_t     *ecf;
+    ngx_connection_t     *c, *lc;
+    ngx_listening_ctx_t  *ctx;
     static ngx_thread_local u_char      buffer[65535];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
@@ -150,6 +151,21 @@ ngx_event_recvmsg(ngx_event_t *ev)
         }
 
 #endif
+
+        ctx = ngx_get_cycle_ctx(ngx_cycle, ls->ctx_id);
+
+        if (ctx == NULL) {
+            ctx = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+                              sizeof(ngx_listening_ctx_t));
+            if (ctx == NULL) {
+                break;
+            }
+
+            ngx_rbtree_init(&ctx->rbtree, &ctx->sentinel,
+                            ngx_udp_rbtree_insert_value);
+
+            ngx_set_cycle_ctx(ngx_cycle, ls->ctx_id, ctx);
+        }
 
         c = ngx_lookup_udp_connection(ls, sockaddr, socklen, local_sockaddr,
                                       local_socklen);
@@ -451,6 +467,7 @@ ngx_insert_udp_connection(ngx_connection_t *c)
 {
     uint32_t               hash;
     ngx_pool_cleanup_t    *cln;
+    ngx_listening_ctx_t   *ctx;
     ngx_udp_connection_t  *udp;
 
     if (c->udp) {
@@ -485,7 +502,9 @@ ngx_insert_udp_connection(ngx_connection_t *c)
     cln->data = c;
     cln->handler = ngx_delete_udp_connection;
 
-    ngx_rbtree_insert(&c->listening->rbtree, &udp->node);
+    ctx = ngx_get_cycle_ctx(ngx_cycle, c->listening->ctx_id);
+
+    ngx_rbtree_insert(&ctx->rbtree, &udp->node);
 
     c->udp = udp;
 
@@ -498,11 +517,17 @@ ngx_delete_udp_connection(void *data)
 {
     ngx_connection_t  *c = data;
 
+    ngx_listening_ctx_t  *ctx;
+
     if (c->udp == NULL) {
         return;
     }
 
-    ngx_rbtree_delete(&c->listening->rbtree, &c->udp->node);
+    ctx = ngx_get_cycle_ctx(ngx_cycle, c->listening->ctx_id);
+
+    if (ctx) {
+        ngx_rbtree_delete(&ctx->rbtree, &c->udp->node);
+    }
 
     c->udp = NULL;
 }
@@ -516,6 +541,7 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
     ngx_int_t              rc;
     ngx_connection_t      *c;
     ngx_rbtree_node_t     *node, *sentinel;
+    ngx_listening_ctx_t   *ctx;
     ngx_udp_connection_t  *udp;
 
 #if (NGX_HAVE_UNIX_DOMAIN)
@@ -534,8 +560,9 @@ ngx_lookup_udp_connection(ngx_listening_t *ls, struct sockaddr *sockaddr,
 
 #endif
 
-    node = ls->rbtree.root;
-    sentinel = ls->rbtree.sentinel;
+    ctx = ngx_get_cycle_ctx(ngx_cycle, ls->ctx_id);
+    node = ctx->rbtree.root;
+    sentinel = ctx->rbtree.sentinel;
 
     ngx_crc32_init(hash);
     ngx_crc32_update(&hash, (u_char *) sockaddr, socklen);

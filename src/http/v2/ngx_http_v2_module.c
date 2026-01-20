@@ -294,6 +294,8 @@ ngx_http_v2_create_main_conf(ngx_conf_t *cf)
 
     h2mcf->recv_buffer_size = NGX_CONF_UNSET_SIZE;
 
+    h2mcf->recv_buffer_id = ngx_cycle_ctx_add(cf);
+
     return h2mcf;
 }
 

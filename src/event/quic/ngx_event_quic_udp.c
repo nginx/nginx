@@ -19,23 +19,24 @@ static ngx_connection_t *ngx_quic_lookup_connection(ngx_listening_t *ls,
 void
 ngx_quic_recvmsg(ngx_event_t *ev)
 {
-    ssize_t             n;
-    ngx_str_t           key;
-    ngx_buf_t           buf;
-    ngx_log_t          *log;
-    ngx_err_t           err;
-    socklen_t           socklen, local_socklen;
-    ngx_event_t        *rev, *wev;
-    ngx_cyclex_t       *cyclex;
-    struct iovec        iov[1];
-    struct msghdr       msg;
-    ngx_sockaddr_t      sa, lsa;
-    struct sockaddr    *sockaddr, *local_sockaddr;
-    ngx_listening_t    *ls;
-    ngx_event_conf_t   *ecf;
-    ngx_connection_t   *c, *lc;
-    ngx_quic_socket_t  *qsock;
-    static u_char       buffer[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+    ssize_t               n;
+    ngx_str_t             key;
+    ngx_buf_t             buf;
+    ngx_log_t            *log;
+    ngx_err_t             err;
+    socklen_t             socklen, local_socklen;
+    ngx_event_t          *rev, *wev;
+    ngx_cyclex_t         *cyclex;
+    struct iovec          iov[1];
+    struct msghdr         msg;
+    ngx_sockaddr_t        sa, lsa;
+    struct sockaddr      *sockaddr, *local_sockaddr;
+    ngx_listening_t      *ls;
+    ngx_event_conf_t     *ecf;
+    ngx_connection_t     *c, *lc;
+    ngx_quic_socket_t    *qsock;
+    ngx_listening_ctx_t  *ctx;
+    static u_char         buffer[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
     u_char             msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
@@ -152,6 +153,21 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         }
 
 #endif
+
+        ctx = ngx_get_cycle_ctx(ngx_cycle, ls->ctx_id);
+
+        if (ctx == NULL) {
+            ctx = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+                              sizeof(ngx_listening_ctx_t));
+            if (ctx == NULL) {
+                break;
+            }
+
+            ngx_rbtree_init(&ctx->rbtree, &ctx->sentinel,
+                            ngx_udp_rbtree_insert_value);
+
+            ngx_set_cycle_ctx(ngx_cycle, ls->ctx_id, ctx);
+        }
 
         if (ngx_quic_get_packet_dcid(ev->log, buffer, n, &key) != NGX_OK) {
             goto next;
@@ -372,18 +388,20 @@ static ngx_connection_t *
 ngx_quic_lookup_connection(ngx_listening_t *ls, ngx_str_t *key,
     struct sockaddr *local_sockaddr, socklen_t local_socklen)
 {
-    uint32_t            hash;
-    ngx_int_t           rc;
-    ngx_connection_t   *c;
-    ngx_rbtree_node_t  *node, *sentinel;
-    ngx_quic_socket_t  *qsock;
+    uint32_t              hash;
+    ngx_int_t             rc;
+    ngx_connection_t     *c;
+    ngx_rbtree_node_t    *node, *sentinel;
+    ngx_quic_socket_t    *qsock;
+    ngx_listening_ctx_t  *ctx;
 
     if (key->len == 0) {
         return NULL;
     }
 
-    node = ls->rbtree.root;
-    sentinel = ls->rbtree.sentinel;
+    ctx = ngx_get_cycle_ctx(ngx_cycle, ls->ctx_id);
+    node = ctx->rbtree.root;
+    sentinel = ctx->rbtree.sentinel;
     hash = ngx_crc32_long(key->data, key->len);
 
     while (node != sentinel) {
