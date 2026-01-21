@@ -12,7 +12,7 @@
 
 static ngx_int_t ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all);
 #if (NGX_HAVE_EPOLLEXCLUSIVE)
-static void ngx_reorder_accept_events(ngx_listening_t *ls);
+static void ngx_reorder_accept_events(ngx_connection_t *c);
 #endif
 static void ngx_close_accepted_connection(ngx_connection_t *c);
 
@@ -26,6 +26,7 @@ ngx_event_accept(ngx_event_t *ev)
     ngx_uint_t         level;
     ngx_socket_t       s;
     ngx_event_t       *rev, *wev;
+    ngx_cyclex_t      *cyclex;
     ngx_sockaddr_t     sa;
     ngx_listening_t   *ls;
     ngx_connection_t  *c, *lc;
@@ -136,8 +137,10 @@ ngx_event_accept(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
-        ngx_accept_disabled = ngx_cycle->connection_n / 8
-                              - ngx_cycle->free_connection_n;
+        cyclex = ngx_get_cyclex(ngx_cycle);
+
+        ngx_accept_disabled = cyclex->connection_n / 8
+                              - cyclex->free_connection_n;
 
         c = ngx_get_connection(s, ev->log);
 
@@ -336,7 +339,7 @@ ngx_event_accept(ngx_event_t *ev)
     } while (ev->available);
 
 #if (NGX_HAVE_EPOLLEXCLUSIVE)
-    ngx_reorder_accept_events(ls);
+    ngx_reorder_accept_events(lc);
 #endif
 }
 
@@ -383,13 +386,14 @@ ngx_int_t
 ngx_enable_accept_events(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
-    ngx_listening_t   *ls;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
-    ls = cycle->listening.elts;
-    for (i = 0; i < cycle->listening.nelts; i++) {
+    cyclex = ngx_get_cyclex(cycle);
 
-        c = ls[i].connection;
+    for (i = 0; i < cyclex->listen_connection_n; i++) {
+
+        c = cyclex->listen_connections[i];
 
         if (c == NULL || c->read->active) {
             continue;
@@ -408,13 +412,14 @@ static ngx_int_t
 ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 {
     ngx_uint_t         i;
-    ngx_listening_t   *ls;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
-    ls = cycle->listening.elts;
-    for (i = 0; i < cycle->listening.nelts; i++) {
+    cyclex = ngx_get_cyclex(cycle);
 
-        c = ls[i].connection;
+    for (i = 0; i < cyclex->listen_connection_n; i++) {
+
+        c = cyclex->listen_connections[i];
 
         if (c == NULL || !c->read->active) {
             continue;
@@ -427,7 +432,7 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
          * when disabling accept events due to accept mutex
          */
 
-        if (ls[i].reuseport && !all) {
+        if (c->listening->reuseport && !all) {
             continue;
         }
 
@@ -447,10 +452,8 @@ ngx_disable_accept_events(ngx_cycle_t *cycle, ngx_uint_t all)
 #if (NGX_HAVE_EPOLLEXCLUSIVE)
 
 static void
-ngx_reorder_accept_events(ngx_listening_t *ls)
+ngx_reorder_accept_events(ngx_connection_t *c)
 {
-    ngx_connection_t  *c;
-
     /*
      * Linux with EPOLLEXCLUSIVE usually notifies only the process which
      * was first to add the listening socket to the epoll instance.  As
@@ -465,13 +468,11 @@ ngx_reorder_accept_events(ngx_listening_t *ls)
 
 #if (NGX_HAVE_REUSEPORT)
 
-    if (ls->reuseport) {
+    if (c->listening->reuseport) {
         return;
     }
 
 #endif
-
-    c = ls->connection;
 
     if (c->requests++ % 16 != 0
         && ngx_accept_disabled <= 0)

@@ -47,7 +47,6 @@ struct ngx_listening_s {
     size_t              post_accept_buffer_size;
 
     ngx_listening_t    *previous;
-    ngx_connection_t   *connection;
 
     ngx_rbtree_t        rbtree;
     ngx_rbtree_node_t   sentinel;

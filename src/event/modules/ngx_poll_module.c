@@ -207,7 +207,7 @@ ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
             event_list[ev->index] = event_list[nevents];
 
-            c = ngx_cycle->files[event_list[nevents].fd];
+            c = ngx_get_cyclex(ev->cycle)->files[event_list[nevents].fd];
 
             if (c->fd == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -336,7 +336,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             continue;
         }
 
-        c = ngx_cycle->files[event_list[i].fd];
+        c = ngx_get_cyclex(cycle)->files[event_list[i].fd];
 
         if (c->fd == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");

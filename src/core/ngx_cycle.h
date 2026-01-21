@@ -38,6 +38,7 @@ struct ngx_shm_zone_s {
 
 struct ngx_cycle_s {
     void                  ****conf_ctx;
+    void                   ***ctx;
     ngx_pool_t               *pool;
 
     ngx_log_t                *log;
@@ -45,17 +46,9 @@ struct ngx_cycle_s {
 
     ngx_uint_t                log_use_stderr;  /* unsigned  log_use_stderr:1; */
 
-    ngx_connection_t        **files;
-    ngx_connection_t         *free_connections;
-    ngx_uint_t                free_connection_n;
-
     ngx_module_t            **modules;
     ngx_uint_t                modules_n;
     ngx_uint_t                modules_used;    /* unsigned  modules_used:1; */
-
-    ngx_queue_t               reusable_connections_queue;
-    ngx_uint_t                reusable_connections_n;
-    time_t                    connections_reuse_time;
 
     ngx_array_t               listening;
     ngx_array_t               paths;
@@ -68,11 +61,7 @@ struct ngx_cycle_s {
     ngx_list_t                shared_memory;
 
     ngx_uint_t                connection_n;
-    ngx_uint_t                files_n;
-
-    ngx_connection_t         *connections;
-    ngx_event_t              *read_events;
-    ngx_event_t              *write_events;
+    ngx_uint_t                ctx_n;
 
     ngx_cycle_t              *old_cycle;
 
@@ -84,6 +73,30 @@ struct ngx_cycle_s {
     ngx_str_t                 lock_file;
     ngx_str_t                 hostname;
 };
+
+
+typedef struct {
+    ngx_pool_t               *pool;
+
+    ngx_connection_t        **files;
+    ngx_connection_t         *free_connections;
+    ngx_connection_t        **listen_connections;
+    ngx_connection_t         *connections;
+
+    ngx_event_t              *read_events;
+    ngx_event_t              *write_events;
+    ngx_event_t              *shutdown_event;
+
+    ngx_queue_t               reusable_connections_queue;
+    time_t                    connections_reuse_time;
+
+    ngx_uint_t                files_n;
+    ngx_uint_t                timers_n;
+    ngx_uint_t                connection_n;
+    ngx_uint_t                free_connection_n;
+    ngx_uint_t                reusable_connections_n;
+    ngx_uint_t                listen_connection_n;
+} ngx_cyclex_t;
 
 
 typedef struct {
@@ -122,7 +135,14 @@ typedef struct {
 } ngx_core_conf_t;
 
 
-#define ngx_is_init_cycle(cycle)  (cycle->conf_ctx == NULL)
+#define ngx_is_init_cycle(cycle)        (cycle->conf_ctx == NULL)
+
+#define ngx_cycle_ctx_add(cf)           ((cf)->cycle->ctx_n++)
+#define ngx_get_cycle_ctx(cycle, n)     ((cycle)->ctx[0][n])
+#define ngx_set_cycle_ctx(cycle, n, d)  (cycle)->ctx[0][n] = (d)
+
+#define ngx_get_cyclex(cycle)                                                 \
+    ((ngx_cyclex_t *) ngx_get_cycle_ctx(cycle, 0))
 
 #define ngx_save_cycle(cycle)                                                 \
     cycle = (ngx_cycle_t *) ngx_cycle
@@ -134,6 +154,8 @@ typedef struct {
 
 
 ngx_cycle_t *ngx_init_cycle(ngx_cycle_t *old_cycle);
+ngx_int_t ngx_init_cyclex(ngx_cycle_t *cycle);
+void ngx_free_cyclex(ngx_cycle_t *cycle);
 ngx_int_t ngx_create_pidfile(ngx_str_t *name, ngx_log_t *log);
 void ngx_delete_pidfile(ngx_cycle_t *cycle);
 ngx_int_t ngx_signal_process(ngx_cycle_t *cycle, char *sig);

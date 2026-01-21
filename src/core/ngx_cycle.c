@@ -23,7 +23,6 @@ ngx_array_t            ngx_old_cycles;
 
 static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
-static ngx_event_t     ngx_shutdown_event;
 
 ngx_uint_t             ngx_test_config;
 ngx_uint_t             ngx_dump_config;
@@ -81,6 +80,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
+    cycle->ctx_n = 1; /* ngx_cyclex_t */
 
     cycle->conf_prefix.len = old_cycle->conf_prefix.len;
     cycle->conf_prefix.data = ngx_pstrdup(pool, &old_cycle->conf_prefix);
@@ -190,9 +190,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     ngx_memzero(cycle->listening.elts, n * sizeof(ngx_listening_t));
-
-
-    ngx_queue_init(&cycle->reusable_connections_queue);
 
 
     cycle->conf_ctx = ngx_pcalloc(pool, ngx_max_module * sizeof(void *));
@@ -505,6 +502,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         continue;
     }
 
+
+    cycle->ctx = ngx_pcalloc(pool, sizeof(void *));
+    if (cycle->ctx == NULL) {
+        goto failed;
+    }
 
     /* handle the listening sockets */
 
@@ -946,6 +948,67 @@ failed:
 }
 
 
+ngx_int_t
+ngx_init_cyclex(ngx_cycle_t *cycle)
+{
+    void          *p;
+    ngx_pool_t    *pool;
+    ngx_cyclex_t  *cyclex;
+
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE
+        && ngx_process != NGX_PROCESS_HELPER)
+    {
+        return NGX_OK;
+    }
+
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, cycle->log);
+    if (pool == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_pcalloc(pool, cycle->ctx_n * sizeof(void *));
+    if (p == NULL) {
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    cyclex = ngx_pcalloc(pool, sizeof(ngx_cyclex_t));
+    if (cyclex == NULL) {
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    cyclex->pool = pool;
+
+    cycle->ctx[0] = p;
+
+    ngx_set_cycle_ctx(cycle, 0, cyclex);
+
+    return NGX_OK;
+}
+
+
+void
+ngx_free_cyclex(ngx_cycle_t *cycle)
+{
+    ngx_cyclex_t  *cyclex;
+
+    if (cycle->ctx[0] == NULL) {
+        return;
+    }
+
+    cyclex = ngx_get_cyclex(cycle);
+    if (cyclex == NULL) {
+        return;
+    }
+
+    ngx_destroy_pool(cyclex->pool);
+
+    cycle->ctx[0] = NULL;
+}
+
+
 static void
 ngx_destroy_cycle_pools(ngx_conf_t *conf)
 {
@@ -1371,6 +1434,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
 static void
 ngx_clean_old_cycles(ngx_event_t *ev)
 {
+#if 0
     ngx_uint_t     i, n, found, live;
     ngx_log_t     *log;
     ngx_cycle_t  **cycle;
@@ -1422,23 +1486,27 @@ ngx_clean_old_cycles(ngx_event_t *ev)
         ngx_temp_pool = NULL;
         ngx_old_cycles.nelts = 0;
     }
+#endif
 }
 
 
 void
 ngx_set_shutdown_timer(ngx_cycle_t *cycle)
 {
+    ngx_cyclex_t     *cyclex;
     ngx_core_conf_t  *ccf;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->shutdown_timeout) {
-        ngx_shutdown_event.handler = ngx_shutdown_timer_handler;
-        ngx_shutdown_event.data = cycle;
-        ngx_shutdown_event.log = cycle->log;
-        ngx_shutdown_event.cancelable = 1;
+        cyclex = ngx_get_cyclex(cycle);
 
-        ngx_add_timer(&ngx_shutdown_event, ccf->shutdown_timeout);
+        cyclex->shutdown_event->handler = ngx_shutdown_timer_handler;
+        cyclex->shutdown_event->data = cycle;
+        cyclex->shutdown_event->log = cycle->log;
+        cyclex->shutdown_event->cancelable = 1;
+
+        ngx_add_timer(cyclex->shutdown_event, ccf->shutdown_timeout);
     }
 }
 
@@ -1448,13 +1516,15 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
 {
     ngx_uint_t         i;
     ngx_cycle_t       *cycle;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
     cycle = ev->data;
+    cyclex = ngx_get_cyclex(cycle);
 
-    c = cycle->connections;
+    c = cyclex->connections;
 
-    for (i = 0; i < cycle->connection_n; i++) {
+    for (i = 0; i < cyclex->connection_n; i++) {
 
         if (c[i].fd == (ngx_socket_t) -1
             || c[i].read == NULL

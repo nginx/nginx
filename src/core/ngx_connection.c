@@ -1101,7 +1101,7 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
     ngx_listening_t   *ls;
-    ngx_connection_t  *c;
+    ngx_connection_t  *c, **lc;
 
     if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
         return;
@@ -1110,7 +1110,14 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     ngx_accept_mutex_held = 0;
     ngx_use_accept_mutex = 0;
 
+    lc = NULL;
+
+    if (cycle->ctx[0]) {
+        lc = ngx_get_cyclex(cycle)->listen_connections;
+    }
+
     ls = cycle->listening.elts;
+
     for (i = 0; i < cycle->listening.nelts; i++) {
 
 #if (NGX_QUIC)
@@ -1119,9 +1126,9 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
         }
 #endif
 
-        c = ls[i].connection;
+        if (lc && lc[i]) {
+            c = lc[i];
 
-        if (c) {
             if (c->read->active) {
                 if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
 
@@ -1180,35 +1187,38 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
     ngx_uint_t         instance;
     ngx_event_t       *rev, *wev;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
+
+    cyclex = ngx_get_cyclex(ngx_cycle);
 
     /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
 
-    if (ngx_cycle->files && (ngx_uint_t) s >= ngx_cycle->files_n) {
+    if (cyclex->files && (ngx_uint_t) s >= cyclex->files_n) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "the new socket has number %d, "
                       "but only %ui files are available",
-                      s, ngx_cycle->files_n);
+                      s, cyclex->files_n);
         return NULL;
     }
 
     ngx_drain_connections((ngx_cycle_t *) ngx_cycle);
 
-    c = ngx_cycle->free_connections;
+    c = cyclex->free_connections;
 
     if (c == NULL) {
         ngx_log_error(NGX_LOG_ALERT, log, 0,
                       "%ui worker_connections are not enough",
-                      ngx_cycle->connection_n);
+                      cyclex->connection_n);
 
         return NULL;
     }
 
-    ngx_cycle->free_connections = c->data;
-    ngx_cycle->free_connection_n--;
+    cyclex->free_connections = c->data;
+    cyclex->free_connection_n--;
 
-    if (ngx_cycle->files && ngx_cycle->files[s] == NULL) {
-        ngx_cycle->files[s] = c;
+    if (cyclex->files && cyclex->files[s] == NULL) {
+        cyclex->files[s] = c;
     }
 
     rev = c->read;
@@ -1244,12 +1254,16 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 void
 ngx_free_connection(ngx_connection_t *c)
 {
-    c->data = ngx_cycle->free_connections;
-    ngx_cycle->free_connections = c;
-    ngx_cycle->free_connection_n++;
+    ngx_cyclex_t  *cyclex;
 
-    if (ngx_cycle->files && ngx_cycle->files[c->fd] == c) {
-        ngx_cycle->files[c->fd] = NULL;
+    cyclex = ngx_get_cyclex(ngx_cycle);
+
+    c->data = cyclex->free_connections;
+    cyclex->free_connections = c;
+    cyclex->free_connection_n++;
+
+    if (cyclex->files && cyclex->files[c->fd] == c) {
+        cyclex->files[c->fd] = NULL;
     }
 }
 
@@ -1345,12 +1359,16 @@ ngx_close_connection(ngx_connection_t *c)
 void
 ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
 {
+    ngx_cyclex_t  *cyclex;
+
+    cyclex = ngx_get_cyclex(ngx_cycle);
+
     ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                    "reusable connection: %ui", reusable);
 
     if (c->reusable) {
         ngx_queue_remove(&c->queue);
-        ngx_cycle->reusable_connections_n--;
+        cyclex->reusable_connections_n--;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, -1);
@@ -1363,8 +1381,8 @@ ngx_reusable_connection(ngx_connection_t *c, ngx_uint_t reusable)
         /* need cast as ngx_cycle is volatile */
 
         ngx_queue_insert_head(
-            (ngx_queue_t *) &ngx_cycle->reusable_connections_queue, &c->queue);
-        ngx_cycle->reusable_connections_n++;
+                (ngx_queue_t *) &cyclex->reusable_connections_queue, &c->queue);
+        cyclex->reusable_connections_n++;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_waiting, 1);
@@ -1378,32 +1396,35 @@ ngx_drain_connections(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i, n;
     ngx_queue_t       *q;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
-    if (cycle->free_connection_n > cycle->connection_n / 16
-        || cycle->reusable_connections_n == 0)
+    cyclex = ngx_get_cyclex(cycle);
+
+    if (cyclex->free_connection_n > cyclex->connection_n / 16
+        || cyclex->reusable_connections_n == 0)
     {
         return;
     }
 
-    if (cycle->connections_reuse_time != ngx_time()) {
-        cycle->connections_reuse_time = ngx_time();
+    if (cyclex->connections_reuse_time != ngx_time()) {
+        cyclex->connections_reuse_time = ngx_time();
 
         ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
                       "%ui worker_connections are not enough, "
                       "reusing connections",
-                      cycle->connection_n);
+                      cyclex->connection_n);
     }
 
     c = NULL;
-    n = ngx_max(ngx_min(32, cycle->reusable_connections_n / 8), 1);
+    n = ngx_max(ngx_min(32, cyclex->reusable_connections_n / 8), 1);
 
     for (i = 0; i < n; i++) {
-        if (ngx_queue_empty(&cycle->reusable_connections_queue)) {
+        if (ngx_queue_empty(&cyclex->reusable_connections_queue)) {
             break;
         }
 
-        q = ngx_queue_last(&cycle->reusable_connections_queue);
+        q = ngx_queue_last(&cyclex->reusable_connections_queue);
         c = ngx_queue_data(q, ngx_connection_t, queue);
 
         ngx_log_debug0(NGX_LOG_DEBUG_CORE, c->log, 0,
@@ -1413,7 +1434,7 @@ ngx_drain_connections(ngx_cycle_t *cycle)
         c->read->handler(c->read);
     }
 
-    if (cycle->free_connection_n == 0 && c && c->reusable) {
+    if (cyclex->free_connection_n == 0 && c && c->reusable) {
 
         /*
          * if no connections were freed, try to reuse the last
@@ -1434,11 +1455,16 @@ void
 ngx_close_idle_connections(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
-    c = cycle->connections;
+    ngx_set_cycle(cycle);
 
-    for (i = 0; i < cycle->connection_n; i++) {
+    cyclex = ngx_get_cyclex(cycle);
+
+    c = cyclex->connections;
+
+    for (i = 0; i < cyclex->connection_n; i++) {
 
         /* THREAD: lock */
 

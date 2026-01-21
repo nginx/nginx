@@ -685,8 +685,10 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     ngx_exit_log.writer = NULL;
 
     ngx_exit_cycle.log = &ngx_exit_log;
+    /* XXX
     ngx_exit_cycle.files = ngx_cycle->files;
     ngx_exit_cycle.files_n = ngx_cycle->files_n;
+    */
     ngx_cycle = &ngx_exit_cycle;
 
     ngx_destroy_pool(cycle->pool);
@@ -940,6 +942,7 @@ static void
 ngx_worker_process_exit(ngx_cycle_t *cycle)
 {
     ngx_uint_t         i;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
     for (i = 0; cycle->modules[i]; i++) {
@@ -949,8 +952,10 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     }
 
     if (ngx_exiting && !ngx_terminate) {
-        c = cycle->connections;
-        for (i = 0; i < cycle->connection_n; i++) {
+        cyclex = ngx_get_cyclex(cycle);
+
+        c = cyclex->connections;
+        for (i = 0; i < cyclex->connection_n; i++) {
             if (c[i].fd != -1
                 && c[i].read
                 && !c[i].read->accept
@@ -985,8 +990,10 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
     ngx_exit_log.writer = NULL;
 
     ngx_exit_cycle.log = &ngx_exit_log;
+    /* XXX
     ngx_exit_cycle.files = ngx_cycle->files;
     ngx_exit_cycle.files_n = ngx_cycle->files_n;
+    */
     ngx_cycle = &ngx_exit_cycle;
 
     ngx_destroy_pool(cycle->pool);

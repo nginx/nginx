@@ -26,6 +26,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
     ngx_err_t           err;
     socklen_t           socklen, local_socklen;
     ngx_event_t        *rev, *wev;
+    ngx_cyclex_t       *cyclex;
     struct iovec        iov[1];
     struct msghdr       msg;
     ngx_sockaddr_t      sa, lsa;
@@ -208,8 +209,10 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         (void) ngx_atomic_fetch_add(ngx_stat_accepted, 1);
 #endif
 
-        ngx_accept_disabled = ngx_cycle->connection_n / 8
-                              - ngx_cycle->free_connection_n;
+        cyclex = ngx_get_cyclex(ngx_cycle);
+
+        ngx_accept_disabled = cyclex->connection_n / 8
+                              - cyclex->free_connection_n;
 
         c = ngx_get_connection(lc->fd, ev->log);
         if (c == NULL) {
