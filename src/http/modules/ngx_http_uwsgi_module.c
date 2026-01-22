@@ -1407,7 +1407,7 @@ ngx_http_uwsgi_process_header(ngx_http_request_t *r)
             } else if (u->headers_in.location) {
                 u->headers_in.status_n = 302;
                 ngx_str_set(&u->headers_in.status_line,
-                            "302 Moved Temporarily");
+                            "302 Found");
 
             } else {
                 u->headers_in.status_n = 200;
