@@ -62,6 +62,7 @@ typedef struct {
     size_t                     send_window;
     size_t                     recv_window;
     ngx_uint_t                 last_stream_id;
+    void                      *data;
 } ngx_http_grpc_conn_t;
 
 
@@ -216,6 +217,8 @@ static ngx_int_t ngx_http_grpc_merge_ssl(ngx_conf_t *cf,
 static ngx_int_t ngx_http_grpc_set_ssl(ngx_conf_t *cf,
     ngx_http_grpc_loc_conf_t *glcf);
 #endif
+
+static void ngx_http_grpc_ctx_cleanup(void *data);
 
 
 static ngx_conf_bitmask_t  ngx_http_grpc_next_upstream_masks[] = {
@@ -548,6 +551,7 @@ static ngx_int_t
 ngx_http_grpc_handler(ngx_http_request_t *r)
 {
     ngx_int_t                  rc;
+    ngx_pool_cleanup_t        *cln;
     ngx_http_upstream_t       *u;
     ngx_http_grpc_ctx_t       *ctx;
     ngx_http_grpc_loc_conf_t  *glcf;
@@ -560,6 +564,13 @@ ngx_http_grpc_handler(ngx_http_request_t *r)
     if (ctx == NULL) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
+
+    cln = ngx_pool_cleanup_add(r->pool, 0);
+    if (cln == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    cln->handler = ngx_http_grpc_ctx_cleanup;
+    cln->data = ctx;
 
     ctx->request = r;
 
@@ -4248,6 +4259,8 @@ ngx_http_grpc_get_connection_data(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
+        ctx->connection->data = ctx;
+
         ctx->send_window = ctx->connection->init_window;
         ctx->recv_window = NGX_HTTP_V2_MAX_WINDOW;
 
@@ -4264,6 +4277,8 @@ ngx_http_grpc_get_connection_data(ngx_http_request_t *r,
 
     cln->handler = ngx_http_grpc_cleanup;
     ctx->connection = cln->data;
+
+    ctx->connection->data = ctx;
 
     ctx->connection->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->connection->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
@@ -4282,10 +4297,27 @@ ngx_http_grpc_get_connection_data(ngx_http_request_t *r,
 static void
 ngx_http_grpc_cleanup(void *data)
 {
+    ngx_http_grpc_ctx_t   *ctx;
+    ngx_http_grpc_conn_t  *conn;
+
 #if 0
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "grpc cleanup");
 #endif
+
+    /*
+     * clear ctx->connection when the connection is freed to
+     * avoid dangling references; otherwise, it may be reused
+     * in certain scenarios, and cause crash.
+     */
+
+    conn = data;
+
+    if (conn && conn->data) {
+        ctx = conn->data;
+        ctx->connection = NULL;
+    }
+
     return;
 }
 
@@ -4876,6 +4908,27 @@ ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static void
+ngx_http_grpc_ctx_cleanup(void *data)
+{
+    ngx_http_grpc_ctx_t  *ctx;
+
+    ctx = data;
+
+    /*
+     * if ctx is freed prior to the upstream connection,
+     * set ctx->connection->data to NULL to avoid
+     * dangling references.
+     */
+
+    if (ctx && ctx->connection) {
+        ctx->connection->data = NULL;
+    }
+
+    return;
 }
 
 
