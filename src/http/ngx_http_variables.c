@@ -81,6 +81,8 @@ static void ngx_http_variable_set_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_is_args(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_uargs(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_document_root(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_realpath_root(ngx_http_request_t *r,
@@ -271,6 +273,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       ngx_http_variable_request,
       offsetof(ngx_http_request_t, args),
       NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("uargs"), NULL, ngx_http_variable_uargs,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("is_args"), NULL, ngx_http_variable_is_args,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
@@ -1662,6 +1667,37 @@ ngx_http_variable_is_args(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = (u_char *) "?";
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_uargs(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *dst, *src;
+
+    if (r->args.len == 0) {
+        *v = ngx_http_variable_null_value;
+        return NGX_OK;
+    }
+
+    /* allocate buffer for unescaped value (can only shrink or stay same) */
+    dst = ngx_pnalloc(r->pool, r->args.len);
+    if (dst == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->data = dst;
+    src = r->args.data;
+
+    ngx_unescape_uri(&dst, &src, r->args.len, 0);
+
+    v->len = dst - v->data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
 
     return NGX_OK;
 }
