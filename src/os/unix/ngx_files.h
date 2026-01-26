@@ -114,6 +114,10 @@ typedef struct {
 #define ngx_delete_file_n        "unlink()"
 
 
+#define ngx_dup                  dup
+#define ngx_dup_n                "dup()"
+
+
 ngx_fd_t ngx_open_tempfile(u_char *name, ngx_uint_t persistent,
     ngx_uint_t access);
 #define ngx_open_tempfile_n      "open()"

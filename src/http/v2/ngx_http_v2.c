@@ -3921,7 +3921,7 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
     /* set rb->filter_need_buffering */
 
-    rc = ngx_http_top_request_body_filter(r, NULL);
+    rc = ngx_http_safe_top_request_body_filter(r, NULL);
 
     if (rc != NGX_OK) {
         stream->skip_data = 1;
@@ -4255,7 +4255,7 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
 
 update:
 
-    rc = ngx_http_top_request_body_filter(r, cl);
+    rc = ngx_http_safe_top_request_body_filter(r, cl);
 
     ngx_chain_update_chains(r->pool, &rb->free, &rb->busy, &cl,
                             (ngx_buf_tag_t) &ngx_http_v2_filter_request_body);

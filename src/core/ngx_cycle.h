@@ -76,6 +76,8 @@ struct ngx_cycle_s {
 
     ngx_cycle_t              *old_cycle;
 
+    ngx_uint_t                dynamic;         /* unsigned  dynamic:1; */
+
     ngx_str_t                 conf_file;
     ngx_str_t                 conf_param;
     ngx_str_t                 conf_prefix;

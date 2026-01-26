@@ -45,6 +45,8 @@ USE_THREADS=NO
 
 NGX_FILE_AIO=NO
 
+NGX_DYNAMIC_CONF=NO
+
 QUIC_BPF=NO
 
 HTTP=YES
@@ -217,6 +219,8 @@ do
         --with-threads)                  USE_THREADS=YES            ;;
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
+
+        --with-dynamic-conf)             NGX_DYNAMIC_CONF=YES       ;;
 
         --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
 
@@ -453,6 +457,8 @@ cat << END
   --with-threads                     enable thread pool support
 
   --with-file-aio                    enable file AIO support
+
+  --with-dynamic-conf                enable dynamic configuration support
 
   --without-quic_bpf_module          disable ngx_quic_bpf_module
 

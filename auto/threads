@@ -7,7 +7,7 @@ if [ $USE_THREADS = YES ]; then
     if [ "$NGX_PLATFORM" = win32 ]; then
         cat << END
 
-$0: --with-threads is not supported on Windows
+$0: threads are not supported on Windows
 
 END
         exit 1

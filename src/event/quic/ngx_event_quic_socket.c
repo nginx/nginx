@@ -62,6 +62,7 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_memcpy(qc->tp.initial_scid.data, qsock->sid.id, qsock->sid.len);
 
     /* for all packets except first, this is set at udp layer */
+    tmp = (ngx_quic_socket_t *) c->udp;
     c->udp = &qsock->udp;
 
     /* ngx_quic_get_connection(c) macro is now usable */
@@ -86,13 +87,6 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
     ngx_quic_path_dbg(c, "set active", qc->path);
 
-    tmp = ngx_pcalloc(c->pool, sizeof(ngx_quic_socket_t));
-    if (tmp == NULL) {
-        goto failed;
-    }
-
-    tmp->sid.seqnum = NGX_QUIC_UNSET_PN; /* temporary socket */
-
     ngx_memcpy(tmp->sid.id, pkt->dcid.data, pkt->dcid.len);
     tmp->sid.len = pkt->dcid.len;
 
@@ -104,7 +98,7 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
 failed:
 
-    ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+    ngx_rbtree_delete(qsock->udp.rbtree, &qsock->udp.node);
     c->udp = NULL;
 
     return NGX_ERROR;
@@ -155,7 +149,7 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_queue_remove(&qsock->queue);
     ngx_queue_insert_head(&qc->free_sockets, &qsock->queue);
 
-    ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+    ngx_rbtree_delete(qsock->udp.rbtree, &qsock->udp.node);
     qc->nsockets--;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -176,11 +170,12 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     id.data = sid->id;
     id.len = sid->len;
 
+    qsock->udp.rbtree = c->udp->rbtree;
     qsock->udp.connection = c;
     qsock->udp.node.key = ngx_crc32_long(id.data, id.len);
     qsock->udp.key = id;
 
-    ngx_rbtree_insert(&c->listening->rbtree, &qsock->udp.node);
+    ngx_rbtree_insert(qsock->udp.rbtree, &qsock->udp.node);
 
     ngx_queue_insert_tail(&qc->sockets, &qsock->queue);
 

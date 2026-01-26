@@ -1406,6 +1406,15 @@ fi
 modules="$CORE_MODULES $EVENT_MODULES"
 
 
+if [ $NGX_DYNAMIC_CONF = YES ]; then
+    USE_THREADS=YES
+    have=NGX_DYNAMIC_CONF . auto/have
+    modules="$modules $DYNAMIC_CONF_MODULE"
+    CORE_DEPS="$CORE_DEPS $DYNAMIC_CONF_DEPS"
+    CORE_SRCS="$CORE_SRCS $DYNAMIC_CONF_SRCS"
+fi
+
+
 # thread pool module should be initialized after events
 if [ $USE_THREADS = YES ]; then
     modules="$modules $THREAD_POOL_MODULE"
