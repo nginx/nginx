@@ -1996,7 +1996,7 @@ unsafe:
 
 ngx_table_elt_t *
 ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
-    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value, u_char sep)
 {
     u_char           *start, *last, *end, ch;
     ngx_table_elt_t  *h;
@@ -2024,7 +2024,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
             }
 
             if (value == NULL) {
-                if (start == end || *start == ',') {
+                if (start == end || *start == sep) {
                     return h;
                 }
 
@@ -2038,7 +2038,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
 
             while (start < end && *start == ' ') { start++; }
 
-            for (last = start; last < end && *last != ';'; last++) {
+            for (last = start; last < end && *last != sep; last++) {
                 /* void */
             }
 
@@ -2051,7 +2051,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
 
             while (start < end) {
                 ch = *start++;
-                if (ch == ';' || ch == ',') {
+                if (ch == sep) {
                     break;
                 }
             }
