@@ -182,6 +182,12 @@ typedef struct {
 
 
 typedef struct {
+    ngx_array_t                 keys;
+    ngx_atomic_t                lock;
+} ngx_ssl_ticket_keys_t;
+
+
+typedef struct {
     ngx_rbtree_t                session_rbtree;
     ngx_rbtree_node_t           sentinel;
     ngx_queue_t                 expire_queue;
@@ -405,7 +411,7 @@ extern int  ngx_ssl_certificate_comp_index;
 extern int  ngx_ssl_client_hello_arg_index;
 
 
-extern u_char  ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
+extern ngx_thread_local u_char ngx_ssl_session_buffer[NGX_SSL_MAX_SESSION_SIZE];
 
 
 #endif /* _NGX_EVENT_OPENSSL_H_INCLUDED_ */

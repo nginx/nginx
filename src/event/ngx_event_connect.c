@@ -109,7 +109,7 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
 #if (NGX_HAVE_IP_BIND_ADDRESS_NO_PORT)
 
         if (pc->sockaddr->sa_family != AF_UNIX && port == 0) {
-            static int  bind_address_no_port = 1;
+            static volatile int  bind_address_no_port = 1;
 
             if (bind_address_no_port) {
                 if (setsockopt(s, IPPROTO_IP, IP_BIND_ADDRESS_NO_PORT,

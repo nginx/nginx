@@ -15,6 +15,7 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_quic_header_t *pkt)
 {
     ngx_quic_socket_t     *qsock, *tmp;
+    ngx_listening_ctx_t   *ctx;
     ngx_quic_client_id_t  *cid;
 
     /*
@@ -104,7 +105,12 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 
 failed:
 
-    ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+    ctx = ngx_get_cycle_ctx(ngx_cycle, c->listening->ctx_id);
+
+    if (ctx) {
+        ngx_rbtree_delete(&ctx->rbtree, &qsock->udp.node);
+    }
+
     c->udp = NULL;
 
     return NGX_ERROR;
@@ -148,6 +154,7 @@ ngx_quic_create_socket(ngx_connection_t *c, ngx_quic_connection_t *qc)
 void
 ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
 {
+    ngx_listening_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -155,7 +162,12 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_queue_remove(&qsock->queue);
     ngx_queue_insert_head(&qc->free_sockets, &qsock->queue);
 
-    ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+    ctx = ngx_get_cycle_ctx(ngx_cycle, c->listening->ctx_id);
+
+    if (ctx) {
+        ngx_rbtree_delete(&ctx->rbtree, &qsock->udp.node);
+    }
+
     qc->nsockets--;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -169,7 +181,24 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     ngx_quic_socket_t *qsock)
 {
     ngx_str_t              id;
+    ngx_listening_ctx_t   *ctx;
     ngx_quic_server_id_t  *sid;
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, c->listening->ctx_id);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+                          sizeof(ngx_listening_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+#if !(NGX_WIN32)
+        ngx_rbtree_init(&ctx->rbtree, &ctx->sentinel,
+                        ngx_udp_rbtree_insert_value);
+#endif
+
+        ngx_set_cycle_ctx(ngx_cycle, c->listening->ctx_id, ctx);
+    }
 
     sid = &qsock->sid;
 
@@ -180,7 +209,7 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     qsock->udp.node.key = ngx_crc32_long(id.data, id.len);
     qsock->udp.key = id;
 
-    ngx_rbtree_insert(&c->listening->rbtree, &qsock->udp.node);
+    ngx_rbtree_insert(&ctx->rbtree, &qsock->udp.node);
 
     ngx_queue_insert_tail(&qc->sockets, &qsock->queue);
 

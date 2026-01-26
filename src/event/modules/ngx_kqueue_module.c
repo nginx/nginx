@@ -48,15 +48,15 @@ static void *ngx_kqueue_create_conf(ngx_cycle_t *cycle);
 static char *ngx_kqueue_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-int                    ngx_kqueue = -1;
+ngx_thread_local int                    ngx_kqueue = -1;
 
-static struct kevent  *change_list;
-static struct kevent  *event_list;
-static ngx_uint_t      max_changes, nchanges, nevents;
+static ngx_thread_local struct kevent  *change_list;
+static ngx_thread_local struct kevent  *event_list;
+static ngx_thread_local ngx_uint_t      max_changes, nchanges, nevents;
 
 #ifdef EVFILT_USER
-static ngx_event_t     notify_event;
-static struct kevent   notify_kev;
+static ngx_thread_local ngx_event_t     notify_event;
+static ngx_thread_local struct kevent   notify_kev;
 #endif
 
 
@@ -261,6 +261,8 @@ ngx_kqueue_notify_init(ngx_log_t *log)
     notify_kev.fflags = NOTE_TRIGGER;
     notify_kev.udata = NGX_KQUEUE_UDATA_T ((uintptr_t) &notify_event);
 
+    ngx_save_cycle(notify_event.cycle);
+
     return NGX_OK;
 }
 
@@ -300,6 +302,8 @@ ngx_kqueue_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
     ev->active = 1;
     ev->disabled = 0;
     ev->oneshot = (flags & NGX_ONESHOT_EVENT) ? 1 : 0;
+
+    ngx_save_cycle(ev->cycle);
 
 #if 0
 
@@ -665,6 +669,8 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
                           event_list[i].filter);
             continue;
         }
+
+        ngx_set_cycle(ev->cycle);
 
         if (flags & NGX_POST_EVENTS) {
             queue = ev->accept ? &ngx_posted_accept_events

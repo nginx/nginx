@@ -107,8 +107,8 @@ ngx_http_degraded(ngx_http_request_t *r)
 {
     time_t                             now;
     ngx_uint_t                         log;
-    static size_t                      sbrk_size;
-    static time_t                      sbrk_time;
+    static ngx_thread_local size_t     sbrk_size;
+    static ngx_thread_local time_t     sbrk_time;
     ngx_http_degradation_main_conf_t  *dmcf;
 
     dmcf = ngx_http_get_module_main_conf(r, ngx_http_degradation_module);

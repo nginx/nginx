@@ -43,6 +43,9 @@ typedef struct ngx_pool_large_s  ngx_pool_large_t;
 struct ngx_pool_large_s {
     ngx_pool_large_t     *next;
     void                 *alloc;
+#if (NGX_DEBUG_PLOCK)
+    size_t                size;
+#endif
 };
 
 
@@ -62,6 +65,9 @@ struct ngx_pool_s {
     ngx_pool_large_t     *large;
     ngx_pool_cleanup_t   *cleanup;
     ngx_log_t            *log;
+#if (NGX_DEBUG_PLOCK)
+    ngx_uint_t            lockable; /* unsigned  lockable:1; */
+#endif
 };
 
 
@@ -81,6 +87,15 @@ void *ngx_pnalloc(ngx_pool_t *pool, size_t size);
 void *ngx_pcalloc(ngx_pool_t *pool, size_t size);
 void *ngx_pmemalign(ngx_pool_t *pool, size_t size, size_t alignment);
 ngx_int_t ngx_pfree(ngx_pool_t *pool, void *p);
+
+#if (NGX_DEBUG_PLOCK)
+ngx_pool_t *ngx_create_lockable_pool(ngx_log_t *log);
+ngx_int_t ngx_plock(ngx_pool_t *pool);
+ngx_int_t ngx_punlock(ngx_pool_t *pool);
+void *ngx_pmalloc(ngx_pool_t *pool, size_t size);
+void *ngx_pmcalloc(ngx_pool_t *pool, size_t size);
+ngx_pool_t *ngx_create_child_pool(ngx_pool_t *pool);
+#endif
 
 
 ngx_pool_cleanup_t *ngx_pool_cleanup_add(ngx_pool_t *p, size_t size);

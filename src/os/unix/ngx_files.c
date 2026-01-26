@@ -22,7 +22,7 @@ static ssize_t ngx_writev_file(ngx_file_t *file, ngx_iovec_t *vec,
 
 #if (NGX_HAVE_FILE_AIO)
 
-ngx_uint_t  ngx_file_aio = 1;
+volatile ngx_uint_t  ngx_file_aio = 1;
 
 #endif
 

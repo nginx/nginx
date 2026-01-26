@@ -959,7 +959,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_int_t               rc;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_connection_t  *qc;
-    static u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
+    static ngx_thread_local u_char           buf[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
     qc = ngx_quic_get_connection(c);
 

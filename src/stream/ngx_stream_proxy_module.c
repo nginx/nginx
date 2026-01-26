@@ -1784,7 +1784,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
             if (*out || *busy || dst->buffered) {
                 c->log->action = send_action;
 
-                rc = ngx_stream_top_filter(s, *out, from_upstream);
+                rc = ngx_stream_safe_top_filter(s, *out, from_upstream);
 
                 if (rc == NGX_ERROR) {
                     ngx_stream_proxy_finalize(s, NGX_STREAM_OK);

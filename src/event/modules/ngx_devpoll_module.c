@@ -49,11 +49,11 @@ static ngx_int_t ngx_devpoll_process_events(ngx_cycle_t *cycle,
 static void *ngx_devpoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_devpoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
-static int              dp = -1;
-static struct pollfd   *change_list, *event_list;
-static ngx_uint_t       nchanges, max_changes, nevents;
+static ngx_thread_local int              dp = -1;
+static ngx_thread_local struct pollfd   *change_list, *event_list;
+static ngx_thread_local ngx_uint_t       nchanges, max_changes, nevents;
 
-static ngx_event_t    **change_index;
+static ngx_thread_local ngx_event_t    **change_index;
 
 
 static ngx_str_t      devpoll_name = ngx_string("/dev/poll");

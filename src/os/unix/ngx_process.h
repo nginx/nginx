@@ -36,6 +36,16 @@ typedef struct {
 } ngx_process_t;
 
 
+#if (NGX_THREADS)
+
+typedef struct {
+    ngx_socket_t        channel[2];
+    ngx_uint_t          active;  /* unsigned  active:1; */
+} ngx_thread_t;
+
+#endif
+
+
 typedef struct {
     char         *path;
     char         *name;
@@ -63,6 +73,10 @@ typedef struct {
 
 ngx_pid_t ngx_spawn_process(ngx_cycle_t *cycle,
     ngx_spawn_proc_pt proc, void *data, char *name, ngx_int_t respawn);
+#if (NGX_THREADS)
+ngx_int_t ngx_spawn_thread(ngx_cycle_t *cycle,
+    ngx_spawn_proc_pt proc, void *data, char *name);
+#endif
 ngx_pid_t ngx_execute(ngx_cycle_t *cycle, ngx_exec_ctx_t *ctx);
 ngx_int_t ngx_init_signals(ngx_log_t *log);
 void ngx_debug_point(void);
@@ -85,6 +99,13 @@ extern ngx_socket_t   ngx_channel;
 extern ngx_int_t      ngx_process_slot;
 extern ngx_int_t      ngx_last_process;
 extern ngx_process_t  ngx_processes[NGX_MAX_PROCESSES];
+#if (NGX_THREADS)
+extern ngx_int_t      ngx_last_thread;
+extern ngx_thread_t   ngx_threads[NGX_MAX_PROCESSES];
+
+extern ngx_thread_local ngx_int_t     ngx_thread_slot;
+extern ngx_thread_local ngx_socket_t  ngx_thread_channel;
+#endif
 
 
 #endif /* _NGX_PROCESS_H_INCLUDED_ */

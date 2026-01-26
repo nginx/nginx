@@ -18,6 +18,7 @@
                                                                               \
     if (!(ev)->posted) {                                                      \
         (ev)->posted = 1;                                                     \
+        ngx_save_cycle((ev)->cycle);                                          \
         ngx_queue_insert_tail(q, &(ev)->queue);                               \
                                                                               \
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, (ev)->log, 0, "post event %p", ev);\
@@ -42,9 +43,9 @@ void ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted);
 void ngx_event_move_posted_next(ngx_cycle_t *cycle);
 
 
-extern ngx_queue_t  ngx_posted_accept_events;
-extern ngx_queue_t  ngx_posted_next_events;
-extern ngx_queue_t  ngx_posted_events;
+extern ngx_thread_local ngx_queue_t  ngx_posted_accept_events;
+extern ngx_thread_local ngx_queue_t  ngx_posted_next_events;
+extern ngx_thread_local ngx_queue_t  ngx_posted_events;
 
 
 #endif /* _NGX_EVENT_POSTED_H_INCLUDED_ */

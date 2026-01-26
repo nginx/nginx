@@ -46,6 +46,8 @@ static ngx_int_t ngx_http_file_cache_update_variant(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static void ngx_http_file_cache_cleanup(void *data);
 static time_t ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache);
+static ngx_http_file_cachex_t *ngx_http_file_cache_get_ctx(
+    ngx_http_file_cache_t *cache);
 static time_t ngx_http_file_cache_expire(ngx_http_file_cache_t *cache);
 static void ngx_http_file_cache_delete(ngx_http_file_cache_t *cache,
     ngx_queue_t *q, u_char *name);
@@ -1856,6 +1858,30 @@ ngx_http_file_cache_forced_expire(ngx_http_file_cache_t *cache)
 }
 
 
+static ngx_http_file_cachex_t *
+ngx_http_file_cache_get_ctx(ngx_http_file_cache_t *cache)
+{
+    ngx_cyclex_t            *cyclex;
+    ngx_http_file_cachex_t  *cachex;
+
+    cachex = ngx_get_cycle_ctx(ngx_cycle, cache->ctx_id);
+    if (cachex) {
+        return cachex;
+    }
+
+    cyclex = ngx_get_cyclex(ngx_cycle);
+
+    cachex = ngx_pcalloc(cyclex->pool, sizeof(ngx_http_file_cachex_t));
+    if (cachex == NULL) {
+        return NULL;
+    }
+
+    ngx_set_cycle_ctx(ngx_cycle, cache->ctx_id, cachex);
+
+    return cachex;
+}
+
+
 static time_t
 ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
 {
@@ -1865,11 +1891,14 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
     ngx_path_t                  *path;
     ngx_msec_t                   elapsed;
     ngx_queue_t                 *q;
+    ngx_http_file_cachex_t      *cachex;
     ngx_http_file_cache_node_t  *fcn;
     u_char                       key[2 * NGX_HTTP_CACHE_KEY_LEN];
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "http file cache expire");
+
+    cachex = ngx_http_file_cache_get_ctx(cache);
 
     path = cache->path;
     len = path->name.len + 1 + path->len + 2 * NGX_HTTP_CACHE_KEY_LEN;
@@ -1944,14 +1973,14 @@ ngx_http_file_cache_expire(ngx_http_file_cache_t *cache)
 
 next:
 
-        if (++cache->files >= cache->manager_files) {
+        if (++cachex->files >= cache->manager_files) {
             wait = 0;
             break;
         }
 
         ngx_time_update();
 
-        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cachex->last));
 
         if (elapsed >= cache->manager_threshold) {
             wait = 0;
@@ -2023,13 +2052,20 @@ ngx_http_file_cache_manager(void *data)
 {
     ngx_http_file_cache_t  *cache = data;
 
-    off_t       size, free;
-    time_t      wait;
-    ngx_msec_t  elapsed, next;
-    ngx_uint_t  count, watermark;
+    off_t                    size, free;
+    time_t                   wait;
+    ngx_msec_t               elapsed, next;
+    ngx_uint_t               count, watermark;
+    ngx_http_file_cachex_t  *cachex;
 
-    cache->last = ngx_current_msec;
-    cache->files = 0;
+    cachex = ngx_http_file_cache_get_ctx(cache);
+    if (cachex == NULL) {
+        next = cache->manager_sleep;
+        goto done;
+    }
+
+    cachex->last = ngx_current_msec;
+    cachex->files = 0;
 
     next = (ngx_msec_t) ngx_http_file_cache_expire(cache) * 1000;
 
@@ -2078,14 +2114,14 @@ ngx_http_file_cache_manager(void *data)
             break;
         }
 
-        if (++cache->files >= cache->manager_files) {
+        if (++cachex->files >= cache->manager_files) {
             next = cache->manager_sleep;
             break;
         }
 
         ngx_time_update();
 
-        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cachex->last));
 
         if (elapsed >= cache->manager_threshold) {
             next = cache->manager_sleep;
@@ -2095,11 +2131,11 @@ ngx_http_file_cache_manager(void *data)
 
 done:
 
-    elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+    elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cachex->last));
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                    "http file cache manager: %ui e:%M n:%M",
-                   cache->files, elapsed, next);
+                   cachex->files, elapsed, next);
 
     return next;
 }
@@ -2110,7 +2146,8 @@ ngx_http_file_cache_loader(void *data)
 {
     ngx_http_file_cache_t  *cache = data;
 
-    ngx_tree_ctx_t  tree;
+    ngx_tree_ctx_t           tree;
+    ngx_http_file_cachex_t  *cachex;
 
     if (!cache->sh->cold || cache->sh->loading) {
         return;
@@ -2132,8 +2169,9 @@ ngx_http_file_cache_loader(void *data)
     tree.alloc = 0;
     tree.log = ngx_cycle->log;
 
-    cache->last = ngx_current_msec;
-    cache->files = 0;
+    cachex = ngx_http_file_cache_get_ctx(cache);
+    cachex->last = ngx_current_msec;
+    cachex->files = 0;
 
     if (ngx_walk_tree(&tree, &cache->path->name) == NGX_ABORT) {
         cache->sh->loading = 0;
@@ -2161,22 +2199,24 @@ ngx_http_file_cache_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 static ngx_int_t
 ngx_http_file_cache_manage_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
-    ngx_msec_t              elapsed;
-    ngx_http_file_cache_t  *cache;
+    ngx_msec_t               elapsed;
+    ngx_http_file_cache_t   *cache;
+    ngx_http_file_cachex_t  *cachex;
 
     cache = ctx->data;
+    cachex = ngx_http_file_cache_get_ctx(cache);
 
     if (ngx_http_file_cache_add_file(ctx, path) != NGX_OK) {
         (void) ngx_http_file_cache_delete_file(ctx, path);
     }
 
-    if (++cache->files >= cache->loader_files) {
+    if (++cachex->files >= cache->loader_files) {
         ngx_http_file_cache_loader_sleep(cache);
 
     } else {
         ngx_time_update();
 
-        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cache->last));
+        elapsed = ngx_abs((ngx_msec_int_t) (ngx_current_msec - cachex->last));
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ngx_cycle->log, 0,
                        "http file cache loader time elapsed: %M", elapsed);
@@ -2206,12 +2246,15 @@ ngx_http_file_cache_manage_directory(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 static void
 ngx_http_file_cache_loader_sleep(ngx_http_file_cache_t *cache)
 {
+    ngx_http_file_cachex_t  *cachex;
+
     ngx_msleep(cache->loader_sleep);
 
     ngx_time_update();
 
-    cache->last = ngx_current_msec;
-    cache->files = 0;
+    cachex = ngx_http_file_cache_get_ctx(cache);
+    cachex->last = ngx_current_msec;
+    cachex->files = 0;
 }
 
 
@@ -2671,6 +2714,8 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                            &cmd->name);
         return NGX_CONF_ERROR;
     }
+
+    cache->ctx_id = ngx_cycle_ctx_add(cf);
 
     cache->path->manager = ngx_http_file_cache_manager;
     cache->path->loader = ngx_http_file_cache_loader;

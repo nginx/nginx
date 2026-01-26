@@ -21,8 +21,8 @@ static ngx_int_t ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
 static char *ngx_poll_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
-static struct pollfd  *event_list;
-static ngx_uint_t      nevents;
+static ngx_thread_local struct pollfd  *event_list;
+static ngx_thread_local ngx_uint_t      nevents;
 
 
 static ngx_str_t           poll_name = ngx_string("poll");
@@ -120,6 +120,8 @@ ngx_poll_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
     ev->active = 1;
 
+    ngx_save_cycle(ev->cycle);
+
     if (ev->index != NGX_INVALID_INDEX) {
         ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
                       "poll event fd:%d ev:%i is already set", c->fd, event);
@@ -205,7 +207,7 @@ ngx_poll_del_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
 
             event_list[ev->index] = event_list[nevents];
 
-            c = ngx_cycle->files[event_list[nevents].fd];
+            c = ngx_get_cyclex(ev->cycle)->files[event_list[nevents].fd];
 
             if (c->fd == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
@@ -334,7 +336,7 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             continue;
         }
 
-        c = ngx_cycle->files[event_list[i].fd];
+        c = ngx_get_cyclex(cycle)->files[event_list[i].fd];
 
         if (c->fd == -1) {
             ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "unexpected event");
@@ -375,6 +377,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             queue = ev->accept ? &ngx_posted_accept_events
                                : &ngx_posted_events;
 
+            ngx_set_cycle(ev->cycle);
+
             ngx_post_event(ev, queue);
         }
 
@@ -383,6 +387,8 @@ ngx_poll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
 
             ev = c->write;
             ev->ready = 1;
+
+            ngx_set_cycle(ev->cycle);
 
             ngx_post_event(ev, &ngx_posted_events);
         }

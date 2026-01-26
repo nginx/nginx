@@ -16,7 +16,7 @@
 
 typedef struct {
     size_t                          recv_buffer_size;
-    u_char                         *recv_buffer;
+    ngx_uint_t                      recv_buffer_id;
 } ngx_http_v2_main_conf_t;
 
 

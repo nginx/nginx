@@ -19,7 +19,19 @@ typedef struct {
 } ngx_signal_t;
 
 
+#if (NGX_THREADS)
 
+typedef struct {
+    ngx_spawn_proc_pt   proc;
+    void               *arg;
+    ngx_cycle_t        *cycle;
+    ngx_socket_t        thread_channel;
+    ngx_int_t           thread_slot;
+} ngx_thread_start_t;
+
+
+static void *ngx_thread_start(void *data);
+#endif
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 static void ngx_process_get_status(void);
@@ -34,6 +46,13 @@ ngx_int_t        ngx_process_slot;
 ngx_socket_t     ngx_channel;
 ngx_int_t        ngx_last_process;
 ngx_process_t    ngx_processes[NGX_MAX_PROCESSES];
+
+#if (NGX_THREADS)
+ngx_thread_local ngx_int_t     ngx_thread_slot;
+ngx_thread_local ngx_socket_t  ngx_thread_channel;
+ngx_int_t         ngx_last_thread;
+ngx_thread_t      ngx_threads[NGX_MAX_PROCESSES];
+#endif
 
 
 ngx_signal_t  signals[] = {
@@ -196,6 +215,9 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     case 0:
         ngx_parent = ngx_pid;
         ngx_pid = ngx_getpid();
+#if (NGX_THREADS)
+        ngx_tid = NGX_INVALID_TID;
+#endif
         proc(cycle, data);
         break;
 
@@ -256,6 +278,153 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 
     return pid;
 }
+
+
+#if (NGX_THREADS)
+
+ngx_int_t
+ngx_spawn_thread(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
+    char *name)
+{
+    int                  err;
+    u_long               on;
+    ngx_int_t            s;
+    pthread_t            thread;
+    ngx_thread_start_t  *ts;
+
+    for (s = 0; s < ngx_last_thread; s++) {
+        if (!ngx_threads[s].active) {
+            break;
+        }
+    }
+
+    if (s >= NGX_MAX_PROCESSES) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "no more than %d threads can be spawned",
+                      NGX_MAX_PROCESSES);
+        return NGX_ERROR;
+    }
+
+    /* Solaris 9 still has no AF_LOCAL */
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, ngx_threads[s].channel) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "socketpair() failed while spawning \"%s\"", name);
+        return NGX_ERROR;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                   "channel %d:%d",
+                   ngx_threads[s].channel[0],
+                   ngx_threads[s].channel[1]);
+
+    if (ngx_nonblocking(ngx_threads[s].channel[0]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_nonblocking_n " failed while spawning \"%s\"",
+                      name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    if (ngx_nonblocking(ngx_threads[s].channel[1]) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      ngx_nonblocking_n " failed while spawning \"%s\"",
+                      name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    on = 1;
+    if (ioctl(ngx_threads[s].channel[0], FIOASYNC, &on) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "ioctl(FIOASYNC) failed while spawning \"%s\"", name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    if (fcntl(ngx_threads[s].channel[0], F_SETOWN, ngx_pid) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "fcntl(F_SETOWN) failed while spawning \"%s\"", name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    if (fcntl(ngx_threads[s].channel[0], F_SETFD, FD_CLOEXEC) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                       name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    if (fcntl(ngx_threads[s].channel[1], F_SETFD, FD_CLOEXEC) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "fcntl(FD_CLOEXEC) failed while spawning \"%s\"",
+                       name);
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    ts = ngx_alloc(sizeof(ngx_thread_start_t), cycle->log);
+    if (ts == NULL) {
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    ts->proc = proc;
+    ts->arg = data;
+    ts->cycle = cycle;
+    ts->thread_channel = ngx_threads[s].channel[1];
+    ts->thread_slot = s;
+
+    err = pthread_create(&thread, NULL, ngx_thread_start, ts);
+
+    if (err) {
+        ngx_free(ts);
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, err,
+                      "pthread_create() failed");
+        ngx_close_channel(ngx_threads[s].channel, cycle->log);
+        return NGX_ERROR;
+    }
+
+    ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start %s", name);
+
+    ngx_threads[s].active = 1;
+
+    if (s == ngx_last_thread) {
+        ngx_last_thread++;
+    }
+
+    return NGX_OK;
+}
+
+
+static void*
+ngx_thread_start(void *data)
+{
+    ngx_thread_start_t  *ts = data;
+
+    void               *arg;
+    ngx_cycle_t        *cycle;
+    ngx_spawn_proc_pt   proc;
+
+    proc = ts->proc;
+    arg = ts->arg;
+    cycle = ts->cycle;
+
+    ngx_thread_channel = ts->thread_channel;
+    ngx_thread_slot = ts->thread_slot;
+    ngx_tid = ngx_thread_tid();
+    ngx_cycle = cycle;
+
+    ngx_free(ts);
+
+    proc(cycle, arg);
+
+    return NULL;
+}
+
+#endif
 
 
 ngx_pid_t
@@ -340,6 +509,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     switch (ngx_process) {
 
     case NGX_PROCESS_MASTER:
+    case NGX_PROCESS_THREAD:
     case NGX_PROCESS_SINGLE:
         switch (signo) {
 

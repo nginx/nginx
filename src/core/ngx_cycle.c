@@ -18,12 +18,11 @@ static void ngx_clean_old_cycles(ngx_event_t *ev);
 static void ngx_shutdown_timer_handler(ngx_event_t *ev);
 
 
-volatile ngx_cycle_t  *ngx_cycle;
+ngx_thread_local       ngx_cycle_t  *ngx_cycle;
 ngx_array_t            ngx_old_cycles;
 
 static ngx_pool_t     *ngx_temp_pool;
 static ngx_event_t     ngx_cleaner_event;
-static ngx_event_t     ngx_shutdown_event;
 
 ngx_uint_t             ngx_test_config;
 ngx_uint_t             ngx_dump_config;
@@ -66,7 +65,11 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     log = old_cycle->log;
 
+#if (NGX_DEBUG_PLOCK)
+    pool = ngx_create_lockable_pool(log);
+#else
     pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, log);
+#endif
     if (pool == NULL) {
         return NULL;
     }
@@ -81,6 +84,7 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     cycle->pool = pool;
     cycle->log = log;
     cycle->old_cycle = old_cycle;
+    cycle->ctx_n = 1; /* ngx_cyclex_t */
 
     cycle->conf_prefix.len = old_cycle->conf_prefix.len;
     cycle->conf_prefix.data = ngx_pstrdup(pool, &old_cycle->conf_prefix);
@@ -190,9 +194,6 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
     }
 
     ngx_memzero(cycle->listening.elts, n * sizeof(ngx_listening_t));
-
-
-    ngx_queue_init(&cycle->reusable_connections_queue);
 
 
     cycle->conf_ctx = ngx_pcalloc(pool, ngx_max_module * sizeof(void *));
@@ -412,6 +413,23 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
 
     /* create shared memory */
 
+    opart = &old_cycle->shared_memory.part;
+    oshm_zone = opart->elts;
+
+    for (n = 0; /* void */ ; n++) {
+
+        if (n >= opart->nelts) {
+            if (opart->next == NULL) {
+                break;
+            }
+            opart = opart->next;
+            oshm_zone = opart->elts;
+            n = 0;
+        }
+
+        oshm_zone[n].remain = 0;
+    }
+
     part = &cycle->shared_memory.part;
     shm_zone = part->elts;
 
@@ -482,6 +500,8 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                     goto failed;
                 }
 
+                oshm_zone[n].remain = 1;
+
                 goto shm_zone_found;
             }
 
@@ -505,6 +525,32 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         continue;
     }
 
+
+    n = 1;
+
+#if (NGX_THREADS)
+    if (ccf->threads) {
+        n = ccf->worker_processes;
+    }
+#endif
+
+#if (NGX_DEBUG_PLOCK)
+    cycle->ctx = ngx_pmcalloc(pool, n * sizeof(void *));
+#else
+    cycle->ctx = ngx_pcalloc(pool, n * sizeof(void *));
+#endif
+    if (cycle->ctx == NULL) {
+        goto failed;
+    }
+
+#if (NGX_DEBUG_PLOCK)
+    cycle->count = ngx_pmcalloc(pool, sizeof(ngx_atomic_t));
+#else
+    cycle->count = ngx_pcalloc(pool, sizeof(ngx_atomic_t));
+#endif
+    if (cycle->count == NULL) {
+        goto failed;
+    }
 
     /* handle the listening sockets */
 
@@ -643,132 +689,17 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
         exit(1);
     }
 
+    if (ngx_process == NGX_PROCESS_THREAD) {
+
+        ngx_destroy_pool(conf.temp_pool);
+        cycle->old_cycle = NULL;
+
+        return cycle;
+    }
 
     /* close and delete stuff that lefts from an old cycle */
 
-    /* free the unnecessary shared memory */
-
-    opart = &old_cycle->shared_memory.part;
-    oshm_zone = opart->elts;
-
-    for (i = 0; /* void */ ; i++) {
-
-        if (i >= opart->nelts) {
-            if (opart->next == NULL) {
-                goto old_shm_zone_done;
-            }
-            opart = opart->next;
-            oshm_zone = opart->elts;
-            i = 0;
-        }
-
-        part = &cycle->shared_memory.part;
-        shm_zone = part->elts;
-
-        for (n = 0; /* void */ ; n++) {
-
-            if (n >= part->nelts) {
-                if (part->next == NULL) {
-                    break;
-                }
-                part = part->next;
-                shm_zone = part->elts;
-                n = 0;
-            }
-
-            if (oshm_zone[i].shm.name.len != shm_zone[n].shm.name.len) {
-                continue;
-            }
-
-            if (ngx_strncmp(oshm_zone[i].shm.name.data,
-                            shm_zone[n].shm.name.data,
-                            oshm_zone[i].shm.name.len)
-                != 0)
-            {
-                continue;
-            }
-
-            if (oshm_zone[i].tag == shm_zone[n].tag
-                && oshm_zone[i].shm.size == shm_zone[n].shm.size
-                && !oshm_zone[i].noreuse)
-            {
-                goto live_shm_zone;
-            }
-
-            break;
-        }
-
-        ngx_shm_free(&oshm_zone[i].shm);
-
-    live_shm_zone:
-
-        continue;
-    }
-
-old_shm_zone_done:
-
-
-    /* close the unnecessary listening sockets */
-
-    ls = old_cycle->listening.elts;
-    for (i = 0; i < old_cycle->listening.nelts; i++) {
-
-        if (ls[i].remain || ls[i].fd == (ngx_socket_t) -1) {
-            continue;
-        }
-
-        if (ngx_close_socket(ls[i].fd) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                          ngx_close_socket_n " listening socket on %V failed",
-                          &ls[i].addr_text);
-        }
-
-#if (NGX_HAVE_UNIX_DOMAIN)
-
-        if (ls[i].sockaddr->sa_family == AF_UNIX) {
-            u_char  *name;
-
-            name = ls[i].addr_text.data + sizeof("unix:") - 1;
-
-            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
-                          "deleting socket %s", name);
-
-            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
-                              ngx_delete_file_n " %s failed", name);
-            }
-        }
-
-#endif
-    }
-
-
-    /* close the unnecessary open files */
-
-    part = &old_cycle->open_files.part;
-    file = part->elts;
-
-    for (i = 0; /* void */ ; i++) {
-
-        if (i >= part->nelts) {
-            if (part->next == NULL) {
-                break;
-            }
-            part = part->next;
-            file = part->elts;
-            i = 0;
-        }
-
-        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr) {
-            continue;
-        }
-
-        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
-            ngx_log_error(NGX_LOG_EMERG, log, ngx_errno,
-                          ngx_close_file_n " \"%s\" failed",
-                          file[i].name.data);
-        }
-    }
+    ngx_free_cycle(old_cycle);
 
     ngx_destroy_pool(conf.temp_pool);
 
@@ -943,6 +874,165 @@ failed:
     ngx_destroy_cycle_pools(&conf);
 
     return NULL;
+}
+
+
+void
+ngx_free_cycle(ngx_cycle_t *cycle)
+{
+    ngx_uint_t        i;
+    ngx_shm_zone_t   *shm_zone;
+    ngx_list_part_t  *part;
+    ngx_listening_t  *ls;
+    ngx_open_file_t  *file;
+
+    /* free the unnecessary shared memory */
+
+    part = &cycle->shared_memory.part;
+    shm_zone = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            shm_zone = part->elts;
+            i = 0;
+        }
+
+        if (shm_zone[i].remain) {
+            continue;
+        }
+
+        ngx_shm_free(&shm_zone[i].shm);
+    }
+
+
+    /* close the unnecessary listening sockets */
+
+    ls = cycle->listening.elts;
+    for (i = 0; i < cycle->listening.nelts; i++) {
+
+        if (ls[i].remain || ls[i].fd == (ngx_socket_t) -1) {
+            continue;
+        }
+
+        if (ngx_close_socket(ls[i].fd) == -1) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                          ngx_close_socket_n " listening socket on %V failed",
+                          &ls[i].addr_text);
+        }
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+
+        if (ls[i].sockaddr->sa_family == AF_UNIX) {
+            u_char  *name;
+
+            name = ls[i].addr_text.data + sizeof("unix:") - 1;
+
+            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                          "deleting socket %s", name);
+
+            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
+                              ngx_delete_file_n " %s failed", name);
+            }
+        }
+
+#endif
+    }
+
+
+    /* close the unnecessary open files */
+
+    part = &cycle->open_files.part;
+    file = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            file = part->elts;
+            i = 0;
+        }
+
+        if (file[i].fd == NGX_INVALID_FILE || file[i].fd == ngx_stderr) {
+            continue;
+        }
+
+        if (ngx_close_file(file[i].fd) == NGX_FILE_ERROR) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          ngx_close_file_n " \"%s\" failed",
+                          file[i].name.data);
+        }
+    }
+}
+
+
+ngx_int_t
+ngx_init_cyclex(ngx_cycle_t *cycle)
+{
+    void          *p;
+    ngx_pool_t    *pool;
+    ngx_cyclex_t  *cyclex;
+
+    if (ngx_process != NGX_PROCESS_WORKER
+        && ngx_process != NGX_PROCESS_SINGLE
+        && ngx_process != NGX_PROCESS_HELPER
+        && ngx_process != NGX_PROCESS_THREAD)
+    {
+        return NGX_OK;
+    }
+
+    pool = ngx_create_pool(NGX_CYCLE_POOL_SIZE, cycle->log);
+    if (pool == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = ngx_pcalloc(pool, cycle->ctx_n * sizeof(void *));
+    if (p == NULL) {
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    cyclex = ngx_pcalloc(pool, sizeof(ngx_cyclex_t));
+    if (cyclex == NULL) {
+        ngx_destroy_pool(pool);
+        return NGX_ERROR;
+    }
+
+    cyclex->pool = pool;
+
+    cycle->ctx[ngx_thread] = p;
+
+    ngx_set_cycle_ctx(cycle, 0, cyclex);
+
+    return NGX_OK;
+}
+
+
+void
+ngx_free_cyclex(ngx_cycle_t *cycle)
+{
+    ngx_cyclex_t  *cyclex;
+
+    if (cycle->ctx[ngx_thread] == NULL) {
+        return;
+    }
+
+    cyclex = ngx_get_cyclex(cycle);
+    if (cyclex == NULL) {
+        return;
+    }
+
+    ngx_destroy_pool(cyclex->pool);
+
+    cycle->ctx[ngx_thread] = NULL;
 }
 
 
@@ -1371,6 +1461,7 @@ ngx_shared_memory_add(ngx_conf_t *cf, ngx_str_t *name, size_t size, void *tag)
 static void
 ngx_clean_old_cycles(ngx_event_t *ev)
 {
+#if 0
     ngx_uint_t     i, n, found, live;
     ngx_log_t     *log;
     ngx_cycle_t  **cycle;
@@ -1422,23 +1513,29 @@ ngx_clean_old_cycles(ngx_event_t *ev)
         ngx_temp_pool = NULL;
         ngx_old_cycles.nelts = 0;
     }
+#endif
 }
 
 
 void
 ngx_set_shutdown_timer(ngx_cycle_t *cycle)
 {
+    ngx_cyclex_t     *cyclex;
     ngx_core_conf_t  *ccf;
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     if (ccf->shutdown_timeout) {
-        ngx_shutdown_event.handler = ngx_shutdown_timer_handler;
-        ngx_shutdown_event.data = cycle;
-        ngx_shutdown_event.log = cycle->log;
-        ngx_shutdown_event.cancelable = 1;
+        cyclex = ngx_get_cyclex(cycle);
 
-        ngx_add_timer(&ngx_shutdown_event, ccf->shutdown_timeout);
+        cyclex->shutdown_event->handler = ngx_shutdown_timer_handler;
+        cyclex->shutdown_event->data = cycle;
+        cyclex->shutdown_event->log = cycle->log;
+        cyclex->shutdown_event->cancelable = 1;
+
+        ngx_cycle = cycle;
+
+        ngx_add_timer(cyclex->shutdown_event, ccf->shutdown_timeout);
     }
 }
 
@@ -1448,13 +1545,17 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
 {
     ngx_uint_t         i;
     ngx_cycle_t       *cycle;
+    ngx_cyclex_t      *cyclex;
     ngx_connection_t  *c;
 
     cycle = ev->data;
+    cyclex = ngx_get_cyclex(cycle);
 
-    c = cycle->connections;
+    ngx_set_cycle(cycle);
 
-    for (i = 0; i < cycle->connection_n; i++) {
+    c = cyclex->connections;
+
+    for (i = 0; i < cyclex->connection_n; i++) {
 
         if (c[i].fd == (ngx_socket_t) -1
             || c[i].read == NULL

@@ -10,9 +10,9 @@
 #include <ngx_event.h>
 
 
-ngx_queue_t  ngx_posted_accept_events;
-ngx_queue_t  ngx_posted_next_events;
-ngx_queue_t  ngx_posted_events;
+ngx_thread_local ngx_queue_t  ngx_posted_accept_events;
+ngx_thread_local ngx_queue_t  ngx_posted_next_events;
+ngx_thread_local ngx_queue_t  ngx_posted_events;
 
 
 void
@@ -30,6 +30,8 @@ ngx_event_process_posted(ngx_cycle_t *cycle, ngx_queue_t *posted)
                       "posted event %p", ev);
 
         ngx_delete_posted_event(ev);
+
+        ngx_set_cycle(ev->cycle);
 
         ev->handler(ev);
     }

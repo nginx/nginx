@@ -47,10 +47,8 @@ struct ngx_listening_s {
     size_t              post_accept_buffer_size;
 
     ngx_listening_t    *previous;
-    ngx_connection_t   *connection;
 
-    ngx_rbtree_t        rbtree;
-    ngx_rbtree_node_t   sentinel;
+    ngx_uint_t          ctx_id;
 
     ngx_uint_t          worker;
 
@@ -90,6 +88,12 @@ struct ngx_listening_s {
 #endif
 
 };
+
+
+typedef struct {
+    ngx_rbtree_t        rbtree;
+    ngx_rbtree_node_t   sentinel;
+} ngx_listening_ctx_t;
 
 
 typedef enum {
@@ -221,6 +225,7 @@ ngx_int_t ngx_set_inherited_sockets(ngx_cycle_t *cycle);
 ngx_int_t ngx_open_listening_sockets(ngx_cycle_t *cycle);
 void ngx_configure_listening_sockets(ngx_cycle_t *cycle);
 void ngx_close_listening_sockets(ngx_cycle_t *cycle);
+void ngx_stop_listening(ngx_cycle_t *cycle);
 void ngx_close_connection(ngx_connection_t *c);
 void ngx_close_idle_connections(ngx_cycle_t *cycle);
 ngx_int_t ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,

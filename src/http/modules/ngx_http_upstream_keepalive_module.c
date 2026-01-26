@@ -15,14 +15,18 @@ typedef struct {
     ngx_uint_t                         requests;
     ngx_msec_t                         time;
     ngx_msec_t                         timeout;
-
-    ngx_queue_t                        cache;
-    ngx_queue_t                        free;
+    ngx_uint_t                         ctx_id;
 
     ngx_http_upstream_init_pt          original_init_upstream;
     ngx_http_upstream_init_peer_pt     original_init_peer;
 
 } ngx_http_upstream_keepalive_srv_conf_t;
+
+
+typedef struct {
+    ngx_queue_t                        cache;
+    ngx_queue_t                        free;
+} ngx_http_upstream_keepalive_ctx_t;
 
 
 typedef struct {
@@ -147,9 +151,7 @@ static ngx_int_t
 ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us)
 {
-    ngx_uint_t                               i;
     ngx_http_upstream_keepalive_srv_conf_t  *kcf;
-    ngx_http_upstream_keepalive_cache_t     *cached;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cf->log, 0,
                    "init keepalive");
@@ -166,24 +168,9 @@ ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
     }
 
     kcf->original_init_peer = us->peer.init;
+    kcf->ctx_id = ngx_cycle_ctx_add(cf);
 
     us->peer.init = ngx_http_upstream_init_keepalive_peer;
-
-    /* allocate cache items and add to free queue */
-
-    cached = ngx_pcalloc(cf->pool,
-                sizeof(ngx_http_upstream_keepalive_cache_t) * kcf->max_cached);
-    if (cached == NULL) {
-        return NGX_ERROR;
-    }
-
-    ngx_queue_init(&kcf->cache);
-    ngx_queue_init(&kcf->free);
-
-    for (i = 0; i < kcf->max_cached; i++) {
-        ngx_queue_insert_head(&kcf->free, &cached[i].queue);
-        cached[i].conf = kcf;
-    }
 
     return NGX_OK;
 }
@@ -238,12 +225,42 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
     ngx_http_upstream_keepalive_peer_data_t  *kp = data;
     ngx_http_upstream_keepalive_cache_t      *item;
 
-    ngx_int_t          rc;
-    ngx_queue_t       *q, *cache;
-    ngx_connection_t  *c;
+    ngx_int_t                             rc;
+    ngx_uint_t                            i;
+    ngx_queue_t                          *q, *cache;
+    ngx_connection_t                     *c;
+    ngx_http_upstream_keepalive_ctx_t    *ctx;
+    ngx_http_upstream_keepalive_cache_t  *cached;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "get keepalive peer");
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, kp->conf->ctx_id);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+                          sizeof(ngx_http_upstream_keepalive_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_queue_init(&ctx->cache);
+        ngx_queue_init(&ctx->free);
+
+        /* allocate cache items and add to free queue */
+
+        cached = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+           sizeof(ngx_http_upstream_keepalive_cache_t) * kp->conf->max_cached);
+        if (cached == NULL) {
+            return NGX_ERROR;
+        }
+
+        for (i = 0; i < kp->conf->max_cached; i++) {
+            ngx_queue_insert_head(&ctx->free, &cached[i].queue);
+            cached[i].conf = kp->conf;
+        }
+
+        ngx_set_cycle_ctx(ngx_cycle, kp->conf->ctx_id, ctx);
+    }
 
     /* ask balancer */
 
@@ -255,7 +272,7 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
 
     /* search cache for suitable connection */
 
-    cache = &kp->conf->cache;
+    cache = &ctx->cache;
 
     for (q = ngx_queue_head(cache);
          q != ngx_queue_sentinel(cache);
@@ -269,7 +286,7 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
             == 0)
         {
             ngx_queue_remove(q);
-            ngx_queue_insert_head(&kp->conf->free, q);
+            ngx_queue_insert_head(&ctx->free, q);
 
             goto found;
         }
@@ -308,9 +325,12 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_http_upstream_keepalive_peer_data_t  *kp = data;
     ngx_http_upstream_keepalive_cache_t      *item;
 
-    ngx_queue_t          *q;
-    ngx_connection_t     *c;
-    ngx_http_upstream_t  *u;
+    ngx_queue_t                        *q;
+    ngx_connection_t                   *c;
+    ngx_http_upstream_t                *u;
+    ngx_http_upstream_keepalive_ctx_t  *ctx;
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, kp->conf->ctx_id);
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "free keepalive peer");
@@ -358,9 +378,9 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
                    "free keepalive peer: saving connection %p", c);
 
-    if (ngx_queue_empty(&kp->conf->free)) {
+    if (ngx_queue_empty(&ctx->free)) {
 
-        q = ngx_queue_last(&kp->conf->cache);
+        q = ngx_queue_last(&ctx->cache);
         ngx_queue_remove(q);
 
         item = ngx_queue_data(q, ngx_http_upstream_keepalive_cache_t, queue);
@@ -368,13 +388,13 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
         ngx_http_upstream_keepalive_close(item->connection);
 
     } else {
-        q = ngx_queue_head(&kp->conf->free);
+        q = ngx_queue_head(&ctx->free);
         ngx_queue_remove(q);
 
         item = ngx_queue_data(q, ngx_http_upstream_keepalive_cache_t, queue);
     }
 
-    ngx_queue_insert_head(&kp->conf->cache, q);
+    ngx_queue_insert_head(&ctx->cache, q);
 
     item->connection = c;
 
@@ -424,9 +444,10 @@ ngx_http_upstream_keepalive_close_handler(ngx_event_t *ev)
     ngx_http_upstream_keepalive_srv_conf_t  *conf;
     ngx_http_upstream_keepalive_cache_t     *item;
 
-    int                n;
-    char               buf[1];
-    ngx_connection_t  *c;
+    int                                 n;
+    char                                buf[1];
+    ngx_connection_t                   *c;
+    ngx_http_upstream_keepalive_ctx_t  *ctx;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                    "keepalive close handler");
@@ -456,8 +477,10 @@ close:
 
     ngx_http_upstream_keepalive_close(c);
 
+    ctx = ngx_get_cycle_ctx(ngx_cycle, conf->ctx_id);
+
     ngx_queue_remove(&item->queue);
-    ngx_queue_insert_head(&conf->free, &item->queue);
+    ngx_queue_insert_head(&ctx->free, &item->queue);
 }
 
 

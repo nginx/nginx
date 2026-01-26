@@ -18,13 +18,15 @@
 #define NGX_CMD_QUIT           3
 #define NGX_CMD_TERMINATE      4
 #define NGX_CMD_REOPEN         5
+#define NGX_CMD_RECONFIGURE    6
 
 
 #define NGX_PROCESS_SINGLE     0
-#define NGX_PROCESS_MASTER     1
-#define NGX_PROCESS_SIGNALLER  2
-#define NGX_PROCESS_WORKER     3
-#define NGX_PROCESS_HELPER     4
+#define NGX_PROCESS_THREAD     1
+#define NGX_PROCESS_MASTER     2
+#define NGX_PROCESS_SIGNALLER  3
+#define NGX_PROCESS_WORKER     4
+#define NGX_PROCESS_HELPER     5
 
 
 typedef struct {
@@ -35,16 +37,24 @@ typedef struct {
 
 
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
+#if (NGX_THREADS)
+void ngx_master_thread_cycle(ngx_cycle_t *cycle);
+#endif
 void ngx_single_process_cycle(ngx_cycle_t *cycle);
 
 
 extern ngx_uint_t      ngx_process;
-extern ngx_uint_t      ngx_worker;
 extern ngx_pid_t       ngx_pid;
 extern ngx_pid_t       ngx_new_binary;
 extern ngx_uint_t      ngx_inherited;
 extern ngx_uint_t      ngx_daemonized;
-extern ngx_uint_t      ngx_exiting;
+
+extern ngx_thread_local ngx_uint_t  ngx_worker;
+extern ngx_thread_local ngx_uint_t  ngx_exiting;
+extern ngx_thread_local ngx_uint_t  ngx_thread;
+#if (NGX_THREADS)
+extern ngx_thread_local ngx_tid_t   ngx_tid;
+#endif
 
 extern sig_atomic_t    ngx_reap;
 extern sig_atomic_t    ngx_sigio;

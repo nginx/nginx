@@ -10,8 +10,8 @@
 #include <ngx_event.h>
 
 
-extern int            ngx_eventfd;
-extern aio_context_t  ngx_aio_ctx;
+extern ngx_thread_local int            ngx_eventfd;
+extern ngx_thread_local aio_context_t  ngx_aio_ctx;
 
 
 static void ngx_file_aio_event_handler(ngx_event_t *ev);
@@ -105,6 +105,8 @@ ngx_file_aio_read(ngx_file_t *file, u_char *buf, size_t size, off_t offset,
     aio->aiocb.aio_resfd = ngx_eventfd;
 
     ev->handler = ngx_file_aio_event_handler;
+
+    ngx_save_cycle(ev->cycle);
 
     piocb[0] = &aio->aiocb;
 

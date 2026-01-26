@@ -149,11 +149,11 @@ static ngx_int_t ngx_eventport_process_events(ngx_cycle_t *cycle,
 static void *ngx_eventport_create_conf(ngx_cycle_t *cycle);
 static char *ngx_eventport_init_conf(ngx_cycle_t *cycle, void *conf);
 
-static int            ep = -1;
-static port_event_t  *event_list;
-static ngx_uint_t     nevents;
-static timer_t        event_timer = (timer_t) -1;
-static ngx_event_t    notify_event;
+static ngx_thread_local int            ep = -1;
+static ngx_thread_local port_event_t  *event_list;
+static ngx_thread_local ngx_uint_t     nevents;
+static ngx_thread_local timer_t        event_timer = (timer_t) -1;
+static ngx_thread_local ngx_event_t    notify_event;
 
 static ngx_str_t      eventport_name = ngx_string("eventport");
 

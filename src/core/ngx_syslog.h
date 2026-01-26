@@ -21,8 +21,9 @@ typedef struct {
     ngx_log_t          log;
     ngx_log_t         *logp;
 
-    unsigned           busy:1;
-    unsigned           nohostname:1;
+    ngx_atomic_t       busy;
+
+    ngx_uint_t         nohostname; /* unsigned  nohostname:1; */
 } ngx_syslog_peer_t;
 
 

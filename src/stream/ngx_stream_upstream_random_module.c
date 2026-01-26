@@ -17,11 +17,16 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                              two;
-#if (NGX_STREAM_UPSTREAM_ZONE)
+    ngx_uint_t                              ctx_id;
+} ngx_stream_upstream_random_srv_conf_t;
+
+
+typedef struct {
+#if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_uint_t                              config;
 #endif
     ngx_stream_upstream_random_range_t     *ranges;
-} ngx_stream_upstream_random_srv_conf_t;
+} ngx_stream_upstream_random_ctx_t;
 
 
 typedef struct {
@@ -35,8 +40,8 @@ typedef struct {
 
 static ngx_int_t ngx_stream_upstream_init_random(ngx_conf_t *cf,
     ngx_stream_upstream_srv_conf_t *us);
-static ngx_int_t ngx_stream_upstream_update_random(ngx_pool_t *pool,
-    ngx_stream_upstream_srv_conf_t *us);
+static ngx_int_t ngx_stream_upstream_update_random(
+    ngx_stream_upstream_srv_conf_t *us, ngx_uint_t config);
 
 static ngx_int_t ngx_stream_upstream_init_random_peer(ngx_stream_session_t *s,
     ngx_stream_upstream_srv_conf_t *us);
@@ -105,39 +110,56 @@ ngx_stream_upstream_init_random(ngx_conf_t *cf,
 
     us->peer.init = ngx_stream_upstream_init_random_peer;
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
-    if (us->shm_zone) {
-        return NGX_OK;
-    }
-#endif
-
-    return ngx_stream_upstream_update_random(cf->pool, us);
+    return NGX_OK;
 }
 
 
 static ngx_int_t
-ngx_stream_upstream_update_random(ngx_pool_t *pool,
-    ngx_stream_upstream_srv_conf_t *us)
+ngx_stream_upstream_update_random(ngx_stream_upstream_srv_conf_t *us,
+    ngx_uint_t config)
 {
     size_t                                  size;
     ngx_uint_t                              i, total_weight;
     ngx_stream_upstream_rr_peer_t          *peer;
     ngx_stream_upstream_rr_peers_t         *peers;
+    ngx_stream_upstream_random_ctx_t       *ctx;
     ngx_stream_upstream_random_range_t     *ranges;
     ngx_stream_upstream_random_srv_conf_t  *rcf;
 
     rcf = ngx_stream_conf_upstream_srv_conf(us,
                                             ngx_stream_upstream_random_module);
-    if (rcf->ranges) {
-        ngx_free(rcf->ranges);
-        rcf->ranges = NULL;
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, rcf->ctx_id);
+
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(ngx_get_cyclex(ngx_cycle)->pool,
+                          sizeof(ngx_stream_upstream_random_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_set_cycle_ctx(ngx_cycle, rcf->ctx_id, ctx);
+    }
+
+    if (ctx->ranges
+#if (NGX_HTTP_UPSTREAM_ZONE)
+        && ctx->config == config
+#endif
+       )
+    {
+        return NGX_OK;
+    }
+
+    if (ctx->ranges) {
+        ngx_free(ctx->ranges);
+        ctx->ranges = NULL;
     }
 
     peers = us->peer.data;
 
     size = peers->number * sizeof(ngx_stream_upstream_random_range_t);
 
-    ranges = pool ? ngx_palloc(pool, size) : ngx_alloc(size, ngx_cycle->log);
+    ranges = ngx_alloc(size, ngx_cycle->log);
     if (ranges == NULL) {
         return NGX_ERROR;
     }
@@ -150,7 +172,10 @@ ngx_stream_upstream_update_random(ngx_pool_t *pool,
         total_weight += peer->weight;
     }
 
-    rcf->ranges = ranges;
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    ctx->config = config;
+#endif
+    ctx->ranges = ranges;
 
     return NGX_OK;
 }
@@ -160,6 +185,7 @@ static ngx_int_t
 ngx_stream_upstream_init_random_peer(ngx_stream_session_t *s,
     ngx_stream_upstream_srv_conf_t *us)
 {
+    ngx_uint_t                               config;
     ngx_stream_upstream_random_srv_conf_t   *rcf;
     ngx_stream_upstream_random_peer_data_t  *rp;
 
@@ -191,20 +217,20 @@ ngx_stream_upstream_init_random_peer(ngx_stream_session_t *s,
     rp->conf = rcf;
     rp->tries = 0;
 
-    ngx_stream_upstream_rr_peers_rlock(rp->rrp.peers);
+    config = 0;
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
-    if (rp->rrp.peers->config
-        && (rcf->ranges == NULL || rcf->config != *rp->rrp.peers->config))
-    {
-        if (ngx_stream_upstream_update_random(NULL, us) != NGX_OK) {
-            ngx_stream_upstream_rr_peers_unlock(rp->rrp.peers);
-            return NGX_ERROR;
-        }
-
-        rcf->config = *rp->rrp.peers->config;
+#if (NGX_HTTP_UPSTREAM_ZONE)
+    if (rp->rrp.peers->config) {
+        config = *rp->rrp.peers->config;
     }
 #endif
+
+    ngx_stream_upstream_rr_peers_rlock(rp->rrp.peers);
+
+    if (ngx_stream_upstream_update_random(us, config) != NGX_OK) {
+        ngx_stream_upstream_rr_peers_unlock(rp->rrp.peers);
+        return NGX_ERROR;
+    }
 
     ngx_stream_upstream_rr_peers_unlock(rp->rrp.peers);
 
@@ -222,6 +248,7 @@ ngx_stream_upstream_get_random_peer(ngx_peer_connection_t *pc, void *data)
     ngx_uint_t                           i, n;
     ngx_stream_upstream_rr_peer_t       *peer;
     ngx_stream_upstream_rr_peers_t      *peers;
+    ngx_stream_upstream_random_ctx_t    *ctx;
     ngx_stream_upstream_rr_peer_data_t  *rrp;
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
@@ -249,11 +276,13 @@ ngx_stream_upstream_get_random_peer(ngx_peer_connection_t *pc, void *data)
 
     now = ngx_time();
 
+    ctx = ngx_get_cycle_ctx(ngx_cycle, rp->conf->ctx_id);
+
     for ( ;; ) {
 
         i = ngx_stream_upstream_peek_random_peer(peers, rp);
 
-        peer = rp->conf->ranges[i].peer;
+        peer = ctx->ranges[i].peer;
 
         n = i / (8 * sizeof(uintptr_t));
         m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
@@ -324,6 +353,7 @@ ngx_stream_upstream_get_random2_peer(ngx_peer_connection_t *pc, void *data)
     ngx_uint_t                           i, n, p;
     ngx_stream_upstream_rr_peer_t       *peer, *prev;
     ngx_stream_upstream_rr_peers_t      *peers;
+    ngx_stream_upstream_random_ctx_t    *ctx;
     ngx_stream_upstream_rr_peer_data_t  *rrp;
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
@@ -357,11 +387,13 @@ ngx_stream_upstream_get_random2_peer(ngx_peer_connection_t *pc, void *data)
     p = 0;
 #endif
 
+    ctx = ngx_get_cycle_ctx(ngx_cycle, rp->conf->ctx_id);
+
     for ( ;; ) {
 
         i = ngx_stream_upstream_peek_random_peer(peers, rp);
 
-        peer = rp->conf->ranges[i].peer;
+        peer = ctx->ranges[i].peer;
 
         if (peer == prev) {
             goto next;
@@ -435,7 +467,10 @@ static ngx_uint_t
 ngx_stream_upstream_peek_random_peer(ngx_stream_upstream_rr_peers_t *peers,
     ngx_stream_upstream_random_peer_data_t *rp)
 {
-    ngx_uint_t  i, j, k, x;
+    ngx_uint_t                         i, j, k, x;
+    ngx_stream_upstream_random_ctx_t  *ctx;
+
+    ctx = ngx_get_cycle_ctx(ngx_cycle, rp->conf->ctx_id);
 
     x = ngx_random() % peers->total_weight;
 
@@ -445,7 +480,7 @@ ngx_stream_upstream_peek_random_peer(ngx_stream_upstream_rr_peers_t *peers,
     while (j - i > 1) {
         k = (i + j) / 2;
 
-        if (x < rp->conf->ranges[k].range) {
+        if (x < ctx->ranges[k].range) {
             j = k;
 
         } else {
@@ -472,6 +507,8 @@ ngx_stream_upstream_random_create_conf(ngx_conf_t *cf)
      *
      *     conf->two = 0;
      */
+
+    conf->ctx_id = ngx_cycle_ctx_add(cf);
 
     return conf;
 }

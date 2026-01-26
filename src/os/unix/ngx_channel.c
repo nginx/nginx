@@ -195,7 +195,7 @@ ngx_read_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, ngx_log_t *log)
 }
 
 
-ngx_int_t
+ngx_connection_t *
 ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     ngx_event_handler_pt handler)
 {
@@ -205,7 +205,7 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     c = ngx_get_connection(fd, cycle->log);
 
     if (c == NULL) {
-        return NGX_ERROR;
+        return NULL;
     }
 
     c->pool = cycle->pool;
@@ -226,17 +226,17 @@ ngx_add_channel_event(ngx_cycle_t *cycle, ngx_fd_t fd, ngx_int_t event,
     if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
         if (ngx_add_conn(c) == NGX_ERROR) {
             ngx_free_connection(c);
-            return NGX_ERROR;
+            return NULL;
         }
 
     } else {
         if (ngx_add_event(ev, event, 0) == NGX_ERROR) {
             ngx_free_connection(c);
-            return NGX_ERROR;
+            return NULL;
         }
     }
 
-    return NGX_OK;
+    return c;
 }
 
 

@@ -170,9 +170,9 @@ struct ngx_http_file_cache_s {
 
     time_t                           fail_time;
 
-    ngx_uint_t                       files;
+    ngx_uint_t                       ctx_id;
+
     ngx_uint_t                       loader_files;
-    ngx_msec_t                       last;
     ngx_msec_t                       loader_sleep;
     ngx_msec_t                       loader_threshold;
 
@@ -185,6 +185,12 @@ struct ngx_http_file_cache_s {
     ngx_uint_t                       use_temp_path;
                                      /* unsigned use_temp_path:1 */
 };
+
+
+typedef struct {
+    ngx_msec_t                       last;
+    ngx_uint_t                       files;
+} ngx_http_file_cachex_t;
 
 
 ngx_int_t ngx_http_file_cache_new(ngx_http_request_t *r);
