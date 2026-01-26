@@ -1527,6 +1527,10 @@ ngx_tcp_nodelay(ngx_connection_t *c)
 {
     int  tcp_nodelay;
 
+    if (c->type != SOCK_STREAM) {
+        return NGX_OK;
+    }
+
     if (c->tcp_nodelay != NGX_TCP_NODELAY_UNSET) {
         return NGX_OK;
     }
