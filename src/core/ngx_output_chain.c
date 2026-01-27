@@ -552,6 +552,11 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
             dst->flush = src->flush;
             dst->last_buf = src->last_buf;
             dst->last_in_chain = src->last_in_chain;
+
+        } else {
+            dst->flush = 0;
+            dst->last_buf = 0;
+            dst->last_in_chain = 0;
         }
 
     } else {
@@ -648,6 +653,11 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
             dst->flush = src->flush;
             dst->last_buf = src->last_buf;
             dst->last_in_chain = src->last_in_chain;
+
+        } else {
+            dst->flush = 0;
+            dst->last_buf = 0;
+            dst->last_in_chain = 0;
         }
     }
 
