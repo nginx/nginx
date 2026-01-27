@@ -17,8 +17,6 @@ static void ngx_http_v3_cleanup_request(void *data);
 static void ngx_http_v3_process_request(ngx_event_t *rev);
 static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
-static ngx_int_t ngx_http_v3_validate_header(ngx_http_request_t *r,
-    ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r);
@@ -29,30 +27,6 @@ static void ngx_http_v3_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_request_body_filter(ngx_http_request_t *r,
     ngx_chain_t *in);
-
-
-static const struct {
-    ngx_str_t   name;
-    ngx_uint_t  method;
-} ngx_http_v3_methods[] = {
-
-    { ngx_string("GET"),       NGX_HTTP_GET },
-    { ngx_string("POST"),      NGX_HTTP_POST },
-    { ngx_string("HEAD"),      NGX_HTTP_HEAD },
-    { ngx_string("OPTIONS"),   NGX_HTTP_OPTIONS },
-    { ngx_string("PROPFIND"),  NGX_HTTP_PROPFIND },
-    { ngx_string("PUT"),       NGX_HTTP_PUT },
-    { ngx_string("MKCOL"),     NGX_HTTP_MKCOL },
-    { ngx_string("DELETE"),    NGX_HTTP_DELETE },
-    { ngx_string("COPY"),      NGX_HTTP_COPY },
-    { ngx_string("MOVE"),      NGX_HTTP_MOVE },
-    { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
-    { ngx_string("LOCK"),      NGX_HTTP_LOCK },
-    { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
-    { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-    { ngx_string("TRACE"),     NGX_HTTP_TRACE },
-    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT }
-};
 
 
 void
@@ -632,7 +606,7 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
     r->v3_parse->header_limit -= len;
 
-    if (ngx_http_v3_validate_header(r, name, value) != NGX_OK) {
+    if (ngx_http_v23_fixup_header(r, name, value) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
@@ -693,63 +667,9 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
 
 static ngx_int_t
-ngx_http_v3_validate_header(ngx_http_request_t *r, ngx_str_t *name,
-    ngx_str_t *value)
-{
-    u_char                     ch;
-    ngx_uint_t                 i;
-    ngx_http_core_srv_conf_t  *cscf;
-
-    r->invalid_header = 0;
-
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    for (i = (name->data[0] == ':'); i != name->len; i++) {
-        ch = name->data[i];
-
-        if ((ch >= 'a' && ch <= 'z')
-            || (ch == '-')
-            || (ch >= '0' && ch <= '9')
-            || (ch == '_' && cscf->underscores_in_headers))
-        {
-            continue;
-        }
-
-        if (ch <= 0x20 || ch == 0x7f || ch == ':'
-            || (ch >= 'A' && ch <= 'Z'))
-        {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid header name: \"%V\"", name);
-
-            return NGX_ERROR;
-        }
-
-        r->invalid_header = 1;
-    }
-
-    for (i = 0; i != value->len; i++) {
-        ch = value->data[i];
-
-        if (ch == '\0' || ch == LF || ch == CR) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent header \"%V\" with "
-                          "invalid value: \"%V\"", name, value);
-
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
-    u_char      ch, c;
-    ngx_uint_t  i;
-
     if (r->request_line.len) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent out of order pseudo-headers");
@@ -757,42 +677,8 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
     }
 
     if (name->len == 7 && ngx_strncmp(name->data, ":method", 7) == 0) {
-
-        if (r->method_name.len) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":method\" header");
+        if (ngx_http_v23_parse_method(r, value) != NGX_OK) {
             goto failed;
-        }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":method\" header");
-            goto failed;
-        }
-
-        r->method_name = *value;
-
-        for (i = 0; i < sizeof(ngx_http_v3_methods)
-                        / sizeof(ngx_http_v3_methods[0]); i++)
-        {
-            if (value->len == ngx_http_v3_methods[i].name.len
-                && ngx_strncmp(value->data,
-                               ngx_http_v3_methods[i].name.data, value->len)
-                   == 0)
-            {
-                r->method = ngx_http_v3_methods[i].method;
-                break;
-            }
-        }
-
-        for (i = 0; i < value->len; i++) {
-            ch = value->data[i];
-
-            if ((ch < 'A' || ch > 'Z') && ch != '_' && ch != '-') {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent invalid method: \"%V\"", value);
-                goto failed;
-            }
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -831,40 +717,9 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
 
     if (name->len == 7 && ngx_strncmp(name->data, ":scheme", 7) == 0) {
 
-        if (r->schema.len) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent duplicate \":scheme\" header");
+        if (ngx_http_v23_parse_scheme(r, value) != NGX_OK) {
             goto failed;
         }
-
-        if (value->len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent empty \":scheme\" header");
-            goto failed;
-        }
-
-        for (i = 0; i < value->len; i++) {
-            ch = value->data[i];
-
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'z') {
-                continue;
-            }
-
-            if (((ch >= '0' && ch <= '9')
-                 || ch == '+' || ch == '-' || ch == '.')
-                && i > 0)
-            {
-                continue;
-            }
-
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid \":scheme\" header: \"%V\"",
-                          value);
-            goto failed;
-        }
-
-        r->schema = *value;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http3 schema \"%V\"", value);

@@ -10,6 +10,11 @@
 #include <ngx_http.h>
 
 
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+static inline ngx_int_t ngx_isspace(u_char ch);
+#endif
+
+
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
@@ -1009,6 +1014,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 r->header_start = p;
@@ -1033,6 +1039,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 r->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -1053,6 +1060,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
@@ -1125,6 +1133,269 @@ header_done:
 
     return NGX_HTTP_PARSE_HEADER_DONE;
 }
+
+
+#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+
+ngx_int_t
+ngx_http_v23_parse_method(ngx_http_request_t *r, ngx_str_t *value)
+{
+    size_t         k, len;
+    ngx_uint_t     n;
+    const u_char  *p, *m;
+
+    /*
+     * This array takes less than 256 sequential bytes,
+     * and if typical CPU cache line size is 64 bytes,
+     * it is prefetched for 4 load operations.
+     */
+    static const struct {
+        u_char            len;
+        const u_char      method[11];
+        uint32_t          value;
+    } tests[] = {
+        { 3, "GET",       NGX_HTTP_GET },
+        { 4, "POST",      NGX_HTTP_POST },
+        { 4, "HEAD",      NGX_HTTP_HEAD },
+        { 7, "OPTIONS",   NGX_HTTP_OPTIONS },
+        { 8, "PROPFIND",  NGX_HTTP_PROPFIND },
+        { 3, "PUT",       NGX_HTTP_PUT },
+        { 5, "MKCOL",     NGX_HTTP_MKCOL },
+        { 6, "DELETE",    NGX_HTTP_DELETE },
+        { 4, "COPY",      NGX_HTTP_COPY },
+        { 4, "MOVE",      NGX_HTTP_MOVE },
+        { 9, "PROPPATCH", NGX_HTTP_PROPPATCH },
+        { 4, "LOCK",      NGX_HTTP_LOCK },
+        { 6, "UNLOCK",    NGX_HTTP_UNLOCK },
+        { 5, "PATCH",     NGX_HTTP_PATCH },
+        { 5, "TRACE",     NGX_HTTP_TRACE },
+        { 7, "CONNECT",   NGX_HTTP_CONNECT }
+    }, *test;
+
+    if (r->method_name.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :method header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :method header");
+
+        return NGX_DECLINED;
+    }
+
+    r->method_name.len = value->len;
+    r->method_name.data = value->data;
+
+    len = r->method_name.len;
+    n = sizeof(tests) / sizeof(tests[0]);
+    test = tests;
+
+    do {
+        if (len == test->len) {
+            p = r->method_name.data;
+            m = test->method;
+            k = len;
+
+            do {
+                if (*p++ != *m++) {
+                    goto next;
+                }
+            } while (--k);
+
+            r->method = test->value;
+            return NGX_OK;
+        }
+
+    next:
+        test++;
+
+    } while (--n);
+
+    p = r->method_name.data;
+
+    do {
+        if ((*p < 'A' || *p > 'Z') && *p != '_' && *p != '-') {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid method: \"%V\"",
+                          &r->method_name);
+
+            return NGX_DECLINED;
+        }
+
+        p++;
+
+    } while (--len);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_v23_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
+{
+    u_char      c, ch;
+    ngx_uint_t  i;
+
+    if (r->schema.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :scheme header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :scheme header");
+
+        return NGX_DECLINED;
+    }
+
+    for (i = 0; i < value->len; i++) {
+        ch = value->data[i];
+
+        c = (u_char) (ch | 0x20);
+        if (c >= 'a' && c <= 'z') {
+            continue;
+        }
+
+        if (((ch >= '0' && ch <= '9') || ch == '+' || ch == '-' || ch == '.')
+            && i > 0)
+        {
+            continue;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid :scheme header: \"%V\"", value);
+
+        return NGX_DECLINED;
+    }
+
+    r->schema = *value;
+
+    return NGX_OK;
+}
+
+static inline ngx_int_t
+ngx_isspace(u_char ch)
+{
+    return ch == ' ' || ch == '\t';
+}
+
+
+ngx_int_t
+ngx_http_v23_fixup_header(ngx_http_request_t *r, ngx_str_t *name,
+    ngx_str_t *value)
+{
+    u_char                     ch;
+    ngx_str_t                  tmp;
+    ngx_uint_t                 i;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    r->invalid_header = 0;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (name->len < 1) {
+        ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                      "BUG: internal zero-length header name");
+
+        return NGX_ERROR;
+    }
+
+    for (i = (name->data[0] == ':'); i != name->len; i++) {
+        ch = name->data[i];
+
+        if ((ch >= 'a' && ch <= 'z')
+            || (ch == '-')
+            || (ch >= '0' && ch <= '9')
+            || (ch == '_' && cscf->underscores_in_headers))
+        {
+            continue;
+        }
+
+        if (ch <= 0x20 || ch == 0x7f || ch == ':'
+            || (ch >= 'A' && ch <= 'Z'))
+        {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid header name: \"%V\"",
+                          name);
+
+            return NGX_ERROR;
+        }
+
+        r->invalid_header = 1;
+    }
+
+    /* Keep subsequent code from having to special-case empty strings. */
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
+    for (i = 0; i != value->len; i++) {
+        ch = value->data[i];
+
+        if (ch == '\0' || ch == LF || ch == CR) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent header \"%V\" with "
+                          "invalid value: \"%V\"",
+                          name, value);
+
+            return NGX_ERROR;
+        }
+    }
+
+    tmp = *value;
+
+    if (!ngx_isspace(tmp.data[0])
+        && !ngx_isspace(tmp.data[tmp.len - 1])) {
+        /* Fast path: nothing to strip. */
+        return NGX_OK;
+    }
+
+    /*
+     * Strip trailing whitespace.  Do this first so that
+     * if the string is all whitespace, tmp.data is not a
+     * past-the-end pointer, which cannot be safely passed
+     * to memmove().  After the loop, the string is either
+     * empty or ends with a non-whitespace character.
+     */
+    while (tmp.len && ngx_isspace(tmp.data[tmp.len - 1])) {
+        tmp.len--;
+    }
+
+    /* Strip leading whitespace */
+    if (tmp.len && ngx_isspace(tmp.data[0])) {
+        /*
+         * Last loop guaranteed that 'tmp' does not end with whitespace, and
+         * this check guarantees it is not empty and starts with whitespace.
+         * Therefore, 'tmp' must end with a non-whitespace character, and must
+         * be of length at least 2.  This means that it is safe to keep going
+         * until a non-whitespace character is found.
+         */
+        do {
+            tmp.len--;
+            tmp.data++;
+        } while (ngx_isspace(tmp.data[0]));
+
+        /* Move remaining string to start of buffer. */
+        memmove(value->data, tmp.data, tmp.len);
+    }
+
+    /*
+     * NUL-pad the data, so that if it was NUL-terminated before, it stil is.
+     * At least one byte will have been stripped, so value->data + tmp.len
+     * is not a past-the-end pointer.
+     */
+    memset(value->data + tmp.len, '\0', value->len - tmp.len);
+
+    /* Fix up length and return. */
+    value->len = tmp.len;
+    return NGX_OK;
+}
+#endif
 
 
 ngx_int_t
