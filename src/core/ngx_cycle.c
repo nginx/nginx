@@ -535,9 +535,15 @@ ngx_init_cycle(ngx_cycle_t *old_cycle)
                     == NGX_OK)
                 {
                     nls[n].fd = ls[i].fd;
-                    nls[n].inherited = ls[i].inherited;
                     nls[n].previous = &ls[i];
-                    ls[i].remain = 1;
+
+                    if (ls[i].protocol != nls[n].protocol) {
+                        nls[n].change_protocol = 1;
+
+                    } else {
+                        nls[n].inherited = ls[i].inherited;
+                        ls[i].remain = 1;
+                    }
 
                     if (ls[i].backlog != nls[n].backlog) {
                         nls[n].listen = 1;
