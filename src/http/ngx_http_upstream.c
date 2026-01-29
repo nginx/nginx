@@ -2528,6 +2528,15 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
 
+#if (NGX_HTTP_SSL)
+        if (u->ssl && c->ssl == NULL) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "upstream prematurely sent response");
+            ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+            return;
+        }
+#endif
+
         u->state->bytes_received += n;
 
         u->buffer.last += n;
