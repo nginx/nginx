@@ -658,11 +658,9 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
     u_char                        buffer[NGX_OFF_T_LEN];
 
     content_length_n = 0;
-    body = r->upstream->request_bufs;
 
-    while (body) {
-        content_length_n += ngx_buf_size(body->buf);
-        body = body->next;
+    if (r->headers_in.content_length_n > 0) {
+        content_length_n = r->headers_in.content_length_n;
     }
 
     content_length.data = buffer;
