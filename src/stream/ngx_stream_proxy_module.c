@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
+#if (NGX_STREAM_SSL)
+#include <openssl/ssl.h>
+#endif
 
 typedef struct {
     ngx_addr_t                      *addr;
@@ -42,6 +45,10 @@ typedef struct {
     ngx_str_t                        ssl_ciphers;
     ngx_stream_complex_value_t      *ssl_name;
     ngx_flag_t                       ssl_server_name;
+
+    ngx_flag_t                       ssl_alpn_send;
+    ngx_flag_t                       ssl_alpn_set;
+    ngx_str_t                        ssl_alpn;
 
     ngx_flag_t                       ssl_verify;
     ngx_uint_t                       ssl_verify_depth;
@@ -101,6 +108,8 @@ static char *ngx_stream_proxy_ssl_password_file(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 static char *ngx_stream_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post,
     void *data);
+static char *ngx_stream_proxy_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static void ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s);
 static void ngx_stream_proxy_ssl_handshake(ngx_connection_t *pc);
 static void ngx_stream_proxy_ssl_save_session(ngx_connection_t *c);
@@ -366,6 +375,20 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, ssl_conf_commands),
       &ngx_stream_proxy_ssl_conf_command_post },
+
+    { ngx_string("proxy_ssl_alpn"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
+      ngx_stream_proxy_ssl_alpn,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("proxy_ssl_alpn_send"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, ssl_alpn_send),
+      NULL },
 
 #endif
 
@@ -1176,9 +1199,19 @@ static void
 ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
 {
     ngx_int_t                     rc;
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    unsigned int                  slen;
+    const u_char                 *sel;
+#endif
     ngx_connection_t             *pc;
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    ngx_connection_t             *dc;
+#endif
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    unsigned char                 wire[1 + 255];
+#endif
 
     u = s->upstream;
 
@@ -1192,6 +1225,37 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return;
     }
+
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+    if (pscf->ssl_alpn_send) {
+        if (pc->ssl && pc->ssl->connection) {
+            if (pscf->ssl_alpn_set && pscf->ssl_alpn.len) {
+                (void) SSL_set_alpn_protos(pc->ssl->connection,
+                                           pscf->ssl_alpn.data,
+                                           (unsigned int) pscf->ssl_alpn.len);
+
+            } else {
+                /* UNSET: inherit *negotiated* downstream ALPN, if any */
+                dc = s->connection;
+
+                if (dc && dc->ssl && dc->ssl->connection) {
+                    sel = NULL;
+                    slen = 0;
+
+                    SSL_get0_alpn_selected(dc->ssl->connection, &sel, &slen);
+
+                    if (slen > 0 && slen <= 255) {
+                        wire[0] = (unsigned char) slen;
+                        ngx_memcpy(&wire[1], sel, slen);
+
+                        (void) SSL_set_alpn_protos(pc->ssl->connection, wire,
+                                                   (unsigned int) (1 + slen));
+                    }
+                }
+            }
+        }
+    }
+#endif
 
     if (pscf->ssl_server_name || pscf->ssl_verify) {
         if (ngx_stream_proxy_ssl_name(s) != NGX_OK) {
@@ -2203,6 +2267,9 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
      *     conf->ssl = NULL;
      *     conf->upstream = NULL;
      *     conf->upstream_value = NULL;
+     *
+     *     conf->ssl_alpn.len = 0;
+     *     conf->ssl_alpn.data = NULL;
      */
 
     conf->connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -2232,6 +2299,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->ssl_certificate_cache = NGX_CONF_UNSET_PTR;
     conf->ssl_passwords = NGX_CONF_UNSET_PTR;
     conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
+    conf->ssl_alpn_send = NGX_CONF_UNSET;
+    conf->ssl_alpn_set = NGX_CONF_UNSET;
 #endif
 
     return conf;
@@ -2330,9 +2399,76 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    ngx_conf_merge_value(conf->ssl_alpn_send, prev->ssl_alpn_send, 1);
+    ngx_conf_merge_value(conf->ssl_alpn_set, prev->ssl_alpn_set, 0);
+
+    if (conf->ssl_alpn_set == 0 && prev->ssl_alpn_set) {
+        conf->ssl_alpn = prev->ssl_alpn;
+        conf->ssl_alpn_set = 1;
+    }
+
 #endif
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_proxy_ssl_alpn(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+    size_t                        len, n;
+    u_char                       *p;
+    ngx_str_t                    *value;
+    ngx_uint_t                    i;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+
+    pscf = conf;
+
+    if (pscf->ssl_alpn_set != NGX_CONF_UNSET && pscf->ssl_alpn_set) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    /* Build wire-format list: 0x02 'h''2' 0x08 'h''t''t''p''/''1''.''1' ... */
+    len = 0;
+    for (i = 1; i < cf->args->nelts; i++) {
+        if (value[i].len == 0 || value[i].len > 255) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid ALPN protocol length \"%V\"",
+                               &value[i]);
+            return NGX_CONF_ERROR;
+        }
+
+        len += 1 + value[i].len;
+    }
+
+    p = ngx_pnalloc(cf->pool, len);
+    if (p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    pscf->ssl_alpn.data = p;
+    pscf->ssl_alpn.len = len;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        n = value[i].len;
+        *p++ = (u_char) n;
+        p = ngx_cpymem(p, value[i].data, n);
+    }
+
+    pscf->ssl_alpn_set = 1;
+
+    return NGX_CONF_OK;
+
+#else
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "the \"proxy_ssl_alpn\" directive requires OpenSSL "
+                       "with ALPN support");
+    return NGX_CONF_ERROR;
+#endif
 }
 
 
