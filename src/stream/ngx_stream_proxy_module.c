@@ -1195,38 +1195,17 @@ ngx_stream_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
 }
 
 
-static void
-ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+static ngx_int_t
+ngx_stream_proxy_ssl_init_alpn_connection(ngx_stream_session_t *s,
+    ngx_stream_proxy_srv_conf_t *pscf, ngx_connection_t *pc)
 {
-    ngx_int_t                     rc;
-#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
-    unsigned int                  slen;
-    const u_char                 *sel;
-#endif
-    ngx_connection_t             *pc;
-#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
-    ngx_connection_t             *dc;
-#endif
-    ngx_stream_upstream_t        *u;
-    ngx_stream_proxy_srv_conf_t  *pscf;
-#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
-    unsigned char                 wire[1 + 255];
-#endif
+    unsigned int       slen;
+    const u_char      *sel;
+    ngx_connection_t  *dc;
+    unsigned char      wire[1 + 255];
 
-    u = s->upstream;
-
-    pc = u->peer.connection;
-
-    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
-
-    if (ngx_ssl_create_connection(pscf->ssl, pc, NGX_SSL_BUFFER|NGX_SSL_CLIENT)
-        != NGX_OK)
-    {
-        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
     if (pscf->ssl_alpn_send) {
         if (pc->ssl && pc->ssl->connection) {
             if (pscf->ssl_alpn_set && pscf->ssl_alpn.len) {
@@ -1238,11 +1217,7 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
                                         (unsigned int) pscf->ssl_alpn.len)
                     != 0)
                 {
-                    ngx_ssl_error(NGX_LOG_ERR, pc->log, 0,
-                                  "SSL_set_alpn_protos() failed");
-                    ngx_stream_proxy_finalize(s,
-                                              NGX_STREAM_INTERNAL_SERVER_ERROR);
-                    return;
+                    return NGX_ERROR;
                 }
 
             } else {
@@ -1267,11 +1242,7 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
                                                 (unsigned int) (1 + slen))
                             != 0)
                         {
-                            ngx_ssl_error(NGX_LOG_ERR, pc->log, 0,
-                                          "SSL_set_alpn_protos() failed");
-                            ngx_stream_proxy_finalize(s,
-                                                      NGX_STREAM_INTERNAL_SERVER_ERROR);
-                            return;
+                            return NGX_ERROR;
                         }
                     }
                 }
@@ -1282,6 +1253,41 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
         ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "proxy_ssl_alpn_send is off, not sending ALPN to upstream");
     }
+    return NGX_OK;
+}
+
+#endif
+
+
+static void
+ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
+{
+    ngx_int_t                     rc;
+    ngx_connection_t             *pc;
+    ngx_stream_upstream_t        *u;
+    ngx_stream_proxy_srv_conf_t  *pscf;
+
+    u = s->upstream;
+
+    pc = u->peer.connection;
+
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+    if (ngx_ssl_create_connection(pscf->ssl, pc, NGX_SSL_BUFFER|NGX_SSL_CLIENT)
+        != NGX_OK)
+    {
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+
+    if (ngx_stream_proxy_ssl_init_alpn_connection(s, pscf, pc) != NGX_OK) {
+        ngx_ssl_error(NGX_LOG_ERR, pc->log, 0, "SSL_set_alpn_protos() failed");
+        ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
 #endif
 
     if (pscf->ssl_server_name || pscf->ssl_verify) {
