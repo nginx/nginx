@@ -1230,6 +1230,9 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
     if (pscf->ssl_alpn_send) {
         if (pc->ssl && pc->ssl->connection) {
             if (pscf->ssl_alpn_set && pscf->ssl_alpn.len) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                               "setting upstream ALPN from proxy_ssl_alpn");
+
                 if (SSL_set_alpn_protos(pc->ssl->connection,
                                         pscf->ssl_alpn.data,
                                         (unsigned int) pscf->ssl_alpn.len)
@@ -1253,6 +1256,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
                     SSL_get0_alpn_selected(dc->ssl->connection, &sel, &slen);
 
                     if (slen > 0 && slen <= 255) {
+                        ngx_log_debug2(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                                       "inheriting downstream ALPN \"%*s\" to upstream",
+                                       (int) slen, sel);
+
                         wire[0] = (unsigned char) slen;
                         ngx_memcpy(&wire[1], sel, slen);
 
@@ -1270,6 +1277,10 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
                 }
             }
         }
+
+    } else {
+        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                       "proxy_ssl_alpn_send is off, not sending ALPN to upstream");
     }
 #endif
 
