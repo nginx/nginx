@@ -2418,6 +2418,12 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->ssl_alpn_send, prev->ssl_alpn_send, 1);
     ngx_conf_merge_value(conf->ssl_alpn_set, prev->ssl_alpn_set, 0);
 
+    if (conf->ssl_alpn_send == 0 && conf->ssl_alpn_set) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"proxy_ssl_alpn\" is ignored because "
+                           "\"proxy_ssl_alpn_send\" is off");
+    }
+
     if (conf->ssl_alpn_set == 0 && prev->ssl_alpn_set) {
         conf->ssl_alpn = prev->ssl_alpn;
         conf->ssl_alpn_set = 1;
