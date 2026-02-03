@@ -1230,9 +1230,17 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
     if (pscf->ssl_alpn_send) {
         if (pc->ssl && pc->ssl->connection) {
             if (pscf->ssl_alpn_set && pscf->ssl_alpn.len) {
-                (void) SSL_set_alpn_protos(pc->ssl->connection,
-                                           pscf->ssl_alpn.data,
-                                           (unsigned int) pscf->ssl_alpn.len);
+                if (SSL_set_alpn_protos(pc->ssl->connection,
+                                        pscf->ssl_alpn.data,
+                                        (unsigned int) pscf->ssl_alpn.len)
+                    != 0)
+                {
+                    ngx_ssl_error(NGX_LOG_ERR, pc->log, 0,
+                                  "SSL_set_alpn_protos() failed");
+                    ngx_stream_proxy_finalize(s,
+                                              NGX_STREAM_INTERNAL_SERVER_ERROR);
+                    return;
+                }
 
             } else {
                 /* UNSET: inherit *negotiated* downstream ALPN, if any */
@@ -1248,8 +1256,16 @@ ngx_stream_proxy_ssl_init_connection(ngx_stream_session_t *s)
                         wire[0] = (unsigned char) slen;
                         ngx_memcpy(&wire[1], sel, slen);
 
-                        (void) SSL_set_alpn_protos(pc->ssl->connection, wire,
-                                                   (unsigned int) (1 + slen));
+                        if (SSL_set_alpn_protos(pc->ssl->connection, wire,
+                                                (unsigned int) (1 + slen))
+                            != 0)
+                        {
+                            ngx_ssl_error(NGX_LOG_ERR, pc->log, 0,
+                                          "SSL_set_alpn_protos() failed");
+                            ngx_stream_proxy_finalize(s,
+                                                      NGX_STREAM_INTERNAL_SERVER_ERROR);
+                            return;
+                        }
                     }
                 }
             }
