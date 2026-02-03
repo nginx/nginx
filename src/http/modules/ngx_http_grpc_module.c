@@ -591,6 +591,8 @@ ngx_http_grpc_handler(ngx_http_request_t *r)
         }
     }
 
+    u->preserve_output = 1;
+
     u->output.tag = (ngx_buf_tag_t) &ngx_http_grpc_module;
 
     u->conf = &glcf->upstream;
@@ -4430,7 +4432,6 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.force_ranges = 0;
     conf->upstream.pass_trailers = 1;
     conf->upstream.pass_early_hints = 1;
-    conf->upstream.preserve_output = 1;
 
     conf->headers_source = NGX_CONF_UNSET_PTR;
 

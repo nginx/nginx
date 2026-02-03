@@ -236,8 +236,6 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
-    plcf->upstream.preserve_output = 1;
-
     u = r->upstream;
 
     if (plcf->proxy_lengths == NULL) {
@@ -256,6 +254,8 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
 #if (NGX_HTTP_SSL)
     ngx_str_set(&u->ssl_alpn_protocol, NGX_HTTP_V2_ALPN_PROTO);
 #endif
+
+    u->preserve_output = 1;
 
     u->output.tag = (ngx_buf_tag_t) &ngx_http_proxy_v2_module;
 
