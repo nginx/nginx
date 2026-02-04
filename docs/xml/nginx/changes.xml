@@ -5,6 +5,85 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.5" date="2026-02-04">
+
+<change type="security">
+<para lang="ru">
+атакующий мог вставить незашифрованные данные в ответ от
+SSL-бэкенда (CVE-2026-1642).
+</para>
+<para lang="en">
+an attacker might inject plain text data in the response from an SSL
+backend (CVE-2026-1642).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обращение к ранее освобождённой памяти могло произойти после
+переключения на следующий gRPC- или HTTP/2-бэкенд.
+</para>
+<para lang="en">
+use-after-free might occur after switching to the next
+gRPC or HTTP/2 backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некорректный HTTP/2-запрос мог быть отправлен после переключения
+на следующий бэкенд.
+</para>
+<para lang="en">
+an invalid HTTP/2 request might be sent after switching to the next
+upstream.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+ответ с несколькими диапазонами мог быть больше, чем исходный ответ.
+</para>
+<para lang="en">
+a response with multiple ranges might be larger than the source
+response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+исправлена установка переменной HTTP_HOST при проксировании на
+FastCGI-, SCGI- и uwsgi-бэкенды.
+</para>
+<para lang="en">
+fixed setting HTTP_HOST when proxying to FastCGI, SCGI,
+and uwsgi backends.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+устранено предупреждение при компиляции при помощи MSVC 2022 x86.
+</para>
+<para lang="en">
+fixed warning when compiling with MSVC 2022 x86.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+уровень логгирования ошибки SSL "ech_required"
+понижен с уровня crit до info.
+</para>
+<para lang="en">
+the logging level of the "ech_required" SSL error
+has been lowered from "crit" to "info".
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.4" date="2025-12-09">
 
 <change type="feature">
