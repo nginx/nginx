@@ -5,6 +5,42 @@
 <change_log title="nginx">
 
 
+<changes ver="1.28.2" date="2026-02-04">
+
+<change type="security">
+<para lang="ru">
+атакующий мог вставить незашифрованные данные в ответ от
+SSL-бэкенда (CVE-2026-1642).
+</para>
+<para lang="en">
+an attacker might inject plain text data in the response from an SSL
+backend (CVE-2026-1642).
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+обращение к ранее освобождённой памяти могло произойти после
+переключения на следующий gRPC- или HTTP/2-бэкенд.
+</para>
+<para lang="en">
+use-after-free might occur after switching to the next
+gRPC or HTTP/2 backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+устранено предупреждение при компиляции при помощи MSVC 2022 x86.
+</para>
+<para lang="en">
+fixed warning when compiling with MSVC 2022 x86.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.28.1" date="2025-12-23">
 
 <change type="security">
