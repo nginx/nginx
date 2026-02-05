@@ -217,6 +217,9 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         type = parse_file;
 
         if (ngx_dump_config
+#if (NGX_CONTROL_API)
+            || ngx_control_api_enabled
+#endif
 #if (NGX_DEBUG)
             || 1
 #endif

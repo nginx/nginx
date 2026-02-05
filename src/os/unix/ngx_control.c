@@ -64,6 +64,7 @@ static ngx_int_t ngx_control_api_endpoints(ngx_control_request_t *r,
 static ngx_int_t ngx_control_show_processes(ngx_control_request_t *r);
 static ngx_int_t ngx_control_show_version(ngx_control_request_t *r);
 static ngx_int_t ngx_control_reload_config(ngx_control_request_t *r);
+static ngx_int_t ngx_control_print_config(ngx_control_request_t *r);
 static void ngx_control_log_capture(ngx_log_t *log, ngx_uint_t l,
                                     u_char *buf, size_t len);
 
@@ -126,6 +127,18 @@ static ngx_data_decl_t  ngx_control_status_fields[] = {
     { ngx_string("build"),
       ngx_data_string_handler,
       (uintptr_t) &ngx_control_build },
+
+    ngx_data_null_decl
+};
+
+static ngx_data_decl_t  ngx_control_config_fields[] = {
+    { ngx_string("name"),
+      ngx_data_struct_str_handler,
+      offsetof(ngx_keyval_t, key) },
+
+    { ngx_string("content"),
+      ngx_data_struct_str_handler,
+      offsetof(ngx_keyval_t, value) },
 
     ngx_data_null_decl
 };
@@ -621,11 +634,15 @@ ngx_control_content(ngx_control_request_t *r)
 
     case 17:
         if (ngx_strncmp(p, "/1/control/config", len) == 0) {
-            if (r->method != NGX_CTRL_PATCH) {
-                return ngx_control_send_response(r, NGX_CTRL_BAD_METHOD, NULL);
+            if (r->method == NGX_CTRL_PATCH) {
+                return ngx_control_reload_config(r);
             }
 
-            return ngx_control_reload_config(r);
+            if (r->method == NGX_CTRL_GET) {
+                return ngx_control_print_config(r);
+            }
+
+            return ngx_control_send_response(r, NGX_CTRL_BAD_METHOD, NULL);
         }
 
         break;
@@ -856,6 +873,38 @@ ngx_control_show_version(ngx_control_request_t *r)
     }
 
     return ngx_control_send_json(r, NGX_CTRL_OK, resp);
+}
+
+
+static ngx_int_t
+ngx_control_print_config(ngx_control_request_t *r)
+{
+    ngx_uint_t        i;
+    ngx_keyval_t      item;
+    ngx_data_item_t  *list, *obj;
+    ngx_conf_dump_t  *dump;
+
+    list = ngx_data_new_list(r->pool);
+    if (list == NULL) {
+        return NGX_ERROR;
+    }
+
+    dump = ngx_cycle->config_dump.elts;
+    for (i = 0; i < ngx_cycle->config_dump.nelts; i++) {
+        item.key = dump[i].name;
+        item.value.data = dump[i].buffer->pos;
+        item.value.len = dump[i].buffer->last - dump[i].buffer->pos;
+
+        obj = ngx_data_obj_handler((uintptr_t) ngx_control_config_fields,
+                                   r->pool, &item);
+        if (obj == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_data_add_item(list, NULL, obj);
+    }
+
+    return ngx_control_send_json(r, NGX_CTRL_OK, list);
 }
 
 
