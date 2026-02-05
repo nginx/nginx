@@ -957,6 +957,8 @@ ngx_get_options(int argc, char *const *argv)
 
 #if (NGX_CONTROL_API)
             case 'l':
+                ngx_control_api_enabled = 1;
+
                 if (*p) {
                     ngx_control_addr = p;
                     goto next;
