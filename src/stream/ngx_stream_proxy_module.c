@@ -9,7 +9,6 @@
 #include <ngx_core.h>
 #include <ngx_stream.h>
 
-
 typedef struct {
     ngx_addr_t                      *addr;
     ngx_stream_complex_value_t      *value;
@@ -35,6 +34,7 @@ typedef struct {
     ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
+    ngx_array_t                     *pp2_tlvs; 
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -92,6 +92,8 @@ static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, 
+                                           void *conf);
 
 #if (NGX_STREAM_SSL)
 
@@ -267,6 +269,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, half_close),
       NULL },
+    
+    { ngx_string("proxy_protocol_tlv"),
+      NGX_STREAM_SRV_CONF | NGX_CONF_TAKE2,
+      ngx_stream_proxy_protocol_tlv,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
+      NULL },
 
 #if (NGX_STREAM_SSL)
 
@@ -407,6 +416,46 @@ ngx_module_t  ngx_stream_proxy_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+static char *
+ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_stream_proxy_srv_conf_t *pscf = conf;
+    ngx_proxy_v2_tlv            *tlv;
+    ngx_str_t                   *value;
+
+    if (pscf->pp2_tlvs == NULL) {
+        pscf->pp2_tlvs = ngx_array_create(cf->pool, 2,
+                                          sizeof(ngx_proxy_v2_tlv));
+        if (pscf->pp2_tlvs == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    tlv = ngx_array_push(pscf->pp2_tlvs);
+    if (tlv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value = cf->args->elts;
+
+    if (value[1].len > 2
+        && value[1].data[0] == '0'
+        && value[1].data[1] == 'x')
+    {
+        tlv->type = (uint8_t) ngx_hextoi(value[1].data + 2,
+                                         value[1].len - 2);
+    } else if (ngx_strcmp(value[1].data, "alpn") == 0) {
+        tlv->type = 0x01;
+    } else {
+        return "unknown proxy protocol v2 TLV type";
+    }
+
+    tlv->value = value[2];
+    tlv->length = (uint16_t) value[2].len;
+
+    return NGX_CONF_OK;
+}
 
 
 static void
@@ -841,6 +890,15 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
     }
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
+    if (pscf->pp2_tlvs && pscf->pp2_tlvs->nelts) {
+      ngx_proxy_protocol_v2_build_tlv(
+          s->connection,
+          pscf->pp2_tlvs->elts,
+          pscf->pp2_tlvs->nelts
+      );
+    }
+
 
 #if (NGX_STREAM_SSL)
 
@@ -2243,6 +2301,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
     conf->half_close = NGX_CONF_UNSET;
+    conf->pp2_tlvs = NULL;
 
 #if (NGX_STREAM_SSL)
     conf->ssl_enable = NGX_CONF_UNSET;
@@ -2267,6 +2326,10 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_stream_proxy_srv_conf_t *prev = parent;
     ngx_stream_proxy_srv_conf_t *conf = child;
+    
+    if (conf->pp2_tlvs == NULL) {
+      conf->pp2_tlvs = prev->pp2_tlvs;
+    }
 
     ngx_conf_merge_msec_value(conf->connect_timeout,
                               prev->connect_timeout, 60000);

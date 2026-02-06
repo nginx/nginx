@@ -3,10 +3,8 @@
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
  */
-
 #include <ngx_config.h>
 #include <ngx_core.h>
-
 
 #define NGX_PROXY_PROTOCOL_AF_INET          1
 #define NGX_PROXY_PROTOCOL_AF_INET6         2
@@ -321,6 +319,39 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
     return ngx_slprintf(buf, last, " %ui %ui" CRLF, port, lport);
 }
 
+ngx_int_t
+ngx_proxy_protocol_v2_build_tlv(ngx_connection_t *c,
+                                ngx_proxy_v2_tlv *tlvs,
+                                ngx_uint_t n)
+{
+    size_t    size = 0;
+    u_char   *p;
+    ngx_uint_t i;
+
+    for (i = 0; i < n; i++) {
+        size += 3 + tlvs[i].length; /* type + length(2) + value */
+    }
+
+    p = ngx_palloc(c->pool, size);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    c->ppv2_tlv.pos = p;
+    c->ppv2_tlv.len = size;
+
+    for (i = 0; i < n; i++) {
+        *p++ = tlvs[i].type;
+        *p++ = (u_char) (tlvs[i].length >> 8);
+        *p++ = (u_char) (tlvs[i].length);
+
+        p = ngx_cpymem(p, tlvs[i].value.data, tlvs[i].length);
+    }
+
+    return NGX_OK;
+}
+
+
 u_char *
 ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
   u_char *buf_ptr = buf;
@@ -390,6 +421,12 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
       ngx_log_error(NGX_LOG_ALERT, c->log, 0, "unsupported address family");
       return NULL;
     }
+  }
+
+  if (c->ppv2_tlv.len) {
+      buf_ptr = ngx_cpymem(buf_ptr,
+                            c->ppv2_tlv.pos,
+                            c->ppv2_tlv.len);
   }
 
   return buf_ptr;
