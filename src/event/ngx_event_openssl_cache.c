@@ -578,6 +578,71 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
     u_long           n;
     STACK_OF(X509)  *chain;
 
+    if (id->type == NGX_SSL_CACHE_ENGINE) {
+
+#ifndef OPENSSL_NO_ENGINE
+
+        *err = "loading \"engine:...\" certificates is not implemented";
+        return NULL;
+
+#else
+
+        *err = "loading \"engine:...\" certificates is not supported";
+        return NULL;
+
+#endif
+    }
+
+    if (id->type == NGX_SSL_CACHE_STORE) {
+#ifdef ERR_R_OSSL_STORE_LIB
+
+        u_char           *uri;
+        OSSL_STORE_CTX   *store;
+        OSSL_STORE_INFO  *info;
+
+        uri = id->data + sizeof("store:") - 1;
+
+        store = OSSL_STORE_open((char *) uri, NULL, NULL, NULL, NULL);
+
+        if (store == NULL) {
+            *err = "OSSL_STORE_open() failed";
+
+            return NULL;
+        }
+
+        cert = NULL;
+
+        while (cert == NULL && !OSSL_STORE_eof(store)) {
+            info = OSSL_STORE_load(store);
+
+            if (info == NULL) {
+                continue;
+            }
+
+            if (OSSL_STORE_INFO_get_type(info) == OSSL_STORE_INFO_CERT) {
+                cert = OSSL_STORE_INFO_get1_CERT(info);
+            }
+
+            OSSL_STORE_INFO_free(info);
+        }
+
+        OSSL_STORE_close(store);
+
+        if (cert == NULL) {
+            *err = "OSSL_STORE_load() failed";
+            return NULL;
+        }
+
+        return cert;
+
+#else
+
+        *err = "loading \"store:...\" certificates is not supported";
+        return NULL;
+
+#endif
+    }
+
     chain = sk_X509_new_null();
     if (chain == NULL) {
         *err = "sk_X509_new_null() failed";
