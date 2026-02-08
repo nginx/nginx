@@ -610,9 +610,9 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             return NULL;
         }
 
-        cert = NULL;
+        x509 = NULL;
 
-        while (cert == NULL && !OSSL_STORE_eof(store)) {
+        while (x509 == NULL && !OSSL_STORE_eof(store)) {
             info = OSSL_STORE_load(store);
 
             if (info == NULL) {
@@ -620,7 +620,7 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             }
 
             if (OSSL_STORE_INFO_get_type(info) == OSSL_STORE_INFO_CERT) {
-                cert = OSSL_STORE_INFO_get1_CERT(info);
+                x509 = OSSL_STORE_INFO_get1_CERT(info);
             }
 
             OSSL_STORE_INFO_free(info);
@@ -628,12 +628,12 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
 
         OSSL_STORE_close(store);
 
-        if (cert == NULL) {
+        if (x509 == NULL) {
             *err = "OSSL_STORE_load() failed";
             return NULL;
         }
 
-        return cert;
+        return x509;
 
 #else
 
