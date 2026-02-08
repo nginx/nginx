@@ -633,7 +633,20 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             return NULL;
         }
 
-        return x509;
+        chain = sk_X509_new_null();
+        if (chain == NULL) {
+            *err = "sk_X509_new_null() failed";
+            return NULL;
+        }
+
+        if (sk_X509_push(chain, x509) == 0) {
+            *err = "sk_X509_push() failed";
+            X509_free(x509);
+            sk_X509_pop_free(chain, X509_free);
+            return NULL;
+        }
+
+        return chain;
 
 #else
 
