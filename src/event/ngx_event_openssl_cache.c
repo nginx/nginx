@@ -465,7 +465,7 @@ ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
     {
         id->type = NGX_SSL_CACHE_ENGINE;
 
-    } else if (index == NGX_SSL_CACHE_PKEY
+    } else if ((index == NGX_SSL_CACHE_CERT || index == NGX_SSL_CACHE_PKEY)
         && ngx_strncmp(path->data, "store:", sizeof("store:") - 1) == 0)
     {
         id->type = NGX_SSL_CACHE_STORE;
