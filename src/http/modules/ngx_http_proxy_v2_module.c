@@ -1395,7 +1395,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (ctx->stream_id && ctx->stream_id != ctx->id) {
+            if (ctx->id && ctx->stream_id && ctx->stream_id != ctx->id) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent frame for unknown stream %ui",
                               ctx->stream_id);
@@ -4076,6 +4076,8 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
+        ctx->id = 0;
+
         goto done;
     }
 
@@ -4117,6 +4119,8 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
     cln->handler = ngx_http_proxy_v2_cleanup;
     ctx->connection = cln->data;
 
+    ctx->id = 1;
+
 done:
 
     ctx->connection->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
@@ -4126,7 +4130,6 @@ done:
     ctx->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->recv_window = NGX_HTTP_V2_MAX_WINDOW;
 
-    ctx->id = 1;
     ctx->connection->last_stream_id = 1;
 
     return NGX_OK;
