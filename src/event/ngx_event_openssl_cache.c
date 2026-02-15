@@ -610,6 +610,14 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             return NULL;
         }
 
+        chain = sk_X509_new_null();
+        if (chain == NULL) {
+            *err = "sk_X509_new_null() failed";
+            return NULL;
+        }
+
+        /* certificate itself */
+
         x509 = NULL;
 
         while (x509 == NULL && !OSSL_STORE_eof(store)) {
@@ -633,17 +641,96 @@ ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
             return NULL;
         }
 
-        chain = sk_X509_new_null();
-        if (chain == NULL) {
-            *err = "sk_X509_new_null() failed";
-            return NULL;
-        }
-
         if (sk_X509_push(chain, x509) == 0) {
             *err = "sk_X509_push() failed";
             X509_free(x509);
             sk_X509_pop_free(chain, X509_free);
             return NULL;
+        }
+
+        /* rest of the chain */
+
+        X509               *x509Subject;
+        u_char             *authorityUri;
+        u_char             *p;
+
+        for ( ;; ) {
+            if (X509_check_issued(x509, x509) == X509_V_OK) {
+                /* self-signed */
+                break;
+            }
+
+            const ASN1_OCTET_STRING *authorityKeyId = X509_get0_authority_key_id(x509);
+
+            if (authorityKeyId == NULL) {
+                /* no authority key identifier */
+                break;
+            }
+
+            authorityUri = NULL;
+
+            if (ngx_strncmp(uri, "pkcs11:", 7) == 0) {
+                /* generate PKCS#11 URI for certificate chain */
+                int akiLength = ASN1_STRING_length(authorityKeyId);
+                const u_char* aki = ASN1_STRING_get0_data(authorityKeyId);
+
+                u_char *escaped = ngx_pnalloc(ngx_cycle->pool, akiLength * 3 + 1);
+                ngx_uint_t escaped_len = ngx_escape_uri(escaped, (u_char*) aki, akiLength, NGX_ESCAPE_URI_COMPONENT) - (uintptr_t) escaped;
+
+                authorityUri = ngx_pnalloc(ngx_cycle->pool, sizeof("pkcs11:type=cert;id=") - 1 + escaped_len + 1);
+                p = ngx_cpymem(authorityUri, "pkcs11:type=cert;id=", sizeof("pkcs11:type=cert;id=") - 1);
+                p = ngx_copy(p, escaped, escaped_len);
+                *p = '\0';
+            }
+
+            if (authorityUri == NULL) {
+                *err = "other URIs then PKCS#11 not supported";
+                return NULL;
+            }
+
+            store = OSSL_STORE_open((char *) authorityUri, NULL, NULL, NULL, NULL);
+
+            if (store == NULL) {
+                *err = "OSSL_STORE_open() failed";
+
+                return NULL;
+            }
+
+            x509Subject = x509;
+            x509 = NULL;
+
+            while (x509 == NULL && !OSSL_STORE_eof(store)) {
+                info = OSSL_STORE_load(store);
+
+                if (info == NULL) {
+                    continue;
+                }
+
+                if (OSSL_STORE_INFO_get_type(info) == OSSL_STORE_INFO_CERT) {
+                    x509 = OSSL_STORE_INFO_get1_CERT(info);
+                }
+
+                OSSL_STORE_INFO_free(info);
+            }
+
+            OSSL_STORE_close(store);
+
+            if (x509 == NULL) {
+                /* no more certificates */
+                break;
+            }
+
+            if (X509_check_issued(x509, x509Subject) != X509_V_OK) {
+                *err = "X509_check_issued() failed";
+                return NULL;
+            }
+
+            if (sk_X509_push(chain, x509) == 0) {
+                *err = "sk_X509_push() failed";
+                X509_free(x509);
+                sk_X509_pop_free(chain, X509_free);
+                return NULL;
+            }
         }
 
         return chain;
