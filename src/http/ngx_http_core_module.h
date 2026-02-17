@@ -60,6 +60,12 @@ typedef struct ngx_thread_pool_s  ngx_thread_pool_t;
 #define NGX_HTTP_SERVER_TOKENS_BUILD    2
 
 
+#define NGX_HTTP_NMC_OFF                0
+#define NGX_HTTP_NMC_ANY                1
+#define NGX_HTTP_NMC_STRICT             2
+#define NGX_HTTP_NMC_PREFER_INM         3
+
+
 typedef struct ngx_http_location_tree_node_s  ngx_http_location_tree_node_t;
 typedef struct ngx_http_core_loc_conf_s  ngx_http_core_loc_conf_t;
 
@@ -385,6 +391,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_uint_t    keepalive_disable;       /* keepalive_disable */
     ngx_uint_t    satisfy;                 /* satisfy */
     ngx_uint_t    lingering_close;         /* lingering_close */
+    ngx_uint_t    not_modified_check;      /* not_modified_check */
     ngx_uint_t    if_modified_since;       /* if_modified_since */
     ngx_uint_t    max_ranges;              /* max_ranges */
     ngx_uint_t    client_body_in_file_only; /* client_body_in_file_only */
