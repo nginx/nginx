@@ -444,8 +444,13 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
     ngx_http_autoindex_loc_conf_t  *alcf;
 
     static u_char  title[] =
-        "<html>" CRLF
-        "<head><title>Index of "
+        "<!DOCTYPE html>" CRLF
+        "<html lang=\"en\">" CRLF
+        "<head>" CRLF
+        "<style>" CRLF
+        "html { color-scheme: light dark; }" CRLF
+        "</style>" CRLF
+        "<title>Index of "
     ;
 
     static u_char  header[] =
