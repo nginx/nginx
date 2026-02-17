@@ -9,6 +9,7 @@
 #define _NGX_CONNECTION_H_INCLUDED_
 
 
+#include "ngx_proxy_protocol.h"
 #include <ngx_config.h>
 #include <ngx_core.h>
 
@@ -148,6 +149,7 @@ struct ngx_connection_s {
     ngx_str_t           addr_text;
 
     ngx_proxy_protocol_t  *proxy_protocol;
+    ngx_proxy_protocol_tlv_buf_t  ppv2_tlv;
 
 #if (NGX_QUIC || NGX_COMPAT)
     ngx_quic_stream_t     *quic;
