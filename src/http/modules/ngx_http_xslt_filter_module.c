@@ -465,7 +465,7 @@ ngx_http_xslt_sax_error(void *data, const char *msg, ...)
 {
     xmlParserCtxtPtr ctxt = data;
 
-    size_t                       n;
+    int                          n;
     va_list                      args;
     ngx_http_xslt_filter_ctx_t  *ctx;
     u_char                       buf[NGX_MAX_ERROR_STR];
@@ -475,8 +475,18 @@ ngx_http_xslt_sax_error(void *data, const char *msg, ...)
     buf[0] = '\0';
 
     va_start(args, msg);
-    n = (size_t) vsnprintf((char *) buf, NGX_MAX_ERROR_STR, msg, args);
+    n = vsnprintf((char *) buf, NGX_MAX_ERROR_STR, msg, args);
     va_end(args);
+
+    if (n <= 0) {
+        ngx_log_error(NGX_LOG_ERR, ctx->request->connection->log, ngx_errno,
+                      "libxml2 error");
+        return;
+    }
+
+    if (n >= NGX_MAX_ERROR_STR) {
+        n = NGX_MAX_ERROR_STR - 1;
+    }
 
     while (--n && (buf[n] == CR || buf[n] == LF)) { /* void */ }
 
