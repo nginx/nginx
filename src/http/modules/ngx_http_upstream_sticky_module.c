@@ -148,7 +148,6 @@ static ngx_msec_t ngx_http_upstream_sticky_sess_expire(
 static ngx_int_t ngx_http_upstream_sticky_sess_init_zone(
     ngx_shm_zone_t *shm_zone, void *data);
 
-
 static void *ngx_http_upstream_sticky_create_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_sticky(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -157,6 +156,8 @@ static char *ngx_http_upstream_sticky_cookie(ngx_conf_t *cf,
 static char *ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
     ngx_http_upstream_sticky_srv_conf_t *stcf,
     ngx_http_upstream_srv_conf_t *us);
+
+static ngx_int_t ngx_http_upstream_sticky_init_worker(ngx_cycle_t *cycle);
 
 
 static u_char expires[] =
@@ -206,7 +207,7 @@ ngx_http_upstream_sticky_module =
     NULL,                                 /* init master */
 
     NULL,                                 /* init module */
-    NULL,                                 /* init process */
+    ngx_http_upstream_sticky_init_worker, /* init process */
 
     NULL,                                 /* init thread */
     NULL,                                 /* exit thread */
@@ -1455,4 +1456,58 @@ ngx_http_upstream_sticky_learn(ngx_conf_t *cf,
     stcf->shm_zone = shm_zone;
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_sticky_init_worker(ngx_cycle_t *cycle)
+{
+    ngx_msec_t                             wait;
+    ngx_uint_t                             i;
+    ngx_http_upstream_srv_conf_t         **uscfp;
+    ngx_http_upstream_main_conf_t         *umcf;
+    ngx_http_upstream_sticky_sess_t       *sess;
+    ngx_http_upstream_sticky_srv_conf_t   *stcf;
+
+    if ((ngx_process != NGX_PROCESS_WORKER || ngx_worker != 0)
+        && ngx_process != NGX_PROCESS_SINGLE)
+    {
+        return NGX_OK;
+    }
+
+    umcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_upstream_module);
+
+    if (umcf == NULL) {
+        return NGX_OK;
+    }
+
+    uscfp = umcf->upstreams.elts;
+
+    for (i = 0; i < umcf->upstreams.nelts; i++) {
+
+        if (uscfp[i]->srv_conf == NULL) {
+            continue;
+        }
+
+        stcf = ngx_http_conf_upstream_srv_conf(uscfp[i],
+                                               ngx_http_upstream_sticky_module);
+
+        if (stcf == NULL || stcf->shm_zone == NULL) {
+            continue;
+        }
+
+        sess = stcf->shm_zone->data;
+
+        ngx_shmtx_lock(&sess->shpool->mutex);
+
+        wait = ngx_http_upstream_sticky_sess_expire(sess, 0);
+
+        ngx_shmtx_unlock(&sess->shpool->mutex);
+
+        if (wait > 0) {
+            ngx_add_timer(&sess->event, wait);
+        }
+    }
+
+    return NGX_OK;
 }
