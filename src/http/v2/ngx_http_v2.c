@@ -4333,7 +4333,9 @@ ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
 
     window = buf->end - buf->start;
 
-    if (h2c->state.stream == stream) {
+    if (h2c->state.stream == stream
+        && h2c->state.handler == ngx_http_v2_state_read_data)
+    {
         window -= h2c->state.length;
     }
 
