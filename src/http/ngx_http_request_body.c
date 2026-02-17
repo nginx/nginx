@@ -581,7 +581,9 @@ ngx_http_write_request_body(ngx_http_request_t *r)
 
         rb->temp_file = tf;
 
-        if (rb->bufs == NULL) {
+        if (rb->bufs == NULL
+            || (rb->bufs->buf->pos == NULL && rb->bufs->next == NULL))
+        {
             /* empty body with r->request_body_in_file_only */
 
             if (ngx_create_temp_file(&tf->file, tf->path, tf->pool,
