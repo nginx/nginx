@@ -436,6 +436,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_array_t  *error_pages;             /* error_page */
 
     ngx_path_t   *client_body_temp_path;   /* client_body_temp_path */
+    ngx_uint_t   client_body_temp_access;  /* client_body_temp_file_access */
 
     ngx_open_file_cache_t  *open_file_cache;
     time_t        open_file_cache_valid;
