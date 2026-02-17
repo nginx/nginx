@@ -82,6 +82,8 @@ typedef struct {
     void                     *value_buf;
     ngx_str_t                 timefmt;
     ngx_str_t                 errmsg;
+
+    ngx_uint_t                stub_output_done;
 } ngx_http_ssi_ctx_t;
 
 
