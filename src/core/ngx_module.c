@@ -155,7 +155,7 @@ ngx_count_modules(ngx_cycle_t *cycle, ngx_uint_t type)
 
 ngx_int_t
 ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
-    char **order)
+    char **order, ngx_uint_t optional)
 {
     void               *rv;
     ngx_uint_t          i, m, before;
@@ -265,6 +265,23 @@ ngx_add_module(ngx_conf_t *cf, ngx_str_t *file, ngx_module_t *module,
         if (core_module->create_conf) {
             rv = core_module->create_conf(cf->cycle);
             if (rv == NULL) {
+                if (optional) {
+                    /* restore the modules state */
+                    cf->cycle->modules[before] = NULL;
+                    cf->cycle->modules_n--;
+
+                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "optional module \"%s\" initialization failed in \"create_conf\"", module->name);
+
+                    if (before != cf->cycle->modules_n) {
+                        ngx_memmove(&cf->cycle->modules[before],
+                                    &cf->cycle->modules[before + 1],
+                                    (cf->cycle->modules_n - before) * sizeof(ngx_module_t *));
+                    }
+
+                } else {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "module \"%s\" initialization failed in \"create_conf\"", module->name);
+                }
+
                 return NGX_ERROR;
             }
 

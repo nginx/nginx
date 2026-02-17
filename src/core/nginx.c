@@ -147,7 +147,7 @@ static ngx_command_t  ngx_core_commands[] = {
       NULL },
 
     { ngx_string("load_module"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE12,
       ngx_load_module,
       0,
       0,
@@ -1583,9 +1583,9 @@ ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
 #if (NGX_HAVE_DLOPEN)
     void                *handle;
-    char               **names, **order;
+    char                *error_return, **names, **order;
     ngx_str_t           *value, file;
-    ngx_uint_t           i;
+    ngx_uint_t           error_log, i, optional;
     ngx_module_t        *module, **modules;
     ngx_pool_cleanup_t  *cln;
 
@@ -1596,22 +1596,42 @@ ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     file = value[1];
+    optional = 0;
+
+    error_return = NGX_CONF_ERROR;
+    error_log = NGX_LOG_EMERG;
+
+    if (cf->args->nelts > 2) {
+        if (ngx_strcasecmp(value[2].data, (u_char *) "optional") == 0) {
+            error_return = NGX_CONF_OK;
+            error_log = NGX_LOG_WARN;
+            optional = 1;
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                     "invalid value \"%s\" in \"%s\" directive, "
+                     "it must be \"optional\" "
+                     "or be ommited to require module. ",
+                     value[2].data, cmd->name.data);
+            return NGX_CONF_ERROR;
+        }
+    }
 
     if (ngx_conf_full_name(cf->cycle, &file, 0) != NGX_OK) {
-        return NGX_CONF_ERROR;
+        return error_return;
     }
 
     cln = ngx_pool_cleanup_add(cf->cycle->pool, 0);
     if (cln == NULL) {
-        return NGX_CONF_ERROR;
+        return error_return;
     }
 
     handle = ngx_dlopen(file.data);
     if (handle == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+        ngx_conf_log_error(error_log, cf, 0,
                            ngx_dlopen_n " \"%s\" failed (%s)",
                            file.data, ngx_dlerror());
-        return NGX_CONF_ERROR;
+        return error_return;
     }
 
     cln->handler = ngx_unload_module;
@@ -1619,18 +1639,18 @@ ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     modules = ngx_dlsym(handle, "ngx_modules");
     if (modules == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+        ngx_conf_log_error(error_log, cf, 0,
                            ngx_dlsym_n " \"%V\", \"%s\" failed (%s)",
                            &value[1], "ngx_modules", ngx_dlerror());
-        return NGX_CONF_ERROR;
+        return error_return;
     }
 
     names = ngx_dlsym(handle, "ngx_module_names");
     if (names == NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+        ngx_conf_log_error(error_log, cf, 0,
                            ngx_dlsym_n " \"%V\", \"%s\" failed (%s)",
                            &value[1], "ngx_module_names", ngx_dlerror());
-        return NGX_CONF_ERROR;
+        return error_return;
     }
 
     order = ngx_dlsym(handle, "ngx_module_order");
@@ -1639,8 +1659,8 @@ ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         module = modules[i];
         module->name = names[i];
 
-        if (ngx_add_module(cf, &file, module, order) != NGX_OK) {
-            return NGX_CONF_ERROR;
+        if (ngx_add_module(cf, &file, module, order, optional) != NGX_OK) {
+            return error_return;
         }
 
         ngx_log_debug2(NGX_LOG_DEBUG_CORE, cf->log, 0, "module: %s i:%ui",
