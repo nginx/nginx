@@ -81,6 +81,9 @@ struct ngx_listening_s {
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined SO_ACCEPTFILTER)
     char               *accept_filter;
 #endif
+#if (NGX_HAVE_BINDTODEVICE)
+    const char         *bind_device;
+#endif
 #if (NGX_HAVE_SETFIB)
     int                 setfib;
 #endif

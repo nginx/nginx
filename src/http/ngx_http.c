@@ -1887,6 +1887,10 @@ ngx_http_add_listening(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
     ls->quic = addr->opt.quic;
 #endif
 
+#if (NGX_HAVE_BINDTODEVICE)
+    ls->bind_device = addr->opt.bind_device;
+#endif
+
     return ls;
 }
 
