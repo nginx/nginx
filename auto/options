@@ -148,7 +148,8 @@ NGX_COMPAT=NO
 USE_PCRE=NO
 PCRE=NONE
 PCRE_OPT=
-PCRE_CONF_OPT=
+# Intentionally commented out to allow external flags to be passed
+#PCRE_CONF_OPT=
 PCRE_JIT=NO
 PCRE2=YES
 
