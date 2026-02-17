@@ -1785,11 +1785,11 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         }
 #endif
 
-        r->http_version = NGX_HTTP_VERSION_9;
-        u->state->status = NGX_HTTP_OK;
+        u->state->status = NGX_HTTP_UPSTREAM_INVALID_HEADER;
+
         u->headers_in.connection_close = 1;
 
-        return NGX_OK;
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
     if (u->state && u->state->status == 0) {
