@@ -450,6 +450,7 @@ struct ngx_http_request_s {
     size_t                            header_size;
 
     off_t                             request_length;
+    off_t                             request_header_length;
 
     ngx_uint_t                        err_status;
 

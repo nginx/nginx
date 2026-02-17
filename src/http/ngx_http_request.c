@@ -1541,6 +1541,7 @@ ngx_http_process_request_headers(ngx_event_t *rev)
                            "http header done");
 
             r->request_length += r->header_in->pos - r->header_name_start;
+            r->request_header_length = r->request_length;
 
             r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
