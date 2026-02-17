@@ -69,6 +69,7 @@
 #define NGX_HTTP_V3_ERR_REQUEST_REJECTED           0x10b
 #define NGX_HTTP_V3_ERR_REQUEST_CANCELLED          0x10c
 #define NGX_HTTP_V3_ERR_REQUEST_INCOMPLETE         0x10d
+#define NGX_HTTP_V3_ERR_MESSAGE_ERROR              0x10e
 #define NGX_HTTP_V3_ERR_CONNECT_ERROR              0x10f
 #define NGX_HTTP_V3_ERR_VERSION_FALLBACK           0x110
 
