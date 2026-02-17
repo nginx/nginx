@@ -97,7 +97,7 @@ static size_t ngx_quic_create_short_header(ngx_quic_header_t *pkt, u_char *out,
     u_char **pnp);
 
 static ngx_int_t ngx_quic_frame_allowed(ngx_quic_header_t *pkt,
-    ngx_uint_t frame_type);
+    ngx_uint_t frame_type, ngx_uint_t is_server);
 static size_t ngx_quic_create_ping(u_char *p);
 static size_t ngx_quic_create_ack(u_char *p, ngx_quic_ack_frame_t *ack,
     ngx_chain_t *ranges);
@@ -742,7 +742,7 @@ ngx_quic_create_retry_itag(ngx_quic_header_t *pkt, u_char *out,
 
 ssize_t
 ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
-    ngx_quic_frame_t *f)
+    ngx_quic_frame_t *f, ngx_uint_t is_server)
 {
     u_char      *p;
     uint64_t     varint;
@@ -770,7 +770,7 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
     f->type = varint;
 
-    if (ngx_quic_frame_allowed(pkt, f->type) != NGX_OK) {
+    if (ngx_quic_frame_allowed(pkt, f->type, is_server) != NGX_OK) {
         pkt->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
         return NGX_ERROR;
     }
@@ -949,6 +949,22 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
         if (p == NULL) {
             goto error;
         }
+
+        break;
+
+    case NGX_QUIC_FT_NEW_TOKEN:
+
+        p = ngx_quic_parse_int(p, end, &f->u.token.length);
+        if (p == NULL) {
+            goto error;
+        }
+
+        p = ngx_quic_read_bytes(p, end, f->u.token.length, &b->pos);
+        if (p == NULL) {
+            goto error;
+        }
+
+        b->last = p;
 
         break;
 
@@ -1133,6 +1149,10 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 
         break;
 
+    case NGX_QUIC_FT_HANDSHAKE_DONE:
+
+        break;
+
     default:
         ngx_log_error(NGX_LOG_INFO, pkt->log, 0,
                       "quic unknown frame type 0x%xi", f->type);
@@ -1158,7 +1178,8 @@ error:
 
 
 static ngx_int_t
-ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
+ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type,
+    ngx_uint_t is_server)
 {
     uint8_t  ptype;
 
@@ -1168,37 +1189,37 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
      * Frame permissions per packet: 4 bits: IH01
      */
     static uint8_t ngx_quic_frame_masks[] = {
-         /* PADDING  */              0xF,
-         /* PING */                  0xF,
-         /* ACK */                   0xD,
-         /* ACK_ECN */               0xD,
-         /* RESET_STREAM */          0x3,
-         /* STOP_SENDING */          0x3,
-         /* CRYPTO */                0xD,
-         /* NEW_TOKEN */             0x0, /* only sent by server */
-         /* STREAM */                0x3,
-         /* STREAM1 */               0x3,
-         /* STREAM2 */               0x3,
-         /* STREAM3 */               0x3,
-         /* STREAM4 */               0x3,
-         /* STREAM5 */               0x3,
-         /* STREAM6 */               0x3,
-         /* STREAM7 */               0x3,
-         /* MAX_DATA */              0x3,
-         /* MAX_STREAM_DATA */       0x3,
-         /* MAX_STREAMS */           0x3,
-         /* MAX_STREAMS2 */          0x3,
-         /* DATA_BLOCKED */          0x3,
-         /* STREAM_DATA_BLOCKED */   0x3,
-         /* STREAMS_BLOCKED */       0x3,
-         /* STREAMS_BLOCKED2 */      0x3,
-         /* NEW_CONNECTION_ID */     0x3,
-         /* RETIRE_CONNECTION_ID */  0x3,
-         /* PATH_CHALLENGE */        0x3,
-         /* PATH_RESPONSE */         0x1,
-         /* CONNECTION_CLOSE */      0xF,
-         /* CONNECTION_CLOSE2 */     0x3,
-         /* HANDSHAKE_DONE */        0x0, /* only sent by server */
+         /* PADDING  */              0xFF,
+         /* PING */                  0xFF,
+         /* ACK */                   0xDD,
+         /* ACK_ECN */               0xDD,
+         /* RESET_STREAM */          0x33,
+         /* STOP_SENDING */          0x33,
+         /* CRYPTO */                0xDD,
+         /* NEW_TOKEN */             0x01, /* only sent by server */
+         /* STREAM */                0x33,
+         /* STREAM1 */               0x33,
+         /* STREAM2 */               0x33,
+         /* STREAM3 */               0x33,
+         /* STREAM4 */               0x33,
+         /* STREAM5 */               0x33,
+         /* STREAM6 */               0x33,
+         /* STREAM7 */               0x33,
+         /* MAX_DATA */              0x33,
+         /* MAX_STREAM_DATA */       0x33,
+         /* MAX_STREAMS */           0x33,
+         /* MAX_STREAMS2 */          0x33,
+         /* DATA_BLOCKED */          0x33,
+         /* STREAM_DATA_BLOCKED */   0x33,
+         /* STREAMS_BLOCKED */       0x33,
+         /* STREAMS_BLOCKED2 */      0x33,
+         /* NEW_CONNECTION_ID */     0x33,
+         /* RETIRE_CONNECTION_ID */  0x33,
+         /* PATH_CHALLENGE */        0x33,
+         /* PATH_RESPONSE */         0x11,
+         /* CONNECTION_CLOSE */      0xFF,
+         /* CONNECTION_CLOSE2 */     0x33,
+         /* HANDSHAKE_DONE */        0x01, /* only sent by server */
     };
 
     if (ngx_quic_long_pkt(pkt->flags)) {
@@ -1215,6 +1236,10 @@ ngx_quic_frame_allowed(ngx_quic_header_t *pkt, ngx_uint_t frame_type)
 
     } else {
         ptype = 1; /* application data */
+    }
+
+    if (is_server) {
+        ptype <<= 4;
     }
 
     if (ptype & ngx_quic_frame_masks[frame_type]) {
@@ -1723,7 +1748,7 @@ ngx_quic_parse_transport_param(u_char *p, u_char *end, uint16_t id,
 
 ngx_int_t
 ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
-    ngx_log_t *log)
+    ngx_uint_t is_server, ngx_log_t *log)
 {
     uint64_t   id, len;
     ngx_int_t  rc;
@@ -1736,15 +1761,17 @@ ngx_quic_parse_transport_params(u_char *p, u_char *end, ngx_quic_tp_t *tp,
             return NGX_ERROR;
         }
 
-        switch (id) {
-        case NGX_QUIC_TP_ORIGINAL_DCID:
-        case NGX_QUIC_TP_PREFERRED_ADDRESS:
-        case NGX_QUIC_TP_RETRY_SCID:
-        case NGX_QUIC_TP_SR_TOKEN:
-            ngx_log_error(NGX_LOG_INFO, log, 0,
-                          "quic client sent forbidden transport param"
-                          " id:0x%xL", id);
-            return NGX_ERROR;
+        if (is_server) {
+            switch (id) {
+            case NGX_QUIC_TP_ORIGINAL_DCID:
+            case NGX_QUIC_TP_PREFERRED_ADDRESS:
+            case NGX_QUIC_TP_RETRY_SCID:
+            case NGX_QUIC_TP_SR_TOKEN:
+                ngx_log_error(NGX_LOG_INFO, log, 0,
+                              "quic client sent forbidden transport param"
+                              " id:0x%xL", id);
+                return NGX_ERROR;
+            }
         }
 
         p = ngx_quic_parse_int(p, end, &len);
@@ -2028,7 +2055,7 @@ ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
 
 ssize_t
 ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
-    size_t *clen)
+    size_t *clen, ngx_uint_t is_server)
 {
     u_char  *p;
     size_t   len;
@@ -2099,16 +2126,19 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     len += ngx_quic_tp_len(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
                            tp->ack_delay_exponent);
 
-    len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     len += ngx_quic_tp_strlen(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
 
-    if (tp->retry_scid.len) {
-        len += ngx_quic_tp_strlen(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
-    }
+    if (is_server) {
+        len += ngx_quic_tp_strlen(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
 
-    len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
-    len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
-    len += NGX_QUIC_SR_TOKEN_LEN;
+        if (tp->retry_scid.len) {
+            len += ngx_quic_tp_strlen(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
+        }
+
+        len += ngx_quic_varint_len(NGX_QUIC_TP_SR_TOKEN);
+        len += ngx_quic_varint_len(NGX_QUIC_SR_TOKEN_LEN);
+        len += NGX_QUIC_SR_TOKEN_LEN;
+    }
 
     if (pos == NULL) {
         return len;
@@ -2154,16 +2184,19 @@ ngx_quic_create_transport_params(u_char *pos, u_char *end, ngx_quic_tp_t *tp,
     ngx_quic_tp_vint(NGX_QUIC_TP_ACK_DELAY_EXPONENT,
                      tp->ack_delay_exponent);
 
-    ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
     ngx_quic_tp_str(NGX_QUIC_TP_INITIAL_SCID, tp->initial_scid);
 
-    if (tp->retry_scid.len) {
-        ngx_quic_tp_str(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
-    }
+    if (is_server) {
+        ngx_quic_tp_str(NGX_QUIC_TP_ORIGINAL_DCID, tp->original_dcid);
 
-    ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
-    ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);
-    p = ngx_cpymem(p, tp->sr_token, NGX_QUIC_SR_TOKEN_LEN);
+        if (tp->retry_scid.len) {
+            ngx_quic_tp_str(NGX_QUIC_TP_RETRY_SCID, tp->retry_scid);
+        }
+
+        ngx_quic_build_int(&p, NGX_QUIC_TP_SR_TOKEN);
+        ngx_quic_build_int(&p, NGX_QUIC_SR_TOKEN_LEN);
+        p = ngx_cpymem(p, tp->sr_token, NGX_QUIC_SR_TOKEN_LEN);
+    }
 
     return p - pos;
 }

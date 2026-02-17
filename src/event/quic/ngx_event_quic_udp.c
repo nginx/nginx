@@ -174,6 +174,8 @@ ngx_quic_recvmsg(ngx_event_t *ev)
             }
 #endif
 
+            c->log->action = "handling quic input";
+
             ngx_memzero(&buf, sizeof(ngx_buf_t));
 
             buf.pos = buffer;
@@ -186,20 +188,12 @@ ngx_quic_recvmsg(ngx_event_t *ev)
             ngx_memcpy(&qsock->sockaddr, sockaddr, socklen);
             qsock->socklen = socklen;
 
-            c->udp->buffer = &buf;
-
-            rev = c->read;
-            rev->ready = 1;
-            rev->active = 0;
-
-            rev->handler(rev);
-
-            if (c->udp) {
-                c->udp->buffer = NULL;
+            if (ngx_quic_handle_datagram(c, &buf) == NGX_ERROR) {
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "datagram handling error");
             }
 
-            rev->ready = 0;
-            rev->active = 1;
+            ngx_quic_end_handler(c);
 
             goto next;
         }
@@ -290,8 +284,6 @@ ngx_quic_recvmsg(ngx_event_t *ev)
          */
 
         c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-
-        c->start_time = ngx_current_msec;
 
 #if (NGX_STAT_STUB)
         (void) ngx_atomic_fetch_add(ngx_stat_handled, 1);

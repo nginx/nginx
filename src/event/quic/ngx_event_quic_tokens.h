@@ -30,5 +30,7 @@ ngx_int_t ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
     time_t expires, ngx_uint_t is_retry);
 ngx_int_t ngx_quic_validate_token(ngx_connection_t *c,
     u_char *key, ngx_quic_header_t *pkt);
+ngx_int_t ngx_quic_handle_new_token_frame(ngx_connection_t *c,
+    ngx_quic_frame_t *frame);
 
 #endif /* _NGX_EVENT_QUIC_TOKENS_H_INCLUDED_ */

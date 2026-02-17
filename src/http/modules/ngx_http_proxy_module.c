@@ -10,6 +10,10 @@
 #include <ngx_http.h>
 #include <ngx_http_proxy_module.h>
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+#include <ngx_event_quic_openssl_compat.h>
+#endif
+
 
 #define  NGX_HTTP_PROXY_COOKIE_SECURE           0x0001
 #define  NGX_HTTP_PROXY_COOKIE_SECURE_ON        0x0002
@@ -200,6 +204,9 @@ static ngx_conf_enum_t  ngx_http_proxy_http_version[] = {
     { ngx_string("1.1"), NGX_HTTP_VERSION_11 },
 #if (NGX_HTTP_V2)
     { ngx_string("2"), NGX_HTTP_VERSION_20 },
+#endif
+#if (NGX_HTTP_V3)
+    { ngx_string("3"), NGX_HTTP_VERSION_30 },
 #endif
     { ngx_null_string, 0 }
 };
@@ -708,6 +715,24 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
 #endif
 
+#if (NGX_QUIC)
+
+    { ngx_string("proxy_quic_idle_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, quic_idle_timeout),
+      NULL },
+
+    { ngx_string("proxy_quic_stream_buffer_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, quic_stream_buffer_size),
+      NULL },
+
+#endif
+
       ngx_null_command
 };
 
@@ -883,6 +908,12 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
 #if (NGX_HTTP_V2)
     if (plcf->http_version == NGX_HTTP_VERSION_20) {
         return ngx_http_proxy_v2_handler(r);
+    }
+#endif
+
+#if (NGX_HTTP_V3)
+    if (plcf->http_version == NGX_HTTP_VERSION_30) {
+        return ngx_http_v3_proxy_handler(r);
     }
 #endif
 
@@ -3605,6 +3636,11 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->ssl_conf_commands = NGX_CONF_UNSET_PTR;
 #endif
 
+#if (NGX_QUIC)
+    conf->quic_idle_timeout = NGX_CONF_UNSET_MSEC;
+    conf->quic_stream_buffer_size = NGX_CONF_UNSET_SIZE;
+#endif
+
     /* the hardcoded values */
     conf->upstream.cyclic_temp_file = 0;
     conf->upstream.change_buffering = 1;
@@ -3967,6 +4003,28 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->ssl && ngx_http_proxy_set_ssl(cf, conf) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
+
+#endif
+
+#if (NGX_QUIC)
+
+    ngx_conf_merge_msec_value(conf->quic_idle_timeout,
+                              prev->quic_idle_timeout, 60000);
+    ngx_conf_merge_size_value(conf->quic_stream_buffer_size,
+                              prev->quic_stream_buffer_size, 65536);
+
+    conf->upstream.quic = ngx_pcalloc(cf->pool, sizeof(ngx_quic_conf_t));
+    if (conf->upstream.quic == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    conf->upstream.quic->max_concurrent_streams_bidi = 0;
+    conf->upstream.quic->max_concurrent_streams_uni = 3;
+    conf->upstream.quic->stream_close_code = NGX_HTTP_V3_ERR_NO_ERROR;
+    conf->upstream.quic->active_connection_id_limit = 2;
+    conf->upstream.quic->stream_buffer_size = conf->quic_stream_buffer_size;
+    conf->upstream.quic->idle_timeout = conf->quic_idle_timeout;
+    conf->upstream.quic->ssl = conf->upstream.ssl;
 
 #endif
 
@@ -5373,6 +5431,12 @@ ngx_http_proxy_set_ssl(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *plcf)
     {
         return NGX_ERROR;
     }
+
+#if (NGX_QUIC_OPENSSL_COMPAT)
+    if (ngx_quic_compat_init(cf, plcf->upstream.ssl->ctx) != NGX_OK) {
+        return NGX_ERROR;
+    }
+#endif
 
     return NGX_OK;
 }

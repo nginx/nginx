@@ -85,6 +85,11 @@ typedef struct {
     ngx_str_t                      ssl_crl;
     ngx_array_t                   *ssl_conf_commands;
 #endif
+
+#if (NGX_QUIC || NGX_COMPAT)
+    ngx_msec_t                     quic_idle_timeout;
+    size_t                         quic_stream_buffer_size;
+#endif
 } ngx_http_proxy_loc_conf_t;
 
 
@@ -118,6 +123,10 @@ ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,
 
 #if (NGX_HTTP_V2)
 ngx_int_t ngx_http_proxy_v2_handler(ngx_http_request_t *r);
+#endif
+
+#if (NGX_HTTP_V3)
+ngx_int_t ngx_http_v3_proxy_handler(ngx_http_request_t *r);
 #endif
 
 

@@ -10,26 +10,6 @@
 #include <ngx_http.h>
 
 
-/* static table indices */
-#define NGX_HTTP_V3_HEADER_AUTHORITY                 0
-#define NGX_HTTP_V3_HEADER_PATH_ROOT                 1
-#define NGX_HTTP_V3_HEADER_CONTENT_LENGTH_ZERO       4
-#define NGX_HTTP_V3_HEADER_DATE                      6
-#define NGX_HTTP_V3_HEADER_LAST_MODIFIED             10
-#define NGX_HTTP_V3_HEADER_LOCATION                  12
-#define NGX_HTTP_V3_HEADER_METHOD_GET                17
-#define NGX_HTTP_V3_HEADER_SCHEME_HTTP               22
-#define NGX_HTTP_V3_HEADER_SCHEME_HTTPS              23
-#define NGX_HTTP_V3_HEADER_STATUS_103                24
-#define NGX_HTTP_V3_HEADER_STATUS_200                25
-#define NGX_HTTP_V3_HEADER_ACCEPT_ENCODING           31
-#define NGX_HTTP_V3_HEADER_CONTENT_TYPE_TEXT_PLAIN   53
-#define NGX_HTTP_V3_HEADER_VARY_ACCEPT_ENCODING      59
-#define NGX_HTTP_V3_HEADER_ACCEPT_LANGUAGE           72
-#define NGX_HTTP_V3_HEADER_SERVER                    92
-#define NGX_HTTP_V3_HEADER_USER_AGENT                95
-
-
 typedef struct {
     ngx_chain_t         *free;
     ngx_chain_t         *busy;
@@ -313,8 +293,9 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
             continue;
         }
 
-        len += ngx_http_v3_encode_field_l(NULL, &header[i].key,
-                                          &header[i].value);
+        len += ngx_http_v3_encode_field_l(NULL,
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 header len:%uz", len);
@@ -500,8 +481,8 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
                        &header[i].key, &header[i].value);
 
         b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
-                                                        &header[i].key,
-                                                        &header[i].value);
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     if (r->header_only) {
@@ -631,8 +612,9 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
             continue;
         }
 
-        len += ngx_http_v3_encode_field_l(NULL, &header[i].key,
-                                          &header[i].value);
+        len += ngx_http_v3_encode_field_l(NULL,
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     if (len == 0) {
@@ -685,8 +667,8 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
                        &header[i].key, &header[i].value);
 
         b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
-                                                        &header[i].key,
-                                                        &header[i].value);
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     b->flush = 1;
@@ -888,8 +870,9 @@ ngx_http_v3_create_trailers(ngx_http_request_t *r,
             continue;
         }
 
-        len += ngx_http_v3_encode_field_l(NULL, &header[i].key,
-                                          &header[i].value);
+        len += ngx_http_v3_encode_field_l(NULL,
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     cl = ngx_chain_get_free_buf(r->pool, &ctx->free);
@@ -945,8 +928,8 @@ ngx_http_v3_create_trailers(ngx_http_request_t *r,
                        &header[i].key, &header[i].value);
 
         b->last = (u_char *) ngx_http_v3_encode_field_l(b->last,
-                                                        &header[i].key,
-                                                        &header[i].value);
+                                    header[i].key.data, header[i].key.len,
+                                    header[i].value.data, header[i].value.len);
     }
 
     n = b->last - b->pos;

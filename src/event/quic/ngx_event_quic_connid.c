@@ -51,6 +51,10 @@ ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id)
     uint64_t   cookie;
     socklen_t  optlen;
 
+    if (c->listening == NULL) {
+        return NGX_OK;
+    }
+
     fd = c->listening->fd;
 
     optlen = sizeof(cookie);

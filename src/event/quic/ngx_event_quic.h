@@ -44,6 +44,7 @@
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
 
+typedef struct ngx_quic_connection_s  ngx_quic_connection_t;
 typedef ngx_int_t (*ngx_quic_init_pt)(ngx_connection_t *c);
 typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
 
@@ -77,13 +78,12 @@ typedef struct {
 } ngx_quic_buffer_t;
 
 
-typedef struct {
+struct ngx_quic_conf_s {
     ngx_ssl_t                     *ssl;
 
     ngx_flag_t                     retry;
     ngx_flag_t                     gso_enabled;
     ngx_flag_t                     disable_active_migration;
-    ngx_msec_t                     handshake_timeout;
     ngx_msec_t                     idle_timeout;
     ngx_str_t                      host_key;
     size_t                         stream_buffer_size;
@@ -94,15 +94,12 @@ typedef struct {
     ngx_int_t                      stream_reject_code_uni;
     ngx_int_t                      stream_reject_code_bidi;
 
-    ngx_quic_init_pt               init;
-    ngx_quic_shutdown_pt           shutdown;
-
     u_char                         av_token_key[NGX_QUIC_AV_KEY_LEN];
     u_char                         sr_token_key[NGX_QUIC_SR_KEY_LEN];
-} ngx_quic_conf_t;
+};
 
 
-struct ngx_quic_stream_s {
+typedef struct {
     ngx_rbtree_node_t              node;
     ngx_queue_t                    queue;
     ngx_connection_t              *parent;
@@ -122,21 +119,31 @@ struct ngx_quic_stream_s {
     ngx_quic_buffer_t              recv;
     ngx_quic_stream_send_state_e   send_state;
     ngx_quic_stream_recv_state_e   recv_state;
-    unsigned                       cancelable:1;
     unsigned                       fin_acked:1;
+} ngx_quic_stream_t;
+
+
+struct ngx_quic_s {
+    ngx_quic_connection_t         *connection;
+    ngx_quic_stream_t             *stream;
 };
 
 
 void ngx_quic_recvmsg(ngx_event_t *ev);
-void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
+ngx_int_t ngx_quic_create_connection(ngx_quic_conf_t *conf, ngx_connection_t *c,
+    ngx_uint_t flags);
+ngx_int_t ngx_quic_handshake(ngx_connection_t *c);
+ngx_connection_t *ngx_quic_accept_stream(ngx_connection_t *c);
+ngx_int_t ngx_quic_has_streams(ngx_connection_t *c, ngx_uint_t local,
+    ngx_uint_t bidi);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
-void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
+void ngx_quic_set_app_error(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
-void ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
-    const char *reason);
+ngx_uint_t ngx_quic_get_error(ngx_connection_t *c);
+ngx_int_t ngx_quic_shutdown(ngx_connection_t *c);
+void ngx_quic_reject_streams(ngx_connection_t *c);
 ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 ngx_int_t ngx_quic_shutdown_stream(ngx_connection_t *c, int how);
-void ngx_quic_cancelable_stream(ngx_connection_t *c);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,

@@ -307,3 +307,25 @@ bad_token:
 
     return NGX_DECLINED;
 }
+
+
+ngx_int_t
+ngx_quic_handle_new_token_frame(ngx_connection_t *c, ngx_quic_frame_t *frame)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->is_server) {
+        return NGX_ERROR;
+    }
+
+#ifdef NGX_QUIC_DEBUG_PACKETS
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic received token len:%uz %*xs", frame->u.token.length,
+                   frame->data->buf->last - frame->data->buf->pos,
+                   frame->data->buf->pos);
+#endif
+
+    return NGX_OK;
+}

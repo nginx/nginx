@@ -313,12 +313,6 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     len = pkt->raw->last - pkt->raw->start;
 
-    if (c->udp->buffer == NULL) {
-        /* first ever packet in connection, path already exists  */
-        path = qc->path;
-        goto update;
-    }
-
     probe = NULL;
 
     for (q = ngx_queue_head(&qc->paths);
@@ -724,21 +718,25 @@ ngx_quic_path_handler(ngx_event_t *ev)
         switch (path->state) {
         case NGX_QUIC_PATH_VALIDATING:
             if (ngx_quic_expire_path_validation(c, path) != NGX_OK) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_NO_VIABLE_PATH,
+                                   "path error");
+                goto done;
             }
 
             break;
 
         case NGX_QUIC_PATH_WAITING:
             if (ngx_quic_expire_path_mtu_delay(c, path) != NGX_OK) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "mtu error");
+                goto done;
             }
 
             break;
 
         case NGX_QUIC_PATH_MTUD:
             if (ngx_quic_expire_path_mtu_discovery(c, path) != NGX_OK) {
-                goto failed;
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "mtu error");
+                goto done;
             }
 
             break;
@@ -750,11 +748,9 @@ ngx_quic_path_handler(ngx_event_t *ev)
 
     ngx_quic_set_path_timer(c);
 
-    return;
+done:
 
-failed:
-
-    ngx_quic_close_connection(c, NGX_ERROR);
+    ngx_quic_end_handler(c);
 }
 
 

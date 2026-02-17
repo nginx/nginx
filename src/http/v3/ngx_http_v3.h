@@ -79,11 +79,12 @@
 
 
 #define ngx_http_v3_get_session(c)                                            \
-    ((ngx_http_v3_session_t *) ((c)->quic ? (c)->quic->parent->data           \
-                                          : (c)->data))
+    ((ngx_http_v3_session_t *) ((c)->quic->stream                             \
+                                     ? (c)->quic->stream->parent->data        \
+                                     : (c)->data))
 
 #define ngx_http_quic_get_connection(c)                                       \
-    (ngx_http_v3_get_session(c)->http_connection)
+    ((ngx_http_connection_t *) ngx_http_v3_get_session(c)->data)
 
 #define ngx_http_v3_get_module_loc_conf(c, module)                            \
     ngx_http_get_module_loc_conf(ngx_http_quic_get_connection(c)->conf_ctx,   \
@@ -94,12 +95,11 @@
                                  module)
 
 #define ngx_http_v3_finalize_connection(c, code, reason)                      \
-    ngx_quic_finalize_connection((c)->quic ? (c)->quic->parent : (c),         \
-                                 code, reason)
-
-#define ngx_http_v3_shutdown_connection(c, code, reason)                      \
-    ngx_quic_shutdown_connection((c)->quic ? (c)->quic->parent : (c),         \
-                                 code, reason)
+    ngx_quic_set_app_error((c)->quic->stream ? (c)->quic->stream->parent      \
+                                             : (c), code, reason);            \
+    ngx_post_event((c)->quic->stream ? (c)->quic->stream->parent->read        \
+                                     : (c)->read,                             \
+                   &ngx_posted_events)
 
 
 typedef struct {
@@ -121,15 +121,19 @@ struct ngx_http_v3_parse_s {
 
 
 struct ngx_http_v3_session_s {
-    ngx_http_connection_t        *http_connection;
+    ngx_connection_t             *connection;
+
+    void                         *data;
 
     ngx_http_v3_dynamic_table_t   table;
 
-    ngx_event_t                   keepalive;
-    ngx_uint_t                    nrequests;
+    ngx_queue_t                   queue;
 
-    ngx_queue_t                   blocked;
+    size_t                        max_table_capacity;
+    ngx_uint_t                    max_blocked_streams;
+    ngx_uint_t                    nrequests;
     ngx_uint_t                    nblocked;
+    ngx_uint_t                    max_literal;
 
     uint64_t                      next_request_id;
 
@@ -147,8 +151,7 @@ void ngx_http_v3_init_stream(ngx_connection_t *c);
 void ngx_http_v3_reset_stream(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_check_flood(ngx_connection_t *c);
-ngx_int_t ngx_http_v3_init(ngx_connection_t *c);
-void ngx_http_v3_shutdown(ngx_connection_t *c);
+void ngx_http_v3_close_connection(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
