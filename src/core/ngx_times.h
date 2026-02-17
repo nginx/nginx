@@ -41,6 +41,7 @@ extern volatile ngx_str_t    ngx_cached_http_time;
 extern volatile ngx_str_t    ngx_cached_http_log_time;
 extern volatile ngx_str_t    ngx_cached_http_log_iso8601;
 extern volatile ngx_str_t    ngx_cached_syslog_time;
+extern volatile ngx_str_t    ngx_cached_syslog_rfc5424_time;
 
 /*
  * milliseconds elapsed since some unspecified point in the past
