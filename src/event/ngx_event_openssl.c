@@ -93,6 +93,7 @@ static time_t ngx_ssl_parse_time(
 
 static void *ngx_openssl_create_conf(ngx_cycle_t *cycle);
 static char *ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_openssl_provider(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void ngx_openssl_exit(ngx_cycle_t *cycle);
 
 
@@ -101,6 +102,13 @@ static ngx_command_t  ngx_openssl_commands[] = {
     { ngx_string("ssl_engine"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_openssl_engine,
+      0,
+      0,
+      NULL },
+
+    { ngx_string("ssl_provider"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_1MORE,
+      ngx_openssl_provider,
       0,
       0,
       NULL },
@@ -6582,6 +6590,84 @@ ngx_openssl_engine(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     ENGINE_free(engine);
+
+    return NGX_CONF_OK;
+
+#else
+
+    return "is not supported";
+
+#endif
+}
+
+
+static char *
+ngx_openssl_provider(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x30200000L)
+
+    u_char       *p;
+    ngx_uint_t    i;
+    ngx_str_t    *value;
+    OSSL_PARAM   *param;
+    ngx_array_t   params;
+
+    if (cf->cycle->modules_used) {
+        return "is specified too late";
+    }
+
+    value = cf->args->elts;
+
+    if (OSSL_PROVIDER_available(NULL, (char *) value[1].data)) {
+        ngx_conf_log_error(NGX_LOG_INFO, cf, 0,
+                           "ssl_provider \"%V\" is already loaded", &value[1]);
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_array_init(&params, cf->pool, cf->args->nelts - 1,
+                       sizeof(OSSL_PARAM))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(params.elts, (cf->args->nelts - 1) * sizeof(OSSL_PARAM));
+
+    for (i = 2; i < cf->args->nelts; i++) {
+        p = (u_char *) ngx_strchr(value[i].data, '=');
+
+        if (p == NULL) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[i]);
+            return NGX_CONF_ERROR;
+        }
+
+        param = ngx_array_push(&params);
+        if (param == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        *p++ = '\0';
+
+        param->key = (char *) value[i].data;
+        param->data_type = OSSL_PARAM_UTF8_STRING;
+        param->data = p;
+        param->data_size = value[i].data + value[i].len - p;
+    }
+
+    param = ngx_array_push(&params);
+    if (param == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (OSSL_PROVIDER_load_ex(NULL, (char* ) value[1].data,
+                              (params.nelts > 1) ? params.elts : NULL)
+        == NULL)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, cf->log, 0,
+                      "OSSL_PROVIDER_load_ex(\"%V\") failed", &value[1]);
+        return NGX_CONF_ERROR;
+    }
 
     return NGX_CONF_OK;
 
