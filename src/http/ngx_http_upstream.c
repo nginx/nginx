@@ -173,6 +173,10 @@ static ngx_int_t ngx_http_upstream_trailer_variable(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_cookie_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t ngx_http_upstream_backend_ssl_cipher(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_upstream_backend_ssl_protocol(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static char *ngx_http_upstream(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy);
 static char *ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -412,6 +416,14 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
     { ngx_string("upstream_status"), NULL,
       ngx_http_upstream_status_variable, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
+	  
+	{ ngx_string("backend_ssl_protocol"), NULL,
+      ngx_http_upstream_backend_ssl_protocol, 0, 
+	  NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("backend_ssl_cipher"), NULL,
+      ngx_http_upstream_backend_ssl_cipher, 0, 
+	  NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("upstream_connect_time"), NULL,
       ngx_http_upstream_response_time_variable, 2,
@@ -1834,18 +1846,32 @@ ngx_http_upstream_ssl_handshake_handler(ngx_connection_t *c)
     ngx_http_upstream_t  *u;
 
     r = c->data;
-
+	
     u = r->upstream;
-    c = r->connection;
+   
+   if (c->ssl && c->ssl->handshaked) {
+        SSL *ssl_conn = c->ssl->connection;
 
-    ngx_http_set_log_request(c->log, r);
+        const char *proto = SSL_get_version(ssl_conn);
+        const char *cipher = SSL_get_cipher_name(ssl_conn);
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http upstream ssl handshake: \"%V?%V\"",
-                   &r->uri, &r->args);
+        if (r->upstream_states && r->upstream_states->nelts > 0) {
+            ngx_http_upstream_state_t *state = r->upstream_states->elts;
 
-    ngx_http_upstream_ssl_handshake(r, u, u->peer.connection);
+		state->backend_ssl_protocol.len = ngx_strlen(proto);
+        state->backend_ssl_protocol.data = ngx_pnalloc(r->pool, state->backend_ssl_protocol.len);
+        if (state->backend_ssl_protocol.data) {
+            ngx_memcpy(state->backend_ssl_protocol.data, proto, state->backend_ssl_protocol.len);
+        }
 
+        state->backend_ssl_cipher.len = ngx_strlen(cipher);
+        state->backend_ssl_cipher.data = ngx_pnalloc(r->pool, state->backend_ssl_cipher.len);
+        if (state->backend_ssl_cipher.data) {
+            ngx_memcpy(state->backend_ssl_cipher.data, cipher, state->backend_ssl_cipher.len);
+            }
+        }
+        ngx_http_upstream_ssl_handshake(r, u, c);
+   }
     ngx_http_run_posted_requests(c);
 }
 
@@ -1899,6 +1925,57 @@ failed:
     ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
 }
 
+static ngx_int_t
+ngx_http_upstream_backend_ssl_cipher(ngx_http_request_t *r,
+                                     ngx_http_variable_value_t *v,
+                                     uintptr_t data)
+{
+    if (r == NULL || r->upstream_states == NULL || r->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    ngx_http_upstream_state_t *state = r->upstream_states->elts;
+
+    if (state->backend_ssl_cipher.data == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = state->backend_ssl_cipher.data;
+    v->len = state->backend_ssl_cipher.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_upstream_backend_ssl_protocol(ngx_http_request_t *r,
+                                       ngx_http_variable_value_t *v,
+                                       uintptr_t data)
+{
+    if (r == NULL || r->upstream_states == NULL || r->upstream_states->nelts == 0) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    ngx_http_upstream_state_t *state = r->upstream_states->elts;
+
+    if (state->backend_ssl_protocol.data == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = state->backend_ssl_protocol.data;
+    v->len = state->backend_ssl_protocol.len;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
 
 static void
 ngx_http_upstream_ssl_save_session(ngx_connection_t *c)
@@ -2610,7 +2687,6 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
         return;
     }
-
     ngx_http_upstream_send_response(r, u);
 }
 

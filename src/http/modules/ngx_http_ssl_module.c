@@ -39,7 +39,7 @@ static ngx_int_t ngx_http_ssl_add_variables(ngx_conf_t *cf);
 static void *ngx_http_ssl_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf,
     void *parent, void *child);
-
+	
 static ngx_int_t ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
     ngx_http_ssl_srv_conf_t *conf);
 
@@ -346,7 +346,6 @@ ngx_module_t  ngx_http_ssl_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
-
 
 static ngx_http_variable_t  ngx_http_ssl_vars[] = {
 
@@ -965,6 +964,37 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
+u_char *
+ngx_ssl_get_backend_cipher(ngx_connection_t *c)
+{
+    const SSL_CIPHER *cipher;
+    const char *name;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    cipher = SSL_get_current_cipher(c->ssl->connection);
+    if (cipher == NULL) {
+        return NULL;
+    }
+
+    name = SSL_CIPHER_get_name(cipher);
+    return (u_char *) name;
+}
+
+u_char *
+ngx_ssl_get_backend_protocol(ngx_connection_t *c)
+{
+    const char *proto;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    proto = SSL_get_version(c->ssl->connection);
+    return (u_char *) proto;
+}
 
 static ngx_int_t
 ngx_http_ssl_compile_certificates(ngx_conf_t *cf,
