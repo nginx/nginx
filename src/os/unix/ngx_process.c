@@ -205,6 +205,8 @@ ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
 
     ngx_log_error(NGX_LOG_NOTICE, cycle->log, 0, "start %s %P", name, pid);
 
+    ngx_active_workers_pids[s] = pid;
+
     ngx_processes[s].pid = pid;
     ngx_processes[s].exited = 0;
 
