@@ -85,9 +85,6 @@ static ngx_int_t
     ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t
-    ngx_http_proxy_internal_connection_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data);
-static ngx_int_t
     ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_proxy_internal_chunked_variable(ngx_http_request_t *r,
@@ -749,7 +746,7 @@ static char  ngx_http_proxy_version_11[] = " HTTP/1.1" CRLF;
 
 static ngx_keyval_t  ngx_http_proxy_headers[] = {
     { ngx_string("Host"), ngx_string("$proxy_internal_host") },
-    { ngx_string("Connection"), ngx_string("$proxy_internal_connection") },
+    { ngx_string("Connection"), ngx_string("") },
     { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
     { ngx_string("Transfer-Encoding"), ngx_string("$proxy_internal_chunked") },
     { ngx_string("TE"), ngx_string("") },
@@ -777,7 +774,7 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
 
 static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
     { ngx_string("Host"), ngx_string("$proxy_internal_host") },
-    { ngx_string("Connection"), ngx_string("$proxy_internal_connection") },
+    { ngx_string("Connection"), ngx_string("") },
     { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
     { ngx_string("Transfer-Encoding"), ngx_string("$proxy_internal_chunked") },
     { ngx_string("TE"), ngx_string("") },
@@ -815,10 +812,6 @@ static ngx_http_variable_t  ngx_http_proxy_vars[] = {
     { ngx_string("proxy_internal_host"), NULL,
       ngx_http_proxy_host_variable, 1,
       NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
-
-    { ngx_string("proxy_internal_connection"), NULL,
-      ngx_http_proxy_internal_connection_variable, 0,
-      NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH, 0 },
 
     { ngx_string("proxy_internal_body_length"), NULL,
       ngx_http_proxy_internal_body_length_variable, 0,
@@ -2778,29 +2771,6 @@ ngx_http_proxy_add_x_forwarded_for_variable(ngx_http_request_t *r,
 
 
 static ngx_int_t
-ngx_http_proxy_internal_connection_variable(ngx_http_request_t *r,
-    ngx_http_variable_value_t *v, uintptr_t data)
-{
-    ngx_http_proxy_ctx_t  *ctx;
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
-
-    if (ctx == NULL || !ctx->legacy) {
-        v->not_found = 1;
-        return NGX_OK;
-    }
-
-    v->valid = 1;
-    v->no_cacheable = 0;
-    v->not_found = 0;
-
-    ngx_str_set(v, "close");
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_proxy_internal_body_length_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
@@ -4030,7 +4000,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->cookie_flags, prev->cookie_flags, NULL);
 
     ngx_conf_merge_uint_value(conf->http_version, prev->http_version,
-                              NGX_HTTP_VERSION_10);
+                              NGX_HTTP_VERSION_11);
 
     ngx_conf_merge_uint_value(conf->headers_hash_max_size,
                               prev->headers_hash_max_size, 512);
