@@ -1231,6 +1231,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         switch (frame.type) {
 
         case NGX_QUIC_FT_ACK:
+        case NGX_QUIC_FT_ACK_ECN:
             if (ngx_quic_handle_ack_frame(c, pkt, &frame) != NGX_OK) {
                 return NGX_ERROR;
             }
