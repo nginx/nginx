@@ -111,6 +111,8 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_proxy_init_headers(ngx_conf_t *cf,
     ngx_http_proxy_loc_conf_t *conf, ngx_http_proxy_headers_t *headers,
     ngx_keyval_t *default_headers);
+static char *ngx_http_proxy_set_header(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -324,7 +326,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_set_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
-      ngx_conf_set_keyval_slot,
+      ngx_http_proxy_set_header,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, headers_source),
       NULL },
@@ -1184,7 +1186,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                                   key_len, val_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method;
+    ngx_str_t                     method, tmp;
     ngx_uint_t                    i, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1334,6 +1336,15 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_valid_header_name(header[i].key) != NGX_OK
+                || ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+                /* oops, request smuggling */
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "Internal malformed header name or value "
+                              "detected (this is a bug!!!!");
+                return NGX_ERROR;
+            }
+
             len += header[i].key.len + sizeof(": ") - 1
                 + header[i].value.len + sizeof(CRLF) - 1;
         }
@@ -1351,6 +1362,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     }
 
     cl->buf = b;
+    cl->next = NULL;
 
 
     /* the request line */
@@ -1388,6 +1400,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     }
 
     u->uri.len = b->last - u->uri.data;
+    if (ngx_http_valid_header_value(u->uri) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "URI contains control characters "
+                      "(possible CRLF injection?");
+        return NGX_ERROR;
+    }
 
     if (plcf->http_version == NGX_HTTP_VERSION_11) {
         b->last = ngx_cpymem(b->last, ngx_http_proxy_version_11,
@@ -1409,6 +1427,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     while (*(uintptr_t *) le.ip) {
 
+        tmp.data = e.pos;
         lcode = *(ngx_http_script_len_code_pt *) le.ip;
         (void) lcode(&le);
 
@@ -1433,14 +1452,30 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
         code = *(ngx_http_script_code_pt *) e.ip;
         code((ngx_http_script_engine_t *) &e);
+        tmp.len = (size_t)(e.pos - tmp.data);
+        if (ngx_http_valid_header_name(tmp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header name contains forbidden characters "
+                          "(do you use header names with variables?)");
+            return NGX_ERROR;
+        }
 
         *e.pos++ = ':'; *e.pos++ = ' ';
 
+        tmp.data = e.pos;
         while (*(uintptr_t *) e.ip) {
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
         }
         e.ip += sizeof(uintptr_t);
+        tmp.len = (size_t)(e.pos - tmp.data);
+        if (ngx_http_valid_header_value(tmp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header value contains forbidden characters "
+                          "(do you use variables in header values that "
+                          "can contain CR or LF?)");
+            return NGX_ERROR;
+        }
 
         *e.pos++ = CR; *e.pos++ = LF;
     }
@@ -4145,6 +4180,25 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
+static char *
+ngx_http_proxy_set_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char              *rc;
+    ngx_str_t         *value;
+    ngx_str_t          unstripped_value;
+
+    value = cf->args->elts;
+    unstripped_value = value[2];
+    if (ngx_conf_check_field_name_and_strip_value(cf, value, value + 1,
+                                                  value + 2) != NGX_OK) {
+        value[2] = unstripped_value;
+        return NGX_CONF_ERROR;
+    }
+
+    rc = ngx_conf_set_keyval_slot(cf, cmd, conf);
+    value[2] = unstripped_value;
+    return rc;
+}
 
 static ngx_int_t
 ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,

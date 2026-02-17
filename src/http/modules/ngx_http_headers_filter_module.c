@@ -252,6 +252,14 @@ ngx_http_headers_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
+            if (ngx_http_valid_header_value(value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "Header value contains forbidden characters "
+                              "(do you use variables in header values that "
+                              "can contain CR or LF?)");
+                return NGX_ERROR;
+            }
+
             if (h[i].handler(r, &h[i], &value) != NGX_OK) {
                 return NGX_ERROR;
             }
@@ -337,6 +345,14 @@ ngx_http_trailers_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         if (value.len) {
+            if (ngx_http_valid_header_value(value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "Header value contains forbidden characters "
+                              "(do you use variables in header values that "
+                              "can contain CR or LF?)");
+                return NGX_ERROR;
+            }
+
             t = ngx_list_push(&r->headers_out.trailers);
             if (t == NULL) {
                 return NGX_ERROR;
@@ -850,6 +866,11 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_compile_complex_value_t    ccv;
 
     value = cf->args->elts;
+
+    if (ngx_conf_check_field_name_and_strip_value(cf, value, value + 1,
+                                                  value + 2) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
 
     headers = (ngx_array_t **) ((char *) hcf + cmd->offset);
 
