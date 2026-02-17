@@ -404,10 +404,8 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         loc_len = (r->valid_location && ctx->ctx.vars.uri.len)
                   ? ngx_min(plcf->location.len, r->uri.len) : 0;
 
-        if (r->quoted_uri || r->internal) {
-            escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
-                                        r->uri.len - loc_len, NGX_ESCAPE_URI);
-        }
+        escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
+                                    r->uri.len - loc_len, NGX_ESCAPE_URI_PATH);
 
         uri_len = ctx->ctx.vars.uri.len + r->uri.len - loc_len + escape
                   + sizeof("?") - 1 + r->args.len;
@@ -650,7 +648,7 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
         if (escape) {
             ngx_escape_uri(p, r->uri.data + loc_len,
-                           r->uri.len - loc_len, NGX_ESCAPE_URI);
+                           r->uri.len - loc_len, NGX_ESCAPE_URI_PATH);
             p += r->uri.len - loc_len + escape;
 
         } else {
