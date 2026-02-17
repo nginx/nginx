@@ -625,6 +625,12 @@ retry:
                       "SSL_CTX_use_PrivateKey(\"%s\") failed", key->data);
         return NGX_ERROR;
     }
+    if (SSL_CTX_check_private_key(ssl->ctx) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_check_private_key(\"%s\") failed", key->data);
+        EVP_PKEY_free(pkey);
+        return NGX_ERROR;
+    }
 
     EVP_PKEY_free(pkey);
 
