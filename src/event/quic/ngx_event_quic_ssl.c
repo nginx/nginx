@@ -88,8 +88,9 @@ ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
     SSL_get0_alpn_selected(ssl_conn, &alpn_data, &alpn_len);
 
     if (alpn_len == 0) {
-        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
-        qc->error_reason = "missing ALPN extension";
+        ngx_quic_set_error(c,
+                           NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL),
+                           "missing ALPN extension");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic missing ALPN extension");
@@ -98,8 +99,8 @@ ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
 
     if (!qc->client_tp_done) {
         /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
-        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
-        qc->error_reason = "missing transport parameters";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION),
+                           "missing transport parameters");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "missing transport parameters");
@@ -110,13 +111,13 @@ ngx_quic_cbs_send(ngx_ssl_conn_t *ssl_conn,
 
     out = ngx_quic_copy_buffer(c, (u_char *) data, len);
     if (out == NGX_CHAIN_ERROR) {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "buffer error");
         return 1;
     }
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "memory error");
         return 1;
     }
 
@@ -196,7 +197,7 @@ ngx_quic_cbs_release_rcd(ngx_ssl_conn_t *ssl_conn, size_t bytes_read, void *arg)
 
     cl = ngx_quic_read_buffer(c, &ctx->crypto, bytes_read);
     if (cl == NGX_CHAIN_ERROR) {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "buffer error");
         return 1;
     }
 
@@ -247,7 +248,7 @@ ngx_quic_cbs_yield_secret(ngx_ssl_conn_t *ssl_conn, uint32_t ssl_level,
                                             cipher, secret, secret_len)
         != NGX_OK)
     {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "key error");
         return 1;
     }
 
@@ -285,9 +286,8 @@ ngx_quic_cbs_got_transport_params(ngx_ssl_conn_t *ssl_conn,
     end = p + params_len;
 
     if (ngx_quic_parse_transport_params(p, end, &ctp, c->log) != NGX_OK) {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "failed to process transport parameters";
-
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "failed to process transport parameters");
         return 1;
     }
 
@@ -318,8 +318,7 @@ ngx_quic_cbs_alert(ngx_ssl_conn_t *ssl_conn, unsigned char alert, void *arg)
         return 1;
     }
 
-    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
-    qc->error_reason = "handshake failed";
+    ngx_quic_set_error(c, NGX_QUIC_ERR_CRYPTO(alert), "handshake error");
 
     return 1;
 }
@@ -371,7 +370,7 @@ ngx_quic_set_read_secret(ngx_ssl_conn_t *ssl_conn,
                                             cipher, rsecret, secret_len)
         != NGX_OK)
     {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "key error");
     }
 
     return 1;
@@ -403,7 +402,7 @@ ngx_quic_set_write_secret(ngx_ssl_conn_t *ssl_conn,
                                             cipher, wsecret, secret_len)
         != NGX_OK)
     {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "key error");
     }
 
     return 1;
@@ -440,7 +439,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
                                             cipher, rsecret, secret_len)
         != NGX_OK)
     {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "key error");
         return 1;
     }
 
@@ -458,7 +457,7 @@ ngx_quic_set_encryption_secrets(ngx_ssl_conn_t *ssl_conn,
                                             cipher, wsecret, secret_len)
         != NGX_OK)
     {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "key error");
     }
 
     return 1;
@@ -502,8 +501,9 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
         if (alpn_len == 0) {
             if (qc->error == 0) {
-                qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL);
-                qc->error_reason = "missing ALPN extension";
+                ngx_quic_set_error(c,
+                           NGX_QUIC_ERR_CRYPTO(SSL_AD_NO_APPLICATION_PROTOCOL),
+                           "missing ALPN extension");
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "quic missing ALPN extension");
@@ -523,8 +523,9 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
             /* RFC 9001, 8.2.  QUIC Transport Parameters Extension */
 
             if (qc->error == 0) {
-                qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION);
-                qc->error_reason = "missing transport parameters";
+                ngx_quic_set_error(c,
+                                 NGX_QUIC_ERR_CRYPTO(SSL_AD_MISSING_EXTENSION),
+                                 "missing transport parameters");
 
                 ngx_log_error(NGX_LOG_INFO, c->log, 0,
                               "missing transport parameters");
@@ -542,9 +543,8 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
         if (ngx_quic_parse_transport_params(p, end, &ctp, c->log)
             != NGX_OK)
         {
-            qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-            qc->error_reason = "failed to process transport parameters";
-
+            ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                               "failed to process transport parameters");
             return 1;
         }
 
@@ -559,13 +559,13 @@ ngx_quic_add_handshake_data(ngx_ssl_conn_t *ssl_conn,
 
     out = ngx_quic_copy_buffer(c, (u_char *) data, len);
     if (out == NGX_CHAIN_ERROR) {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "buffer error");
         return 1;
     }
 
     frame = ngx_quic_alloc_frame(c);
     if (frame == NULL) {
-        qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR, "memory error");
         return 1;
     }
 
@@ -618,8 +618,7 @@ ngx_quic_send_alert(ngx_ssl_conn_t *ssl_conn,
         return 1;
     }
 
-    qc->error = NGX_QUIC_ERR_CRYPTO(alert);
-    qc->error_reason = "handshake failed";
+    ngx_quic_set_error(c, NGX_QUIC_ERR_CRYPTO(alert), "handshake error");
 
     return 1;
 }
@@ -649,7 +648,8 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
     last = f->offset + f->length;
 
     if (last > ctx->crypto.offset + NGX_QUIC_MAX_BUFFERED) {
-        qc->error = NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_CRYPTO_BUFFER_EXCEEDED,
+                           "crypto buffer exceeded");
         return NGX_ERROR;
     }
 

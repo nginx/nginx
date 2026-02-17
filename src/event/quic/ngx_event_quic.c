@@ -135,8 +135,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     if (scid.len != ctp->initial_scid.len
         || ngx_memcmp(scid.data, ctp->initial_scid.data, scid.len) != 0)
     {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "invalid initial_source_connection_id";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "invalid initial_source_connection_id");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic client initial_source_connection_id mismatch");
@@ -146,8 +146,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     if (ctp->max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
         || ctp->max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
     {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "invalid maximum packet size";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "invalid maximum packet size");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic maximum packet size is invalid");
@@ -155,8 +155,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     }
 
     if (ctp->active_connection_id_limit < 2) {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "invalid active_connection_id_limit";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "invalid active_connection_id_limit");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic active_connection_id_limit is invalid");
@@ -164,8 +164,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     }
 
     if (ctp->ack_delay_exponent > 20) {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "invalid ack_delay_exponent";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "invalid ack_delay_exponent");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic ack_delay_exponent is invalid");
@@ -173,8 +173,8 @@ ngx_quic_apply_transport_params(ngx_connection_t *c, ngx_quic_tp_t *ctp)
     }
 
     if (ctp->max_ack_delay >= 16384) {
-        qc->error = NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR;
-        qc->error_reason = "invalid max_ack_delay";
+        ngx_quic_set_error(c, NGX_QUIC_ERR_TRANSPORT_PARAMETER_ERROR,
+                           "invalid max_ack_delay");
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic max_ack_delay is invalid");
@@ -426,8 +426,7 @@ ngx_quic_input_handler(ngx_event_t *rev)
         c->close = 0;
 
         if (!ngx_exiting || !qc->streams.initialized) {
-            qc->error = NGX_QUIC_ERR_NO_ERROR;
-            qc->error_reason = "graceful shutdown";
+            ngx_quic_set_error(c, NGX_QUIC_ERR_NO_ERROR, "graceful shutdown");
             ngx_quic_close_connection(c, NGX_ERROR);
             return;
         }
@@ -520,9 +519,9 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
              *  to terminate the connection immediately.
              */
 
-            if (qc->error == 0 && rc == NGX_ERROR) {
-                qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
-                qc->error_app = 0;
+            if (rc == NGX_ERROR) {
+                ngx_quic_set_error(c, NGX_QUIC_ERR_INTERNAL_ERROR,
+                                   "internal server error");
             }
 
             ngx_log_debug5(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -622,6 +621,25 @@ quic_done:
 
 
 void
+ngx_quic_set_error(ngx_connection_t *c, ngx_uint_t err, const char *reason)
+{
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->error) {
+        return;
+    }
+
+    qc->error = err;
+    qc->error_reason = reason;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic error c:%ui r:\"%s\"",
+                   err, reason);
+}
+
+
+void
 ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason)
 {
@@ -629,14 +647,16 @@ ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
 
     qc = ngx_quic_get_connection(c);
 
-    if (qc->closing) {
+    if (qc->error) {
         return;
     }
 
     qc->error = err;
     qc->error_reason = reason;
     qc->error_app = 1;
-    qc->error_ftype = 0;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic error app c:%ui r:\"%s\"", err, reason);
 
     ngx_post_event(&qc->close, &ngx_posted_events);
 }
@@ -765,8 +785,8 @@ ngx_quic_handle_datagram(ngx_connection_t *c, ngx_buf_t *b,
         {
             ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic flood detected");
 
-            qc->error = NGX_QUIC_ERR_NO_ERROR;
-            qc->error_reason = "QUIC flood detected";
+            ngx_quic_set_error(c, NGX_QUIC_ERR_NO_ERROR,
+                               "quic flood detected");
             return NGX_ERROR;
         }
     }
@@ -994,8 +1014,7 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     rc = ngx_quic_decrypt(pkt, &ctx->largest_pn);
     if (rc != NGX_OK) {
-        qc->error = pkt->error;
-        qc->error_reason = "failed to decrypt packet";
+        ngx_quic_set_error(c, pkt->error, "failed to decrypt packet");
         return rc;
     }
 
@@ -1054,10 +1073,10 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
          */
 
         qc->error_level = pkt->level;
-        qc->error = NGX_QUIC_ERR_NO_ERROR;
-        qc->error_reason = "connection is closing, packet discarded";
-        qc->error_ftype = 0;
-        qc->error_app = 0;
+
+        ngx_quic_set_error(c, NGX_QUIC_ERR_NO_ERROR,
+                           "connection is closing, packet discarded");
+
 
         return ngx_quic_send_cc(c);
     }
@@ -1204,7 +1223,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         len = ngx_quic_parse_frame(pkt, p, end, &frame);
 
         if (len < 0) {
-            qc->error = pkt->error;
+            ngx_quic_set_error(c, pkt->error, "failed to parse frame");
             return NGX_ERROR;
         }
 
@@ -1213,6 +1232,10 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         c->log->action = "handling frames";
 
         p += len;
+
+        if (qc->error == 0) {
+            qc->error_ftype = frame.type;
+        }
 
         switch (frame.type) {
         /* probing frames */
@@ -1403,7 +1426,14 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         default:
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                            "quic missing frame handler");
+
+            ngx_quic_set_error(c, NGX_QUIC_ERR_PROTOCOL_VIOLATION,
+                               "unexpected frame type");
             return NGX_ERROR;
+        }
+
+        if (qc->error == 0) {
+            qc->error_ftype = 0;
         }
     }
 
@@ -1411,7 +1441,8 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic trailing garbage in payload:%ui bytes", end - p);
 
-        qc->error = NGX_QUIC_ERR_FRAME_ENCODING_ERROR;
+        ngx_quic_set_error(c, NGX_QUIC_ERR_FRAME_ENCODING_ERROR,
+                           "trailing garbage in quic payload");
         return NGX_ERROR;
     }
 
