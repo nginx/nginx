@@ -1032,7 +1032,9 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
     }
 
-    if (pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
+    if (pkt->level == NGX_QUIC_ENCRYPTION_APPLICATION
+        && ngx_quic_keys_available(qc->keys, NGX_QUIC_ENCRYPTION_EARLY_DATA, 0))
+    {
         /*
          * RFC 9001, 4.9.3.  Discarding 0-RTT Keys
          *
