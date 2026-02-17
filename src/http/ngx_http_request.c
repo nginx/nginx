@@ -2402,6 +2402,16 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
             }
 #endif
             return NGX_OK;
+        } else {
+            
+#if (NGX_PCRE)
+            if (hc->ssl_servername_regex
+                && ngx_http_regex_exec(r, hc->ssl_servername_regex,
+                                          host) == NGX_OK)
+            {
+                return NGX_OK;
+            }
+#endif
         }
     }
 
