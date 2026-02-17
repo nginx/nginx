@@ -37,7 +37,7 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
 #include <ngx_http_upstream_round_robin.h>
 #include <ngx_http_core_module.h>
 
-#if (NGX_HTTP_V2)
+#if (NGX_HTTP_V2_SUPPORT)
 #include <ngx_http_v2.h>
 #endif
 #if (NGX_HTTP_V3)
@@ -179,7 +179,7 @@ ngx_uint_t  ngx_http_degraded(ngx_http_request_t *);
 #endif
 
 
-#if (NGX_HTTP_V2 || NGX_HTTP_V3)
+#if (NGX_HTTP_V2_SUPPORT || NGX_HTTP_V3)
 ngx_int_t ngx_http_huff_decode(u_char *state, u_char *src, size_t len,
     u_char **dst, ngx_uint_t last, ngx_log_t *log);
 size_t ngx_http_huff_encode(u_char *src, size_t len, u_char *dst,
