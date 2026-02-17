@@ -405,6 +405,7 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_str_t                         *value;
     ngx_http_compile_complex_value_t   ccv;
+    ngx_file_info_t                    fi;
 
     if (alcf->user_file != NGX_CONF_UNSET_PTR) {
         return "is duplicate";
@@ -427,6 +428,14 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    if (alcf->user_file->lengths == NULL && 
+        ngx_file_info(alcf->user_file->value.data, &fi) 
+        == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, ngx_errno,
+                           ngx_file_info_n " \"%s\" failed", 
+                           alcf->user_file->value.data);
     }
 
     return NGX_CONF_OK;
