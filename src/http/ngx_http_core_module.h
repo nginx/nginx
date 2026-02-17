@@ -88,6 +88,7 @@ typedef struct {
     int                        rcvbuf;
     int                        sndbuf;
     int                        type;
+    int                        protocol;
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
 #endif
