@@ -812,7 +812,7 @@ static ngx_http_module_t  ngx_http_core_module_ctx = {
 
 
 ngx_module_t  ngx_http_core_module = {
-    NGX_MODULE_V1,
+    NGX_DYNAMIC_MODULE_V1,
     &ngx_http_core_module_ctx,             /* module context */
     ngx_http_core_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -2524,6 +2524,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     if (flags & NGX_HTTP_SUBREQUEST_CLONE) {
         sr->method = r->method;
         sr->method_name = r->method_name;
+        sr->main_conf = r->main_conf;
+        sr->srv_conf = r->srv_conf;
         sr->loc_conf = r->loc_conf;
         sr->valid_location = r->valid_location;
         sr->valid_unparsed_uri = r->valid_unparsed_uri;
@@ -3114,8 +3116,17 @@ ngx_http_core_location(ngx_conf_t *cf, ngx_command_t *cmd, void *dummy)
         return NGX_CONF_ERROR;
     }
 
+    ngx_memcpy(ctx->loc_conf, pctx->loc_conf,
+               sizeof(void *) * ngx_http_max_module);
+
     for (i = 0; cf->cycle->modules[i]; i++) {
         if (cf->cycle->modules[i]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        if (cf->dynamic
+            && !(cf->cycle->modules[i]->flags & NGX_DYNAMIC_MODULE))
+        {
             continue;
         }
 
@@ -3481,6 +3492,39 @@ ngx_http_core_init_main_conf(ngx_conf_t *cf, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+void *
+ngx_http_core_recreate_main_conf(ngx_conf_t *cf)
+{
+    ngx_http_core_main_conf_t  *cmcf, *ocmcf;
+
+    cmcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_core_main_conf_t));
+    if (cmcf == NULL) {
+        return NULL;
+    }
+
+    ocmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    cmcf->servers = ocmcf->servers;
+    cmcf->phase_engine = ocmcf->phase_engine;
+    cmcf->headers_in_hash = ocmcf->headers_in_hash;
+    cmcf->ncaptures = ocmcf->ncaptures;
+    cmcf->server_names_hash_max_size = ocmcf->server_names_hash_max_size;
+    cmcf->server_names_hash_bucket_size =
+                                      ocmcf->server_names_hash_bucket_size;
+    cmcf->variables_hash_max_size = ocmcf->variables_hash_max_size;
+    cmcf->variables_hash_bucket_size = ocmcf->variables_hash_bucket_size;
+    cmcf->ports = ocmcf->ports;
+
+    ngx_memcpy(&cmcf->phases, &ocmcf->phases, sizeof(cmcf->phases));
+
+    if (ngx_http_variables_merge_core_vars(cf, cmcf) != NGX_OK) {
+        return NULL;
+    }
+
+    return cmcf;
 }
 
 

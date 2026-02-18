@@ -145,7 +145,7 @@ static ngx_http_module_t  ngx_http_limit_conn_module_ctx = {
 
 
 ngx_module_t  ngx_http_limit_conn_module = {
-    NGX_MODULE_V1,
+    NGX_DYNAMIC_MODULE_V1,
     &ngx_http_limit_conn_module_ctx,       /* module context */
     ngx_http_limit_conn_commands,          /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
