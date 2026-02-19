@@ -946,6 +946,7 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->connection = NULL;
     ctx->in = NULL;
     ctx->busy = NULL;
+    ctx->out = NULL;
 
     return NGX_OK;
 }
