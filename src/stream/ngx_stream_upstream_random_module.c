@@ -17,7 +17,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                              two;
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_uint_t                              config;
 #endif
     ngx_stream_upstream_random_range_t     *ranges;

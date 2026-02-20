@@ -115,7 +115,7 @@ typedef struct {
 } ngx_http_script_copy_capture_code_t;
 
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
 
 typedef struct {
     ngx_http_script_code_pt     code;

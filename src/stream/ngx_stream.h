@@ -166,7 +166,7 @@ typedef struct {
     ngx_msec_t                     proxy_protocol_timeout;
 
     unsigned                       listen:1;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     unsigned                       captures:1;
 #endif
 } ngx_stream_core_srv_conf_t;
@@ -176,7 +176,7 @@ typedef struct {
 
 
 typedef struct {
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_stream_regex_t            *regex;
 #endif
     ngx_stream_core_srv_conf_t    *server;   /* virtual name server conf */
@@ -245,7 +245,7 @@ typedef struct {
     ngx_hash_wildcard_t           *wc_head;
     ngx_hash_wildcard_t           *wc_tail;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_uint_t                     nregex;
     ngx_stream_server_name_t      *regex;
 #endif
@@ -279,7 +279,7 @@ struct ngx_stream_session_s {
                                            /* of ngx_stream_upstream_state_t */
     ngx_stream_variable_value_t   *variables;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_uint_t                     ncaptures;
     int                           *captures;
     u_char                        *captures_data;

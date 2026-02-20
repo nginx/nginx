@@ -35,7 +35,7 @@ typedef struct {
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
 
-#if (NGX_STREAM_SSL)
+#if (NGX_STREAM_SSL || NGX_COMPAT)
     ngx_flag_t                       ssl_enable;
     ngx_flag_t                       ssl_session_reuse;
     ngx_uint_t                       ssl_protocols;

@@ -65,7 +65,7 @@ typedef struct {
     ngx_list_t               *variables;
     ngx_array_t              *blocks;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_uint_t                ncaptures;
     int                      *captures;
     u_char                   *captures_data;

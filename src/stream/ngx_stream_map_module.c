@@ -20,7 +20,7 @@ typedef struct {
     ngx_hash_keys_arrays_t        keys;
 
     ngx_array_t                  *values_hash;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_array_t                   regexes;
 #endif
 

@@ -16,7 +16,7 @@
 typedef struct {
     ngx_hash_combined_t      hash;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_array_t             *regex;
     ngx_array_t             *server_name_regex;
 #endif
