@@ -7,12 +7,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
-#include <ngx_sha1.h>
 #include <ngx_event_quic_connection.h>
-
-
-static void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
-    ngx_uint_t no_port, u_char buf[20]);
 
 
 ngx_int_t
@@ -126,50 +121,6 @@ ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
 #endif
 
     return NGX_OK;
-}
-
-
-static void
-ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
-    ngx_uint_t no_port, u_char buf[20])
-{
-    size_t                len;
-    u_char               *data;
-    ngx_sha1_t            sha1;
-    struct sockaddr_in   *sin;
-#if (NGX_HAVE_INET6)
-    struct sockaddr_in6  *sin6;
-#endif
-
-    len = (size_t) socklen;
-    data = (u_char *) sockaddr;
-
-    if (no_port) {
-        switch (sockaddr->sa_family) {
-
-#if (NGX_HAVE_INET6)
-        case AF_INET6:
-            sin6 = (struct sockaddr_in6 *) sockaddr;
-
-            len = sizeof(struct in6_addr);
-            data = sin6->sin6_addr.s6_addr;
-
-            break;
-#endif
-
-        case AF_INET:
-            sin = (struct sockaddr_in *) sockaddr;
-
-            len = sizeof(in_addr_t);
-            data = (u_char *) &sin->sin_addr;
-
-            break;
-        }
-    }
-
-    ngx_sha1_init(&sha1);
-    ngx_sha1_update(&sha1, data, len);
-    ngx_sha1_final(buf, &sha1);
 }
 
 

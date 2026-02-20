@@ -314,6 +314,8 @@ ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
+void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
+    ngx_uint_t no_port, u_char buf[20]);
 
 #if (NGX_DEBUG)
 void ngx_quic_connstate_dbg(ngx_connection_t *c);
