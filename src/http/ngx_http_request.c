@@ -2006,6 +2006,15 @@ ngx_http_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.content_length) {
+        if (r->headers_in.transfer_encoding) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent \"Content-Length\" and "
+                          "\"Transfer-Encoding\" headers "
+                          "at the same time");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
         r->headers_in.content_length_n =
                             ngx_atoof(r->headers_in.content_length->value.data,
                                       r->headers_in.content_length->value.len);
@@ -2031,15 +2040,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
             && ngx_strncasecmp(r->headers_in.transfer_encoding->value.data,
                                (u_char *) "chunked", 7) == 0)
         {
-            if (r->headers_in.content_length) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent \"Content-Length\" and "
-                              "\"Transfer-Encoding\" headers "
-                              "at the same time");
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                return NGX_ERROR;
-            }
-
             r->headers_in.chunked = 1;
 
         } else {
@@ -2910,7 +2910,7 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
 
     if (r->main->count != 1) {
 
-        if (r->discard_body) {
+        if (r->discarding_body) {
             r->read_event_handler = ngx_http_discarded_request_body_handler;
             ngx_add_timer(r->connection->read, clcf->lingering_timeout);
 
@@ -2975,7 +2975,7 @@ ngx_http_set_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
-    r->read_event_handler = r->discard_body ?
+    r->read_event_handler = r->discarding_body ?
                                 ngx_http_discarded_request_body_handler:
                                 ngx_http_test_reading;
     r->write_event_handler = ngx_http_writer;
