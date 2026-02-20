@@ -25,7 +25,7 @@
  * packets.  With the set of AEAD functions defined in [QUIC-TLS],
  * short header packets that are smaller than 21 bytes are never valid.
  */
-#define NGX_QUIC_MIN_PKT_LEN             21
+#define NGX_QUIC_MIN_PKT_LEN             41 /* 21 + 20 (server cid length) */
 
 #define NGX_QUIC_MIN_SR_PACKET           43 /* 5 rand + 16 srt + 22 padding */
 #define NGX_QUIC_MAX_SR_PACKET         1200
