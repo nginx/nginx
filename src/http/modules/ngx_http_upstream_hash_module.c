@@ -24,7 +24,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_complex_value_t            key;
-#if (NGX_HTTP_UPSTREAM_ZONE)
+#if (NGX_HTTP_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_uint_t                          config;
 #endif
     ngx_http_upstream_chash_points_t   *points;

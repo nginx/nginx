@@ -23,7 +23,7 @@ typedef struct {
 
 
 typedef struct {
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_uint_t                            config;
 #endif
     ngx_stream_complex_value_t            key;

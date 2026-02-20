@@ -46,7 +46,7 @@ typedef struct {
     ngx_http_complex_value_t       cache_key;
 #endif
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_regex_t                   *split_regex;
     ngx_str_t                      split_name;
 #endif

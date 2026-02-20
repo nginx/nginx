@@ -73,6 +73,8 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_murmurhash.h>
 #if (NGX_PCRE)
 #include <ngx_regex.h>
+#elif (NGX_COMPAT)
+#include <ngx_regex_compat.h>
 #endif
 #include <ngx_radix_tree.h>
 #include <ngx_times.h>
