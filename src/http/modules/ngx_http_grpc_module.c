@@ -1224,6 +1224,9 @@ ngx_http_grpc_reinit_request(ngx_http_request_t *r)
     ctx->rst = 0;
     ctx->goaway = 0;
     ctx->connection = NULL;
+    ctx->in = NULL;
+    ctx->busy = NULL;
+    ctx->out = NULL;
 
     return NGX_OK;
 }
