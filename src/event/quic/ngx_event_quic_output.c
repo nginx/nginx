@@ -839,13 +839,13 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
         len = pkt->len - 1;
 
     } else {
-        max = ngx_min(NGX_QUIC_MAX_SR_PACKET, pkt->len * 3);
+        max = ngx_min(NGX_QUIC_MAX_SR_PACKET, pkt->len);
 
         if (RAND_bytes((u_char *) &rndbytes, sizeof(rndbytes)) != 1) {
             return NGX_ERROR;
         }
 
-        len = (rndbytes % (max - NGX_QUIC_MIN_SR_PACKET + 1))
+        len = (rndbytes % (max - NGX_QUIC_MIN_SR_PACKET))
               + NGX_QUIC_MIN_SR_PACKET;
     }
 
