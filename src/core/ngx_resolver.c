@@ -2757,7 +2757,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
 
         case NGX_RESOLVE_SRV:
 
-            if (i + 6 > n) {
+            if (i + 6 >= n) {
                 goto short_response;
             }
 
