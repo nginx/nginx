@@ -213,8 +213,12 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         com->method->set_read_secret((SSL *) ssl, level, cipher, secret, n);
         com->read_record = 0;
 
-        (void) ngx_quic_compat_set_encryption_secret(c, &com->keys, level,
-                                                     cipher, secret, n);
+        if (ngx_quic_compat_set_encryption_secret(c, &com->keys, level,
+                                                  cipher, secret, n)
+            != NGX_OK)
+        {
+            qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        }
     }
 
     ngx_explicit_memzero(secret, n);
@@ -590,6 +594,10 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
 #endif
 
     secret = &rec->keys->secret;
+
+    if (secret->ctx == NULL) {
+        return NGX_ERROR;
+    }
 
     ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), rec->number);
