@@ -180,7 +180,8 @@ ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
 
 
 uintptr_t
-ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
+ngx_http_v3_encode_field_l(u_char *p, u_char *name, size_t name_len,
+    u_char *value, size_t value_len)
 {
     size_t   hlen;
     u_char  *p1, *p2;
@@ -188,18 +189,18 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
     /* Literal Field Line With Literal Name */
 
     if (p == NULL) {
-        return ngx_http_v3_encode_prefix_int(NULL, name->len, 3)
-               + name->len
-               + ngx_http_v3_encode_prefix_int(NULL, value->len, 7)
-               + value->len;
+        return ngx_http_v3_encode_prefix_int(NULL, name_len, 3)
+               + name_len
+               + ngx_http_v3_encode_prefix_int(NULL, value_len, 7)
+               + value_len;
     }
 
     p1 = p;
     *p = 0x20;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, name_len, 3);
 
     p2 = p;
-    hlen = ngx_http_huff_encode(name->data, name->len, p, 1);
+    hlen = ngx_http_huff_encode(name, name_len, p, 1);
 
     if (hlen) {
         p = p1;
@@ -213,16 +214,16 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
         p += hlen;
 
     } else {
-        ngx_strlow(p, name->data, name->len);
-        p += name->len;
+        ngx_strlow(p, name, name_len);
+        p += name_len;
     }
 
     p1 = p;
     *p = 0;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, value->len, 7);
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, value_len, 7);
 
     p2 = p;
-    hlen = ngx_http_huff_encode(value->data, value->len, p, 0);
+    hlen = ngx_http_huff_encode(value, value_len, p, 0);
 
     if (hlen) {
         p = p1;
@@ -236,7 +237,7 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
         p += hlen;
 
     } else {
-        p = ngx_cpymem(p, value->data, value->len);
+        p = ngx_cpymem(p, value, value_len);
     }
 
     return (uintptr_t) p;

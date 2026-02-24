@@ -10,7 +10,6 @@
 #include <ngx_http.h>
 
 
-static void ngx_http_v3_keepalive_handler(ngx_event_t *ev);
 static void ngx_http_v3_cleanup_session(void *data);
 
 
@@ -18,10 +17,7 @@ ngx_int_t
 ngx_http_v3_init_session(ngx_connection_t *c)
 {
     ngx_pool_cleanup_t     *cln;
-    ngx_http_connection_t  *hc;
     ngx_http_v3_session_t  *h3c;
-
-    hc = c->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 init session");
 
@@ -30,13 +26,9 @@ ngx_http_v3_init_session(ngx_connection_t *c)
         goto failed;
     }
 
-    h3c->http_connection = hc;
+    h3c->connection = c;
 
-    ngx_queue_init(&h3c->blocked);
-
-    h3c->keepalive.log = c->log;
-    h3c->keepalive.data = c;
-    h3c->keepalive.handler = ngx_http_v3_keepalive_handler;
+    ngx_queue_init(&h3c->queue);
 
     h3c->table.send_insert_count.log = c->log;
     h3c->table.send_insert_count.data = c;
@@ -62,29 +54,11 @@ failed:
 
 
 static void
-ngx_http_v3_keepalive_handler(ngx_event_t *ev)
-{
-    ngx_connection_t  *c;
-
-    c = ev->data;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 keepalive handler");
-
-    ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
-                                    "keepalive timeout");
-}
-
-
-static void
 ngx_http_v3_cleanup_session(void *data)
 {
     ngx_http_v3_session_t  *h3c = data;
 
     ngx_http_v3_cleanup_table(h3c);
-
-    if (h3c->keepalive.timer_set) {
-        ngx_del_timer(&h3c->keepalive);
-    }
 
     if (h3c->table.send_insert_count.posted) {
         ngx_delete_posted_event(&h3c->table.send_insert_count);
@@ -108,4 +82,28 @@ ngx_http_v3_check_flood(ngx_connection_t *c)
     }
 
     return NGX_OK;
+}
+
+
+void
+ngx_http_v3_close_connection(ngx_connection_t *c)
+{
+    ngx_pool_t  *pool;
+
+    if (ngx_quic_shutdown(c) == NGX_AGAIN) {
+        c->ssl->handler = ngx_http_v3_close_connection;
+        return;
+    }
+
+#if (NGX_STAT_STUB)
+    (void) ngx_atomic_fetch_add(ngx_stat_active, -1);
+#endif
+
+    c->destroyed = 1;
+
+    pool = c->pool;
+
+    ngx_close_connection(c);
+
+    ngx_destroy_pool(pool);
 }

@@ -1658,6 +1658,16 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
+    c->sockaddr = ngx_palloc(c->pool, u->peer.socklen);
+    if (c->sockaddr == NULL) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
+    ngx_memcpy(c->sockaddr, u->peer.sockaddr, u->peer.socklen);
+    c->socklen = u->peer.socklen;
+
     c->log = r->connection->log;
     c->pool->log = c->log;
     c->read->log = c->log;
@@ -1743,10 +1753,18 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         return;
     }
 
-    if (ngx_ssl_create_connection(u->conf->ssl, c,
-                                  NGX_SSL_BUFFER|NGX_SSL_CLIENT)
-        != NGX_OK)
+#if (NGX_QUIC)
+    if (u->quic) {
+        rc = ngx_quic_create_connection(u->conf->quic, c, NGX_SSL_CLIENT);
+
+    } else
+#endif
     {
+        rc = ngx_ssl_create_connection(u->conf->ssl, c,
+                                       NGX_SSL_BUFFER|NGX_SSL_CLIENT);
+    }
+
+    if (rc != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -1809,9 +1827,19 @@ ngx_http_upstream_ssl_init_connection(ngx_http_request_t *r,
         }
     }
 
-    r->connection->log->action = "SSL handshaking to upstream";
+#if (NGX_QUIC)
+    if (u->quic) {
+        r->connection->log->action = "QUIC handshaking to upstream";
 
-    rc = ngx_ssl_handshake(c);
+        rc = ngx_quic_handshake(c);
+
+    } else
+#endif
+    {
+        r->connection->log->action = "SSL handshaking to upstream";
+
+        rc = ngx_ssl_handshake(c);
+    }
 
     if (rc == NGX_AGAIN) {
 
@@ -1874,6 +1902,14 @@ ngx_http_upstream_ssl_handshake(ngx_http_request_t *r, ngx_http_upstream_t *u,
                               &u->ssl_name);
                 goto failed;
             }
+        }
+
+        if (u->create_stream) {
+            if (u->create_stream(r) != NGX_OK) {
+                goto failed;
+            }
+
+            c = u->peer.connection;
         }
 
         if (!c->ssl->sendfile) {
@@ -2232,6 +2268,16 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     if (!u->conf->preserve_output) {
         u->write_event_handler = ngx_http_upstream_dummy_handler;
     }
+
+#if (NGX_QUIC)
+    if (u->quic) {
+        if (ngx_quic_shutdown_stream(c, NGX_WRITE_SHUTDOWN) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+#endif
 
     if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
@@ -4706,7 +4752,15 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
             u->peer.connection->ssl->no_wait_shutdown = 1;
             u->peer.connection->ssl->no_send_shutdown = 1;
 
-            (void) ngx_ssl_shutdown(u->peer.connection);
+#if (NGX_QUIC)
+            if (u->quic) {
+                (void) ngx_quic_shutdown(u->peer.connection);
+
+            } else
+#endif
+            {
+                (void) ngx_ssl_shutdown(u->peer.connection);
+            }
         }
 #endif
 
@@ -4794,7 +4848,15 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
             u->peer.connection->ssl->no_wait_shutdown = 1;
 
-            (void) ngx_ssl_shutdown(u->peer.connection);
+#if (NGX_QUIC)
+            if (u->quic) {
+                (void) ngx_quic_shutdown(u->peer.connection);
+
+            } else
+#endif
+            {
+                (void) ngx_ssl_shutdown(u->peer.connection);
+            }
         }
 #endif
 
