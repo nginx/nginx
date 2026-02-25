@@ -64,6 +64,7 @@ static ssize_t ngx_quic_send(ngx_connection_t *c, u_char *buf, size_t len,
     struct sockaddr *sockaddr, socklen_t socklen);
 static void ngx_quic_set_packet_number(ngx_quic_header_t *pkt,
     ngx_quic_send_ctx_t *ctx);
+static ngx_int_t ngx_quic_stateless_reset_filter(ngx_connection_t *c);
 
 
 ngx_int_t
@@ -823,16 +824,22 @@ ngx_int_t
 ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ngx_quic_header_t *pkt)
 {
-    u_char    *token;
-    size_t     len, max;
-    uint16_t   rndbytes;
-    u_char     buf[NGX_QUIC_MAX_SR_PACKET];
+    u_char     *token;
+    size_t      len, max;
+    uint16_t    rndbytes;
+    ngx_int_t   rc;
+    u_char      buf[NGX_QUIC_MAX_SR_PACKET];
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic handle stateless reset output");
 
     if (pkt->len <= NGX_QUIC_MIN_PKT_LEN) {
         return NGX_DECLINED;
+    }
+
+    rc = ngx_quic_stateless_reset_filter(c);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     if (pkt->len <= NGX_QUIC_MIN_SR_PACKET) {
@@ -867,6 +874,56 @@ ngx_quic_send_stateless_reset(ngx_connection_t *c, ngx_quic_conf_t *conf,
     (void) ngx_quic_send(c, buf, len, c->sockaddr, c->socklen);
 
     return NGX_DECLINED;
+}
+
+
+static ngx_int_t
+ngx_quic_stateless_reset_filter(ngx_connection_t *c)
+{
+    time_t      now;
+    u_char      salt;
+    ngx_uint_t  i, n, m, hit;
+    u_char      hash[20];
+
+    static time_t   t;
+    static u_char   rndbyte;
+    static uint8_t  bitmap[65536];
+
+    now = ngx_time();
+
+    if (t != now) {
+        t = now;
+
+        if (RAND_bytes(&rndbyte, 1) != 1) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(bitmap, sizeof(bitmap));
+    }
+
+    hit = 0;
+
+    for (i = 0; i < 3; i++) {
+        salt = rndbyte + i;
+
+        ngx_quic_address_hash(c->sockaddr, c->socklen, 0, &salt, 1, hash);
+
+        n = hash[0] | hash[1] << 8;
+        m = 1 << hash[2] % 8;
+
+        if (!(bitmap[n] & m)) {
+            bitmap[n] |= m;
+
+        } else {
+            hit++;
+        }
+    }
+
+    if (hit == 3) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
