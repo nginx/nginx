@@ -46,7 +46,7 @@ ngx_quic_new_token(ngx_log_t *log, struct sockaddr *sockaddr,
 
     u_char             in[NGX_QUIC_MAX_TOKEN_SIZE];
 
-    ngx_quic_address_hash(sockaddr, socklen, !is_retry, in);
+    ngx_quic_address_hash(sockaddr, socklen, !is_retry, NULL, 0, in);
 
     p = in + 20;
 
@@ -207,7 +207,8 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     pkt->retried = (*p++ == 1);
 
-    ngx_quic_address_hash(c->sockaddr, c->socklen, !pkt->retried, addr_hash);
+    ngx_quic_address_hash(c->sockaddr, c->socklen, !pkt->retried, NULL, 0,
+                          addr_hash);
 
     if (ngx_memcmp(tdec, addr_hash, 20) != 0) {
         goto bad_token;

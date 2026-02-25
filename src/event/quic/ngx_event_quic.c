@@ -1475,7 +1475,7 @@ ngx_quic_shutdown_quic(ngx_connection_t *c)
 
 void
 ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
-    ngx_uint_t no_port, u_char buf[20])
+    ngx_uint_t no_port, u_char *salt, size_t saltlen, u_char buf[20])
 {
     size_t                len;
     u_char               *data;
@@ -1513,6 +1513,10 @@ ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
 
     ngx_sha1_init(&sha1);
     ngx_sha1_update(&sha1, data, len);
+
+    if (salt) {
+        ngx_sha1_update(&sha1, salt, saltlen);
+    }
 
     ngx_sha1_final(buf, &sha1);
 }
