@@ -5,17 +5,18 @@
 # stream proxy_ssl: upstream ALPN
 #
 # Expected behavior:
-#   - proxy_ssl_alpn <proto>...; sets explicit upstream ALPN offer list
-#   - proxy_ssl_alpn_send on|off; controls whether ALPN is sent upstream at all
+#   - proxy_ssl_alpn_protocols <proto>...; sets explicit upstream ALPN offer
+#     list
+#   - proxy_ssl_alpn on|off; controls whether ALPN is sent upstream at all
 #       default: on
-#   - If proxy_ssl_alpn is UNSET and proxy_ssl_alpn_send is ON,
+#   - If proxy_ssl_alpn_protocols is UNSET and proxy_ssl_alpn is ON,
 #     nginx inherits the *negotiated* downstream ALPN (selected protocol)
 #     from the client->nginx TLS session and advertises exactly that upstream.
 #
 # Test cases:
 #   A) inherit negotiated downstream ALPN (client negotiates h2 to nginx) =>
 #      upstream selects h2
-#   B) proxy_ssl_alpn_send off => upstream selects NONE (even though downstream
+#   B) proxy_ssl_alpn off => upstream selects NONE (even though downstream
 #      negotiated h2)
 #   C) explicit proxy_ssl_alpn http/1.1 overrides inheritance => upstream
 #       selects http/1.1
@@ -130,7 +131,7 @@ events {
 }
 
 stream {
-    # A) proxy_ssl_alpn UNSET, proxy_ssl_alpn_send default ON => inherit
+    # A) proxy_ssl_alpn_protocols UNSET, proxy_ssl_alpn default ON => inherit      #??? backward compat?
     # negotiated downstream ALPN (h2)
     server {
         listen 127.0.0.1:$p_inherit ssl;
@@ -142,7 +143,7 @@ stream {
         proxy_ssl on;
     }
 
-    # B) proxy_ssl_alpn_send off => do not send ALPN upstream (even though
+    # B) proxy_ssl_alpn off => do not send ALPN upstream (even though
     # downstream negotiated h2)
     server {
         listen 127.0.0.1:$p_sendoff ssl;
@@ -152,10 +153,10 @@ stream {
 
         proxy_pass 127.0.0.1:$u_sendoff;
         proxy_ssl on;
-        proxy_ssl_alpn_send off;
+        proxy_ssl_alpn off;
     }
 
-    # C) proxy_ssl_alpn explicit overrides inheritance
+    # C) proxy_ssl_alpn_protocols explicit overrides inheritance
     server {
         listen 127.0.0.1:$p_override ssl;
         ssl_certificate     $crt;
@@ -164,7 +165,7 @@ stream {
 
         proxy_pass 127.0.0.1:$u_override;
         proxy_ssl on;
-        proxy_ssl_alpn http/1.1;
+        proxy_ssl_alpn_protocols http/1.1;
     }
 }
 NGINX
@@ -198,14 +199,14 @@ $t->waitforfile($out_inherit);
 my $got_inherit = $t->read_file('out_inherit.txt');
 chomp($got_inherit);
 is($got_inherit, 'h2', 'inherits negotiated downstream ALPN (h2) when ' .
-   'proxy_ssl_alpn is unset and send is on');
+   'proxy_ssl_alpn_protocols is unset and send is on');
 
 # B) send off: backend should see NONE
 trigger_h2($p_sendoff);
 $t->waitforfile($out_sendoff);
 my $got_sendoff = $t->read_file('out_sendoff.txt');
 chomp($got_sendoff);
-is($got_sendoff, 'NONE', 'proxy_ssl_alpn_send off disables upstream ' .
+is($got_sendoff, 'NONE', 'proxy_ssl_alpn off disables upstream ' .
    'ALPN (no inheritance)');
 
 # C) explicit override: backend should select http/1.1
@@ -213,7 +214,8 @@ trigger_h2($p_override);
 $t->waitforfile($out_override);
 my $got_override = $t->read_file('out_override.txt');
 chomp($got_override);
-is($got_override, 'http/1.1', 'proxy_ssl_alpn explicit list overrides '.
+is($got_override, 'http/1.1',
+   'proxy_ssl_alpn_protocols explicit list overrides '.
    'negotiated downstream ALPN inheritance');
 
 
@@ -225,14 +227,14 @@ $t->waitforfile($out_inherit);
 $got_inherit = $t->read_file('out_inherit.txt');
 chomp($got_inherit);
 is($got_inherit, 'h2', 'inherits negotiated downstream ALPN (h2) when ' .
-   'proxy_ssl_alpn is unset and send is on');
+   'proxy_ssl_alpn_protocols is unset and send is on');
 
 # B) send off: backend should see NONE
 trigger_none($p_sendoff);
 $t->waitforfile($out_sendoff);
 $got_sendoff = $t->read_file('out_sendoff.txt');
 chomp($got_sendoff);
-is($got_sendoff, 'NONE', 'proxy_ssl_alpn_send off disables upstream ' .
+is($got_sendoff, 'NONE', 'proxy_ssl_alpn off disables upstream ' .
    'ALPN (no inheritance)');
 
 # C) explicit override: backend should select http/1.1
@@ -240,7 +242,8 @@ trigger_none($p_override);
 $t->waitforfile($out_override);
 $got_override = $t->read_file('out_override.txt');
 chomp($got_override);
-is($got_override, 'http/1.1', 'proxy_ssl_alpn explicit list overrides ' .
+is($got_override, 'http/1.1',
+   'proxy_ssl_alpn_protocols explicit list overrides ' .
    'negotiated downstream ALPN inheritance');
 
 $t->stop();
