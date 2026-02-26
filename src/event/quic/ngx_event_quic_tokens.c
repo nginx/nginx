@@ -15,9 +15,13 @@ ngx_quic_new_sr_token(ngx_connection_t *c, ngx_str_t *cid, u_char *secret,
     u_char *token)
 {
     ngx_str_t  tmp;
+    u_char     buf[NGX_QUIC_SR_KEY_LEN + sizeof(ngx_uint_t)];
 
-    tmp.data = secret;
-    tmp.len = NGX_QUIC_SR_KEY_LEN;
+    ngx_memcpy(buf, secret, NGX_QUIC_SR_KEY_LEN);
+    ngx_memcpy(buf + NGX_QUIC_SR_KEY_LEN, &ngx_worker, sizeof(ngx_uint_t));
+
+    tmp.data = buf;
+    tmp.len = sizeof(buf);
 
     if (ngx_quic_derive_key(c->log, "sr_token_key", &tmp, cid, token,
                             NGX_QUIC_SR_TOKEN_LEN)
