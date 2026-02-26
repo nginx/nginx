@@ -13,6 +13,7 @@
 
 
 static void ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx);
+static ngx_int_t ngx_mail_smtp_validate_host(ngx_str_t *name);
 static void ngx_mail_smtp_resolve_name(ngx_event_t *rev);
 static void ngx_mail_smtp_resolve_name_handler(ngx_resolver_ctx_t *ctx);
 static void ngx_mail_smtp_block_reading(ngx_event_t *rev);
@@ -127,6 +128,20 @@ ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx)
         return;
     }
 
+    if (ngx_mail_smtp_validate_host(&ctx->name) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "%V resolved to invalid host name \"%V\"",
+                      &c->addr_text, &ctx->name);
+
+        s->host = smtp_tempunavail;
+
+        ngx_resolve_addr_done(ctx);
+
+        ngx_mail_smtp_greeting(s, s->connection);
+
+        return;
+    }
+
     c->log->action = "in resolving client hostname";
 
     s->host.data = ngx_pstrdup(c->pool, &ctx->name);
@@ -146,6 +161,36 @@ ngx_mail_smtp_resolve_addr_handler(ngx_resolver_ctx_t *ctx)
     c->read->handler = ngx_mail_smtp_resolve_name;
 
     ngx_post_event(c->read, &ngx_posted_events);
+}
+
+
+static ngx_int_t
+ngx_mail_smtp_validate_host(ngx_str_t *name)
+{
+    u_char      ch;
+    ngx_uint_t  i;
+
+    if (name->len == 0) {
+        return NGX_DECLINED;
+    }
+
+    for (i = 0; i < name->len; i++) {
+        ch = name->data[i];
+
+        /* allow only characters from RFC 1034, Section 3.5 */
+
+        if ((ch >= 'a' && ch <= 'z')
+            || (ch >= 'A' && ch <= 'Z')
+            || (ch >= '0' && ch <= '9')
+            || ch == '-' || ch == '.')
+        {
+            continue;
+        }
+
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
