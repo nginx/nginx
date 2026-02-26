@@ -22,6 +22,7 @@ typedef struct {
     ngx_http_upstream_init_pt          original_init_upstream;
     ngx_http_upstream_init_peer_pt     original_init_peer;
 
+    ngx_uint_t                         noshare:1;
 } ngx_http_upstream_keepalive_srv_conf_t;
 
 
@@ -34,6 +35,7 @@ typedef struct {
     socklen_t                          socklen;
     ngx_sockaddr_t                     sockaddr;
 
+    void                              *tag;
 } ngx_http_upstream_keepalive_cache_t;
 
 
@@ -81,7 +83,7 @@ static char *ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_command_t  ngx_http_upstream_keepalive_commands[] = {
 
     { ngx_string("keepalive"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
       ngx_http_upstream_keepalive,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
@@ -264,9 +266,12 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
         item = ngx_queue_data(q, ngx_http_upstream_keepalive_cache_t, queue);
         c = item->connection;
 
-        if (ngx_memn2cmp((u_char *) &item->sockaddr, (u_char *) pc->sockaddr,
-                         item->socklen, pc->socklen)
-            == 0)
+        if (kp->conf->noshare && item->tag != kp->upstream->conf) {
+            continue;
+        }
+
+        if (ngx_memn2cmp((u_char *) &item->sockaddr,
+            (u_char *) pc->sockaddr, item->socklen, pc->socklen) == 0)
         {
             ngx_queue_remove(q);
             ngx_queue_insert_head(&kp->conf->free, q);
@@ -377,6 +382,10 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_queue_insert_head(&kp->conf->cache, q);
 
     item->connection = c;
+
+    if (kp->conf->noshare) {
+        item->tag = kp->upstream->conf;
+    }
 
     pc->connection = NULL;
 
@@ -560,7 +569,20 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    kcf->noshare = 0;
     kcf->max_cached = n;
+
+    if (cf->args->nelts == 3) {
+        if (ngx_strncmp(value[2].data, "noshare", 7) == 0) {
+            kcf->noshare = 1;
+
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%V\" in \"%V\" directive",
+                               &value[2], &cmd->name);
+            return NGX_CONF_ERROR;
+        }
+    }
 
     /* init upstream handler */
 
