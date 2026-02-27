@@ -598,20 +598,16 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 
         case sw_end_literal_argument:
             switch (ch) {
-            case '{':
-                if (s->args.nelts <= 2) {
-                    state = sw_literal;
-                    break;
-                }
-                goto invalid;
+            case ' ':
+                state = sw_spaces_before_argument;
+                break;
             case CR:
                 state = sw_almost_done;
                 break;
             case LF:
                 goto done;
             default:
-                state = sw_spaces_before_argument;
-                break;
+                goto invalid;
             }
             break;
 
