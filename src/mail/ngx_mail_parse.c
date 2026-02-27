@@ -539,6 +539,9 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
             break;
 
         case sw_literal:
+            if (s->literal_len > NGX_MAX_SIZE_T_VALUE / 10) {
+                goto invalid;
+            }
             if (ch >= '0' && ch <= '9') {
                 s->literal_len = s->literal_len * 10 + (ch - '0');
                 break;
