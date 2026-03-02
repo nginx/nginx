@@ -1314,7 +1314,8 @@ ngx_stream_proxy_ssl_init_alpn_connection(ngx_stream_session_t *s,
 
                     if (slen > 0 && slen <= 255) {
                         ngx_log_debug2(NGX_LOG_DEBUG_STREAM, pc->log, 0,
-                                       "inheriting downstream ALPN \"%*s\" to upstream",
+                                       "inheriting downstream ALPN \"%*s\" to "
+                                       "upstream",
                                        (int) slen, sel);
 
                         wire[0] = (unsigned char) slen;
@@ -1326,6 +1327,19 @@ ngx_stream_proxy_ssl_init_alpn_connection(ngx_stream_session_t *s,
                         {
                             return NGX_ERROR;
                         }
+                    } else if (slen == 0) {
+                        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                                       "no downstream ALPN negotiated, "
+                                       "not sending ALPN to upstream");
+                    } else {
+                        /*
+                         * should not normally happen:
+                         * OpenSSL ALPN length is 1 byte.
+                         */
+                        ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                                       "downstream ALPN length %ui is invalid, "
+                                       "not sending ALPN to upstream",
+                                       (ngx_uint_t) slen);
                     }
                 }
             }
