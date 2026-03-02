@@ -7,19 +7,17 @@
 # Expected behavior:
 #   - proxy_ssl_alpn_protocols <proto>...; sets explicit upstream ALPN offer
 #     list
-#   - proxy_ssl_alpn on|off; controls whether ALPN is sent upstream at all
-#       default: on
-#   - If proxy_ssl_alpn_protocols is UNSET and proxy_ssl_alpn is ON,
-#     nginx inherits the *negotiated* downstream ALPN (selected protocol)
-#     from the client->nginx TLS session and advertises exactly that upstream.
+#   - proxy_ssl_alpn on|off; enables/disables sending ALPN (default on)
+#   - if protocols unset and alpn on then inherit negotiated downstream
+#     ALPN (if any)
 #
 # Test cases:
 #   A) inherit negotiated downstream ALPN (client negotiates h2 to nginx) =>
 #      upstream selects h2
 #   B) proxy_ssl_alpn off => upstream selects NONE (even though downstream
 #      negotiated h2)
-#   C) explicit proxy_ssl_alpn http/1.1 overrides inheritance => upstream
-#       selects http/1.1
+#   C) explicit proxy_ssl_alpn_protocols http/1.1 overrides inheritance =>
+#      upstream selects http/1.1
 
 ###############################################################################
 
@@ -131,7 +129,7 @@ events {
 }
 
 stream {
-    # A) proxy_ssl_alpn_protocols UNSET, proxy_ssl_alpn default ON => inherit      #??? backward compat?
+    # A) proxy_ssl_alpn_protocols UNSET, proxy_ssl_alpn default ON => inherit
     # negotiated downstream ALPN (h2)
     server {
         listen 127.0.0.1:$p_inherit ssl;
