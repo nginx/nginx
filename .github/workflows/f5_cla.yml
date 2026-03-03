@@ -1,22 +1,35 @@
 ---
-name: F5 CLA
+name: F5 Contributor License Agreement (CLA)
 on:
   issue_comment:
     types: [created]
   pull_request_target:
-    types: [opened, closed, synchronize]
+    types: [opened, synchronize, closed, labeled, unlabeled]
 permissions: read-all
 jobs:
   f5-cla:
-    name: F5 CLA
+    name: F5 Contributor License Agreement (CLA)
     runs-on: ubuntu-24.04
     permissions:
       actions: write
+      contents: read
       pull-requests: write
       statuses: write
     steps:
-      - name: Run F5 Contributor License Agreement (CLA) assistant
-        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have hereby read the F5 CLA and agree to its terms') || github.event_name == 'pull_request_target'
+      - name: Check if F5 CLA should be skipped
+        id: skip-cla
+        if: |
+          (github.repository == 'nginx/nginx' || github.repository == 'nginx/nginx-tests' || github.repository == 'nginx/nginx.org') &&
+          (contains(toJSON(github.event.pull_request.labels.*.name), '"skip-cla"') ||
+          contains(toJSON(github.event.issue.labels.*.name), '"skip-cla"'))
+        run: echo "skip=true" >> "$GITHUB_OUTPUT"
+
+      - name: Run F5 CLA assistant
+        if: |
+          steps.skip-cla.outputs.skip != 'true' &&
+          (github.event_name == 'pull_request_target' ||
+           github.event.comment.body == 'recheck' ||
+           github.event.comment.body == 'I have hereby read the F5 CLA and agree to its terms')
         uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08 # v2.6.1
         with:
           # Path to the CLA document.
@@ -33,9 +46,32 @@ jobs:
           path-to-signatures: signatures/signatures.json
           # Comma separated list of usernames for maintainers or any other individuals who should not be prompted for a CLA.
           # NOTE: You will want to edit the usernames to suit your project needs.
-          allowlist: bot*
+          allowlist: Copilot,dependabot[bot],renovate[bot],nginx-bot
           # Do not lock PRs after a merge.
           lock-pullrequest-aftermerge: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PERSONAL_ACCESS_TOKEN: ${{ secrets.F5_CLA_TOKEN }}
+
+      - name: Leave a note in the PR if the F5 CLA is not required
+        if: |
+          steps.skip-cla.outputs.skip == 'true' &&
+          (github.event.action == 'labeled' || github.event.action == 'opened')
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const number = context.payload.pull_request?.number || context.payload.issue?.number;
+            if (!number) return;
+            const body = '✅ The F5 CLA is not required for this PR.\n<sub>Posted by the **CLA Assistant Lite bot**.</sub>';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+            });
+            if (comments.some(c => c.body === body)) return;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body,
+            });
