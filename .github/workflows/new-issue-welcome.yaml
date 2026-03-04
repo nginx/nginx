@@ -1,0 +1,32 @@
+name: New Issue Welcome
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  new-issue-welcome:
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+
+    steps:
+      - name: Comment on new issue
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number;
+            const username = context.payload.issue.user.login;
+
+            const comment = [
+              `👋 Thanks for opening this issue and contributing to the NGINX project!`,
+              `A maintainer will review it and follow up when possible. We appreciate your support.`
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
