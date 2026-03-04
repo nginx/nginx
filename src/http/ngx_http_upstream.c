@@ -5652,7 +5652,7 @@ ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
 
         last = h->value.data + h->value.len;
 
-        if (*(last - 1) == '"') {
+        if (last > p && *(last - 1) == '"') {
             last--;
         }
 
