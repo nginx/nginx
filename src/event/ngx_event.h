@@ -437,7 +437,7 @@ typedef struct {
 
     u_char       *name;
 
-#if (NGX_DEBUG)
+#if (NGX_DEBUG || NGX_COMPAT)
     ngx_array_t   debug_connection;
 #endif
 } ngx_event_conf_t;

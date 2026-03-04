@@ -63,7 +63,7 @@ typedef struct {
 
     unsigned                           backup:1;
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_str_t                          host;
     ngx_str_t                          service;
 #endif
@@ -84,7 +84,7 @@ struct ngx_stream_upstream_srv_conf_s {
     in_port_t                          port;
     ngx_uint_t                         no_port;  /* unsigned no_port:1 */
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_shm_zone_t                    *shm_zone;
     ngx_resolver_t                    *resolver;
     ngx_msec_t                         resolver_timeout;

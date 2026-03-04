@@ -42,7 +42,7 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_stream_upstream_server_t    *server;
     ngx_stream_upstream_rr_peer_t   *peer, **peerp;
     ngx_stream_upstream_rr_peers_t  *peers, *backup;
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_uint_t                       resolve;
     ngx_stream_core_srv_conf_t      *cscf;
     ngx_stream_upstream_rr_peer_t  **rpeerp;

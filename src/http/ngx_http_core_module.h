@@ -203,7 +203,7 @@ typedef struct {
     ngx_flag_t                  underscores_in_headers;
 
     unsigned                    listen:1;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     unsigned                    captures:1;
 #endif
     unsigned                    allow_connect:1;
@@ -216,7 +216,7 @@ typedef struct {
 
 
 typedef struct {
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_http_regex_t          *regex;
 #endif
     ngx_http_core_srv_conf_t  *server;   /* virtual name server conf */
@@ -287,7 +287,7 @@ typedef struct {
     ngx_hash_wildcard_t       *wc_head;
     ngx_hash_wildcard_t       *wc_tail;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_uint_t                 nregex;
     ngx_http_server_name_t    *regex;
 #endif
@@ -310,7 +310,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_str_t     name;          /* location name */
     ngx_str_t     escaped_name;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_http_regex_t  *regex;
 #endif
 
@@ -322,13 +322,13 @@ struct ngx_http_core_loc_conf_s {
     unsigned      noregex:1;
 
     unsigned      auto_redirect:1;
-#if (NGX_HTTP_GZIP)
+#if (NGX_HTTP_GZIP || NGX_COMPAT)
     unsigned      gzip_disable_msie6:2;
     unsigned      gzip_disable_degradation:2;
 #endif
 
     ngx_http_location_tree_node_t   *static_locations;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_http_core_loc_conf_t       **regex_locations;
 #endif
 
@@ -410,13 +410,13 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    chunked_transfer_encoding; /* chunked_transfer_encoding */
     ngx_flag_t    etag;                    /* etag */
 
-#if (NGX_HTTP_GZIP)
+#if (NGX_HTTP_GZIP || NGX_COMPAT)
     ngx_flag_t    gzip_vary;               /* gzip_vary */
 
     ngx_uint_t    gzip_http_version;       /* gzip_http_version */
     ngx_uint_t    gzip_proxied;            /* gzip_proxied */
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_array_t  *gzip_disable;            /* gzip_disable */
 #endif
 #endif
@@ -508,7 +508,7 @@ ngx_int_t ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
 u_char *ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *name,
     size_t *root_length, size_t reserved);
 ngx_int_t ngx_http_auth_basic_user(ngx_http_request_t *r);
-#if (NGX_HTTP_GZIP)
+#if (NGX_HTTP_GZIP || NGX_COMPAT)
 ngx_int_t ngx_http_gzip_ok(ngx_http_request_t *r);
 #endif
 

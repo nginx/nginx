@@ -204,7 +204,7 @@ typedef struct {
     ngx_table_elt_t                  *expect;
     ngx_table_elt_t                  *upgrade;
 
-#if (NGX_HTTP_GZIP || NGX_HTTP_HEADERS)
+#if (NGX_HTTP_GZIP || NGX_HTTP_HEADERS || NGX_COMPAT)
     ngx_table_elt_t                  *accept_encoding;
     ngx_table_elt_t                  *via;
 #endif
@@ -213,20 +213,20 @@ typedef struct {
 
     ngx_table_elt_t                  *keep_alive;
 
-#if (NGX_HTTP_X_FORWARDED_FOR)
+#if (NGX_HTTP_X_FORWARDED_FOR || NGX_COMPAT)
     ngx_table_elt_t                  *x_forwarded_for;
 #endif
 
-#if (NGX_HTTP_REALIP)
+#if (NGX_HTTP_REALIP || NGX_COMPAT)
     ngx_table_elt_t                  *x_real_ip;
 #endif
 
-#if (NGX_HTTP_HEADERS)
+#if (NGX_HTTP_HEADERS || NGX_COMPAT)
     ngx_table_elt_t                  *accept;
     ngx_table_elt_t                  *accept_language;
 #endif
 
-#if (NGX_HTTP_DAV)
+#if (NGX_HTTP_DAV || NGX_COMPAT)
     ngx_table_elt_t                  *depth;
     ngx_table_elt_t                  *destination;
     ngx_table_elt_t                  *overwrite;
@@ -320,7 +320,7 @@ typedef struct {
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_str_t                        *ssl_servername;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_http_regex_t                 *ssl_servername_regex;
 #endif
 #endif
@@ -437,7 +437,7 @@ struct ngx_http_request_s {
 
     ngx_http_variable_value_t        *variables;
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_uint_t                        ncaptures;
     int                              *captures;
     u_char                           *captures_data;
@@ -506,13 +506,13 @@ struct ngx_http_request_s {
     unsigned                          cached:1;
 #endif
 
-#if (NGX_HTTP_GZIP)
+#if (NGX_HTTP_GZIP || NGX_COMPAT)
     unsigned                          gzip_tested:1;
     unsigned                          gzip_ok:1;
     unsigned                          gzip_vary:1;
 #endif
 
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     unsigned                          realloc_captures:1;
 #endif
 

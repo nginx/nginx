@@ -37,7 +37,7 @@ typedef struct {
 
     ngx_array_t              *variables;  /* array of ngx_http_perl_var_t */
 
-#if (NGX_HTTP_SSI)
+#if (NGX_HTTP_SSI || NGX_COMPAT)
     ngx_http_ssi_ctx_t       *ssi;
 #endif
 } ngx_http_perl_ctx_t;

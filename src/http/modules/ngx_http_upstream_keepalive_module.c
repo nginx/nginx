@@ -47,7 +47,7 @@ typedef struct {
     ngx_event_get_peer_pt              original_get_peer;
     ngx_event_free_peer_pt             original_free_peer;
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_event_set_peer_session_pt      original_set_session;
     ngx_event_save_peer_session_pt     original_save_session;
 #endif

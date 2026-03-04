@@ -48,6 +48,9 @@ typedef u_char *(*ngx_http_log_handler_pt)(ngx_http_request_t *r,
 #endif
 #if (NGX_HTTP_SSI)
 #include <ngx_http_ssi_filter_module.h>
+#elif (NGX_COMPAT)
+/* Used by http_perl in ngx_http_perl_ctx_t. */
+#include <ngx_http_ssi_filter_module_compat.h>
 #endif
 #if (NGX_HTTP_SSL)
 #include <ngx_http_ssl_module.h>

@@ -18,7 +18,7 @@ typedef struct ngx_stream_upstream_rr_peers_s  ngx_stream_upstream_rr_peers_t;
 typedef struct ngx_stream_upstream_rr_peer_s   ngx_stream_upstream_rr_peer_t;
 
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
 
 typedef struct {
     ngx_event_t                      event;         /* must be first */
@@ -60,7 +60,7 @@ struct ngx_stream_upstream_rr_peer_s {
     void                            *ssl_session;
     int                              ssl_session_len;
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     unsigned                         zombie:1;
 
     ngx_atomic_t                     lock;
@@ -69,16 +69,13 @@ struct ngx_stream_upstream_rr_peer_s {
 #endif
 
     ngx_stream_upstream_rr_peer_t   *next;
-
-    NGX_COMPAT_BEGIN(14)
-    NGX_COMPAT_END
 };
 
 
 struct ngx_stream_upstream_rr_peers_s {
     ngx_uint_t                       number;
 
-#if (NGX_STREAM_UPSTREAM_ZONE)
+#if (NGX_STREAM_UPSTREAM_ZONE || NGX_COMPAT)
     ngx_slab_pool_t                 *shpool;
     ngx_atomic_t                     rwlock;
     ngx_uint_t                      *config;

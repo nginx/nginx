@@ -47,7 +47,7 @@ typedef struct {
     ngx_uint_t                 modifier1;
     ngx_uint_t                 modifier2;
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_uint_t                 ssl;
     ngx_uint_t                 ssl_protocols;
     ngx_str_t                  ssl_ciphers;

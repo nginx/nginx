@@ -86,12 +86,18 @@ ngx_stream_regex_t *ngx_stream_regex_compile(ngx_conf_t *cf,
 ngx_int_t ngx_stream_regex_exec(ngx_stream_session_t *s, ngx_stream_regex_t *re,
     ngx_str_t *str);
 
+#elif (NGX_COMPAT)
+
+typedef struct ngx_stream_regex_variable_t ngx_stream_regex_variable_t;
+typedef struct ngx_stream_regex_t ngx_stream_regex_t;
+typedef struct ngx_stream_map_regex_t ngx_stream_map_regex_t;
+
 #endif
 
 
 typedef struct {
     ngx_hash_combined_t           hash;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
     ngx_stream_map_regex_t       *regex;
     ngx_uint_t                    nregex;
 #endif

@@ -30,7 +30,7 @@ typedef struct {
     ngx_array_t               *grpc_lengths;
     ngx_array_t               *grpc_values;
 
-#if (NGX_HTTP_SSL)
+#if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_uint_t                 ssl;
     ngx_uint_t                 ssl_protocols;
     ngx_str_t                  ssl_ciphers;

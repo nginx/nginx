@@ -35,7 +35,7 @@ struct ngx_http_proxy_rewrite_s {
 
     union {
         ngx_http_complex_value_t   complex;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
         ngx_http_regex_t          *regex;
 #endif
     } pattern;
@@ -47,7 +47,7 @@ struct ngx_http_proxy_rewrite_s {
 typedef struct {
     union {
         ngx_http_complex_value_t   complex;
-#if (NGX_PCRE)
+#if (NGX_PCRE || NGX_COMPAT)
         ngx_http_regex_t          *regex;
 #endif
     } cookie;
