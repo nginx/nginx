@@ -1,0 +1,105 @@
+name: Set new pull-requests & issues creation date
+
+on:
+  issues:
+    types:
+      - opened
+  pull_request:
+    branches: master
+    types:
+      - opened
+
+jobs:
+  set-issue-date:
+    if: ${{ github.repository == 'nginx/nginx' }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          client-id: ${{ secrets.NGINX_OSS_PROJ_CLIENT_ID }}
+          private-key: ${{ secrets.NGINX_OSS_PROJ_PRIV_KEY }}
+
+      - name: Get project data
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          ORGANIZATION: nginx
+          PROJECT_NUMBER: 33
+        run: |
+          gh api graphql -f query='
+            query($org: String!, $number: Int!) {
+              organization(login: $org) {
+                projectV2(number: $number) {
+                  id
+                  fields(first:20) {
+                    nodes {
+                      ... on ProjectV2FieldCommon {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }' -f org=$ORGANIZATION -F number=$PROJECT_NUMBER >project_data.json
+
+          echo 'PROJECT_ID='$(jq -r '.data.organization.projectV2.id' project_data.json) >>$GITHUB_ENV
+          echo 'DATE_FIELD_ID='$(jq -r '.data.organization.projectV2.fields.nodes[] | select(.name == "Created at") | .id' project_data.json) >>$GITHUB_ENV
+
+      # Needed to get the item's Global ID
+      - name: Add pull-request/issue to project
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            NODE_ID=${{ github.event.issue.node_id }}
+          else
+            NODE_ID=${{ github.event.pull_request.node_id }}
+          fi
+
+          item_id="$(gh api graphql -f query='
+            mutation($project:ID!, $item:ID!) {
+              addProjectV2ItemById(
+                input: {
+                  projectId: $project, contentId: $item
+                }) {
+                  item {
+                    id
+                  }
+                }
+              }' -f project=$PROJECT_ID -f item=$NODE_ID --jq '.data.addProjectV2ItemById.item.id')"
+          echo 'ITEM_ID='$item_id >>$GITHUB_ENV
+
+      - name: Set pull-request/issue creation date
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            DATE=${{ github.event.issue.created_at }}
+          else
+            DATE=${{ github.event.pull_request.created_at }}
+          fi
+
+          gh api graphql -f query='
+            mutation(
+              $project: ID!
+              $item: ID!
+              $date_field: ID!
+              $date: Date!
+            ) {
+              updateProjectV2ItemFieldValue(
+                input: {
+                  projectId: $project
+                  itemId: $item
+                  fieldId: $date_field
+                  value: {
+                    date: $date
+                  }
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+            }' -f project=$PROJECT_ID -f item=$ITEM_ID -f date_field=$DATE_FIELD_ID -f date=$DATE
