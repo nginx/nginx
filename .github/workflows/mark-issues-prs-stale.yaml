@@ -1,0 +1,27 @@
+name: Mark Stale Issues/Pull-Requests
+
+on:
+  schedule:
+    - cron: '22 2 * * *'  # Run every day at 02:22
+
+env:
+  STALE_DAYS: 90
+
+jobs:
+  mark_stale_issues_prs:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      issues: write
+      pull-requests: write
+
+    name: Mark stale issues/pull-requests
+    steps:
+      - uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10
+        with:
+          stale-pr-message: "This pull-request has been automatically marked 'stale' because it has been inactive for **${{ env.STALE_DAYS }}** days."
+          stale-issue-message: "This issue has been automatically marked 'stale' because it has been inactive for **${{ env.STALE_DAYS }}** days."
+          days-before-stale: ${{ env.STALE_DAYS }}
+          days-before-close: -1
+          stale-pr-label: stale
+          stale-issue-label: stale
