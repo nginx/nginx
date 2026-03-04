@@ -14,6 +14,9 @@
 #include <ngx_stream.h>
 
 
+#define NGX_STREAM_UPSTREAM_FAILED      1
+
+
 typedef struct ngx_stream_upstream_rr_peers_s  ngx_stream_upstream_rr_peers_t;
 typedef struct ngx_stream_upstream_rr_peer_s   ngx_stream_upstream_rr_peer_t;
 

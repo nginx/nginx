@@ -18,6 +18,8 @@
 #define NGX_HTTP_UPSTREAM_SID_LEN    32  /* md5 in hex */
 #endif
 
+#define NGX_HTTP_UPSTREAM_FAILED     1
+
 
 typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 typedef struct ngx_http_upstream_rr_peer_s   ngx_http_upstream_rr_peer_t;
