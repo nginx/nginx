@@ -322,6 +322,7 @@ struct ngx_http_core_loc_conf_s {
     unsigned      noregex:1;
 
     unsigned      auto_redirect:1;
+    unsigned      dynamic:1;
 #if (NGX_HTTP_GZIP)
     unsigned      gzip_disable_msie6:2;
     unsigned      gzip_disable_degradation:2;
@@ -480,6 +481,8 @@ struct ngx_http_location_tree_node_s {
     u_char                           name[1];
 };
 
+
+void *ngx_http_core_recreate_main_conf(ngx_conf_t *cf);
 
 void ngx_http_core_run_phases(ngx_http_request_t *r);
 ngx_int_t ngx_http_core_generic_phase(ngx_http_request_t *r,

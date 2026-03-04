@@ -7004,10 +7004,11 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
     ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev,
     ngx_str_t *default_hide_headers, ngx_hash_init_t *hash)
 {
-    ngx_str_t       *h;
-    ngx_uint_t       i, j;
-    ngx_array_t      hide_headers;
-    ngx_hash_key_t  *hk;
+    ngx_str_t                 *h;
+    ngx_uint_t                 i, j;
+    ngx_array_t                hide_headers;
+    ngx_hash_key_t            *hk;
+    ngx_http_core_loc_conf_t  *clcf;
 
     if (conf->hide_headers == NGX_CONF_UNSET_PTR
         && conf->pass_headers == NGX_CONF_UNSET_PTR)
@@ -7111,9 +7112,12 @@ ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
      * in the "http" section to inherit it to all servers
      */
 
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
     if (prev->hide_headers_hash.buckets == NULL
         && conf->hide_headers == prev->hide_headers
-        && conf->pass_headers == prev->pass_headers)
+        && conf->pass_headers == prev->pass_headers
+        && !clcf->dynamic)
     {
         prev->hide_headers_hash = conf->hide_headers_hash;
     }
