@@ -1,0 +1,38 @@
+name: Check Commit Message(s)
+
+# Get the repository with all commits to ensure that we can
+# analyze all of the commits contributed via the Pull Request.
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+
+jobs:
+  check-commit-messages:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        fetch-depth: 0
+
+    - name: check-commits.sh
+      run: |
+        echo "## Commit Message Linter Results" >${GITHUB_STEP_SUMMARY}
+        err=0
+        while read hash subj
+        do
+          echo "Checking: ${hash} (\"${subj}\")" | tee -a ${GITHUB_STEP_SUMMARY}
+          out=$(git show -s --format=%B ${hash} | .github/scripts/commit-msg-check.pl)
+          if test -n "${out}"
+          then
+            echo "${out}" | tee -a ${GITHUB_STEP_SUMMARY}
+            err=1
+          else
+            echo "✅ ok" | tee -a ${GITHUB_STEP_SUMMARY}
+          fi
+        done <<< $(git rev-list --oneline ${{github.event.pull_request.base.sha}}..${{github.event.pull_request.head.sha}})
+
+        if test ${err} -ne 0
+        then
+          exit 2
+        fi
