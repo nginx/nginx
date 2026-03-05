@@ -1898,6 +1898,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 if (rc != NGX_OK) {
                     return rc;
                 }
+            } else {
+              h->next = NULL;
             }
 
             continue;
