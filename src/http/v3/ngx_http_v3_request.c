@@ -665,6 +665,15 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
         }
 
     } else {
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (r->headers_in.count++ >= cscf->max_headers) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent too many header lines");
+            ngx_http_finalize_request(r, NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
+            return NGX_ERROR;
+        }
+
         h = ngx_list_push(&r->headers_in.headers);
         if (h == NULL) {
             ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
