@@ -19,3 +19,10 @@ vim			by Evan Miller
 	Syntax highlighting of nginx configuration for vim, to be
 	placed into ~/.vim/.
 
+
+systemd			by Anurag Ekkati
+
+	Example systemd unit file for running nginx in the foreground
+	with Type=simple and "daemon off", suitable for self-built
+	nginx installations.
+
