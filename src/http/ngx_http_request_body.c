@@ -44,6 +44,18 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     if (r != r->main || r->request_body || r->discard_body) {
         r->request_body_no_buffering = 0;
+
+        if (r->request_body && r->request_body->no_buffering) {
+            r->discard_body = 1;
+            r->request_body->bufs = NULL;
+
+            if (r->reading_body) {
+                r->reading_body = 0;
+                r->keepalive = 0;
+                r->lingering_close = 1;
+            }
+        }
+
         post_handler(r);
         return NGX_OK;
     }
@@ -69,6 +81,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
      *     rb->busy = NULL;
      *     rb->chunked = NULL;
      *     rb->received = 0;
+     *     rb->no_buffering = 0;
      *     rb->filter_need_buffering = 0;
      *     rb->last_sent = 0;
      *     rb->last_saved = 0;
@@ -214,6 +227,7 @@ done:
         } else {
             /* rc == NGX_AGAIN */
             r->reading_body = 1;
+            r->request_body->no_buffering = 1;
         }
 
         r->read_event_handler = ngx_http_block_reading;
@@ -221,7 +235,16 @@ done:
     }
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+
+        r->lingering_close = 1;
+        r->discard_body = 1;
+
+        if (r->request_body) {
+            r->request_body->bufs = NULL;
+        }
+
         r->main->count--;
+        r->read_event_handler = ngx_http_block_reading;
     }
 
     return rc;
@@ -286,6 +309,12 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_do_read_client_request_body(r);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+
+        r->lingering_close = 1;
+        r->discard_body = 1;
+        r->request_body->bufs = NULL;
+
+        r->read_event_handler = ngx_http_block_reading;
         ngx_http_finalize_request(r, rc);
     }
 }
@@ -637,6 +666,11 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http set discard body");
+
+    r->discard_body = 1;
+
 #if (NGX_HTTP_V2)
     if (r->stream) {
         r->stream->skip_data = 1;
@@ -655,8 +689,6 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 
     rev = r->connection->read;
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, rev->log, 0, "http set discard body");
 
     if (rev->timer_set) {
         ngx_del_timer(rev);
@@ -700,7 +732,7 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 
     r->count++;
-    r->discard_body = 1;
+    r->discarding_body = 1;
 
     return NGX_OK;
 }
@@ -729,7 +761,7 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
         timer = (ngx_msec_t) r->lingering_time - (ngx_msec_t) ngx_time();
 
         if ((ngx_msec_int_t) timer <= 0) {
-            r->discard_body = 0;
+            r->discarding_body = 0;
             r->lingering_close = 0;
             ngx_http_finalize_request(r, NGX_ERROR);
             return;
@@ -742,7 +774,7 @@ ngx_http_discarded_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_read_discarded_request_body(r);
 
     if (rc == NGX_OK) {
-        r->discard_body = 0;
+        r->discarding_body = 0;
         r->lingering_close = 0;
         r->lingering_time = 0;
         ngx_http_finalize_request(r, NGX_DONE);
@@ -1148,8 +1180,6 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                                   "body: %O+%O bytes",
                                   r->headers_in.content_length_n,
                                   rb->chunked->size);
-
-                    r->lingering_close = 1;
 
                     return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
                 }
