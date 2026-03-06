@@ -563,6 +563,22 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
             }
 #endif
 
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+            if (ls[i].transparent) {
+                int  transparent = 1;
+
+                if (setsockopt(s, SOL_IP, IP_TRANSPARENT,
+                               (const void *) &transparent, sizeof(int))
+                    == -1)
+                {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                "setsockopt(IP_TRANSPARENT) for %V failed, "
+                                "ignored",
+                                &ls[i].addr_text);
+                }
+            }
+#endif
+
 #if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
 
             if (ls[i].sockaddr->sa_family == AF_INET6) {
