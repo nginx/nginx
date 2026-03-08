@@ -1403,10 +1403,11 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_CPU_AFFINITY)
     ngx_core_conf_t  *ccf = conf;
 
-    u_char            ch, *p;
+    u_char            ch, *p, *end, *dash, *start, *colon, *comma;
     ngx_str_t        *value;
     ngx_uint_t        i, n;
     ngx_cpuset_t     *mask;
+    ngx_int_t         last, first, stride;
 
     if (ccf->cpu_affinity) {
         return "is duplicate";
@@ -1445,6 +1446,76 @@ ngx_set_cpu_affinity(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     for ( /* void */ ; n < cf->args->nelts; n++) {
+        if (value[n].data[0] == '(') {
+            CPU_ZERO(&mask[n - 1]);
+
+            start = value[n].data + 1;
+            end = value[n].data + value[n].len - 1;
+
+            if (*end != ')') {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid \"worker_cpu_affinity\" specification");
+                return NGX_CONF_ERROR;
+            }
+
+            while (start < end) {
+                /* find next delimiter */
+                for (comma = start; comma < end && *comma != ','; comma++) {
+                    /* void */
+                }
+
+                /* parse single element between delimiters */
+                dash = ngx_strlchr(start, comma, '-');
+                if (dash == NULL) {
+                    /* single number */
+                    first = last = ngx_atoi(start, comma - start);
+                    stride = 1;
+
+                } else {
+                    /* range with optional stride */
+                    first = ngx_atoi(start, dash - start);
+                    colon = ngx_strlchr(dash + 1, comma, ':');
+                    if (colon == NULL) {
+                        /* no stride */
+                        last = ngx_atoi(dash + 1, comma - (dash + 1));
+                        stride = 1;
+                    } else {
+                        /* with stride */
+                        last = ngx_atoi(dash + 1, colon - (dash + 1));
+                        stride = ngx_atoi(colon + 1, comma - (colon + 1));
+                    }
+                }
+
+                if (first == NGX_ERROR || last == NGX_ERROR
+                    || stride == NGX_ERROR || stride == 0
+                    || first > last)
+                {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                            "invalid \"worker_cpu_affinity\" specification");
+                    return NGX_CONF_ERROR;
+                }
+
+                for (i = (ngx_uint_t) first;
+                    i <= (ngx_uint_t) last;
+                    i += (ngx_uint_t) stride)
+                {
+                    if (i >= CPU_SETSIZE) {
+                        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                            "invalid \"worker_cpu_affinity\" specification");
+                        return NGX_CONF_ERROR;
+                    }
+                    CPU_SET(i, &mask[n - 1]);
+                }
+
+                if (comma < end) {
+                    start = comma + 1;
+                } else {
+                    break;
+                }
+            }
+
+            continue;
+        }
 
         if (value[n].len > CPU_SETSIZE) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
