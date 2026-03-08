@@ -121,6 +121,19 @@ void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
 ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers);
 
+/** Check if value is a valid HTTP field name. */
+ngx_int_t ngx_http_valid_header_name(ngx_str_t value);
+/** Check if value is a valid HTTP field value. */
+ngx_int_t ngx_http_valid_header_value(ngx_str_t value);
+/** Check if value is equal (case insensitive) to Transfer-Encoding or
+ * Content-Length.  NGINX does not allow manually overriding these fields
+ * as it would make proper request framing impossible. */
+ngx_int_t ngx_http_conf_forbidden_header(ngx_str_t key);
+/** Check if the field name and value are valid for an HTTP field name-value
+ * pair.  Leading and trailing ' ' and '\t' are stripped from the field value
+ * before the value is checked.  The value is updated in-place. */
+ngx_int_t ngx_conf_check_field_name_and_strip_value(ngx_conf_t *cf,
+    const ngx_str_t *cmd_name, const ngx_str_t *name, ngx_str_t *value);
 
 ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);
 ngx_int_t ngx_http_process_request_uri(ngx_http_request_t *r);

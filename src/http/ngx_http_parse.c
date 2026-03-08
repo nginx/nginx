@@ -2467,3 +2467,80 @@ invalid:
 
     return NGX_ERROR;
 }
+
+
+ngx_int_t
+ngx_http_valid_header_value(ngx_str_t value)
+{
+    size_t j;
+
+    /* TODO: this might break configurations that are invalid,
+     * but happen to work right now because the leading and/or
+     * trailing whitespace gets stripped. It should be turned on
+     * if NGINX ever has a major version bump, or if a mechanism
+     * is added for the user to opt-in.  Sending a message with
+     * leading or trailing space is much less serious than CRLF
+     * injection. */
+    if (0) {
+        if (value.len < 1) {
+            return NGX_OK;
+        }
+
+        if (value.data[0] == ' ' || value.data[0] == '\t'
+            || value.data[value.len - 1] == ' '
+            || value.data[value.len - 1] == '\t') {
+            return NGX_ERROR;
+        }
+    }
+
+    for (j = 0; j < value.len; ++j) {
+        if (value.data[j] == '\0' || value.data[j] == CR
+            || value.data[j] == LF) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_valid_header_name(ngx_str_t value)
+{
+    size_t j;
+
+    if (value.len < 1) {
+        return NGX_ERROR;
+    }
+
+    for (j = 0; j < value.len; ++j) {
+        /* todo: check that this is an HTTP TOKEN */
+        if (value.data[j] <= 0x20 || value.data[j] == 0x7F
+            || value.data[j] == ':') {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+ngx_int_t
+ngx_http_conf_forbidden_header(ngx_str_t key)
+{
+    switch (key.len) {
+    case sizeof("Transfer-Encoding") - 1:
+        if (ngx_strncasecmp(key.data, (u_char *)"Transfer-Encoding",
+                            key.len) == 0) {
+            return NGX_ERROR;
+        }
+        return NGX_OK;
+    case sizeof("Content-Length") - 1:
+        if (ngx_strncasecmp(key.data, (u_char *)"Content-Length",
+                            key.len) == 0) {
+            return NGX_ERROR;
+        }
+        return NGX_OK;
+    default:
+        return NGX_OK;
+    }
+}
