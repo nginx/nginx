@@ -324,7 +324,8 @@ typedef struct {
     ngx_http_regex_t                 *ssl_servername_regex;
 #endif
 #endif
-
+	u_char  *backend_ssl_protocol;
+	u_char  *backend_ssl_cipher;
     ngx_chain_t                      *busy;
     ngx_int_t                         nbusy;
 

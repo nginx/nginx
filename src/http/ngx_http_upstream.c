@@ -8,7 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-
+#include "ngx_http_ssl_module.h"
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_upstream_cache(ngx_http_request_t *r,
@@ -2611,8 +2611,28 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
-    ngx_http_upstream_send_response(r, u);
+if (u->peer.connection && u->peer.connection->ssl && u->peer.connection->ssl->connection) {
+    SSL *ssl_conn = u->peer.connection->ssl->connection;
+
+    ngx_http_backend_ssl_ctx_t *ctx = ngx_http_get_module_ctx(r, ngx_http_backend_ssl_module);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_backend_ssl_ctx_t));
+        if (ctx == NULL) {
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+        ngx_http_set_ctx(r, ctx, ngx_http_backend_ssl_module);
+    }
+
+    const char *proto = SSL_get_version(ssl_conn);
+    const char *cipher = SSL_get_cipher_name(ssl_conn);
+
+    ctx->backend_ssl_protocol = (u_char *) (proto ? proto : "unknown");
+    ctx->backend_ssl_cipher = (u_char *) (cipher ? cipher : "unknown");
 }
+ngx_http_upstream_send_response(r, u);
+}
+
 
 
 static ngx_int_t
