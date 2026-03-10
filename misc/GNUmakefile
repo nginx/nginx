@@ -7,7 +7,7 @@ TEMP =		tmp
 CC =		cl
 OBJS =		objs.msvc8
 OPENSSL =	openssl-3.5.5
-ZLIB =		zlib-1.3.1
+ZLIB =		zlib-1.3.2
 PCRE =		pcre2-10.47
 
 
