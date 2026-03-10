@@ -948,6 +948,10 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     char                 *err;
     X509                 *x509;
     X509_NAME            *name;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
+    X509_NAME            *sname;
     X509_STORE           *store;
     STACK_OF(X509)       *chain;
     STACK_OF(X509_NAME)  *list;
@@ -1003,8 +1007,8 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             return NGX_ERROR;
         }
 
-        name = X509_get_subject_name(x509);
-        if (name == NULL) {
+        sname = X509_get_subject_name(x509);
+        if (sname == NULL) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                           "X509_get_subject_name(\"%s\") failed", cert->data);
             sk_X509_NAME_pop_free(list, X509_NAME_free);
@@ -1012,7 +1016,7 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             return NGX_ERROR;
         }
 
-        name = X509_NAME_dup(name);
+        name = X509_NAME_dup(sname);
         if (name == NULL) {
             sk_X509_NAME_pop_free(list, X509_NAME_free);
             sk_X509_pop_free(chain, X509_free);
@@ -1197,6 +1201,9 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
     char              *subject, *issuer;
     int                err, depth;
     X509              *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME         *sname, *iname;
     ngx_connection_t  *c;
     ngx_ssl_conn_t    *ssl_conn;
@@ -6012,6 +6019,9 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6066,6 +6076,9 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6122,6 +6135,9 @@ ngx_ssl_get_subject_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     char       *p;
     size_t      len;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6170,6 +6186,9 @@ ngx_ssl_get_issuer_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     char       *p;
     size_t      len;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
