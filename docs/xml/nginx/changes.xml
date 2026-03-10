@@ -5,6 +5,102 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.6" date="2026-03-10">
+
+<change type="feature">
+<para lang="ru">
+режим привязки сессий;
+директива sticky в блоке upstream модуля http;
+директива server поддерживает параметры route и drain.
+</para>
+<para lang="en">
+session affinity support;
+the "sticky" directive in the "upstream" block of the "http" module;
+the "server" directive supports the "route" and "drain" parameters.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь nginx ограничивает размер и частоту отправки пакетов
+QUIC stateless reset.
+</para>
+<para lang="en">
+now nginx limits the size and rate of QUIC stateless reset packets.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+получение QUIC-пакета в другом рабочем процессе
+могло приводить к разрыву соединения.
+</para>
+<para lang="en">
+receiving a QUIC packet by a wrong worker process
+could cause the connection to terminate.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при отправке закэшированного ответа HTTP/2
+в логах могли появляться сообщения
+"[crit] cache file ... contains invalid header".
+</para>
+<para lang="en">
+"[crit] cache file ... contains invalid header"
+messages might appear in logs
+when sending a cached HTTP/2 response.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+проксирование на scgi-бэкенды могло не работать при использовании
+chunked transfer encoding и директивы scgi_request_buffering.<br/>
+Спасибо Mufeed VH.
+</para>
+<para lang="en">
+proxying to scgi backends might not work when using
+chunked transfer encoding and the "scgi_request_buffering" directive.<br/>
+Thanks to Mufeed VH.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_mp4_module.<br/>
+Спасибо Andrew Lacambra.
+</para>
+<para lang="en">
+in the ngx_http_mp4_module.<br/>
+Thanks to Andrew Lacambra.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx считал запятую разделителем в строке "Cookie"
+заголовка запроса при вычислении переменных "$cookie_...".
+</para>
+<para lang="en">
+nginx treated a comma as separator in the "Cookie"
+request header line when evaluating "$cookie_..." variables.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в парсинге литеральных аргументов IMAP команд.
+</para>
+<para lang="en">
+in IMAP command literal argument parsing.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.5" date="2026-02-04">
 
 <change type="security">
