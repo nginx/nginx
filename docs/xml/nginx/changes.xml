@@ -304,7 +304,7 @@ Thanks to Igor Morgenstern of Aisle Research.
 
 <change type="bugfix">
 <para lang="ru">
-в кешировании SSL-сертификатов во время переконфигурации.
+в кэшировании SSL-сертификатов во время переконфигурации.
 </para>
 <para lang="en">
 in SSL certificate caching during reconfiguration.
@@ -520,7 +520,7 @@ CUBIC congestion control in QUIC connections.
 
 <change type="change">
 <para lang="ru">
-ограничение на максимальный размер кешируемых в разделяемой памяти
+ограничение на максимальный размер кэшируемых в разделяемой памяти
 SSL-сессий поднято до 8192.
 </para>
 <para lang="en">
@@ -779,7 +779,7 @@ in the "proxy_store" directive.
 
 <change type="feature">
 <para lang="ru">
-SSL-сертификаты, секретные ключи и списки CRL теперь кешируются
+SSL-сертификаты, секретные ключи и списки CRL теперь кэшируются
 на старте или во время переконфигурации.
 </para>
 <para lang="en">
@@ -989,7 +989,7 @@ directive in the stream module.
 
 <change type="feature">
 <para lang="ru">
-определение размера строки кеша процессора для некоторых архитектур.<br/>
+определение размера строки кэша процессора для некоторых архитектур.<br/>
 Спасибо Piotr Sikora.
 </para>
 <para lang="en">
@@ -16086,7 +16086,7 @@ listen unix domain socket had limited access rights.
 
 <change type="bugfix">
 <para lang="ru">
-закэшированные ответы ответов HTTP/0.9 неправильно обрабатывались.
+закэшированные ответы HTTP/0.9 неправильно обрабатывались.
 </para>
 <para lang="en">
 cached HTTP/0.9 responses were handled incorrectly.
