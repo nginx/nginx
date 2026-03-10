@@ -73,6 +73,24 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # pkgconf --static
+
+    ngx_feature="libxslt (pkgconf -static)"
+    ngx_feature_path="$(pkgconf --static --cflags-only-I libxslt | sed -e 's/-I//g')"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="$(pkgconf --static --libs-only-L libxslt | sed -e 's/-L/-R/') $(pkgconf --static --libs libxslt)"
+    else
+        ngx_feature_libs="$(pkgconf --static --libs libxslt)"
+    fi
+
+    . auto/feature
+
+fi
+
+
 if [ $ngx_found = yes ]; then
 
     CORE_INCS="$CORE_INCS $ngx_feature_path"
@@ -153,6 +171,24 @@ if [ $ngx_found = no ]; then
     fi
 
     . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # pkgconf --static
+
+    ngx_feature="libexslt (pkgconf -static)"
+    ngx_feature_path="$(pkgconf --static --cflags-only-I libexslt | sed -e 's/-I//g')"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="$(pkgconf --static --libs-only-L libexslt | sed -e 's/-L/-R/') $(pkgconf --static --libs libexslt)"
+    else
+        ngx_feature_libs="$(pkgconf --static --libs libexslt)"
+    fi
+
+    . auto/feature
+
 fi
 
 
