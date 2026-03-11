@@ -420,9 +420,16 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 
     log = cycle->log;
 
-    /* TODO: configurable try number */
+    ngx_uint_t      max_tries;
 
-    for (tries = 5; tries; tries--) {
+    max_tries = cycle->connection_n / 10 + 1;
+    if (max_tries < 5) {
+        max_tries = 5;
+    } else if (max_tries > 20) {
+        max_tries = 20;
+    }
+
+    for (tries = max_tries; tries; tries--) {
         failed = 0;
 
         /* for each listening socket */
