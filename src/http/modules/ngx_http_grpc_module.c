@@ -482,7 +482,7 @@ static ngx_http_module_t  ngx_http_grpc_module_ctx = {
 
 
 ngx_module_t  ngx_http_grpc_module = {
-    NGX_MODULE_V1,
+    NGX_DYNAMIC_MODULE_V1,
     &ngx_http_grpc_module_ctx,             /* module context */
     ngx_http_grpc_commands,                /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -4595,7 +4595,8 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
      */
 
     if (prev->headers.hash.buckets == NULL
-        && conf->headers_source == prev->headers_source)
+        && conf->headers_source == prev->headers_source
+        && !clcf->dynamic)
     {
         prev->headers = conf->headers;
         prev->host_set = conf->host_set;
@@ -4808,7 +4809,7 @@ ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     n = ngx_http_script_variables_count(url);
 
-    if (n) {
+    if (n || cf->dynamic) {
 
         ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
 
@@ -5013,7 +5014,10 @@ static ngx_int_t
 ngx_http_grpc_merge_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *conf,
     ngx_http_grpc_loc_conf_t *prev)
 {
-    ngx_uint_t  preserve;
+    ngx_uint_t                 preserve;
+    ngx_http_core_loc_conf_t  *clcf;
+
+    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     if (conf->ssl_protocols == 0
         && conf->ssl_ciphers.data == NULL
@@ -5027,12 +5031,12 @@ ngx_http_grpc_merge_ssl(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *conf,
         && conf->upstream.ssl_session_reuse == NGX_CONF_UNSET
         && conf->ssl_conf_commands == NGX_CONF_UNSET_PTR)
     {
-        if (prev->upstream.ssl) {
+        if (prev->upstream.ssl && (!clcf->dynamic || prev->upstream.ssl->ctx)) {
             conf->upstream.ssl = prev->upstream.ssl;
             return NGX_OK;
         }
 
-        preserve = 1;
+        preserve = !clcf->dynamic;
 
     } else {
         preserve = 0;
