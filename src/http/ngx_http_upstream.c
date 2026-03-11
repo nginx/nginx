@@ -37,6 +37,7 @@ static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_event_t *ev);
 static void ngx_http_upstream_connect(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_pc_tag_t ngx_http_upstream_pc_tag(ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_send_request(ngx_http_request_t *r,
@@ -1581,6 +1582,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->state->connect_time = (ngx_msec_t) -1;
     u->state->header_time = (ngx_msec_t) -1;
 
+    u->peer.tag = ngx_http_upstream_pc_tag(u);
+
     rc = ngx_event_connect_peer(&u->peer);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1726,6 +1729,29 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #endif
 
     ngx_http_upstream_send_request(r, u, 1);
+}
+
+
+static ngx_pc_tag_t
+ngx_http_upstream_pc_tag(ngx_http_upstream_t *u)
+{
+    ngx_pc_tag_t  tag;
+
+    tag = NULL;
+    combine_tag(&tag, u->output.tag);
+    combine_tag(&tag, u->peer.local);
+
+#if (NGX_HTTP_SSL)
+
+    if (u->conf->ssl_server_name) {
+        combine_tag(&tag, u->conf);
+    } else if (u->conf->ssl != NULL) {
+        combine_tag(&tag, u->conf->ssl->ctx);
+    }
+
+#endif
+
+    return tag;
 }
 
 

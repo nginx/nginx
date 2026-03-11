@@ -34,6 +34,7 @@ typedef struct {
     socklen_t                          socklen;
     ngx_sockaddr_t                     sockaddr;
 
+    ngx_pc_tag_t                       tag;
 } ngx_http_upstream_keepalive_cache_t;
 
 
@@ -275,9 +276,10 @@ ngx_http_upstream_get_keepalive_peer(ngx_peer_connection_t *pc, void *data)
         c = item->connection;
 
         if (ngx_memn2cmp((u_char *) &item->sockaddr, (u_char *) pc->sockaddr,
-                         item->socklen, pc->socklen)
-            == 0)
+                         item->socklen, pc->socklen) == 0
+            && item->tag == pc->tag)
         {
+
             ngx_queue_remove(q);
             ngx_queue_insert_head(&kp->conf->free, q);
 
@@ -387,6 +389,7 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     ngx_queue_insert_head(&kp->conf->cache, q);
 
     item->connection = c;
+    item->tag = pc->tag;
 
     pc->connection = NULL;
 
