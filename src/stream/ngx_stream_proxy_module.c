@@ -31,6 +31,7 @@ typedef struct {
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
     ngx_flag_t                       proxy_protocol;
+    ngx_uint_t                       proxy_protocol_version;
     ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
@@ -136,6 +137,13 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_downstream_buffer = {
 
 static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_upstream_buffer = {
     ngx_conf_deprecated, "proxy_upstream_buffer", "proxy_buffer_size"
+};
+
+
+static ngx_conf_enum_t  ngx_stream_proxy_protocol_versions[] = {
+    { ngx_string("1"), 1 },
+    { ngx_string("2"), 2 },
+    { ngx_null_string, 0 }
 };
 
 
@@ -252,6 +260,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol),
       NULL },
+
+    { ngx_string("proxy_protocol_version"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol_version),
+      &ngx_stream_proxy_protocol_versions },
 
     { ngx_string("proxy_half_close"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
@@ -935,8 +950,14 @@ ngx_stream_proxy_init_upstream(ngx_stream_session_t *s)
 
         cl->buf->pos = p;
 
-        p = ngx_proxy_protocol_write(c, p,
-                                     p + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        if (pscf->proxy_protocol_version == 2) {
+            p = ngx_proxy_protocol_v2_write(c, p,
+                                            p + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        } else {
+            p = ngx_proxy_protocol_write(c, p,
+                                         p + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        }
+
         if (p == NULL) {
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return;
@@ -984,11 +1005,19 @@ ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s)
 
     c = s->connection;
 
+    pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
+
     ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
                    "stream proxy send PROXY protocol header");
 
-    p = ngx_proxy_protocol_write(c, buf,
-                                 buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+    if (pscf->proxy_protocol_version == 2) {
+        p = ngx_proxy_protocol_v2_write(c, buf,
+                                        buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+    } else {
+        p = ngx_proxy_protocol_write(c, buf,
+                                     buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+    }
+
     if (p == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
@@ -1007,8 +1036,6 @@ ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s)
             ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
             return NGX_ERROR;
         }
-
-        pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
         ngx_add_timer(pc->write, pscf->timeout);
 
@@ -2216,6 +2243,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->next_upstream = NGX_CONF_UNSET;
     conf->proxy_protocol = NGX_CONF_UNSET;
+    conf->proxy_protocol_version = NGX_CONF_UNSET_UINT;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
     conf->half_close = NGX_CONF_UNSET;
@@ -2272,6 +2300,9 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->next_upstream, prev->next_upstream, 1);
 
     ngx_conf_merge_value(conf->proxy_protocol, prev->proxy_protocol, 0);
+
+    ngx_conf_merge_uint_value(conf->proxy_protocol_version,
+                              prev->proxy_protocol_version, 1);
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 
