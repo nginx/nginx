@@ -1301,6 +1301,10 @@ ngx_http_v3_read_client_request_body_handler(ngx_http_request_t *r)
     rc = ngx_http_v3_do_read_client_request_body(r);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+
+        r->discard_body = 1;
+        r->request_body->bufs = NULL;
+
         ngx_http_finalize_request(r, rc);
     }
 }
