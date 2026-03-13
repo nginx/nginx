@@ -1,0 +1,32 @@
+name: Mark/close Stale Pull-Requests
+
+on:
+  schedule:
+    - cron: '22 2 * * *'  # Run every day at 02:22
+
+env:
+  PR_STALE_DAYS: -1 # 180
+  PR_CLOSE_DAYS: -1 # 90 (relative to stale days as that resets the last update date)
+
+jobs:
+  mark_stale_prs:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    name: Mark/close stale pull-requests
+    steps:
+      - run: |
+          echo "PR_TOTAL_DAYS=$((PR_STALE_DAYS+PR_CLOSE_DAYS))" >>"$GITHUB_ENV"
+
+      - uses: actions/stale@v10
+        with:
+          stale-pr-message: "This pull-request has been automatically marked 'stale' because it has been inactive for **${{ env.PR_STALE_DAYS }}** days.
+
+It will be automatically closed after **${{ env.PR_TOTAL_DAYS }}** days of inactivity."
+          close-pr-message: "This pull-request has been automatically closed because it has been inactive for **${{ env.PR_TOTAL_DAYS }}** days."
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          days-before-stale: ${{ env.PR_STALE_DAYS }}
+          days-before-close: ${{ env.PR_CLOSE_DAYS }}
+          stale-pr-label: stale
