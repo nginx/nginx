@@ -1010,6 +1010,7 @@ ngx_stream_add_listening(ngx_conf_t *cf, ngx_stream_conf_addr_t *addr)
     ls->log.handler = ngx_accept_log_error;
 
     ls->type = addr->opt.type;
+    ls->protocol = addr->opt.protocol;
     ls->backlog = addr->opt.backlog;
     ls->rcvbuf = addr->opt.rcvbuf;
     ls->sndbuf = addr->opt.sndbuf;
