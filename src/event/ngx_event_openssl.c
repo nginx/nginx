@@ -17,6 +17,17 @@
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
 
+#if (NGX_SSL_TICKET_KEY_EVP_CB)
+#define ngx_ssl_ticket_key_mac_ctx_t        EVP_MAC_CTX
+#define ngx_ssl_set_ticket_key_callback     SSL_CTX_set_tlsext_ticket_key_evp_cb
+
+#elif defined SSL_CTX_set_tlsext_ticket_key_cb
+#define ngx_ssl_ticket_key_mac_ctx_t        HMAC_CTX
+#define ngx_ssl_set_ticket_key_callback     SSL_CTX_set_tlsext_ticket_key_cb
+
+#endif
+
+
 typedef struct {
     ngx_uint_t  engine;   /* unsigned  engine:1; */
 } ngx_openssl_conf_t;
@@ -73,10 +84,13 @@ static void ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
 static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
-#ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
+#ifdef ngx_ssl_set_ticket_key_callback
 static int ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
-    HMAC_CTX *hctx, int enc);
+    ngx_ssl_ticket_key_mac_ctx_t *hctx, int enc);
+static ngx_int_t ngx_ssl_ticket_key_mac_init(ngx_connection_t *c,
+    ngx_ssl_ticket_key_t *key, size_t size,
+    ngx_ssl_ticket_key_mac_ctx_t *hctx);
 static ngx_int_t ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log);
 static void ngx_ssl_ticket_keys_cleanup(void *data);
 #endif
@@ -4784,7 +4798,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 }
 
 
-#ifdef SSL_CTRL_SET_TLSEXT_TICKET_KEY_CB
+#ifdef ngx_ssl_set_ticket_key_callback
 
 ngx_int_t
 ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
@@ -4826,7 +4840,7 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_ERROR;
     }
 
-    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx, ngx_ssl_ticket_key_callback)
+    if (ngx_ssl_set_ticket_key_callback(ssl->ctx, ngx_ssl_ticket_key_callback)
         == 0)
     {
         ngx_log_error(NGX_LOG_WARN, cf->log, 0,
@@ -4948,7 +4962,7 @@ failed:
 static int
 ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
-    HMAC_CTX *hctx, int enc)
+    ngx_ssl_ticket_key_mac_ctx_t *hctx, int enc)
 {
     size_t                 size;
     SSL_CTX               *ssl_ctx;
@@ -4956,7 +4970,6 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     ngx_array_t           *keys;
     ngx_connection_t      *c;
     ngx_ssl_ticket_key_t  *key;
-    const EVP_MD          *digest;
     const EVP_CIPHER      *cipher;
 
     c = ngx_ssl_get_connection(ssl_conn);
@@ -4965,12 +4978,6 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     if (ngx_ssl_rotate_ticket_keys(ssl_ctx, c->log) != NGX_OK) {
         return -1;
     }
-
-#ifdef OPENSSL_NO_SHA256
-    digest = EVP_sha1();
-#else
-    digest = EVP_sha256();
-#endif
 
     keys = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_ticket_keys_index);
     if (keys == NULL) {
@@ -5007,14 +5014,9 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
             return -1;
         }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-        if (HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL) != 1) {
-            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
+        if (ngx_ssl_ticket_key_mac_init(c, &key[0], size, hctx) != NGX_OK) {
             return -1;
         }
-#else
-        HMAC_Init_ex(hctx, key[0].hmac_key, size, digest, NULL);
-#endif
 
         ngx_memcpy(name, key[0].name, 16);
 
@@ -5050,14 +5052,9 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
             size = 32;
         }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10000000L
-        if (HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL) != 1) {
-            ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
+        if (ngx_ssl_ticket_key_mac_init(c, &key[i], size, hctx) != NGX_OK) {
             return -1;
         }
-#else
-        HMAC_Init_ex(hctx, key[i].hmac_key, size, digest, NULL);
-#endif
 
         if (EVP_DecryptInit_ex(ectx, cipher, NULL, key[i].aes_key, iv) != 1) {
             ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
@@ -5081,6 +5078,52 @@ ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
 
         return 1;
     }
+}
+
+
+static ngx_int_t
+ngx_ssl_ticket_key_mac_init(ngx_connection_t *c, ngx_ssl_ticket_key_t *key,
+    size_t size, ngx_ssl_ticket_key_mac_ctx_t *hctx)
+{
+#if (NGX_SSL_TICKET_KEY_EVP_CB)
+    char        *digest;
+    OSSL_PARAM   params[2];
+
+#ifdef OPENSSL_NO_SHA256
+    digest = (char *) OSSL_DIGEST_NAME_SHA1;
+#else
+    digest = (char *) OSSL_DIGEST_NAME_SHA2_256;
+#endif
+
+    params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_DIGEST,
+                                                 digest, 0);
+    params[1] = OSSL_PARAM_construct_end();
+
+    if (EVP_MAC_init(hctx, key->hmac_key, size, params) != 1) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "EVP_MAC_init() failed");
+        return NGX_ERROR;
+    }
+
+#else
+    const EVP_MD  *digest;
+
+#ifdef OPENSSL_NO_SHA256
+    digest = EVP_sha1();
+#else
+    digest = EVP_sha256();
+#endif
+
+#if OPENSSL_VERSION_NUMBER >= 0x10000000L
+    if (HMAC_Init_ex(hctx, key->hmac_key, size, digest, NULL) != 1) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "HMAC_Init_ex() failed");
+        return NGX_ERROR;
+    }
+#else
+    HMAC_Init_ex(hctx, key->hmac_key, size, digest, NULL);
+#endif
+#endif
+
+    return NGX_OK;
 }
 
 
