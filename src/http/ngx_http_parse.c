@@ -1000,7 +1000,17 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch <= 0x20 || ch == 0x7f) {
+            if (ch <= 0x20
+                || ch == 0x22
+                || ch == 0x28
+                || ch == 0x29
+                || ch == 0x2c
+                || ch == 0x2f
+                || (ch >= 0x3b && ch <= 0x40)
+                || (ch >= 0x5b && ch <= 0x5d)
+                || ch == 0x7b
+                || ch == 0x7d)
+            {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
