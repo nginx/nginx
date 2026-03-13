@@ -23,12 +23,12 @@ uintptr_t ngx_http_v3_encode_field_section_prefix(u_char *p,
 uintptr_t ngx_http_v3_encode_field_ri(u_char *p, ngx_uint_t dynamic,
     ngx_uint_t index);
 uintptr_t ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic,
-    ngx_uint_t index, u_char *data, size_t len);
+    ngx_uint_t index, u_char *data, size_t len, u_char *tmp);
 uintptr_t ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name,
-    ngx_str_t *value);
+    ngx_str_t *value, u_char *tmp);
 uintptr_t ngx_http_v3_encode_field_pbi(u_char *p, ngx_uint_t index);
 uintptr_t ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index,
-    u_char *data, size_t len);
+    u_char *data, size_t len, u_char *tmp);
 
 
 #endif /* _NGX_HTTP_V3_ENCODE_H_INCLUDED_ */
