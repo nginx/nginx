@@ -26,6 +26,12 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L                                  \
+     && !defined LIBRESSL_VERSION_NUMBER                                    \
+     && !defined OPENSSL_IS_BORINGSSL                                       \
+     && !defined OPENSSL_IS_AWSLC)
+#include <openssl/core_names.h>
+#endif
 #include <openssl/hmac.h>
 #ifndef OPENSSL_NO_OCSP
 #include <openssl/ocsp.h>
@@ -85,6 +91,14 @@
 
 #ifdef OPENSSL_NO_DEPRECATED_3_0
 #define EVP_CIPHER_CTX_cipher(c)     EVP_CIPHER_CTX_get0_cipher(c)
+#endif
+
+
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L                                  \
+     && !defined LIBRESSL_VERSION_NUMBER                                    \
+     && !defined OPENSSL_IS_BORINGSSL                                       \
+     && !defined OPENSSL_IS_AWSLC)
+#define NGX_SSL_TICKET_KEY_EVP_CB  1
 #endif
 
 
