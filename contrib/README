@@ -1,4 +1,11 @@
 
+nginx-tests/		sub-second cache validity test
+
+	Test script (proxy_cache_valid_subsecond.t) for use with the
+	nginx-tests repository. Verifies proxy_cache_valid with "ms" suffix
+	(issue #1156). See nginx-tests/README.
+
+
 geo2nginx.pl 		by Andrei Nigmatulin
 
 	The perl script to convert CSV geoip database ( free download

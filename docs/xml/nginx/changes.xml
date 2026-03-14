@@ -9,6 +9,21 @@
 
 <change type="feature">
 <para lang="ru">
+в директивах proxy_cache_valid, fastcgi_cache_valid,
+scgi_cache_valid и uwsgi_cache_valid время кэширования
+можно задавать с точностью до миллисекунд при использовании суффикса «ms»
+(например, 100ms).
+</para>
+<para lang="en">
+the "proxy_cache_valid", "fastcgi_cache_valid",
+"scgi_cache_valid", and "uwsgi_cache_valid" directives
+now accept cache validity time with millisecond precision
+when using the "ms" suffix (e.g. 100ms).
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
 режим привязки сессий;
 директива sticky в блоке upstream модуля http;
 директива server поддерживает параметры route и drain.

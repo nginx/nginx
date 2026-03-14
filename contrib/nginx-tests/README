@@ -1,0 +1,10 @@
+Tests in this directory are intended to be run from the nginx-tests repository
+(https://github.com/nginx/nginx-tests). Copy the .t file(s) to the root of
+your nginx-tests clone and run:
+
+  prove proxy_cache_valid_subsecond.t
+
+proxy_cache_valid_subsecond.t
+  Covers sub-second cache validity (proxy_cache_valid with "ms" suffix).
+  Ensures cached responses expire after the given millisecond TTL and avoids
+  regressions. See nginx issue #1156.
