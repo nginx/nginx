@@ -432,29 +432,54 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 static ngx_buf_t *
 ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
 {
-    u_char                         *last, scale;
+    u_char                          scale;
     off_t                           length;
-    size_t                          len, entry_len, char_len, escape_html;
+    size_t                          len, entry_len, escape_html;
     ngx_tm_t                        tm;
     ngx_buf_t                      *b;
     ngx_int_t                       size;
-    ngx_uint_t                      i, utf8;
+    ngx_uint_t                      i;
     ngx_time_t                     *tp;
     ngx_http_autoindex_entry_t     *entry;
     ngx_http_autoindex_loc_conf_t  *alcf;
 
     static u_char  title[] =
         "<html>" CRLF
-        "<head><title>Index of "
+        "<head>" CRLF
+        "<title>Index of "
     ;
 
     static u_char  header[] =
-        "</title></head>" CRLF
+        "</title>" CRLF
+        "<style>" CRLF
+        "table { border-collapse: collapse; width: 100%; }" CRLF
+        "td, th { padding: 4px 12px; text-align: left; }" CRLF
+        "th { border-bottom: 1px solid #000000; }" CRLF
+        "tr:hover { background: #eeeeee; }" CRLF
+        "tbody tr:last-child td { border-bottom: 1px solid #000000; }" CRLF
+        "td:first-child, th:first-child { width: 100%; }" CRLF
+        "td:nth-child(2), td:nth-child(3), th:nth-child(2), th:nth-child(3)"
+        " { white-space: nowrap; font-family: monospace; width: 1%; }" CRLF
+        "td:nth-child(3), th:nth-child(3) { padding-left: 40px; }" CRLF
+        "</style>" CRLF
+        "</head>" CRLF
         "<body>" CRLF
         "<h1>Index of "
     ;
 
+    static u_char  table_head[] =
+        "</h1>" CRLF
+        "<table>" CRLF
+        "<thead>" CRLF
+        "<tr><th>Name</th><th>Last Modified</th><th>Size</th></tr>" CRLF
+        "</thead>" CRLF
+        "<tbody>" CRLF
+        "<tr><td colspan=\"3\"><a href=\"../\">../</a></td></tr>" CRLF
+    ;
+
     static u_char  tail[] =
+        "</tbody>" CRLF
+        "</table>" CRLF
         "</body>" CRLF
         "</html>" CRLF
     ;
@@ -462,25 +487,13 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
     static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
-    if (r->headers_out.charset.len == 5
-        && ngx_strncasecmp(r->headers_out.charset.data, (u_char *) "utf-8", 5)
-           == 0)
-    {
-        utf8 = 1;
-
-    } else {
-        utf8 = 0;
-    }
-
     escape_html = ngx_escape_html(NULL, r->uri.data, r->uri.len);
 
     len = sizeof(title) - 1
           + r->uri.len + escape_html
           + sizeof(header) - 1
           + r->uri.len + escape_html
-          + sizeof("</h1>") - 1
-          + sizeof("<hr><pre><a href=\"../\">../</a>" CRLF) - 1
-          + sizeof("</pre><hr>") - 1
+          + sizeof(table_head) - 1
           + sizeof(tail) - 1;
 
     entry = entries->elts;
@@ -492,24 +505,15 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
         entry[i].escape_html = ngx_escape_html(NULL, entry[i].name.data,
                                                entry[i].name.len);
 
-        if (utf8) {
-            entry[i].utf_len = ngx_utf8_length(entry[i].name.data,
-                                               entry[i].name.len);
-        } else {
-            entry[i].utf_len = entry[i].name.len;
-        }
-
-        entry_len = sizeof("<a href=\"") - 1
+        entry_len = sizeof("<tr><td><a href=\"") - 1
                   + entry[i].name.len + entry[i].escape
                   + 1                                    /* 1 is for "/" */
-                  + sizeof("\">") - 1
-                  + entry[i].name.len - entry[i].utf_len
-                  + entry[i].escape_html
-                  + NGX_HTTP_AUTOINDEX_NAME_LEN + sizeof("&gt;") - 2
-                  + sizeof("</a>") - 1
-                  + sizeof(" 28-Sep-1970 12:00 ") - 1
-                  + 20                                   /* the file size */
-                  + 2;
+                  + sizeof("\"></a></td><td>") - 1
+                  + entry[i].name.len + entry[i].escape_html
+                  + sizeof("</td><td>") - 1
+                  + sizeof("28-Sep-1970 12:00") - 1
+                  + NGX_OFF_T_LEN                        /* the file size */
+                  + sizeof("</td></tr>" CRLF) - 1;
 
         if (len > NGX_MAX_SIZE_T_VALUE - entry_len) {
             return NULL;
@@ -536,16 +540,14 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
         b->last = ngx_cpymem(b->last, r->uri.data, r->uri.len);
     }
 
-    b->last = ngx_cpymem(b->last, "</h1>", sizeof("</h1>") - 1);
-
-    b->last = ngx_cpymem(b->last, "<hr><pre><a href=\"../\">../</a>" CRLF,
-                         sizeof("<hr><pre><a href=\"../\">../</a>" CRLF) - 1);
+    b->last = ngx_cpymem(b->last, table_head, sizeof(table_head) - 1);
 
     alcf = ngx_http_get_module_loc_conf(r, ngx_http_autoindex_module);
     tp = ngx_timeofday();
 
     for (i = 0; i < entries->nelts; i++) {
-        b->last = ngx_cpymem(b->last, "<a href=\"", sizeof("<a href=\"") - 1);
+        b->last = ngx_cpymem(b->last, "<tr><td><a href=\"",
+                             sizeof("<tr><td><a href=\"") - 1);
 
         if (entry[i].escape) {
             ngx_escape_uri(b->last, entry[i].name.data, entry[i].name.len,
@@ -565,87 +567,46 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
         *b->last++ = '"';
         *b->last++ = '>';
 
-        len = entry[i].utf_len;
-
-        if (entry[i].name.len != len) {
-            if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
-                char_len = NGX_HTTP_AUTOINDEX_NAME_LEN - 3 + 1;
-
-            } else {
-                char_len = NGX_HTTP_AUTOINDEX_NAME_LEN + 1;
-            }
-
-            last = b->last;
-            b->last = ngx_utf8_cpystrn(b->last, entry[i].name.data,
-                                       char_len, entry[i].name.len + 1);
-
-            if (entry[i].escape_html) {
-                b->last = (u_char *) ngx_escape_html(last, entry[i].name.data,
-                                                     b->last - last);
-            }
-
-            last = b->last;
-
+        /*
+         * Output the full name without truncation
+         * html table allows multi-line display if line is very long
+         */
+        if (entry[i].escape_html) {
+            b->last = (u_char *) ngx_escape_html(b->last, entry[i].name.data,
+                                                 entry[i].name.len);
         } else {
-            if (entry[i].escape_html) {
-                if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
-                    char_len = NGX_HTTP_AUTOINDEX_NAME_LEN - 3;
-
-                } else {
-                    char_len = len;
-                }
-
-                b->last = (u_char *) ngx_escape_html(b->last,
-                                                  entry[i].name.data, char_len);
-                last = b->last;
-
-            } else {
-                b->last = ngx_cpystrn(b->last, entry[i].name.data,
-                                      NGX_HTTP_AUTOINDEX_NAME_LEN + 1);
-                last = b->last - 3;
-            }
+            b->last = ngx_cpymem(b->last, entry[i].name.data,
+                                 entry[i].name.len);
         }
 
-        if (len > NGX_HTTP_AUTOINDEX_NAME_LEN) {
-            b->last = ngx_cpymem(last, "..&gt;</a>", sizeof("..&gt;</a>") - 1);
-
-        } else {
-            if (entry[i].dir && NGX_HTTP_AUTOINDEX_NAME_LEN - len > 0) {
-                *b->last++ = '/';
-                len++;
-            }
-
-            b->last = ngx_cpymem(b->last, "</a>", sizeof("</a>") - 1);
-
-            if (NGX_HTTP_AUTOINDEX_NAME_LEN - len > 0) {
-                ngx_memset(b->last, ' ', NGX_HTTP_AUTOINDEX_NAME_LEN - len);
-                b->last += NGX_HTTP_AUTOINDEX_NAME_LEN - len;
-            }
+        if (entry[i].dir) {
+            *b->last++ = '/';
         }
 
-        *b->last++ = ' ';
+        b->last = ngx_cpymem(b->last, "</a></td><td>",
+                             sizeof("</a></td><td>") - 1);
 
         ngx_gmtime(entry[i].mtime + tp->gmtoff * 60 * alcf->localtime, &tm);
 
-        b->last = ngx_sprintf(b->last, "%02d-%s-%d %02d:%02d ",
+        b->last = ngx_sprintf(b->last, "%02d-%s-%d %02d:%02d",
                               tm.ngx_tm_mday,
                               months[tm.ngx_tm_mon - 1],
                               tm.ngx_tm_year,
                               tm.ngx_tm_hour,
                               tm.ngx_tm_min);
 
+        b->last = ngx_cpymem(b->last, "</td><td>", sizeof("</td><td>") - 1);
+
         if (alcf->exact_size) {
             if (entry[i].dir) {
-                b->last = ngx_cpymem(b->last,  "                  -",
-                                     sizeof("                  -") - 1);
+                b->last = ngx_cpymem(b->last, "-", sizeof("-") - 1);
             } else {
-                b->last = ngx_sprintf(b->last, "%19O", entry[i].size);
+                b->last = ngx_sprintf(b->last, "%O", entry[i].size);
             }
 
         } else {
             if (entry[i].dir) {
-                b->last = ngx_cpymem(b->last,  "      -",
-                                     sizeof("      -") - 1);
+                b->last = ngx_cpymem(b->last, "-", sizeof("-") - 1);
 
             } else {
                 length = entry[i].size;
@@ -679,19 +640,17 @@ ngx_http_autoindex_html(ngx_http_request_t *r, ngx_array_t *entries)
                 }
 
                 if (scale) {
-                    b->last = ngx_sprintf(b->last, "%6i%c", size, scale);
+                    b->last = ngx_sprintf(b->last, "%i%c", size, scale);
 
                 } else {
-                    b->last = ngx_sprintf(b->last, " %6i", size);
+                    b->last = ngx_sprintf(b->last, "%i", size);
                 }
             }
         }
 
-        *b->last++ = CR;
-        *b->last++ = LF;
+        b->last = ngx_cpymem(b->last, "</td></tr>" CRLF,
+                             sizeof("</td></tr>" CRLF) - 1);
     }
-
-    b->last = ngx_cpymem(b->last, "</pre><hr>", sizeof("</pre><hr>") - 1);
 
     b->last = ngx_cpymem(b->last, tail, sizeof(tail) - 1);
 
