@@ -2067,6 +2067,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
+    u->early_hints_length = 0;
     u->keepalive = 0;
     u->upgrade = 0;
     u->error = 0;
