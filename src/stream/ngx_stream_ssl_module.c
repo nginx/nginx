@@ -437,6 +437,7 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
     long                        rc;
     X509                       *cert;
     ngx_int_t                   rv;
+    const char                 *str;
     ngx_connection_t           *c;
     ngx_stream_ssl_srv_conf_t  *sscf;
 
@@ -486,6 +487,15 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
             }
 
             X509_free(cert);
+        }
+
+        if (ngx_ssl_ocsp_get_status(c, &str) != NGX_OK) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client SSL certificate verify error: %s", str);
+
+            ngx_ssl_remove_cached_session(c->ssl->session_ctx,
+                                       (SSL_get0_session(c->ssl->connection)));
+            return NGX_ERROR;
         }
     }
 
