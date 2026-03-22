@@ -3215,6 +3215,12 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     }
 #endif
 
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
+
     ngx_ssl_clear_error(c->log);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL to write: %uz", size);
@@ -3322,6 +3328,12 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
     int        n, sslerr;
     size_t     written;
     ngx_err_t  err;
+
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
 
     ngx_ssl_clear_error(c->log);
 
