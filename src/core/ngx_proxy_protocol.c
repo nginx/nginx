@@ -326,6 +326,7 @@ u_char *
 ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     u_char                             *p;
+    u_char                              transport;
     ngx_uint_t                          port, lport;
     ngx_proxy_protocol_header_t        *header;
     ngx_proxy_protocol_inet_addrs_t    *in;
@@ -351,13 +352,15 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     header->version_command = 0x21;  /* version 2, PROXY command */
 
+    transport = (c->type == SOCK_DGRAM) ? 0x02 : 0x01;
+
     p = buf + sizeof(ngx_proxy_protocol_header_t);
 
     switch (c->sockaddr->sa_family) {
 
     case AF_INET:
 
-        header->family_transport = 0x11;  /* AF_INET, STREAM */
+        header->family_transport = 0x10 | transport;  /* AF_INET */
         header->len[0] = 0;
         header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
 
@@ -384,7 +387,7 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET6:
 
-        header->family_transport = 0x21;  /* AF_INET6, STREAM */
+        header->family_transport = 0x20 | transport;  /* AF_INET6 */
         header->len[0] = 0;
         header->len[1] = sizeof(ngx_proxy_protocol_inet6_addrs_t);
 
