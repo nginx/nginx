@@ -72,6 +72,10 @@ foreach my $name ('localhost') {
 		or die "Can't create certificate for $name: $!\n";
 }
 
+
+# Fixed header: 16 bytes.  IPv4 address block: 12 bytes.  Total: 28 bytes.
+my $PPV2_HDR = 28;
+
 $t->run_daemon(\&stream_daemon_ssl, port(8081), path => $d);
 $t->run();
 $t->waitforsocket('127.0.0.1:' . port(8081));
@@ -81,13 +85,10 @@ $t->waitforsocket('127.0.0.1:' . port(8081));
 # PPv2 magic signature (12 bytes)
 my $SIG = "\x0D\x0A\x0D\x0A\x00\x0D\x0A\x51\x55\x49\x54\x0A";
 
-# Fixed header: 16 bytes.  IPv4 address block: 12 bytes.  Total: 28 bytes.
-my $PPV2_HDR = 28;
-
 my $dp = port(8080);
 my $s  = stream('127.0.0.1:' . $dp);
-my $data = $s->io('hello');
 my $sp = $s->sockport();
+my $data = $s->io('hello');
 
 is(substr($data, 0, 12), $SIG,                         'ssl v2 signature');
 is(unpack('C', substr($data, 12, 1)), 0x21,             'ssl v2 version and command');
@@ -120,11 +121,10 @@ sub stream_daemon_ssl {
 
 		log2c("(new connection $client on $port)");
 
-		# Read the 28-byte PPv2 header sent over plain TCP before SSL:
-		# 16-byte fixed header + 12-byte IPv4 address block.
+		# Read the PPv2 header sent over plain TCP before SSL.
 		my $header = '';
-		while (length($header) < 28) {
-			my $n = $client->sysread(my $buf, 28 - length($header));
+		while (length($header) < $PPV2_HDR) {
+			my $n = $client->sysread(my $buf, $PPV2_HDR - length($header));
 			last unless $n;
 			$header .= $buf;
 		}
