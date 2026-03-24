@@ -8,4 +8,4 @@ on:
 
 jobs:
   buildbot:
-    uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@main
+    uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@a18ba87ce844172e745b83b6bcfed902c5bbe039 # main

@@ -5,4 +5,4 @@ on:
 
 jobs:
   check-pr:
-    uses: nginx/ci-self-hosted/.github/workflows/nginx-check-pr.yml@main
+    uses: nginx/ci-self-hosted/.github/workflows/nginx-check-pr.yml@a18ba87ce844172e745b83b6bcfed902c5bbe039 # main
