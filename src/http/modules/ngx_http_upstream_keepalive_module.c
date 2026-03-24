@@ -607,7 +607,7 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     kcf->max_cached = n;
 
     if (cf->args->nelts == 3) {
-        if (ngx_strncmp(value[2].data, "local", 5) == 0) {
+        if (ngx_strcmp(value[2].data, "local") == 0) {
             kcf->local = 1;
 
         } else {
