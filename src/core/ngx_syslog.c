@@ -295,7 +295,9 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 u_char *
 ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
 {
-    ngx_uint_t  pri;
+    ngx_uint_t   pri;
+    ngx_str_t    datetime, tz;
+    ngx_time_t  *tp;
 
     pri = peer->facility * 8 + peer->severity;
 
@@ -305,18 +307,39 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
          * RFC 5424 HEADER: VERSION SP TIMESTAMP SP HOSTNAME SP
          *                  APP-NAME SP PROCID SP MSGID SP STRUCTURED-DATA SP
          *
-         * PROCID is set to the nginx process PID.  MSGID and
-         * STRUCTURED-DATA are set to the nil value "-".
+         * TIMESTAMP is formatted as an ISO 8601 date-time with
+         * millisecond precision and UTC offset, e.g.:
+         *   2003-10-11T22:14:15.003+05:30
+         *
+         * The date, time, and UTC offset are taken from the
+         * ngx_cached_http_log_iso8601 cache ("YYYY-MM-DDTHH:MM:SS±HH:MM",
+         * 25 bytes).  The first 19 bytes are "YYYY-MM-DDTHH:MM:SS"
+         * and the trailing 6 bytes are "±HH:MM".  The millisecond
+         * field is read live from ngx_timeofday() so that it reflects
+         * the current event-loop tick rather than the start of the
+         * current second.
+         *
+         * PROCID is the nginx process PID.  MSGID and STRUCTURED-DATA
+         * are set to the nil value "-".
          */
 
+        tp = ngx_timeofday();
+
+        datetime.data = ngx_cached_http_log_iso8601.data;
+        datetime.len  = sizeof("1970-09-28T12:00:00") - 1;
+
+        tz.data = ngx_cached_http_log_iso8601.data
+                  + sizeof("1970-09-28T12:00:00") - 1;
+        tz.len  = sizeof("+06:00") - 1;
+
         if (peer->nohostname) {
-            return ngx_sprintf(buf, "<%ui>1 %V - %V %P - - ",
-                               pri, &ngx_cached_syslog_rfc5424_time,
+            return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V - %V %P - - ",
+                               pri, &datetime, tp->msec, &tz,
                                &peer->tag, ngx_pid);
         }
 
-        return ngx_sprintf(buf, "<%ui>1 %V %V %V %P - - ",
-                           pri, &ngx_cached_syslog_rfc5424_time,
+        return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V %V %V %P - - ",
+                           pri, &datetime, tp->msec, &tz,
                            peer->hostname, &peer->tag, ngx_pid);
     }
 
