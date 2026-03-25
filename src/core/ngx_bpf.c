@@ -99,6 +99,33 @@ ngx_bpf_map_create(ngx_log_t *log, enum bpf_map_type type, int key_size,
 
 
 int
+ngx_bpf_map_create_outer(ngx_log_t *log, enum bpf_map_type type,
+    int max_entries, uint32_t map_flags, int template_fd)
+{
+    int             fd;
+    union bpf_attr  attr;
+
+    ngx_memzero(&attr, sizeof(union bpf_attr));
+
+    attr.map_type = type;
+    attr.key_size = sizeof(uint32_t);
+    attr.value_size = sizeof(uint32_t);
+    attr.max_entries = max_entries;
+    attr.map_flags = map_flags;
+    attr.inner_map_fd = template_fd;
+
+    fd = ngx_bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+    if (fd < 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, ngx_errno,
+                      "failed to create outer BPF map");
+        return NGX_ERROR;
+    }
+
+    return fd;
+}
+
+
+int
 ngx_bpf_map_update(int fd, const void *key, const void *value, uint64_t flags)
 {
     union bpf_attr attr;
