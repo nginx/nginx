@@ -26,7 +26,7 @@ select STDOUT; $| = 1;
 
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
-my $t = Test::Nginx->new()->has(qw/http/)->plan(21);
+my $t = Test::Nginx->new()->has(qw/http/)->plan(23);
 
 ###############################################################################
 
@@ -67,6 +67,12 @@ http {
         location /e5424 {
             error_log
                 syslog:server=127.0.0.1:%%PORT_8982_UDP%%,rfc=rfc5424,tag=my-app,facility=user;
+        }
+
+        # RFC 5424 access log with explicit msgid=
+        location /a5424_msgid {
+            access_log syslog:server=127.0.0.1:%%PORT_8982_UDP%%,rfc=rfc5424,msgid=MYAPP
+                       logf;
         }
 
         # RFC 3164 access log — verify backward compatibility
@@ -127,6 +133,18 @@ like($msg, qr/my-app/, 'rfc5424: hyphenated tag present in APP-NAME');
 my ($pri) = $msg =~ /^<(\d+)>/;
 my $fac = ($pri & 0x03f8) >> 3;
 is($fac, 1, 'rfc5424: facility=user (1) encoded in PRI');
+
+# RFC 5424 MSGID field: explicit msgid= value appears in position 6 of the header
+
+$msg = get_syslog($s5424, '/a5424_msgid');
+my ($msgid_field) = $msg =~ /^<\d+>1\s\S+\s\S+\s\S+\s\d+\s(\S+)\s/;
+is($msgid_field, 'MYAPP', 'rfc5424: explicit msgid= appears in MSGID field');
+
+# Without msgid=, the MSGID field defaults to nil "-"
+
+$msg = get_syslog($s5424, '/a5424');
+($msgid_field) = $msg =~ /^<\d+>1\s\S+\s\S+\s\S+\s\d+\s(\S+)\s/;
+is($msgid_field, '-', 'rfc5424: default MSGID is nil "-"');
 
 # Global error_log uses rfc5424 — check via background-daemon log file
 
