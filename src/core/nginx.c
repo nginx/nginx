@@ -187,6 +187,9 @@ static u_char      *ngx_prefix;
 static u_char      *ngx_error_log;
 static u_char      *ngx_conf_file;
 static u_char      *ngx_conf_params;
+#if (NGX_CONTROL_API)
+static u_char      *ngx_control_addr;
+#endif
 static char        *ngx_signal;
 
 
@@ -360,6 +363,12 @@ main(int argc, char *const *argv)
 
 #endif
 
+#if (NGX_CONTROL_API)
+    if (ngx_control_init(ngx_control_addr) != NGX_OK) {
+        return 1;
+    }
+#endif
+
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
@@ -410,6 +419,9 @@ ngx_show_version_info(void)
                                "during configuration testing" NGX_LINEFEED
             "  -s signal     : send signal to a master process: "
                                "stop, quit, reopen, reload" NGX_LINEFEED
+#if (NGX_CONTROL_API)
+            "  -l addr       : open control socket on address" NGX_LINEFEED
+#endif
 #ifdef NGX_PREFIX
             "  -p prefix     : set prefix path (default: " NGX_PREFIX ")"
                                NGX_LINEFEED
@@ -711,7 +723,7 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
     ctx.name = "new binary process";
     ctx.argv = argv;
 
-    n = 2;
+    n = 3;
     env = ngx_set_environment(cycle, &n);
     if (env == NULL) {
         return NGX_INVALID_PID;
@@ -749,6 +761,14 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
+#endif
+
+#if (NGX_CONTROL_API)
+    env[n] = ngx_control_handoff();
+
+    if (env[n] != NULL) {
+        n++;
+    }
 #endif
 
     env[n] = NULL;
@@ -928,6 +948,22 @@ ngx_get_options(int argc, char *const *argv)
 
                 ngx_log_stderr(0, "invalid option: \"-s %s\"", ngx_signal);
                 return NGX_ERROR;
+
+#if (NGX_CONTROL_API)
+            case 'l':
+                if (*p) {
+                    ngx_control_addr = p;
+                    goto next;
+                }
+
+                if (argv[++i]) {
+                    ngx_control_addr = (u_char *) argv[i];
+                    goto next;
+                }
+
+                ngx_log_stderr(0, "option \"-l\" requires listen address");
+                return NGX_ERROR;
+#endif
 
             default:
                 ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));

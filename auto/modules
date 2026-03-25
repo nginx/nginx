@@ -56,6 +56,23 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
 fi
 
 
+if [ $CONTROL_API = YES ]; then
+
+    if [ "$NGX_PLATFORM" = win32 ]; then
+        cat << END
+
+$0: --with-control-api is not supported on Windows
+
+END
+        exit 1
+    fi
+
+    have=NGX_CONTROL_API . auto/have
+    CORE_DEPS="$CORE_DEPS $UNIX_CONTROL_API_DEPS"
+    CORE_SRCS="$CORE_SRCS $UNIX_CONTROL_API_SRCS"
+fi
+
+
 if [ $HTTP = YES ]; then
     HTTP_MODULES=
     HTTP_DEPS=

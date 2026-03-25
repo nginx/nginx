@@ -92,6 +92,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #endif
 #endif
 #include <ngx_process_cycle.h>
+#if (NGX_CONTROL_API)
+#include <ngx_control.h>
+#endif
 #include <ngx_conf_file.h>
 #include <ngx_module.h>
 #include <ngx_open_file_cache.h>
