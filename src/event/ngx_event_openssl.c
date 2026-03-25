@@ -19,11 +19,9 @@
 
 #if (NGX_SSL_TICKET_KEY_EVP_CB)
 #define ngx_ssl_ticket_key_mac_ctx_t        EVP_MAC_CTX
-#define ngx_ssl_set_ticket_key_callback     SSL_CTX_set_tlsext_ticket_key_evp_cb
 
 #elif defined SSL_CTX_set_tlsext_ticket_key_cb
 #define ngx_ssl_ticket_key_mac_ctx_t        HMAC_CTX
-#define ngx_ssl_set_ticket_key_callback     SSL_CTX_set_tlsext_ticket_key_cb
 
 #endif
 
@@ -84,7 +82,7 @@ static void ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
 static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
-#ifdef ngx_ssl_set_ticket_key_callback
+#if (NGX_SSL_TICKET_KEY_EVP_CB) || defined SSL_CTX_set_tlsext_ticket_key_cb
 static int ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     ngx_ssl_ticket_key_mac_ctx_t *hctx, int enc);
@@ -4798,7 +4796,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 }
 
 
-#ifdef ngx_ssl_set_ticket_key_callback
+#if (NGX_SSL_TICKET_KEY_EVP_CB) || defined SSL_CTX_set_tlsext_ticket_key_cb
 
 ngx_int_t
 ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
@@ -4840,8 +4838,17 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_ERROR;
     }
 
-    if (ngx_ssl_set_ticket_key_callback(ssl->ctx, ngx_ssl_ticket_key_callback)
+#if (NGX_SSL_TICKET_KEY_EVP_CB)
+    if (SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl->ctx,
+                                             ngx_ssl_ticket_key_callback)
         == 0)
+
+#elif defined SSL_CTX_set_tlsext_ticket_key_cb
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx,
+                                         ngx_ssl_ticket_key_callback)
+        == 0)
+
+#endif
     {
         ngx_log_error(NGX_LOG_WARN, cf->log, 0,
                       "nginx was built with Session Tickets support, however, "
