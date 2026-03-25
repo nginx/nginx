@@ -26,10 +26,7 @@
 #include <openssl/engine.h>
 #endif
 #include <openssl/evp.h>
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L                                  \
-     && !defined LIBRESSL_VERSION_NUMBER                                    \
-     && !defined OPENSSL_IS_BORINGSSL                                       \
-     && !defined OPENSSL_IS_AWSLC)
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #include <openssl/core_names.h>
 #endif
 #include <openssl/hmac.h>
@@ -94,10 +91,7 @@
 #endif
 
 
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L                                  \
-     && !defined LIBRESSL_VERSION_NUMBER                                    \
-     && !defined OPENSSL_IS_BORINGSSL                                       \
-     && !defined OPENSSL_IS_AWSLC)
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #define NGX_SSL_TICKET_KEY_EVP_CB  1
 #endif
 
