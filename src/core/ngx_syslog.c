@@ -49,6 +49,56 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
         return NGX_CONF_ERROR;
     }
 
+    if (peer->tag.data != NULL) {
+        ngx_uint_t  j;
+        u_char      ch;
+
+        if (peer->rfc5424) {
+
+            /*
+             * RFC 5424: APP-NAME is at most 48 printable US-ASCII
+             * characters (0x21-0x7E; space and controls are excluded).
+             */
+            for (j = 0; j < peer->tag.len; j++) {
+                ch = peer->tag.data[j];
+
+                if (ch < '!' || ch > '~') {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "syslog \"tag\" must contain "
+                                       "printable US-ASCII characters");
+                    return NGX_CONF_ERROR;
+                }
+            }
+
+        } else {
+
+            /*
+             * RFC 3164: the TAG is a string of ABNF alphanumeric
+             * characters that MUST NOT exceed 32 characters.
+             */
+            if (peer->tag.len > 32) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog tag length exceeds 32");
+                return NGX_CONF_ERROR;
+            }
+
+            for (j = 0; j < peer->tag.len; j++) {
+                ch = ngx_tolower(peer->tag.data[j]);
+
+                if (ch < '0'
+                    || (ch > '9' && ch < 'a' && ch != '_')
+                    || ch > 'z')
+                {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "syslog \"tag\" only allows "
+                                       "alphanumeric characters "
+                                       "and underscore");
+                    return NGX_CONF_ERROR;
+                }
+            }
+        }
+    }
+
     if (peer->server.sockaddr == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "no syslog server specified");
@@ -92,7 +142,7 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 static char *
 ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 {
-    u_char      *p, *comma, c;
+    u_char      *p, *comma;
     size_t       len;
     ngx_str_t   *value;
     ngx_url_t    u;
@@ -188,29 +238,35 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
             }
 
             /*
-             * RFC 3164: the TAG is a string of ABNF alphanumeric characters
-             * that MUST NOT exceed 32 characters.
+             * Character set and maximum length depend on the syslog
+             * protocol version (rfc= parameter) and are validated in
+             * ngx_syslog_process_conf() once all parameters are known.
+             * RFC 5424 APP-NAME allows up to 48 printable US-ASCII
+             * characters; RFC 3164 TAG allows up to 32 alphanumeric
+             * characters.  Reject anything that exceeds the larger
+             * of the two limits here so that the later check can rely
+             * on the data fitting into the statically-sized buffers.
              */
-            if (len - 4 > 32) {
+            if (len - 4 > 48) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "syslog tag length exceeds 32");
+                                   "syslog tag length exceeds 48");
                 return NGX_CONF_ERROR;
-            }
-
-            for (i = 4; i < len; i++) {
-                c = ngx_tolower(p[i]);
-
-                if (c < '0' || (c > '9' && c < 'a' && c != '_') || c > 'z') {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "syslog \"tag\" only allows "
-                                       "alphanumeric characters "
-                                       "and underscore");
-                    return NGX_CONF_ERROR;
-                }
             }
 
             peer->tag.data = p + 4;
             peer->tag.len = len - 4;
+
+        } else if (ngx_strncmp(p, "rfc=", 4) == 0) {
+
+            if (ngx_strcmp(p + 4, "rfc5424") == 0) {
+                peer->rfc5424 = 1;
+
+            } else if (ngx_strcmp(p + 4, "rfc3164") != 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "unknown syslog \"rfc\" value \"%s\"",
+                                   p + 4);
+                return NGX_CONF_ERROR;
+            }
 
         } else if (len == 10 && ngx_strncmp(p, "nohostname", 10) == 0) {
             peer->nohostname = 1;
