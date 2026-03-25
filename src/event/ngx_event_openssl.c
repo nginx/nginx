@@ -5089,11 +5089,7 @@ ngx_ssl_ticket_key_mac_init(ngx_connection_t *c, ngx_ssl_ticket_key_t *key,
     char        *digest;
     OSSL_PARAM   params[2];
 
-#ifdef OPENSSL_NO_SHA256
-    digest = (char *) OSSL_DIGEST_NAME_SHA1;
-#else
     digest = (char *) OSSL_DIGEST_NAME_SHA2_256;
-#endif
 
     params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_DIGEST,
                                                  digest, 0);
