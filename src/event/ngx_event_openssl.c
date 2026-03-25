@@ -17,11 +17,11 @@
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
 
-#if (NGX_SSL_TICKET_KEY_EVP_CB)
-#define ngx_ssl_ticket_key_mac_ctx_t        EVP_MAC_CTX
-
-#elif defined SSL_CTX_set_tlsext_ticket_key_cb
+#ifdef SSL_CTX_set_tlsext_ticket_key_cb
 #define ngx_ssl_ticket_key_mac_ctx_t        HMAC_CTX
+
+#elif (NGX_SSL_TICKET_KEY_EVP_CB)
+#define ngx_ssl_ticket_key_mac_ctx_t        EVP_MAC_CTX
 
 #endif
 
@@ -82,7 +82,7 @@ static void ngx_ssl_expire_sessions(ngx_ssl_session_cache_t *cache,
 static void ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
 
-#if (NGX_SSL_TICKET_KEY_EVP_CB) || defined SSL_CTX_set_tlsext_ticket_key_cb
+#if defined SSL_CTX_set_tlsext_ticket_key_cb || (NGX_SSL_TICKET_KEY_EVP_CB)
 static int ngx_ssl_ticket_key_callback(ngx_ssl_conn_t *ssl_conn,
     unsigned char *name, unsigned char *iv, EVP_CIPHER_CTX *ectx,
     ngx_ssl_ticket_key_mac_ctx_t *hctx, int enc);
@@ -4796,7 +4796,7 @@ ngx_ssl_session_rbtree_insert_value(ngx_rbtree_node_t *temp,
 }
 
 
-#if (NGX_SSL_TICKET_KEY_EVP_CB) || defined SSL_CTX_set_tlsext_ticket_key_cb
+#if defined SSL_CTX_set_tlsext_ticket_key_cb || (NGX_SSL_TICKET_KEY_EVP_CB)
 
 ngx_int_t
 ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
@@ -4838,14 +4838,14 @@ ngx_ssl_session_ticket_keys(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *paths)
         return NGX_ERROR;
     }
 
-#if (NGX_SSL_TICKET_KEY_EVP_CB)
-    if (SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl->ctx,
-                                             ngx_ssl_ticket_key_callback)
-        == 0)
-
-#elif defined SSL_CTX_set_tlsext_ticket_key_cb
+#ifdef SSL_CTX_set_tlsext_ticket_key_cb
     if (SSL_CTX_set_tlsext_ticket_key_cb(ssl->ctx,
                                          ngx_ssl_ticket_key_callback)
+        == 0)
+
+#elif (NGX_SSL_TICKET_KEY_EVP_CB)
+    if (SSL_CTX_set_tlsext_ticket_key_evp_cb(ssl->ctx,
+                                             ngx_ssl_ticket_key_callback)
         == 0)
 
 #endif
