@@ -10,9 +10,11 @@
 
 
 #define NGX_SYSLOG_MAX_STR                                                    \
-    NGX_MAX_ERROR_STR + sizeof("<255>Jan 01 00:00:00 ") - 1                   \
+    NGX_MAX_ERROR_STR + sizeof("<255>1 ") - 1                                 \
+    + sizeof("1970-09-28T12:00:00.000+06:00") - 1 + 1 /* space */            \
     + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
-    + 32 /* tag */ + 2 /* colon, space */
+    + 48 /* APP-NAME/TAG */ + 1 /* space */                                   \
+    + NGX_INT64_LEN /* PROCID */ + sizeof(" - - ") - 1
 
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);
@@ -296,6 +298,27 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
     ngx_uint_t  pri;
 
     pri = peer->facility * 8 + peer->severity;
+
+    if (peer->rfc5424) {
+
+        /*
+         * RFC 5424 HEADER: VERSION SP TIMESTAMP SP HOSTNAME SP
+         *                  APP-NAME SP PROCID SP MSGID SP STRUCTURED-DATA SP
+         *
+         * PROCID is set to the nginx process PID.  MSGID and
+         * STRUCTURED-DATA are set to the nil value "-".
+         */
+
+        if (peer->nohostname) {
+            return ngx_sprintf(buf, "<%ui>1 %V - %V %P - - ",
+                               pri, &ngx_cached_syslog_rfc5424_time,
+                               &peer->tag, ngx_pid);
+        }
+
+        return ngx_sprintf(buf, "<%ui>1 %V %V %V %P - - ",
+                           pri, &ngx_cached_syslog_rfc5424_time,
+                           peer->hostname, &peer->tag, ngx_pid);
+    }
 
     if (peer->nohostname) {
         return ngx_sprintf(buf, "<%ui>%V %V: ", pri, &ngx_cached_syslog_time,
