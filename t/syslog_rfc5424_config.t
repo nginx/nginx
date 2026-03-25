@@ -105,6 +105,35 @@ like($out, qr/tag length exceeds 48/, 'rfc5424: 49-char tag rejected');
 $out = config_check("syslog:server=127.0.0.1:5140,rfc=rfc3164,tag=$tag49");
 like($out, qr/tag length exceeds 48/, 'rfc3164: 49-char tag rejected');
 
+# msgid= is accepted with rfc=rfc5424.
+
+$out = config_check('syslog:server=127.0.0.1:5140,rfc=rfc5424,msgid=MYAPP');
+like($out, qr/test is successful/i, 'rfc5424: msgid= accepted');
+
+# msgid= without rfc=rfc5424 must be rejected.
+
+$out = config_check('syslog:server=127.0.0.1:5140,msgid=MYAPP');
+like($out, qr/requires rfc=rfc5424/, 'msgid= without rfc5424 rejected');
+
+# msgid= with a non-ASCII byte (>0x7E) must be rejected.
+# Space cannot be tested this way because nginx's config parser splits on
+# whitespace before syslog parsing sees the value.
+
+$out = config_check("syslog:server=127.0.0.1:5140,rfc=rfc5424,msgid=MY\xc3APP");
+like($out, qr/printable US-ASCII/, 'msgid= with non-ASCII byte rejected');
+
+# msgid= must not exceed 32 characters.
+
+my $msgid33 = 'x' x 33;
+$out = config_check("syslog:server=127.0.0.1:5140,rfc=rfc5424,msgid=$msgid33");
+like($out, qr/msgid length exceeds 32/, 'msgid= 33-char rejected');
+
+# A 32-character msgid is within the limit and must be accepted.
+
+my $msgid32 = 'x' x 32;
+$out = config_check("syslog:server=127.0.0.1:5140,rfc=rfc5424,msgid=$msgid32");
+like($out, qr/test is successful/i, 'msgid= 32-char accepted');
+
 done_testing;
 
 ###############################################################################
