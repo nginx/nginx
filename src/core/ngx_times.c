@@ -33,7 +33,6 @@ volatile ngx_str_t       ngx_cached_http_time;
 volatile ngx_str_t       ngx_cached_http_log_time;
 volatile ngx_str_t       ngx_cached_http_log_iso8601;
 volatile ngx_str_t       ngx_cached_syslog_time;
-volatile ngx_str_t       ngx_cached_syslog_rfc5424_time;
 
 #if !(NGX_WIN32)
 
@@ -57,8 +56,6 @@ static u_char            cached_http_log_iso8601[NGX_TIME_SLOTS]
                                     [sizeof("1970-09-28T12:00:00+06:00")];
 static u_char            cached_syslog_time[NGX_TIME_SLOTS]
                                     [sizeof("Sep 28 12:00:00")];
-static u_char            cached_syslog_rfc5424_time[NGX_TIME_SLOTS]
-                                    [sizeof("1970-09-28T12:00:00.000+06:00")];
 
 
 static char  *week[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
@@ -73,8 +70,6 @@ ngx_time_init(void)
     ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
     ngx_cached_http_log_iso8601.len = sizeof("1970-09-28T12:00:00+06:00") - 1;
     ngx_cached_syslog_time.len = sizeof("Sep 28 12:00:00") - 1;
-    ngx_cached_syslog_rfc5424_time.len =
-        sizeof("1970-09-28T12:00:00.000+06:00") - 1;
 
     ngx_cached_time = &cached_time[0];
 
@@ -85,7 +80,7 @@ ngx_time_init(void)
 void
 ngx_time_update(void)
 {
-    u_char          *p0, *p1, *p2, *p3, *p4, *p5;
+    u_char          *p0, *p1, *p2, *p3, *p4;
     ngx_tm_t         tm, gmt;
     time_t           sec;
     ngx_uint_t       msec;
@@ -184,15 +179,6 @@ ngx_time_update(void)
                        months[tm.ngx_tm_mon - 1], tm.ngx_tm_mday,
                        tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    p5 = &cached_syslog_rfc5424_time[slot][0];
-
-    (void) ngx_sprintf(p5, "%4d-%02d-%02dT%02d:%02d:%02d.%03ui%c%02i:%02i",
-                       tm.ngx_tm_year, tm.ngx_tm_mon,
-                       tm.ngx_tm_mday, tm.ngx_tm_hour,
-                       tm.ngx_tm_min, tm.ngx_tm_sec, msec,
-                       tp->gmtoff < 0 ? '-' : '+',
-                       ngx_abs(tp->gmtoff / 60), ngx_abs(tp->gmtoff % 60));
-
     ngx_memory_barrier();
 
     ngx_cached_time = tp;
@@ -201,7 +187,6 @@ ngx_time_update(void)
     ngx_cached_http_log_time.data = p2;
     ngx_cached_http_log_iso8601.data = p3;
     ngx_cached_syslog_time.data = p4;
-    ngx_cached_syslog_rfc5424_time.data = p5;
 
     ngx_unlock(&ngx_time_lock);
 }
@@ -229,7 +214,7 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
 void
 ngx_time_sigsafe_update(void)
 {
-    u_char          *p, *p2, *p3;
+    u_char          *p, *p2;
     ngx_tm_t         tm;
     time_t           sec;
     ngx_time_t      *tp;
@@ -275,21 +260,10 @@ ngx_time_sigsafe_update(void)
                        months[tm.ngx_tm_mon - 1], tm.ngx_tm_mday,
                        tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
-    p3 = &cached_syslog_rfc5424_time[slot][0];
-
-    (void) ngx_sprintf(p3, "%4d-%02d-%02dT%02d:%02d:%02d.000%c%02i:%02i",
-                       tm.ngx_tm_year, tm.ngx_tm_mon,
-                       tm.ngx_tm_mday, tm.ngx_tm_hour,
-                       tm.ngx_tm_min, tm.ngx_tm_sec,
-                       cached_gmtoff < 0 ? '-' : '+',
-                       ngx_abs(cached_gmtoff / 60),
-                       ngx_abs(cached_gmtoff % 60));
-
     ngx_memory_barrier();
 
     ngx_cached_err_log_time.data = p;
     ngx_cached_syslog_time.data = p2;
-    ngx_cached_syslog_rfc5424_time.data = p3;
 
     ngx_unlock(&ngx_time_lock);
 }
