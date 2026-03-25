@@ -20,6 +20,29 @@ the "server" directive supports the "route" and "drain" parameters.
 </para>
 </change>
 
+<change type="feature">
+<para lang="ru">
+поддержка forward proxy в HTTP:
+директива "forward_proxy" в модуле ngx_http_proxy_module;
+директивы "tunnel_pass", "tunnel_bind", "tunnel_bind_dynamic",
+"tunnel_buffer_size", "tunnel_connect_timeout",
+"tunnel_read_timeout", "tunnel_send_lowat", "tunnel_send_timeout",
+"tunnel_socket_keepalive", "tunnel_next_upstream",
+"tunnel_next_upstream_timeout", "tunnel_next_upstream_tries",
+и "tunnel_allow_upstream" в модуле ngx_http_tunnel_module.
+</para>
+<para lang="en">
+forward proxy support in HTTP:
+the "forward_proxy" directive in the ngx_http_proxy_module;
+the "tunnel_pass", "tunnel_bind", "tunnel_bind_dynamic",
+"tunnel_buffer_size", "tunnel_connect_timeout",
+"tunnel_read_timeout", "tunnel_send_lowat", "tunnel_send_timeout",
+"tunnel_socket_keepalive", "tunnel_next_upstream",
+"tunnel_next_upstream_timeout", "tunnel_next_upstream_tries",
+and "tunnel_allow_upstream" directives in the ngx_http_tunnel_module.
+</para>
+</change>
+
 <change type="change">
 <para lang="ru">
 теперь nginx ограничивает размер и частоту отправки пакетов
