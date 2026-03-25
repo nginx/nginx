@@ -26,7 +26,7 @@ select STDOUT; $| = 1;
 
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 
-my $t = Test::Nginx->new()->has(qw/http/)->plan(20);
+my $t = Test::Nginx->new()->has(qw/http/)->plan(21);
 
 ###############################################################################
 
@@ -139,6 +139,20 @@ for (1 .. 50) {
 	last if $glob;
 }
 like($glob, qr/^<\d+>1\s/m, 'rfc5424 global error_log: VERSION "1" present');
+
+# Millisecond field is live (ngx_timeofday()->msec, not once-per-second cache).
+# Send several messages with small gaps and verify that the ms field is not
+# permanently stuck at "000" as it would be with a second-boundary-only cache.
+
+my @ms_vals;
+for (1..10) {
+	select undef, undef, undef, 0.02;    # 20 ms gap
+	my $m = get_syslog($s5424, '/a5424');
+	my ($ms_field) = $m =~ /T\d{2}:\d{2}:\d{2}\.(\d{3})/;
+	push @ms_vals, $ms_field if defined $ms_field;
+}
+ok((grep { $_ ne '000' } @ms_vals) > 0,
+   'rfc5424: millisecond field is not always zero (live ngx_timeofday)');
 
 # RFC 3164 format is unchanged (backward compatibility)
 
