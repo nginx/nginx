@@ -3562,18 +3562,40 @@ static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
     u_char  *p;
+    ngx_http_core_srv_conf_t  *cscf;
 
     static const u_char ending[] = " HTTP/2.0";
+    static u_char        connect_path[] = "/";
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (r->method == NGX_HTTP_CONNECT && cscf->allow_connect) {
+        if (r->headers_in.server.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :authority header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        if (r->unparsed_uri.len == 0) {
+            r->uri_start = connect_path;
+            r->uri_end = connect_path + 1;
+            r->uri.len = 1;
+            r->uri.data = connect_path;
+            r->unparsed_uri = r->uri;
+            r->valid_unparsed_uri = 1;
+        }
+    }
 
     if (r->method_name.len == 0
-        || r->schema.len == 0
+        || (r->schema.len == 0 && r->method != NGX_HTTP_CONNECT)
         || r->unparsed_uri.len == 0)
     {
         if (r->method_name.len == 0) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent no :method header");
 
-        } else if (r->schema.len == 0) {
+        } else if (r->schema.len == 0 && r->method != NGX_HTTP_CONNECT) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent no :scheme header");
 
@@ -3785,6 +3807,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 {
     ngx_str_t                  host;
     ngx_connection_t          *fc;
+    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
 
@@ -3871,7 +3894,9 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->headers_in.chunked = 1;
     }
 
-    if (r->method == NGX_HTTP_CONNECT) {
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (r->method == NGX_HTTP_CONNECT && !cscf->allow_connect) {
         ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         goto failed;
