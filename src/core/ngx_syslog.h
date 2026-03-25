@@ -12,6 +12,7 @@ typedef struct {
     ngx_uint_t         facility;
     ngx_uint_t         severity;
     ngx_str_t          tag;
+    ngx_str_t          msgid;
 
     ngx_str_t         *hostname;
 
