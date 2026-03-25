@@ -174,6 +174,14 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             live = ngx_reap_children(cycle);
         }
 
+#if (NGX_CONTROL_API)
+        if (ngx_sigio) {
+            ngx_sigio = 0;
+
+            ngx_control_handle_events();
+        }
+#endif
+
         if (!live && (ngx_terminate || ngx_quit)) {
             ngx_master_process_exit(cycle);
         }
@@ -629,6 +637,10 @@ ngx_reap_children(ngx_cycle_t *cycle)
                                   ccf->oldpid.data, ccf->pid.data, ngx_argv[0]);
                 }
 
+#if (NGX_CONTROL_API)
+                ngx_control_reown();
+#endif
+
                 ngx_new_binary = 0;
                 if (ngx_noaccepting) {
                     ngx_restart = 1;
@@ -668,6 +680,10 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     }
 
     ngx_close_listening_sockets(cycle);
+
+#if (NGX_CONTROL_API)
+    ngx_control_uninit();
+#endif
 
     /*
      * Copy ngx_cycle->log related data to the special static exit cycle,
@@ -759,6 +775,10 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     ngx_cpuset_t     *cpu_affinity;
     struct rlimit     rlmt;
     ngx_core_conf_t  *ccf;
+
+#if (NGX_CONTROL_API)
+    ngx_control_close_sockets();
+#endif
 
     if (ngx_set_environment(cycle, NULL) == NULL) {
         /* fatal */

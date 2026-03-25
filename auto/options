@@ -41,6 +41,8 @@ EVENT_FOUND=NO
 EVENT_SELECT=NO
 EVENT_POLL=NO
 
+CONTROL_API=NO
+
 USE_THREADS=NO
 
 NGX_FILE_AIO=NO
@@ -224,6 +226,8 @@ do
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
 
         --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
+
+        --with-control-api)              CONTROL_API=YES            ;;
 
         --with-ipv6)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
@@ -467,6 +471,8 @@ cat << END
   --without-select_module            disable select module
   --with-poll_module                 enable poll module
   --without-poll_module              disable poll module
+
+  --with-control-api                 enable control API
 
   --with-threads                     enable thread pool support
 

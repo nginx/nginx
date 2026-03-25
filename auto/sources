@@ -192,6 +192,9 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_dlopen.c \
             src/os/unix/ngx_process_cycle.c"
 
+UNIX_CONTROL_API_DEPS=src/os/unix/ngx_control.h
+UNIX_CONTROL_API_SRCS=src/os/unix/ngx_control.c
+
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
 
 THREAD_POOL_MODULE=ngx_thread_pool_module
