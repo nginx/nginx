@@ -14,7 +14,8 @@
     + sizeof("1970-09-28T12:00:00.000+06:00") - 1 + 1 /* space */             \
     + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
     + 48 /* APP-NAME/TAG */ + 1 /* space */                                   \
-    + NGX_INT64_LEN /* PROCID */ + sizeof(" - - ") - 1
+    + NGX_INT64_LEN /* PROCID */ + 1 /* space */                              \
+    + 32 /* MSGID */ + sizeof(" - ") - 1
 
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);
@@ -101,6 +102,30 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
         }
     }
 
+    if (peer->msgid.data != NULL) {
+
+        if (!peer->rfc5424) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "syslog \"msgid\" requires rfc=rfc5424");
+            return NGX_CONF_ERROR;
+        }
+
+        /*
+         * RFC 5424 s6.2.7: MSGID consists of printable US-ASCII
+         * characters (0x21-0x7E; space and controls are excluded).
+         */
+        for (j = 0; j < peer->msgid.len; j++) {
+            ch = peer->msgid.data[j];
+
+            if (ch < '!' || ch > '~') {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog \"msgid\" must contain "
+                                   "printable US-ASCII characters");
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
+
     if (peer->server.sockaddr == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "no syslog server specified");
@@ -117,6 +142,10 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 
     if (peer->tag.data == NULL) {
         ngx_str_set(&peer->tag, "nginx");
+    }
+
+    if (peer->msgid.data == NULL) {
+        ngx_str_set(&peer->msgid, "-");
     }
 
     peer->hostname = &cf->cycle->hostname;
@@ -277,6 +306,29 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
                 return NGX_CONF_ERROR;
             }
 
+        } else if (ngx_strncmp(p, "msgid=", 6) == 0) {
+
+            if (peer->msgid.data != NULL) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "duplicate syslog \"msgid\"");
+                return NGX_CONF_ERROR;
+            }
+
+            /*
+             * RFC 5424 s6.2.7: MSGID is at most 32 printable US-ASCII
+             * characters.  Character set and protocol-version constraints
+             * are validated in ngx_syslog_process_conf() once all
+             * parameters are known.
+             */
+            if (len - 6 > 32) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog msgid length exceeds 32");
+                return NGX_CONF_ERROR;
+            }
+
+            peer->msgid.data = p + 6;
+            peer->msgid.len = len - 6;
+
         } else if (len == 10 && ngx_strncmp(p, "nohostname", 10) == 0) {
             peer->nohostname = 1;
 
@@ -319,15 +371,16 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
          *   2003-10-11T22:14:15.003+05:30
          *
          * The date, time, and UTC offset are taken from the
-         * ngx_cached_http_log_iso8601 cache ("YYYY-MM-DDTHH:MM:SS±HH:MM",
+         * ngx_cached_http_log_iso8601 cache ("YYYY-MM-DDTHH:MM:SS+/-HH:MM",
          * 25 bytes).  The first 19 bytes are "YYYY-MM-DDTHH:MM:SS"
-         * and the trailing 6 bytes are "±HH:MM".  The millisecond
+         * and the trailing 6 bytes are "+/-HH:MM".  The millisecond
          * field is read live from ngx_timeofday() so that it reflects
          * the current event-loop tick rather than the start of the
          * current second.
          *
-         * PROCID is the nginx process PID.  MSGID and STRUCTURED-DATA
-         * are set to the nil value "-".
+         * PROCID is the nginx process PID.  MSGID defaults to the nil
+         * value "-" and can be overridden with the "msgid=" parameter.
+         * STRUCTURED-DATA is always the nil value "-".
          */
 
         tp = ngx_timeofday();
@@ -340,14 +393,15 @@ ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
         tz.len  = sizeof("+06:00") - 1;
 
         if (peer->nohostname) {
-            return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V - %V %P - - ",
+            return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V - %V %P %V - ",
                                pri, &datetime, tp->msec, &tz,
-                               &peer->tag, ngx_pid);
+                               &peer->tag, ngx_pid, &peer->msgid);
         }
 
-        return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V %V %V %P - - ",
+        return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V %V %V %P %V - ",
                            pri, &datetime, tp->msec, &tz,
-                           peer->hostname, &peer->tag, ngx_pid);
+                           peer->hostname, &peer->tag, ngx_pid,
+                           &peer->msgid);
     }
 
     if (peer->nohostname) {
