@@ -114,6 +114,8 @@ static ngx_int_t ngx_http_proxy_init_headers(ngx_conf_t *cf,
 
 static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_proxy_forward_proxy(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -213,6 +215,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
     { ngx_string("proxy_pass"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
       ngx_http_proxy_pass,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("forward_proxy"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_FLAG,
+      ngx_http_proxy_forward_proxy,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -902,11 +911,23 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
     u = r->upstream;
 
     if (plcf->proxy_lengths == NULL) {
-        ctx->vars = plcf->vars;
-        u->schema = plcf->vars.schema;
+        if (plcf->forward_proxy) {
+            rc = ngx_http_proxy_eval_forward(r, ctx, plcf);
+            if (rc == NGX_DECLINED) {
+                return NGX_HTTP_BAD_REQUEST;
+            }
+
+            if (rc != NGX_OK) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+        } else {
+            ctx->vars = plcf->vars;
+            u->schema = plcf->vars.schema;
 #if (NGX_HTTP_SSL)
-        u->ssl = plcf->ssl;
+            u->ssl = plcf->ssl;
 #endif
+        }
 
     } else {
         if (ngx_http_proxy_eval(r, ctx, plcf) != NGX_OK) {
@@ -1055,6 +1076,103 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     ctx->vars.key_start = u->schema;
 
     ngx_http_proxy_set_vars(&url, &ctx->vars);
+
+    u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
+    if (u->resolved == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (url.addrs) {
+        u->resolved->sockaddr = url.addrs[0].sockaddr;
+        u->resolved->socklen = url.addrs[0].socklen;
+        u->resolved->name = url.addrs[0].name;
+        u->resolved->naddrs = 1;
+    }
+
+    u->resolved->host = url.host;
+    u->resolved->port = (in_port_t) (url.no_port ? port : url.port);
+    u->resolved->no_port = url.no_port;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_proxy_eval_forward(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
+    ngx_http_proxy_loc_conf_t *plcf)
+{
+    u_char               *p;
+    size_t                len;
+    u_short               port;
+    ngx_str_t             host_port;
+    ngx_url_t             url;
+    ngx_http_upstream_t  *u;
+
+    if (r->method == NGX_HTTP_CONNECT) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "CONNECT requires tunnel_pass, not forward_proxy");
+        return NGX_DECLINED;
+    }
+
+    if (r->schema.len == 0 || r->headers_in.server.len == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "forward proxy request requires absolute-form target");
+        return NGX_DECLINED;
+    }
+
+    if (!(r->schema.len == 4
+          && ngx_strncasecmp(r->schema.data, (u_char *) "http", 4) == 0))
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "forward proxy supports only http targets");
+        return NGX_DECLINED;
+    }
+
+    port = r->port ? r->port : 80;
+
+    len = r->headers_in.server.len;
+    if (r->port) {
+        len += 1 + sizeof("65535") - 1;
+    }
+
+    p = ngx_pnalloc(r->pool, len);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    host_port.data = p;
+    p = ngx_cpymem(p, r->headers_in.server.data, r->headers_in.server.len);
+
+    if (r->port) {
+        *p++ = ':';
+        p = ngx_sprintf(p, "%ui", (ngx_uint_t) r->port);
+    }
+
+    host_port.len = p - host_port.data;
+
+    ngx_memzero(&url, sizeof(ngx_url_t));
+
+    url.url = host_port;
+    url.default_port = 80;
+    url.no_resolve = 1;
+
+    if (ngx_parse_url(r->pool, &url) != NGX_OK) {
+        if (url.err) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "%s in forward proxy target \"%V\"",
+                          url.err, &host_port);
+        }
+
+        return NGX_DECLINED;
+    }
+
+    u = r->upstream;
+
+    ngx_str_set(&u->schema, "http://");
+    ctx->vars.key_start = u->schema;
+
+    ngx_http_proxy_set_vars(&url, &ctx->vars);
+    ngx_str_null(&ctx->vars.uri);
 
     u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t));
     if (u->resolved == NULL) {
@@ -3615,6 +3733,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->method = NGX_CONF_UNSET_PTR;
 
     conf->redirect = NGX_CONF_UNSET;
+    conf->forward_proxy = NGX_CONF_UNSET;
 
     conf->cookie_domains = NGX_CONF_UNSET_PTR;
     conf->cookie_paths = NGX_CONF_UNSET_PTR;
@@ -4055,7 +4174,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
 
     if (clcf->noname
-        && conf->upstream.upstream == NULL && conf->proxy_lengths == NULL)
+        && conf->upstream.upstream == NULL && conf->proxy_lengths == NULL
+        && conf->forward_proxy == NGX_CONF_UNSET)
     {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->location = prev->location;
@@ -4067,10 +4187,24 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_SSL)
         conf->ssl = prev->ssl;
 #endif
+
+        conf->forward_proxy = prev->forward_proxy;
+    }
+
+    ngx_conf_merge_value(conf->forward_proxy, prev->forward_proxy, 0);
+
+    if (conf->forward_proxy
+        && (conf->upstream.upstream || conf->proxy_lengths))
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"forward_proxy\" is incompatible with "
+                           "\"proxy_pass\"");
+        return NGX_CONF_ERROR;
     }
 
     if (clcf->lmt_excpt && clcf->handler == NULL
-        && (conf->upstream.upstream || conf->proxy_lengths))
+        && (conf->upstream.upstream || conf->proxy_lengths
+            || conf->forward_proxy))
     {
         clcf->handler = ngx_http_proxy_handler;
     }
@@ -4332,6 +4466,13 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_core_loc_conf_t   *clcf;
     ngx_http_script_compile_t   sc;
 
+    if (plcf->forward_proxy == 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"proxy_pass\" is incompatible with "
+                           "\"forward_proxy on\"");
+        return NGX_CONF_ERROR;
+    }
+
     if (plcf->upstream.upstream || plcf->proxy_lengths) {
         return "is duplicate";
     }
@@ -4438,6 +4579,45 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     plcf->url = *url;
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_forward_proxy(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_proxy_loc_conf_t *plcf = conf;
+
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_str_t                 *value;
+
+    value = cf->args->elts;
+
+    if (plcf->forward_proxy != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+        if (plcf->upstream.upstream || plcf->proxy_lengths) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"forward_proxy on\" is incompatible with "
+                               "\"proxy_pass\"");
+            return NGX_CONF_ERROR;
+        }
+
+        plcf->forward_proxy = 1;
+
+        clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+        clcf->handler = ngx_http_proxy_handler;
+
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        plcf->forward_proxy = 0;
+        return NGX_CONF_OK;
+    }
+
+    return "invalid value";
 }
 
 

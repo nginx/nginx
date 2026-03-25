@@ -241,11 +241,23 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     u = r->upstream;
 
     if (plcf->proxy_lengths == NULL) {
-        ctx->ctx.vars = plcf->vars;
-        u->schema = plcf->vars.schema;
+        if (plcf->forward_proxy) {
+            rc = ngx_http_proxy_eval_forward(r, &ctx->ctx, plcf);
+            if (rc == NGX_DECLINED) {
+                return NGX_HTTP_BAD_REQUEST;
+            }
+
+            if (rc != NGX_OK) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+        } else {
+            ctx->ctx.vars = plcf->vars;
+            u->schema = plcf->vars.schema;
 #if (NGX_HTTP_SSL)
-        u->ssl = plcf->ssl;
+            u->ssl = plcf->ssl;
 #endif
+        }
 
     } else {
         if (ngx_http_proxy_eval(r, &ctx->ctx, plcf) != NGX_OK) {
