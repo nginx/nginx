@@ -1,0 +1,49 @@
+name: Check Whitespace
+
+# Process `git log --check` output to extract just the check errors.
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+
+jobs:
+  check-whitespace:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        fetch-depth: 0
+
+    - name: git log --check
+      run: |
+        echo "## Whitespace Check Results" >${GITHUB_STEP_SUMMARY}
+        err=0
+        commit=
+        while read dash hash subj
+        do
+          case "${dash}" in
+          "---")
+            err=0
+            commit="${hash} (\"${subj}\")"
+            ;;
+          "")
+            ;;
+          *)
+            if test -n "${commit}"
+            then
+              echo "" | tee -a ${GITHUB_STEP_SUMMARY}
+              echo "--- ${commit}" | tee -a ${GITHUB_STEP_SUMMARY}
+            fi
+            err=1
+            commit=
+            # Ignore the variable names, this is actually the output from
+            # git-log --check
+            echo "${dash} ${hash} ${subj}" | tee -a ${GITHUB_STEP_SUMMARY}
+            ;;
+          esac
+        done <<< $(git log --check --pretty=format:"--- %h %s" ${{github.event.pull_request.base.sha}}..)
+
+        if test ${err} -ne 0
+        then
+          exit 2
+        fi
