@@ -865,7 +865,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         sw_space_before_value,
         sw_value,
         sw_space_after_value,
-        sw_ignore_line,
         sw_almost_done,
         sw_header_almost_done
     } state;
@@ -990,16 +989,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 goto done;
             }
 
-            /* IIS may send the duplicate "HTTP/1.1 ..." lines */
-            if (ch == '/'
-                && r->upstream
-                && p - r->header_name_start == 4
-                && ngx_strncmp(r->header_name_start, "HTTP", 4) == 0)
-            {
-                state = sw_ignore_line;
-                break;
-            }
-
             if (ch <= 0x20 || ch == 0x7f) {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
@@ -1071,17 +1060,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             default:
                 state = sw_value;
-                break;
-            }
-            break;
-
-        /* ignore header line */
-        case sw_ignore_line:
-            switch (ch) {
-            case LF:
-                state = sw_start;
-                break;
-            default:
                 break;
             }
             break;
