@@ -248,7 +248,7 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         return;
     }
 
-    if (s->proxy->proxy_protocol) {
+    if (s->proxy->proxy_protocol || !c->write->ready) {
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "mail proxy pop3 busy");
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -398,7 +398,7 @@ ngx_mail_proxy_imap_handler(ngx_event_t *rev)
         return;
     }
 
-    if (s->proxy->proxy_protocol) {
+    if (s->proxy->proxy_protocol || !c->write->ready) {
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "mail proxy imap busy");
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -572,7 +572,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         return;
     }
 
-    if (s->proxy->proxy_protocol) {
+    if (s->proxy->proxy_protocol || !c->write->ready) {
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, c->log, 0, "mail proxy smtp busy");
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
