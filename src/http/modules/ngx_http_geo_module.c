@@ -645,7 +645,12 @@ ngx_http_geo(ngx_conf_t *cf, ngx_command_t *dummy, void *conf)
 
     if (ngx_strcmp(value[0].data, "include") == 0) {
 
-        rv = ngx_http_geo_include(cf, ctx, &value[1]);
+        if (strpbrk((char *) value[1].data, "*?[") == NULL) {
+            rv = ngx_http_geo_include(cf, ctx, &value[1]);
+
+        } else {
+            rv = ngx_conf_include(cf, dummy, conf);
+        }
 
         goto done;
 

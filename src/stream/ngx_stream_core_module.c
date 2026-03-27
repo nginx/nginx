@@ -1202,6 +1202,19 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
+        if (ngx_strcmp(value[i].data, "multipath") == 0) {
+#ifdef IPPROTO_MPTCP
+            lsopt.protocol = IPPROTO_MPTCP;
+            lsopt.set = 1;
+            lsopt.bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "multipath is not supported "
+                               "on this platform, ignored");
+#endif
+            continue;
+        }
+
         if (ngx_strcmp(value[i].data, "ssl") == 0) {
 #if (NGX_STREAM_SSL)
             lsopt.ssl = 1;
@@ -1335,6 +1348,12 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_HAVE_DEFERRED_ACCEPT && defined TCP_DEFER_ACCEPT)
         if (lsopt.deferred_accept) {
             return "\"deferred\" parameter is incompatible with \"udp\"";
+        }
+#endif
+
+#ifdef IPPROTO_MPTCP
+        if (lsopt.protocol == IPPROTO_MPTCP) {
+            return "\"multipath\" parameter is incompatible with \"udp\"";
         }
 #endif
 

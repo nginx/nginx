@@ -8,14 +8,20 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <ngx_md5.h>
 
 
 #define ngx_http_upstream_tries(p) ((p)->tries                                \
                                     + ((p)->next ? (p)->next->tries : 0))
 
 
+#if (NGX_HTTP_UPSTREAM_SID)
+static ngx_int_t ngx_http_upstream_create_sid(ngx_conf_t *cf,
+    ngx_http_upstream_rr_peer_t *peer, ngx_str_t *route);
+#endif
+
 static ngx_http_upstream_rr_peer_t *ngx_http_upstream_get_peer(
-    ngx_http_upstream_rr_peer_data_t *rrp);
+    ngx_http_upstream_rr_peer_data_t *rrp, ngx_peer_connection_t *pc);
 
 #if (NGX_HTTP_SSL)
 
@@ -190,6 +196,14 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].down = server[i].down;
                 peer[n].server = server[i].name;
 
+#if (NGX_HTTP_UPSTREAM_SID)
+                if (ngx_http_upstream_create_sid(cf, &peer[n], &server[i].sid)
+                    != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
+#endif
+
                 *rpeerp = &peer[n];
                 rpeerp = &peer[n].next;
                 n++;
@@ -210,6 +224,14 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
                 peer[n].server = server[i].name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+                if (ngx_http_upstream_create_sid(cf, &peer[n], &server[i].sid)
+                    != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
+#endif
 
                 *peerp = &peer[n];
                 peerp = &peer[n].next;
@@ -316,6 +338,14 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].down = server[i].down;
                 peer[n].server = server[i].name;
 
+#if (NGX_HTTP_UPSTREAM_SID)
+                if (ngx_http_upstream_create_sid(cf, &peer[n], &server[i].sid)
+                    != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
+#endif
+
                 *rpeerp = &peer[n];
                 rpeerp = &peer[n].next;
                 n++;
@@ -336,6 +366,14 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].fail_timeout = server[i].fail_timeout;
                 peer[n].down = server[i].down;
                 peer[n].server = server[i].name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+                if (ngx_http_upstream_create_sid(cf, &peer[n], &server[i].sid)
+                    != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
+#endif
 
                 *peerp = &peer[n];
                 peerp = &peer[n].next;
@@ -414,6 +452,63 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 
     return NGX_OK;
 }
+
+
+#if (NGX_HTTP_UPSTREAM_SID)
+
+static ngx_int_t
+ngx_http_upstream_create_sid(ngx_conf_t *cf, ngx_http_upstream_rr_peer_t *peer,
+    ngx_str_t *route)
+{
+    if (route->len) {
+        peer->route = 1;
+        peer->sid = *route;
+        return NGX_OK;
+    }
+
+    peer->sid.data = ngx_pnalloc(cf->pool, NGX_HTTP_UPSTREAM_SID_LEN);
+    if (peer->sid.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_http_upstream_init_round_robin_sid(peer, NULL);
+
+    return NGX_OK;
+}
+
+
+void
+ngx_http_upstream_init_round_robin_sid(ngx_http_upstream_rr_peer_t *peer,
+    ngx_str_t *route)
+{
+    u_char     hash[16];
+    ngx_md5_t  md5;
+
+    if (route && route->len) {
+        peer->route = 1;
+        peer->sid.len = route->len;
+        ngx_memcpy(peer->sid.data, route->data, route->len);
+        return;
+    }
+
+    peer->route = 0;
+
+    /* SID is the MD5 hash of a printable socket address */
+
+    if (peer->name.len == 0) {
+        peer->sid.len = 0;
+        return;
+    }
+
+    ngx_md5_init(&md5);
+    ngx_md5_update(&md5, peer->name.data, peer->name.len);
+    ngx_md5_final(hash, &md5);
+
+    ngx_hex_dump(peer->sid.data, hash, 16);
+    peer->sid.len = NGX_HTTP_UPSTREAM_SID_LEN;
+}
+
+#endif
 
 
 ngx_int_t
@@ -624,15 +719,23 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 #endif
 
     if (peers->single) {
-        peer = peers->peer;
+#if (NGX_HTTP_UPSTREAM_SID)
+        peer = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &i, 0);
 
-        if (peer->down) {
-            goto failed;
-        }
+        if (peer == NULL) {
+#endif
+            peer = peers->peer;
 
-        if (peer->max_conns && peer->conns >= peer->max_conns) {
-            goto failed;
+            if (peer->down) {
+                goto failed;
+            }
+
+            if (peer->max_conns && peer->conns >= peer->max_conns) {
+                goto failed;
+            }
+#if (NGX_HTTP_UPSTREAM_SID)
         }
+#endif
 
         rrp->current = peer;
         ngx_http_upstream_rr_peer_ref(peers, peer);
@@ -641,7 +744,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 
         /* there are several peers */
 
-        peer = ngx_http_upstream_get_peer(rrp);
+        peer = ngx_http_upstream_get_peer(rrp, pc);
 
         if (peer == NULL) {
             goto failed;
@@ -655,6 +758,10 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &peer->sid;
+#endif
 
     peer->conns++;
 
@@ -701,13 +808,20 @@ busy:
 
 
 static ngx_http_upstream_rr_peer_t *
-ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
+ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp,
+    ngx_peer_connection_t *pc)
 {
     time_t                        now;
     uintptr_t                     m;
     ngx_int_t                     total;
     ngx_uint_t                    i, n, p;
     ngx_http_upstream_rr_peer_t  *peer, *best;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    ngx_int_t                     low_limit;
+    ngx_uint_t                    st_p;
+    ngx_http_upstream_rr_peer_t  *st_peer;
+#endif
 
     now = ngx_time();
 
@@ -716,6 +830,29 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
 
 #if (NGX_SUPPRESS_WARN)
     p = 0;
+#endif
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    st_peer = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &p, 0);
+
+    if (st_peer) {
+
+        low_limit = -((ngx_int_t)(rrp->peers->total_weight - st_peer->weight));
+
+        /*
+         * note: current code accounts only one sticky request in a row, if it
+         *       is required to account more, multiply low_limit by N below
+         */
+        if (st_peer->current_weight <= low_limit) {
+
+            /* do not update weights if the limit exceeded */
+            best = st_peer;
+            goto best_chosen;
+        }
+        /* else: proceed to reweight with existing st_peer */
+    }
+
+    st_p = p;
 #endif
 
     for (peer = rrp->peers->peer, i = 0;
@@ -757,9 +894,24 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
         }
     }
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    /* prefer peer chosen by sticky to best from RR */
+
+    if (st_peer) {
+        best = st_peer;
+        p = st_p;
+    }
+#endif
+
     if (best == NULL) {
         return NULL;
     }
+
+    best->current_weight -= total;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+best_chosen:
+#endif
 
     rrp->current = best;
     ngx_http_upstream_rr_peer_ref(rrp->peers, best);
@@ -769,14 +921,87 @@ ngx_http_upstream_get_peer(ngx_http_upstream_rr_peer_data_t *rrp)
 
     rrp->tried[n] |= m;
 
-    best->current_weight -= total;
-
     if (now - best->checked > best->fail_timeout) {
         best->checked = now;
     }
 
     return best;
 }
+
+
+#if (NGX_HTTP_UPSTREAM_SID)
+
+ngx_http_upstream_rr_peer_t *
+ngx_http_upstream_get_rr_peer_by_sid(ngx_http_upstream_rr_peer_data_t *rrp,
+    ngx_str_t *hint, ngx_uint_t *p, ngx_uint_t lock)
+{
+    uintptr_t                     m;
+    ngx_uint_t                    i, n;
+    ngx_http_upstream_rr_peer_t  *peer;
+
+    if (hint == NULL) {
+        return NULL;
+    }
+
+    for (peer = rrp->peers->peer, i = 0;
+         peer;
+         peer = peer->next, i++)
+    {
+
+        if (peer->sid.len == hint->len
+            && ngx_memcmp(peer->sid.data, hint->data, hint->len) == 0)
+        {
+            goto found;
+        }
+    }
+
+    return NULL;
+
+found:
+
+    n = i / (8 * sizeof(uintptr_t));
+    m = (uintptr_t) 1 << i % (8 * sizeof(uintptr_t));
+
+    if (rrp->tried[n] & m) {
+        return NULL;
+    }
+
+    if (lock) {
+        ngx_http_upstream_rr_peer_lock(rrp->peers, peer);
+    }
+
+    if (peer->down
+#if (NGX_HTTP_UPSTREAM_STICKY)
+        & ~NGX_HTTP_UPSTREAM_DRAINING
+#endif
+    ) {
+        goto failed;
+    }
+
+    if (peer->max_fails
+        && peer->fails >= peer->max_fails
+        && ngx_time() - peer->checked <= peer->fail_timeout)
+    {
+        goto failed;
+    }
+
+    if (peer->max_conns && peer->conns >= peer->max_conns) {
+        goto failed;
+    }
+
+    *p = i;
+    return peer;
+
+failed:
+
+    if (lock) {
+        ngx_http_upstream_rr_peer_unlock(rrp->peers, peer);
+    }
+
+    return NULL;
+}
+
+#endif
 
 
 void

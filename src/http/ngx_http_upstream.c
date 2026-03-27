@@ -2607,6 +2607,10 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
     }
 
+    if (u->peer.notify) {
+        u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOTIFY_HEADER);
+    }
+
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
         return;
     }
@@ -4593,6 +4597,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
         u->peer.free(&u->peer, u->peer.data, state);
         u->peer.sockaddr = NULL;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        u->peer.sid = NULL;
+#endif
     }
 
     if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
@@ -4776,6 +4784,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->peer.free && u->peer.sockaddr) {
         u->peer.free(&u->peer, u->peer.data, 0);
         u->peer.sockaddr = NULL;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        u->peer.sid = NULL;
+#endif
     }
 
     if (u->peer.connection) {
@@ -6522,10 +6534,45 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto not_supported;
             }
 
-            us->down = 1;
+            us->down = NGX_HTTP_UPSTREAM_FAILED;
 
             continue;
         }
+
+#if (NGX_HTTP_UPSTREAM_STICKY)
+        if (ngx_strcmp(value[i].data, "drain") == 0) {
+
+            if (!(uscf->flags & NGX_HTTP_UPSTREAM_DOWN)) {
+                goto not_supported;
+            }
+
+            us->down = NGX_HTTP_UPSTREAM_DRAINING;
+
+            continue;
+        }
+#endif
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        if (ngx_strncmp(value[i].data, "route=", 6) == 0) {
+
+            us->sid.data = &value[i].data[6];
+            us->sid.len = value[i].len - 6;
+
+            if (us->sid.len == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "route is empty");
+                return NGX_CONF_ERROR;
+            }
+
+            if (us->sid.len > NGX_HTTP_UPSTREAM_SID_LEN) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "route is longer than %d",
+                                   NGX_HTTP_UPSTREAM_SID_LEN);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+#endif
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
         if (ngx_strcmp(value[i].data, "resolve") == 0) {

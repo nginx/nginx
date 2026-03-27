@@ -950,6 +950,20 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_UPSTREAM_STICKY = YES ]; then
+        have=NGX_HTTP_UPSTREAM_STICKY . auto/have
+        have=NGX_HTTP_UPSTREAM_SID . auto/have
+
+        ngx_module_name=ngx_http_upstream_sticky_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_sticky_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_STICKY
+
+        . auto/module
+    fi
+
     if [ $HTTP_STUB_STATUS = YES ]; then
         have=NGX_STAT_STUB . auto/have
 
