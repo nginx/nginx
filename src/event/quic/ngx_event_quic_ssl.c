@@ -719,10 +719,12 @@ ngx_quic_handshake(ngx_connection_t *c)
             return NGX_ERROR;
         }
 
-        if (sslerr != SSL_ERROR_WANT_READ) {
-            ngx_ssl_connection_error(c, sslerr, 0, "SSL_do_handshake() failed");
-            return NGX_ERROR;
+        if (sslerr == SSL_ERROR_WANT_READ || sslerr == SSL_ERROR_WANT_X509_LOOKUP) {
+            return NGX_OK;
         }
+
+        ngx_ssl_connection_error(c, sslerr, 0, "SSL_do_handshake() failed");
+        return NGX_ERROR;
     }
 
     if (qc->error) {
