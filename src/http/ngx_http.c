@@ -671,8 +671,8 @@ static ngx_int_t
 ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     ngx_http_core_loc_conf_t *pclcf)
 {
-    ngx_uint_t                   n;
-    ngx_queue_t                 *q, *locations, *named, tail;
+    ngx_uint_t                   n, p;
+    ngx_queue_t                 *q, *locations, *named, *predicate, tail;
     ngx_http_core_loc_conf_t    *clcf;
     ngx_http_location_queue_t   *lq;
     ngx_http_core_loc_conf_t   **clcfp;
@@ -695,6 +695,8 @@ ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
     regex = NULL;
     r = 0;
 #endif
+    predicate = NULL;
+    p = 0;
 
     for (q = ngx_queue_head(locations);
          q != ngx_queue_sentinel(locations);
@@ -721,6 +723,16 @@ ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         }
 
 #endif
+
+        if (clcf->predicate) {
+            p++;
+
+            if (predicate == NULL) {
+                predicate = q;
+            }
+
+            continue;
+        }
 
         if (clcf->named) {
             n++;
@@ -764,6 +776,29 @@ ngx_http_init_locations(ngx_conf_t *cf, ngx_http_core_srv_conf_t *cscf,
         ngx_queue_split(locations, named, &tail);
     }
 
+    if (predicate) {
+        clcfp = ngx_palloc(cf->pool,
+                           (p + 1) * sizeof(ngx_http_core_loc_conf_t *));
+        if (clcfp == NULL) {
+            return NGX_ERROR;
+        }
+
+        pclcf->predicate_locations = clcfp;
+
+        for (q = predicate;
+             q != ngx_queue_sentinel(locations);
+             q = ngx_queue_next(q))
+        {
+            lq = (ngx_http_location_queue_t *) q;
+
+            *(clcfp++) = lq->exact;
+        }
+
+        *clcfp = NULL;
+
+        ngx_queue_split(locations, predicate, &tail);
+    }
+
 #if (NGX_PCRE)
 
     if (regex) {
@@ -801,8 +836,16 @@ ngx_http_init_static_location_trees(ngx_conf_t *cf,
     ngx_http_core_loc_conf_t *pclcf)
 {
     ngx_queue_t                *q, *locations;
-    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_core_loc_conf_t   *clcf, **clcfp;
     ngx_http_location_queue_t  *lq;
+
+    if (pclcf->predicate_locations) {
+        for (clcfp = pclcf->predicate_locations; *clcfp; clcfp++) {
+            if (ngx_http_init_static_location_trees(cf, *clcfp) != NGX_OK) {
+                return NGX_ERROR;
+            }
+        }
+    }
 
     locations = pclcf->locations;
 
@@ -867,7 +910,7 @@ ngx_http_add_location(ngx_conf_t *cf, ngx_queue_t **locations,
 #if (NGX_PCRE)
         || clcf->regex
 #endif
-        || clcf->named || clcf->noname)
+        || clcf->predicate || clcf->named || clcf->noname)
     {
         lq->exact = clcf;
         lq->inclusive = NULL;
@@ -964,6 +1007,21 @@ ngx_http_cmp_locations(const ngx_queue_t *one, const ngx_queue_t *two)
 
     if (first->named && second->named) {
         return ngx_strcmp(first->name.data, second->name.data);
+    }
+
+    if (first->predicate && !second->predicate) {
+        /* shift predicate locations to the end */
+        return 1;
+    }
+
+    if (!first->predicate && second->predicate) {
+        /* shift predicate locations to the end */
+        return -1;
+    }
+
+    if (first->predicate || second->predicate) {
+        /* do not sort the predicate locations */
+        return 0;
     }
 
 #if (NGX_PCRE)
