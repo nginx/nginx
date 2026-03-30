@@ -56,18 +56,44 @@
 
 #define ngx_random               random
 
-/* TODO: #ifndef */
+/* TODO: #ifndef
+   Done..
+ */
+#ifndef NGX_SHUTDOWN_SIGNAL
 #define NGX_SHUTDOWN_SIGNAL      QUIT
+#endif
+
+#ifndef NGX_TERMINATE_SIGNAL
 #define NGX_TERMINATE_SIGNAL     TERM
+#endif
+
+#ifndef NGX_NOACCEPT_SIGNAL
 #define NGX_NOACCEPT_SIGNAL      WINCH
+#endif
+
+#ifndef NGX_RECONFIGURE_SIGNAL
 #define NGX_RECONFIGURE_SIGNAL   HUP
+#endif
 
 #if (NGX_LINUXTHREADS)
+
+#ifndef NGX_REOPEN_SIGNAL
 #define NGX_REOPEN_SIGNAL        INFO
+#endif
+
+#ifndef NGX_CHANGEBIN_SIGNAL
 #define NGX_CHANGEBIN_SIGNAL     XCPU
+#endif
+
 #else
+
+#ifndef NGX_REOPEN_SIGNAL
 #define NGX_REOPEN_SIGNAL        USR1
+#endif
+
+#ifndef NGX_CHANGEBIN_SIGNAL
 #define NGX_CHANGEBIN_SIGNAL     USR2
+#endif
 #endif
 
 #define ngx_cdecl
