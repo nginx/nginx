@@ -1328,7 +1328,7 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
         b->last = ngx_cpymem(b->last, "Auth-Salt: ", sizeof("Auth-Salt: ") - 1);
         b->last = ngx_copy(b->last, s->salt.data, s->salt.len);
 
-        s->passwd.data = NULL;
+        ngx_str_null(&s->passwd);
     }
 
     b->last = ngx_cpymem(b->last, "Auth-Protocol: ",
