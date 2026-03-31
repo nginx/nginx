@@ -1245,7 +1245,7 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
 {
     size_t                     len;
     ngx_buf_t                 *b;
-    ngx_str_t                  login, passwd;
+    ngx_str_t                  login, passwd, host;
     ngx_connection_t          *c;
 #if (NGX_MAIL_SSL)
     ngx_str_t                  protocol, cipher, verify, subject, issuer,
@@ -1259,6 +1259,10 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
     }
 
     if (ngx_mail_auth_http_escape(pool, &s->passwd, &passwd) != NGX_OK) {
+        return NULL;
+    }
+
+    if (ngx_mail_auth_http_escape(pool, &s->host, &host) != NGX_OK) {
         return NULL;
     }
 
@@ -1354,7 +1358,7 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
                 + sizeof(CRLF) - 1
           + sizeof("Client-IP: ") - 1 + s->connection->addr_text.len
                 + sizeof(CRLF) - 1
-          + sizeof("Client-Host: ") - 1 + s->host.len + sizeof(CRLF) - 1
+          + sizeof("Client-Host: ") - 1 + host.len + sizeof(CRLF) - 1
           + ahcf->header.len
           + sizeof(CRLF) - 1;
 
@@ -1456,10 +1460,10 @@ ngx_mail_auth_http_create_request(ngx_mail_session_t *s, ngx_pool_t *pool,
                        s->connection->addr_text.len);
     *b->last++ = CR; *b->last++ = LF;
 
-    if (s->host.len) {
+    if (host.len) {
         b->last = ngx_cpymem(b->last, "Client-Host: ",
                              sizeof("Client-Host: ") - 1);
-        b->last = ngx_copy(b->last, s->host.data, s->host.len);
+        b->last = ngx_copy(b->last, host.data, host.len);
         *b->last++ = CR; *b->last++ = LF;
     }
 
