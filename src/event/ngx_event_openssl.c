@@ -5092,22 +5092,7 @@ static ngx_int_t
 ngx_ssl_ticket_key_mac_init(ngx_connection_t *c, ngx_ssl_ticket_key_t *key,
     size_t size, ngx_ssl_ticket_key_mac_ctx_t *hctx)
 {
-#if (NGX_SSL_TICKET_KEY_EVP_CB)
-    char        *digest;
-    OSSL_PARAM   params[2];
-
-    digest = (char *) OSSL_DIGEST_NAME_SHA2_256;
-
-    params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_DIGEST,
-                                                 digest, 0);
-    params[1] = OSSL_PARAM_construct_end();
-
-    if (EVP_MAC_init(hctx, key->hmac_key, size, params) != 1) {
-        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "EVP_MAC_init() failed");
-        return NGX_ERROR;
-    }
-
-#else
+#ifdef SSL_CTX_set_tlsext_ticket_key_cb
     const EVP_MD  *digest;
 
 #ifdef OPENSSL_NO_SHA256
@@ -5124,6 +5109,21 @@ ngx_ssl_ticket_key_mac_init(ngx_connection_t *c, ngx_ssl_ticket_key_t *key,
 #else
     HMAC_Init_ex(hctx, key->hmac_key, size, digest, NULL);
 #endif
+
+#elif (NGX_SSL_TICKET_KEY_EVP_CB)
+    char        *digest;
+    OSSL_PARAM   params[2];
+
+    digest = (char *) OSSL_DIGEST_NAME_SHA2_256;
+
+    params[0] = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_DIGEST,
+                                                 digest, 0);
+    params[1] = OSSL_PARAM_construct_end();
+
+    if (EVP_MAC_init(hctx, key->hmac_key, size, params) != 1) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "EVP_MAC_init() failed");
+        return NGX_ERROR;
+    }
 #endif
 
     return NGX_OK;
