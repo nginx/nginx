@@ -1972,6 +1972,12 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         return NULL;
     }
 
+    if (alias > r->uri.len && alias != NGX_MAX_SIZE_T_VALUE) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "URI shorter than aliased URI part");
+        return NULL;
+    }
+
     if (clcf->root_lengths == NULL) {
 
         *root_length = clcf->root.len;
