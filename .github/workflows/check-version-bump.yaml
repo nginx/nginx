@@ -1,0 +1,23 @@
+name: Check Version Bump
+
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+
+jobs:
+  check-version-bump:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        fetch-depth: 0
+
+    - name: Check git log
+      run: |
+        echo "## Check for 'Version bump' commit" >${GITHUB_STEP_SUMMARY}
+        subj=$(git log --format=%s $(git describe --abbrev=0 --tags).. | tail -1)
+        if ! expr "$subj" : 'Version bump' >/dev/null
+        then
+          echo "❌ No 'Version bump' commit immediately after release tag" | tee -a ${GITHUB_STEP_SUMMARY}
+          exit 2
+        fi
