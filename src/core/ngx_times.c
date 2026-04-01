@@ -198,11 +198,7 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
 #if (NGX_HAVE_CLOCK_MONOTONIC)
     struct timespec  ts;
 
-#if defined(CLOCK_MONOTONIC_FAST)
-    clock_gettime(CLOCK_MONOTONIC_FAST, &ts);
-#else
     clock_gettime(CLOCK_MONOTONIC, &ts);
-#endif
 
     sec = ts.tv_sec;
     msec = ts.tv_nsec / 1000000;
