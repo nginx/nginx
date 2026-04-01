@@ -290,7 +290,10 @@ ngx_quic_bpf_module_init(ngx_cycle_t *cycle)
 
     if (ngx_inherited && ngx_is_init_cycle(cycle->old_cycle)) {
         if (ngx_quic_bpf_import_maps(cycle) != NGX_OK) {
-            goto failed;
+            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                          "quic bpf failed to import maps, "
+                          "creating new maps; "
+                          "existing QUIC connections may be disrupted");
         }
     }
 
@@ -1283,10 +1286,9 @@ done:
     return NGX_OK;
 
 failed:
-
-    ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                  "quic bpf failed to parse inherited variable \"%s\"",
-                  NGX_QUIC_BPF_VARNAME);
+    ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+            "quic bpf failed to parse inherited variable \"%s\"",
+            NGX_QUIC_BPF_VARNAME);
 
     return NGX_ERROR;
 }
