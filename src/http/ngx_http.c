@@ -2198,3 +2198,94 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_conf_convert_obs_fold_to_sp(ngx_conf_t *cf,
+    const ngx_str_t *cmd_name, ngx_str_t *value)
+{
+    size_t  out_cursor = 0, cursor = 0, end, original_end;
+    u_char  *ptr, ch;
+
+#define ISSPACE(c) ((c) == ' ' || (c) == '\t')
+    end = original_end = value->len;
+    ptr = value->data;
+
+    /*
+     * Strip leading spaces and tabs, to ensure that none are ever
+     * present in the output.
+     */
+    while (cursor < end && ISSPACE(ptr[cursor])) {
+        cursor++;
+    }
+
+    /*
+     * Invariant 1: if out_cursor == 0 then !ISSPACE(ch).
+     * Invariant 2: out_cursor never has anything that is invalid in an HTTP
+     *              field value.
+     * Invariant 3: !ISSPACE(out_cursor[0])
+     *
+     * At loop start, out_cursor == 0,
+     * but cursor == end || !ISSPACE(ptr[cursor])
+     * so invariant 1 will hold if the loop is entered at all.
+     */
+    for ( /* void */; cursor < end; ++cursor) {
+        ch = ptr[cursor];
+
+        if (ch != CR && ch != LF) {
+            /* Enforce invariant 2. */
+            if (ch < 0x20 ? ch != '\t' : ch == 0x7F) {
+                /* Not valid for an HTTP field value and not obs-fold. */
+                goto fail;
+            }
+            /* Since invariant 1 holds, invariant 3 will not be broken. */
+            ptr[out_cursor++] = ch;
+            continue;
+        }
+
+        if (ch == CR) {
+            if (end - cursor < 3 || ptr[cursor + 1] != LF) {
+                goto fail;
+            }
+            cursor++;
+        }
+        cursor++;
+
+        /* Check that obs-fold syntax is upheld. */
+        if (cursor >= end || !ISSPACE(ptr[cursor])) {
+            goto fail;
+        }
+
+        /* Obs-fold is a single SP, so skip all following HWS. */
+        do {
+            cursor++;
+        } while (cursor < end && ISSPACE(ptr[cursor]));
+
+        /* Loop will increment cursor again, so decrement it. */
+        cursor--;
+
+        /* Obs-fold includes all HWS in the previous line. Strip it. */
+        while (out_cursor > 0 && ISSPACE(ptr[out_cursor - 1])) {
+            out_cursor--;
+        }
+
+        /* Do not add leading whitespace. */
+        if (out_cursor > 0) {
+            ptr[out_cursor++] = ' ';
+        }
+    }
+
+    while (out_cursor > 0 && ISSPACE(ptr[out_cursor - 1])) {
+        out_cursor--;
+    }
+
+    if (out_cursor < original_end) {
+        memset(ptr + out_cursor, '\0', (size_t)(original_end - out_cursor));
+    }
+    value->len = out_cursor;
+    return NGX_OK;
+fail:
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "%V: Invalid HTTP field value", (ngx_str_t *)cmd_name);
+    return NGX_ERROR;
+}

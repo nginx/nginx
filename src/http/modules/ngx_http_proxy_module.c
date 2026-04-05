@@ -108,6 +108,8 @@ static char *ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_proxy_init_headers(ngx_conf_t *cf,
     ngx_http_proxy_loc_conf_t *conf, ngx_http_proxy_headers_t *headers,
     ngx_keyval_t *default_headers);
+static char *ngx_http_proxy_set_header(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -321,7 +323,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_set_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
-      ngx_conf_set_keyval_slot,
+      ngx_http_proxy_set_header,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, headers_source),
       NULL },
@@ -4118,6 +4120,21 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
+static char *
+ngx_http_proxy_set_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char              *rc;
+    ngx_str_t         *value;
+
+    value = cf->args->elts;
+
+    if (ngx_conf_convert_obs_fold_to_sp(cf, value, value + 2) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    rc = ngx_conf_set_keyval_slot(cf, cmd, conf);
+    return rc;
+}
 
 static ngx_int_t
 ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,

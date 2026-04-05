@@ -851,6 +851,10 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    if (ngx_conf_convert_obs_fold_to_sp(cf, value, value + 2) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     headers = (ngx_array_t **) ((char *) hcf + cmd->offset);
 
     if (*headers == NULL) {
