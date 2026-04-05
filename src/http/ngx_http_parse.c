@@ -2473,6 +2473,22 @@ invalid:
 
 
 ngx_int_t
+ngx_valid_http_field_value(ngx_str_t *value)
+{
+    size_t i;
+
+    for (i = 0; i < value->len; ++i) {
+        if (value->data[i] == '\0' || value->data[i] == CR
+            || value->data[i] == LF) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_valid_http_field_name(ngx_str_t *value)
 {
     size_t i;
