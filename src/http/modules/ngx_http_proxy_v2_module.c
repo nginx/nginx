@@ -517,6 +517,16 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_valid_header_name(header[i].key) != NGX_OK
+                || ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+                /* oops, request smuggling */
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "Internal malformed header name or value "
+                              "detected (this is a bug!!!!");
+                return NGX_ERROR;
+            }
+
+
             len += 1 + NGX_HTTP_V2_INT_OCTETS + header[i].key.len
                      + NGX_HTTP_V2_INT_OCTETS + header[i].value.len;
 

@@ -618,6 +618,19 @@ ngx_http_header_filter(ngx_http_request_t *r)
             continue;
         }
 
+        if (ngx_http_valid_header_name(header[i].key) != NGX_OK) {
+            ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                          "BUG: internal bad header name not caught earlier");
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+            ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                          "BUG: internal bad header value not caught earlier");
+            return NGX_ERROR;
+        }
+
+
         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
         *b->last++ = ':'; *b->last++ = ' ';
 
@@ -735,6 +748,18 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
 
         if (header[i].hash == 0) {
             continue;
+        }
+
+        if (ngx_http_valid_header_name(header[i].key) != NGX_OK) {
+            ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                          "BUG: internal bad header name not caught earlier");
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+            ngx_log_error(NGX_LOG_EMERG, r->connection->log, 0,
+                          "BUG: internal bad header value not caught earlier");
+            return NGX_ERROR;
         }
 
         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
