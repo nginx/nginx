@@ -402,14 +402,14 @@ static ngx_command_t ngx_http_scgi_commands[] = {
 
     { ngx_string("scgi_pass_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
+      ngx_http_hdr_key_maybe_value,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.pass_headers),
       NULL },
 
     { ngx_string("scgi_hide_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
+      ngx_http_hdr_key_maybe_value,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.hide_headers),
       NULL },
