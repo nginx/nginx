@@ -81,7 +81,9 @@ ngx_pstrdup(ngx_pool_t *pool, ngx_str_t *src)
         return NULL;
     }
 
-    ngx_memcpy(dst, src->data, src->len);
+    if (src->len != 0) {
+        ngx_memcpy(dst, src->data, src->len);
+    }
 
     return dst;
 }
