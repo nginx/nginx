@@ -123,6 +123,20 @@ void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
 ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers);
 
+/** Check if value is a valid HTTP field name. */
+ngx_int_t ngx_http_valid_header_name(ngx_str_t *value);
+
+/** Check if the provided name and value are valid for an HTTP field name-value
+ * pair.  Leading and trailing ' ' and '\t' are stripped from the field value
+ * before the value is checked.  The value is updated in-place.  At least
+ * 2 arguments must be supplied or behavior is undefined. */
+ngx_int_t ngx_conf_check_field_name_and_strip_value(ngx_conf_t *cf);
+
+/* Check that the field name and value are valid, strip leading and trailing
+ * ' ' and '\t', and call ngx_conf_set_str_array_slot() if the there are 2
+ * arguments, or ngx_conf_set_keyval_slot() if there are 3. */
+char *ngx_http_hdr_key_maybe_value(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);
 ngx_int_t ngx_http_process_request_uri(ngx_http_request_t *r);

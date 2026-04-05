@@ -7111,6 +7111,10 @@ ngx_http_upstream_param_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     ngx_array_t                **a;
     ngx_http_upstream_param_t   *param;
 
+    if (ngx_conf_check_field_name_and_strip_value(cf) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     a = (ngx_array_t **) (p + cmd->offset);
 
     if (*a == NULL) {

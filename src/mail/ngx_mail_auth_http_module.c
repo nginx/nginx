@@ -60,6 +60,8 @@ struct ngx_mail_auth_http_ctx_s {
 };
 
 
+static ngx_int_t ngx_mail_valid_http_header_name(ngx_str_t *value);
+static ngx_int_t ngx_mail_conf_check_http_field_name_and_strip_value(ngx_conf_t *cf);
 static void ngx_mail_auth_http_write_handler(ngx_event_t *wev);
 static void ngx_mail_auth_http_read_handler(ngx_event_t *rev);
 static void ngx_mail_auth_http_ignore_status_line(ngx_mail_session_t *s,
@@ -1626,6 +1628,10 @@ ngx_mail_auth_http_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t        *value;
     ngx_table_elt_t  *header;
 
+    if (ngx_mail_conf_check_http_field_name_and_strip_value(cf) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     if (ahcf->headers == NULL) {
         ahcf->headers = ngx_array_create(cf->pool, 1, sizeof(ngx_table_elt_t));
         if (ahcf->headers == NULL) {
@@ -1645,3 +1651,93 @@ ngx_mail_auth_http_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
+
+
+static ngx_int_t
+ngx_mail_valid_http_header_name(ngx_str_t *value)
+{
+    size_t i;
+    u_char ch;
+
+    if (value->len < 1) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < value->len; ++i) {
+        ch = value->data[0];
+        if ((ch == '!') ||
+            (ch >= '#' && ch <= '\'') ||
+            (ch >= '*' && ch <= '+') ||
+            (ch >= '-' && ch <= '.') ||
+            (ch >= '0' && ch <= '9') ||
+            (ch >= 'A' && ch <= 'Z') ||
+            (ch >= '^' && ch <= 'z') ||
+            (ch == '~'))
+        {
+            continue;
+        }
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_mail_conf_check_http_field_name_and_strip_value(ngx_conf_t *cf)
+{
+    ngx_str_t   *elts, hdr, dup;
+    ngx_uint_t  nelts, i;
+
+    nelts = cf->args->nelts;
+    elts = cf->args->elts;
+
+    if (ngx_mail_valid_http_header_name(elts + 1) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%V: Invalid HTTP field name %V",
+                           elts, elts + 1);
+        return NGX_ERROR;
+    }
+
+    if (nelts == 2 || (hdr = elts[2]).len == 0) {
+        return NGX_OK;
+    }
+
+    for (i = 0; i < hdr.len; ++i) {
+        if (hdr.data[i] < 0x20 ? hdr.data[i] != 0x09 : hdr.data[i] == 0x7F) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "%V: header %V: Invalid HTTP field value %V",
+                               elts, elts + 1, elts + 2);
+            return NGX_ERROR;
+        }
+    }
+
+#define ISSPACE(c) ((c) == ' ' || (c) == '\t')
+    dup = hdr;
+    /* Strip trailing whitespace first, so all-whitespace doesn't leave
+     * dup.data as a past-the-end pointer that can't be passed to
+     * memmove(). */
+    while (dup.len > 0 && ISSPACE(dup.data[dup.len - 1])) {
+        dup.len--;
+    }
+
+    if (dup.len > 0 && ISSPACE(hdr.data[0])) {
+        /* String not empty, starts with OWS, and doesn't end with OWS.
+         * The non-OWS character will break the loop. */
+        do {
+            dup.len--;
+            dup.data++;
+        } while (ISSPACE(dup.data[0]));
+        memmove(hdr.data, dup.data, (size_t)(dup.data - hdr.data));
+    }
+
+    if (hdr.len > dup.len) {
+        /* Preserve NUL termination */
+        memset(hdr.data + dup.len, 0, hdr.len - dup.len);
+        /* Update length accordingly. */
+        elts[2].len = dup.len;
+    }
+
+    return NGX_OK;
+}
+#undef ISSPACE
