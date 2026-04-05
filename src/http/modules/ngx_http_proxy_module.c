@@ -1187,7 +1187,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                                   key_len, val_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method, host;
+    ngx_str_t                     method, host, tmp;
     ngx_uint_t                    i, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1246,6 +1246,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         && ngx_strncasecmp(method.data, (u_char *) "HEAD", 4) == 0)
     {
         ctx->head = 1;
+    }
+
+    if (ngx_http_valid_header_name(&method) != NGX_OK) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "HTTP request method contains forbidden characters");
+        return NGX_ERROR;
     }
 
     len = method.len + 1 + sizeof(ngx_http_proxy_version) - 1
@@ -1315,6 +1321,11 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     }
 
     if (host.len) {
+        if (ngx_http_validate_host(&host, NULL, r->pool, 0) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Invalid Host header when proxying");
+            return NGX_ERROR;
+        }
         len += sizeof("Host: ") - 1 + host.len + sizeof(CRLF) - 1;
     }
 
@@ -1364,6 +1375,20 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_valid_header_name(&header[i].key) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "Header name contains forbidden characters");
+                return NGX_ERROR;
+            }
+
+            if (ngx_http_valid_header_value(&header[i].value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "%V header value contains forbidden characters "
+                              "(do you use variables in header values that "
+                              "can contain CR or LF?)", &header[i].key);
+                return NGX_ERROR;
+            }
+
             len += header[i].key.len + sizeof(": ") - 1
                 + header[i].value.len + sizeof(CRLF) - 1;
         }
@@ -1381,6 +1406,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     }
 
     cl->buf = b;
+    cl->next = NULL;
 
 
     /* the request line */
@@ -1419,6 +1445,15 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u->uri.len = b->last - u->uri.data;
 
+    for (uri_len = 0; uri_len < u->uri.len; ++uri_len) {
+        if (u->uri.data[uri_len] <= 0x20 || u->uri.data[uri_len] == 0x7F) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "URI contains control characters "
+                          "(possible CRLF injection?");
+            return NGX_ERROR;
+        }
+    }
+
     if (plcf->http_version == NGX_HTTP_VERSION_11) {
         b->last = ngx_cpymem(b->last, ngx_http_proxy_version_11,
                              sizeof(ngx_http_proxy_version_11) - 1);
@@ -1445,6 +1480,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     le.ip = headers->lengths->elts;
 
     while (*(uintptr_t *) le.ip) {
+        tmp.data = e.pos;
 
         lcode = *(ngx_http_script_len_code_pt *) le.ip;
         (void) lcode(&le);
@@ -1470,6 +1506,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
         code = *(ngx_http_script_code_pt *) e.ip;
         code((ngx_http_script_engine_t *) &e);
+        tmp.len = (size_t)(e.pos - tmp.data);
+        if (ngx_http_valid_header_name(&tmp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Header name contains forbidden characters");
+            return NGX_ERROR;
+        }
 
         if (e.status) {
             return NGX_ERROR;
@@ -1481,11 +1523,20 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
         *e.pos++ = ':'; *e.pos++ = ' ';
 
+        tmp.data = e.pos;
         while (*(uintptr_t *) e.ip) {
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
         }
         e.ip += sizeof(uintptr_t);
+        tmp.len = (size_t)(e.pos - tmp.data);
+        if (ngx_http_valid_header_value(&tmp) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Header value contains forbidden characters "
+                          "(do you use variables in header values that "
+                          "can contain CR or LF?)");
+            return NGX_ERROR;
+        }
 
         if (e.status) {
             return NGX_ERROR;
