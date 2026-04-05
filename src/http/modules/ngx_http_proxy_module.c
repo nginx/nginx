@@ -1348,6 +1348,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     }
 
     cl->buf = b;
+    cl->next = NULL;
 
 
     /* the request line */
