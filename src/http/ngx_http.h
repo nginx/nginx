@@ -124,6 +124,8 @@ ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
 
 /** Check if value is a valid HTTP field name. */
 ngx_int_t ngx_http_valid_header_name(ngx_str_t value);
+/** Check if value is a valid HTTP field value. */
+ngx_int_t ngx_http_valid_header_value(ngx_str_t value);
 /** Check if the field name and value are valid for an HTTP field name-value
  * pair.  Leading and trailing ' ' and '\t' are stripped from the field value
  * before the value is checked.  The value is updated in-place. */
