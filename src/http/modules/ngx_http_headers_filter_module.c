@@ -851,6 +851,11 @@ ngx_http_headers_add(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     value = cf->args->elts;
 
+    if (ngx_conf_check_field_name_and_strip_value(cf, value, value + 1,
+                                                  value + 2) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
     headers = (ngx_array_t **) ((char *) hcf + cmd->offset);
 
     if (*headers == NULL) {

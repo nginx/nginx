@@ -2483,3 +2483,24 @@ invalid:
 
     return NGX_ERROR;
 }
+
+
+ngx_int_t
+ngx_http_valid_header_name(ngx_str_t value)
+{
+    size_t j;
+
+    if (value.len < 1) {
+        return NGX_ERROR;
+    }
+
+    for (j = 0; j < value.len; ++j) {
+        /* todo: check that this is an HTTP TOKEN */
+        if (value.data[j] <= 0x20 || value.data[j] == 0x7F
+            || value.data[j] == ':') {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
