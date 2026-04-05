@@ -1386,6 +1386,15 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 
     u->uri.len = b->last - u->uri.data;
 
+    for (uri_len = 0; uri_len < u->uri.len; ++uri_len) {
+        if (u->uri.data[uri_len] <= 0x20 || u->uri.data[uri_len] == 0x7F) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "URI contains control characters "
+                          "(possible CRLF injection?");
+            return NGX_ERROR;
+        }
+    }
+
     if (plcf->http_version == NGX_HTTP_VERSION_11) {
         b->last = ngx_cpymem(b->last, ngx_http_proxy_version_11,
                              sizeof(ngx_http_proxy_version_11) - 1);
