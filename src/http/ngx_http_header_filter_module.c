@@ -435,6 +435,21 @@ ngx_http_header_filter(ngx_http_request_t *r)
             continue;
         }
 
+        if (ngx_http_valid_header_name(header[i].key) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header name contains forbidden characters "
+                          "(do you use header names with variables?)");
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header value contains forbidden characters "
+                          "(do you use variables in header values that "
+                          "can contain CR or LF?)");
+            return NGX_ERROR;
+        }
+
         len += header[i].key.len + sizeof(": ") - 1 + header[i].value.len
                + sizeof(CRLF) - 1;
     }
@@ -666,6 +681,21 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
 
         if (header[i].hash == 0) {
             continue;
+        }
+
+        if (ngx_http_valid_header_name(header[i].key) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header name contains forbidden characters "
+                          "(do you use header names with variables?)");
+            return NGX_ERROR;
+        }
+
+        if (ngx_http_valid_header_value(header[i].value) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "Header value contains forbidden characters "
+                          "(do you use variables in header values that "
+                          "can contain CR or LF?)");
+            return NGX_ERROR;
         }
 
         len += header[i].key.len + sizeof(": ") - 1 + header[i].value.len
