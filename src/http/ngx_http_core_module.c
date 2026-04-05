@@ -2446,6 +2446,8 @@ ngx_http_subrequest(ngx_http_request_t *r,
     sr->method = NGX_HTTP_GET;
     sr->http_version = r->http_version;
 
+    sr->port = r->port;
+
     sr->request_line = r->request_line;
     sr->uri = *uri;
 
