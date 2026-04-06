@@ -80,7 +80,7 @@ struct ngx_http_upstream_rr_peer_s {
 #if (NGX_HTTP_UPSTREAM_ZONE)
     unsigned                        zombie:1;
 
-    ngx_atomic_t                    lock;
+    ngx_atomic_t                    lock __attribute__((aligned(64)));
     ngx_uint_t                      refs;
     ngx_http_upstream_host_t       *host;
 #endif
