@@ -5,6 +5,62 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.8" date="2026-04-07">
+
+<change type="feature">
+<para lang="ru">
+директива max_headers.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+the "max_headers" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+совместимость с OpenSSL 4.0.
+</para>
+<para lang="en">
+OpenSSL 4.0 compatibility.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь директива include внутри блока geo поддерживает маски.
+</para>
+<para lang="en">
+now the "include" directive inside the "geo" block supports wildcards.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в обработке ответов с кодом HTTP 103 (Early Hints)
+от проксируемого бэкенда.
+</para>
+<para lang="en">
+in processing of HTTP 103 (Early Hints) responses
+from a proxied backend.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные $request_port и $is_request_port
+были недоступны в подзапросах.
+</para>
+<para lang="en">
+the $request_port and $is_request_port variables
+were not available in subrequests.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.7" date="2026-03-24">
 
 <change type="security">
