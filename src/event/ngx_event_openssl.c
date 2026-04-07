@@ -3960,6 +3960,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_SSL3_SESSION_ID_TOO_LONG
             || n == SSL_R_SSL3_SESSION_ID_TOO_LONG                   /*  300 */
+#elif (defined SSL_R_TLS_SESSION_ID_TOO_LONG)
+            || n == SSL_R_TLS_SESSION_ID_TOO_LONG                    /*  300 */
 #endif
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
