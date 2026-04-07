@@ -565,7 +565,6 @@ static ngx_http_request_t *
 ngx_http_alloc_request(ngx_connection_t *c)
 {
     ngx_pool_t                 *pool;
-    ngx_time_t                 *tp;
     ngx_http_request_t         *r;
     ngx_http_connection_t      *hc;
     ngx_http_core_srv_conf_t   *cscf;
@@ -640,9 +639,7 @@ ngx_http_alloc_request(ngx_connection_t *c)
     r->main = r;
     r->count = 1;
 
-    tp = ngx_timeofday();
-    r->start_sec = tp->sec;
-    r->start_msec = tp->msec;
+    r->start_time = ngx_current_msec;
 
     r->method = NGX_HTTP_UNKNOWN;
     r->http_version = NGX_HTTP_VERSION_10;
