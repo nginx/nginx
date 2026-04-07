@@ -142,15 +142,9 @@ static ngx_http_v2_out_frame_t *ngx_http_v2_get_frame(
 static ngx_int_t ngx_http_v2_frame_handler(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame);
 
-static ngx_int_t ngx_http_v2_validate_header(ngx_http_request_t *r,
-    ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_pseudo_header(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_parse_path(ngx_http_request_t *r,
-    ngx_str_t *value);
-static ngx_int_t ngx_http_v2_parse_method(ngx_http_request_t *r,
-    ngx_str_t *value);
-static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
     ngx_str_t *value);
@@ -1775,7 +1769,8 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     fc = r->connection;
 
     /* TODO Optimization: validate headers while parsing. */
-    if (ngx_http_v2_validate_header(r, header) != NGX_OK) {
+    if (ngx_http_v23_validate_header(r, &header->name, &header->value, 1)
+        != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto error;
     }
@@ -3243,58 +3238,6 @@ ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
 
 
 static ngx_int_t
-ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
-{
-    u_char                     ch;
-    ngx_uint_t                 i;
-    ngx_http_core_srv_conf_t  *cscf;
-
-    r->invalid_header = 0;
-
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    for (i = (header->name.data[0] == ':'); i != header->name.len; i++) {
-        ch = header->name.data[i];
-
-        if ((ch >= 'a' && ch <= 'z')
-            || (ch == '-')
-            || (ch >= '0' && ch <= '9')
-            || (ch == '_' && cscf->underscores_in_headers))
-        {
-            continue;
-        }
-
-        if (ch <= 0x20 || ch == 0x7f || ch == ':'
-            || (ch >= 'A' && ch <= 'Z'))
-        {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid header name: \"%V\"",
-                          &header->name);
-
-            return NGX_ERROR;
-        }
-
-        r->invalid_header = 1;
-    }
-
-    for (i = 0; i != header->value.len; i++) {
-        ch = header->value.data[i];
-
-        if (ch == '\0' || ch == LF || ch == CR) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent header \"%V\" with "
-                          "invalid value: \"%V\"",
-                          &header->name, &header->value);
-
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 {
     header->name.len--;
@@ -3314,13 +3257,13 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if (ngx_memcmp(header->name.data, "method", sizeof("method") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_method(r, &header->value);
+            return ngx_http_v23_parse_method(r, &header->value);
         }
 
         if (ngx_memcmp(header->name.data, "scheme", sizeof("scheme") - 1)
             == 0)
         {
-            return ngx_http_v2_parse_scheme(r, &header->value);
+            return ngx_http_v23_parse_scheme(r, &header->value);
         }
 
         break;
@@ -3341,32 +3284,11 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
     return NGX_DECLINED;
 }
-
-
 static ngx_int_t
 ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_str_t *value)
 {
-    if (r->unparsed_uri.len) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate :path header");
 
-        return NGX_DECLINED;
-    }
-
-    if (value->len == 0) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent empty :path header");
-
-        return NGX_DECLINED;
-    }
-
-    r->uri_start = value->data;
-    r->uri_end = value->data + value->len;
-
-    if (ngx_http_parse_uri(r) != NGX_OK) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid :path header: \"%V\"", value);
-
+    if (ngx_http_v23_parse_path(r, value) != NGX_OK) {
         return NGX_DECLINED;
     }
 
@@ -3382,147 +3304,6 @@ ngx_http_v2_parse_path(ngx_http_request_t *r, ngx_str_t *value)
 }
 
 
-static ngx_int_t
-ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
-{
-    size_t         k, len;
-    ngx_uint_t     n;
-    const u_char  *p, *m;
-
-    /*
-     * This array takes less than 256 sequential bytes,
-     * and if typical CPU cache line size is 64 bytes,
-     * it is prefetched for 4 load operations.
-     */
-    static const struct {
-        u_char            len;
-        const u_char      method[11];
-        uint32_t          value;
-    } tests[] = {
-        { 3, "GET",       NGX_HTTP_GET },
-        { 4, "POST",      NGX_HTTP_POST },
-        { 4, "HEAD",      NGX_HTTP_HEAD },
-        { 7, "OPTIONS",   NGX_HTTP_OPTIONS },
-        { 8, "PROPFIND",  NGX_HTTP_PROPFIND },
-        { 3, "PUT",       NGX_HTTP_PUT },
-        { 5, "MKCOL",     NGX_HTTP_MKCOL },
-        { 6, "DELETE",    NGX_HTTP_DELETE },
-        { 4, "COPY",      NGX_HTTP_COPY },
-        { 4, "MOVE",      NGX_HTTP_MOVE },
-        { 9, "PROPPATCH", NGX_HTTP_PROPPATCH },
-        { 4, "LOCK",      NGX_HTTP_LOCK },
-        { 6, "UNLOCK",    NGX_HTTP_UNLOCK },
-        { 5, "PATCH",     NGX_HTTP_PATCH },
-        { 5, "TRACE",     NGX_HTTP_TRACE },
-        { 7, "CONNECT",   NGX_HTTP_CONNECT }
-    }, *test;
-
-    if (r->method_name.len) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate :method header");
-
-        return NGX_DECLINED;
-    }
-
-    if (value->len == 0) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent empty :method header");
-
-        return NGX_DECLINED;
-    }
-
-    r->method_name.len = value->len;
-    r->method_name.data = value->data;
-
-    len = r->method_name.len;
-    n = sizeof(tests) / sizeof(tests[0]);
-    test = tests;
-
-    do {
-        if (len == test->len) {
-            p = r->method_name.data;
-            m = test->method;
-            k = len;
-
-            do {
-                if (*p++ != *m++) {
-                    goto next;
-                }
-            } while (--k);
-
-            r->method = test->value;
-            return NGX_OK;
-        }
-
-    next:
-        test++;
-
-    } while (--n);
-
-    p = r->method_name.data;
-
-    do {
-        if ((*p < 'A' || *p > 'Z') && *p != '_' && *p != '-') {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid method: \"%V\"",
-                          &r->method_name);
-
-            return NGX_DECLINED;
-        }
-
-        p++;
-
-    } while (--len);
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_v2_parse_scheme(ngx_http_request_t *r, ngx_str_t *value)
-{
-    u_char      c, ch;
-    ngx_uint_t  i;
-
-    if (r->schema.len) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate :scheme header");
-
-        return NGX_DECLINED;
-    }
-
-    if (value->len == 0) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent empty :scheme header");
-
-        return NGX_DECLINED;
-    }
-
-    for (i = 0; i < value->len; i++) {
-        ch = value->data[i];
-
-        c = (u_char) (ch | 0x20);
-        if (c >= 'a' && c <= 'z') {
-            continue;
-        }
-
-        if (((ch >= '0' && ch <= '9') || ch == '+' || ch == '-' || ch == '.')
-            && i > 0)
-        {
-            continue;
-        }
-
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid :scheme header: \"%V\"", value);
-
-        return NGX_DECLINED;
-    }
-
-    r->schema = *value;
-
-    return NGX_OK;
-}
-
 
 static ngx_int_t
 ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
@@ -3530,20 +3311,9 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
     ngx_int_t  rc;
     in_port_t  port;
 
-    if (r->host_start) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent duplicate \":authority\" header");
-        return NGX_DECLINED;
-    }
-
-    r->host_start = value->data;
-    r->host_end = value->data + value->len;
-
-    rc = ngx_http_validate_host(value, &port, r->pool, 0);
+    rc = ngx_http_v23_parse_authority(r, value);
 
     if (rc == NGX_DECLINED) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent invalid \":authority\" header");
         return NGX_DECLINED;
     }
 
@@ -3792,7 +3562,6 @@ ngx_http_v2_construct_host_header(ngx_http_request_t *r)
 static void
 ngx_http_v2_run_request(ngx_http_request_t *r)
 {
-    ngx_str_t                  host;
     ngx_connection_t          *fc;
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
@@ -3820,52 +3589,20 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
-    if (r->headers_in.server.len == 0) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                      "client sent neither \":authority\" nor \"Host\" header");
+    if (ngx_http_v23_validate_headers(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto failed;
     }
 
-    if (r->host_end) {
+    if (r->host_end && !r->headers_in.host) {
+        /* compatibility for $http_host */
 
-        host.len = r->host_end - r->host_start;
-        host.data = r->host_start;
-
-        if (r->headers_in.host) {
-            if (r->headers_in.host->value.len != host.len
-                || ngx_memcmp(r->headers_in.host->value.data, host.data,
-                              host.len)
-                   != 0)
-            {
-                ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                              "client sent \":authority\" and \"Host\" headers "
-                              "with different values");
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                goto failed;
-            }
-
-        } else {
-            /* compatibility for $http_host */
-
-            if (ngx_http_v2_construct_host_header(r) != NGX_OK) {
-                goto failed;
-            }
+        if (ngx_http_v2_construct_host_header(r) != NGX_OK) {
+            goto failed;
         }
     }
 
     if (r->headers_in.content_length) {
-        r->headers_in.content_length_n =
-                            ngx_atoof(r->headers_in.content_length->value.data,
-                                      r->headers_in.content_length->value.len);
-
-        if (r->headers_in.content_length_n == NGX_ERROR) {
-            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
-                          "client sent invalid \"Content-Length\" header");
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-            goto failed;
-        }
-
         if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
             ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                           "client prematurely closed stream");
@@ -3880,14 +3617,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->headers_in.chunked = 1;
     }
 
-    if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        goto failed;
-    }
-
-    if (r->method == NGX_HTTP_TRACE) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent TRACE method");
+    if (ngx_http_check_method(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         goto failed;
     }

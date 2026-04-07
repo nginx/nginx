@@ -132,10 +132,6 @@ static ngx_int_t ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
-static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
-    ngx_str_t *s);
-static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
-    ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_goaway(ngx_http_request_t *r,
@@ -3206,29 +3202,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             ctx->value = *ngx_http_v2_get_static_value(ctx->index);
         }
 
-        if (!ctx->index) {
-            if (ngx_http_proxy_v2_validate_header_name(r, &ctx->name)
-                != NGX_OK)
-            {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent invalid header: \"%V: %V\"",
-                              &ctx->name, &ctx->value);
-                return NGX_ERROR;
-            }
-        }
-
-        if (!ctx->index || ctx->literal) {
-            if (ngx_http_proxy_v2_validate_header_value(r, &ctx->value)
-                != NGX_OK)
-            {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent invalid header: \"%V: %V\"",
-                              &ctx->name, &ctx->value);
-                return NGX_ERROR;
-            }
-        }
-
-        return NGX_OK;
+        return ngx_http_v23_validate_header(r, &ctx->name, &ctx->value, 0);
     }
 
     ctx->rest -= p - b->pos;
@@ -3240,50 +3214,6 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
     }
 
     return NGX_DONE;
-}
-
-
-static ngx_int_t
-ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
-{
-    u_char      ch;
-    ngx_uint_t  i;
-
-    for (i = 0; i < s->len; i++) {
-        ch = s->data[i];
-
-        if (ch == ':' && i > 0) {
-            return NGX_ERROR;
-        }
-
-        if (ch >= 'A' && ch <= 'Z') {
-            return NGX_ERROR;
-        }
-
-        if (ch <= 0x20 || ch == 0x7f) {
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r, ngx_str_t *s)
-{
-    u_char      ch;
-    ngx_uint_t  i;
-
-    for (i = 0; i < s->len; i++) {
-        ch = s->data[i];
-
-        if (ch == '\0' || ch == CR || ch == LF) {
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
 }
 
 

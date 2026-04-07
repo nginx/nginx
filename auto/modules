@@ -103,7 +103,7 @@ if [ $HTTP = YES ]; then
 
 
     if [ $HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
-        HTTP_SRCS="$HTTP_SRCS $HTTP_HUFF_SRCS"
+        HTTP_SRCS="$HTTP_SRCS $HTTP_V23_COMMON_SRCS"
     fi
 
 
