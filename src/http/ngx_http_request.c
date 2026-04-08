@@ -32,6 +32,7 @@ static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_read_early_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_find_virtual_server(ngx_connection_t *c,
     ngx_http_virtual_names_t *virtual_names, ngx_str_t *host,
     ngx_http_request_t *r, ngx_http_core_srv_conf_t **cscfp);
@@ -2209,7 +2210,66 @@ ngx_http_process_request(ngx_http_request_t *r)
     c->write->handler = ngx_http_request_handler;
     r->read_event_handler = ngx_http_block_reading;
 
+    if (ngx_http_read_early_body(r) != NGX_OK) {
+        return;
+    }
+
     ngx_http_handler(r);
+}
+
+
+static ngx_int_t
+ngx_http_read_early_body(ngx_http_request_t *r)
+{
+    ngx_int_t                  rc;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    rc = ngx_http_test_predicates(r, cscf->client_body_early_read);
+
+    if (rc == NGX_ERROR) {
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_DONE;
+    }
+
+    if (rc == NGX_OK) {
+        return NGX_OK;
+    }
+
+    /* rc == NGX_DECLINED */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http client request body early read");
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->headers_in.content_length_n != -1
+        && !r->discard_body
+        && clcf->client_max_body_size
+        && clcf->client_max_body_size < r->headers_in.content_length_n)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client intended to send too large body: %O bytes",
+                      r->headers_in.content_length_n);
+
+        r->expect_tested = 1;
+        (void) ngx_http_discard_request_body(r);
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_ENTITY_TOO_LARGE);
+        return NGX_DONE;
+    }
+
+    rc = ngx_http_read_client_request_body(r, ngx_http_handler);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        ngx_http_finalize_request(r, rc);
+        return NGX_DONE;
+    }
+
+    ngx_http_finalize_request(r, NGX_DONE);
+
+    return NGX_DONE;
 }
 
 
