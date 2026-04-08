@@ -26,6 +26,8 @@ static ngx_int_t ngx_http_process_host(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_process_proxy_connection(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
@@ -81,6 +83,9 @@ ngx_http_header_t  ngx_http_headers_in[] = {
 
     { ngx_string("Connection"), offsetof(ngx_http_headers_in_t, connection),
                  ngx_http_process_connection },
+
+    { ngx_string("Proxy-Connection"), 0,
+                 ngx_http_process_proxy_connection },
 
     { ngx_string("If-Modified-Since"),
                  offsetof(ngx_http_headers_in_t, if_modified_since),
@@ -1922,6 +1927,21 @@ ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
 
     } else if (ngx_strcasestrn(h->value.data, "keep-alive", 10 - 1)) {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_process_proxy_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    if (r->http_version >= NGX_HTTP_VERSION_20) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent \"Proxy-Connection\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
 
     return NGX_OK;
