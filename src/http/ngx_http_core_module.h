@@ -205,6 +205,8 @@ typedef struct {
     ngx_flag_t                  merge_slashes;
     ngx_flag_t                  underscores_in_headers;
 
+    ngx_array_t                *client_body_early_read;
+
     unsigned                    listen:1;
 #if (NGX_PCRE)
     unsigned                    captures:1;
