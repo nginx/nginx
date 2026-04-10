@@ -155,6 +155,28 @@ static ngx_http_v3_field_t  ngx_http_v3_static_table[] = {
 };
 
 
+ngx_buf_t *
+ngx_http_v3_get_insert_buffer(ngx_connection_t *c)
+{
+    ngx_http_v3_session_t        *h3c;
+    ngx_http_v3_dynamic_table_t  *dt;
+
+    h3c = ngx_http_v3_get_session(c);
+    dt = &h3c->table;
+
+    if (dt->insert_buffer == NULL) {
+        dt->insert_buffer = ngx_create_temp_buf(c->pool, dt->capacity);
+        if (dt->insert_buffer == NULL) {
+            return NULL;
+        }
+    }
+
+    dt->insert_buffer->last = dt->insert_buffer->pos;
+
+    return dt->insert_buffer;
+}
+
+
 ngx_int_t
 ngx_http_v3_ref_insert(ngx_connection_t *c, ngx_uint_t dynamic,
     ngx_uint_t index, ngx_str_t *value)

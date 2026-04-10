@@ -51,6 +51,7 @@ typedef struct {
     ngx_str_t                       value;
     u_char                         *last;
     u_char                          huffstate;
+    ngx_buf_t                      *buf;
 } ngx_http_v3_parse_literal_t;
 
 
