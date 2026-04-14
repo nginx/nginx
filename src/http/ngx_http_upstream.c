@@ -2835,13 +2835,16 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
         && u->cache_status == NGX_HTTP_CACHE_EXPIRED
         && u->conf->cache_revalidate)
     {
-        time_t     now, valid, updating, error;
-        ngx_int_t  rc;
+        time_t        now, valid, updating, error;
+        ngx_uint_t    valid_msec_abs;
+        ngx_time_t   *tp;
+        ngx_int_t     rc;
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream not modified");
 
         now = ngx_time();
+        valid_msec_abs = r->cache->valid_msec;
 
         valid = r->cache->valid_sec;
         updating = r->cache->updating_sec;
@@ -2869,18 +2872,25 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
             valid = r->cache->valid_sec;
             updating = r->cache->updating_sec;
             error = r->cache->error_sec;
+            valid_msec_abs = r->cache->valid_msec;
         }
 
         if (valid == 0) {
-            valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                              u->headers_in.status_n);
-            if (valid) {
-                valid = now + valid;
+            time_t       d_sec;
+            ngx_uint_t   d_msec;
+
+            d_sec = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                             u->headers_in.status_n, &d_msec);
+            if (d_sec || d_msec) {
+                tp = ngx_timeofday();
+                valid = tp->sec + d_sec + (tp->msec + d_msec) / 1000;
+                valid_msec_abs = (ngx_uint_t) ((tp->msec + d_msec) % 1000);
             }
         }
 
         if (valid) {
             r->cache->valid_sec = valid;
+            r->cache->valid_msec = valid_msec_abs;
             r->cache->updating_sec = updating;
             r->cache->error_sec = error;
 
@@ -2965,19 +2975,25 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
                 }
 
                 if (u->cacheable) {
-                    time_t  valid;
+                    time_t       valid;
+                    ngx_uint_t  d_msec;
+                    ngx_time_t  *tp;
 
                     valid = r->cache->valid_sec;
 
                     if (valid == 0) {
                         valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                                          status);
-                        if (valid) {
-                            r->cache->valid_sec = ngx_time() + valid;
+                                                          status, &d_msec);
+                        if (valid || d_msec) {
+                            tp = ngx_timeofday();
+                            r->cache->valid_sec = tp->sec + valid
+                                + (tp->msec + d_msec) / 1000;
+                            r->cache->valid_msec =
+                                (ngx_uint_t) ((tp->msec + d_msec) % 1000);
                         }
                     }
 
-                    if (valid) {
+                    if (valid || r->cache->valid_msec) {
                         r->cache->error = status;
                     }
                 }
@@ -3402,7 +3418,9 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (u->cacheable) {
-        time_t  now, valid;
+        time_t       now, valid;
+        ngx_uint_t   d_msec;
+        ngx_time_t  *tp;
 
         now = ngx_time();
 
@@ -3410,13 +3428,17 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         if (valid == 0) {
             valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                              u->headers_in.status_n);
-            if (valid) {
-                r->cache->valid_sec = now + valid;
+                                              u->headers_in.status_n, &d_msec);
+            if (valid || d_msec) {
+                tp = ngx_timeofday();
+                r->cache->valid_sec = tp->sec + valid
+                    + (tp->msec + d_msec) / 1000;
+                r->cache->valid_msec =
+                    (ngx_uint_t) ((tp->msec + d_msec) % 1000);
             }
         }
 
-        if (valid) {
+        if (valid || r->cache->valid_msec) {
             r->cache->date = now;
             r->cache->body_start = (u_short) (u->buffer.pos - u->buffer.start);
 
@@ -4851,12 +4873,19 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         if (u->cacheable) {
 
             if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
-                time_t  valid;
+                time_t       valid;
+                ngx_uint_t   d_msec;
+                ngx_time_t  *tp;
 
-                valid = ngx_http_file_cache_valid(u->conf->cache_valid, rc);
+                valid = ngx_http_file_cache_valid(u->conf->cache_valid, rc,
+                                                  &d_msec);
 
-                if (valid) {
-                    r->cache->valid_sec = ngx_time() + valid;
+                if (valid || d_msec) {
+                    tp = ngx_timeofday();
+                    r->cache->valid_sec = tp->sec + valid
+                        + (tp->msec + d_msec) / 1000;
+                    r->cache->valid_msec =
+                        (ngx_uint_t) ((tp->msec + d_msec) % 1000);
                     r->cache->error = rc;
                 }
             }

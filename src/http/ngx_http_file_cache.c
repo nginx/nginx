@@ -65,6 +65,15 @@ static ngx_int_t ngx_http_file_cache_delete_file(ngx_tree_ctx_t *ctx,
 static void ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache);
 
 
+static ngx_inline ngx_int_t
+ngx_http_file_cache_expired(time_t valid_sec, ngx_uint_t valid_msec,
+    time_t now_sec, ngx_uint_t now_msec)
+{
+    return (now_sec > valid_sec)
+        || (now_sec == valid_sec && now_msec >= valid_msec);
+}
+
+
 ngx_str_t  ngx_http_cache_status[] = {
     ngx_string("MISS"),
     ngx_string("BYPASS"),
@@ -548,6 +557,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     ngx_str_t                     *key;
     ngx_int_t                      rc;
     ngx_uint_t                     i;
+    ngx_time_t                    *tp;
     ngx_http_file_cache_t         *cache;
     ngx_http_file_cache_header_t  *h;
 
@@ -649,9 +659,12 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
         ngx_shmtx_unlock(&cache->shpool->mutex);
     }
 
-    now = ngx_time();
+    tp = ngx_timeofday();
+    now = tp->sec;
 
-    if (c->valid_sec < now) {
+    if (ngx_http_file_cache_expired(c->valid_sec, c->valid_msec,
+                                    tp->sec, tp->msec))
+    {
         c->stale_updating = c->valid_sec + c->updating_sec >= now;
         c->stale_error = c->valid_sec + c->error_sec >= now;
 
@@ -881,6 +894,7 @@ static ngx_int_t
 ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
 {
     ngx_int_t                    rc;
+    ngx_time_t                  *tp;
     ngx_http_file_cache_node_t  *fcn;
 
     ngx_shmtx_lock(&cache->shpool->mutex);
@@ -900,8 +914,10 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         }
 
         if (fcn->error) {
-
-            if (fcn->valid_sec < ngx_time()) {
+            tp = ngx_timeofday();
+            if (ngx_http_file_cache_expired(fcn->valid_sec, fcn->valid_msec,
+                                            tp->sec, tp->msec))
+            {
                 goto renew;
             }
 
@@ -2350,12 +2366,16 @@ ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache)
 
 
 time_t
-ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status)
+ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status,
+    ngx_uint_t *valid_msec)
 {
     ngx_uint_t               i;
     ngx_http_cache_valid_t  *valid;
 
     if (cache_valid == NULL) {
+        if (valid_msec != NULL) {
+            *valid_msec = 0;
+        }
         return 0;
     }
 
@@ -2363,14 +2383,23 @@ ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status)
     for (i = 0; i < cache_valid->nelts; i++) {
 
         if (valid[i].status == 0) {
+            if (valid_msec != NULL) {
+                *valid_msec = valid[i].valid_msec;
+            }
             return valid[i].valid;
         }
 
         if (valid[i].status == status) {
+            if (valid_msec != NULL) {
+                *valid_msec = valid[i].valid_msec;
+            }
             return valid[i].valid;
         }
     }
 
+    if (valid_msec != NULL) {
+        *valid_msec = 0;
+    }
     return 0;
 }
 
@@ -2729,11 +2758,13 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     char  *p = conf;
 
     time_t                    valid;
+    ngx_uint_t                valid_msec;
     ngx_str_t                *value;
     ngx_int_t                 status;
     ngx_uint_t                i, n;
     ngx_array_t             **a;
     ngx_http_cache_valid_t   *v;
+    ngx_int_t                 total_ms;
     static ngx_uint_t         statuses[] = { 200, 301, 302 };
 
     a = (ngx_array_t **) (p + cmd->offset);
@@ -2748,11 +2779,28 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     value = cf->args->elts;
     n = cf->args->nelts - 1;
 
-    valid = ngx_parse_time(&value[n], 1);
-    if (valid == (time_t) NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid time value \"%V\"", &value[n]);
-        return NGX_CONF_ERROR;
+    /* Additive: "ms" suffix means milliseconds (sub-second); otherwise seconds */
+    if (value[n].len >= 2
+        && ngx_strlcasestrn(value[n].data,
+                            value[n].data + value[n].len,
+                            (u_char *) "ms", 1) != NULL)
+    {
+        total_ms = ngx_parse_time(&value[n], 0);
+        if (total_ms == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid time value \"%V\"", &value[n]);
+            return NGX_CONF_ERROR;
+        }
+        valid = (time_t) (total_ms / 1000);
+        valid_msec = (ngx_uint_t) (total_ms % 1000);
+    } else {
+        valid = ngx_parse_time(&value[n], 1);
+        if (valid == (time_t) NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid time value \"%V\"", &value[n]);
+            return NGX_CONF_ERROR;
+        }
+        valid_msec = 0;
     }
 
     if (n == 1) {
@@ -2765,6 +2813,7 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
             v->status = statuses[i];
             v->valid = valid;
+            v->valid_msec = valid_msec;
         }
 
         return NGX_CONF_OK;
@@ -2793,6 +2842,7 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 
         v->status = status;
         v->valid = valid;
+        v->valid_msec = valid_msec;
     }
 
     return NGX_CONF_OK;
