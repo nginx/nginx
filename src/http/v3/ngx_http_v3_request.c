@@ -1050,7 +1050,8 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->headers_in.te
-        && (r->headers_in.te->value.len != 8
+        && (r->headers_in.te->next
+            || r->headers_in.te->value.len != 8
             || ngx_strncasecmp(r->headers_in.te->value.data,
                                (u_char *) "trailers", 8) != 0))
     {
