@@ -11,6 +11,7 @@
 
 
 static void ngx_close_posted_connection(ngx_connection_t *c);
+static void ngx_event_acceptex_recycle(ngx_listening_t *ls, ngx_connection_t *c);
 
 
 void
@@ -29,6 +30,7 @@ ngx_event_acceptex(ngx_event_t *rev)
     if (rev->ovlp.error) {
         ngx_log_error(NGX_LOG_CRIT, c->log, rev->ovlp.error,
                       "AcceptEx() %V failed", &ls->addr_text);
+        ngx_event_acceptex_recycle(ls, c);
         return;
     }
 
@@ -41,7 +43,7 @@ ngx_event_acceptex(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed for %V",
                       &c->addr_text);
-        /* TODO: close socket */
+        ngx_event_acceptex_recycle(ls, c);
         return;
     }
 
@@ -63,7 +65,7 @@ ngx_event_acceptex(ngx_event_t *rev)
     if (ls->addr_ntop) {
         c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
         if (c->addr_text.data == NULL) {
-            /* TODO: close socket */
+            ngx_event_acceptex_recycle(ls, c);
             return;
         }
 
@@ -71,7 +73,7 @@ ngx_event_acceptex(ngx_event_t *rev)
                                          c->addr_text.data,
                                          ls->addr_text_max_len, 0);
         if (c->addr_text.len == 0) {
-            /* TODO: close socket */
+            ngx_event_acceptex_recycle(ls, c);
             return;
         }
     }
@@ -198,6 +200,15 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_event_acceptex_recycle(ngx_listening_t *ls, ngx_connection_t *c)
+{
+    ngx_close_posted_connection(c);
+
+    (void) ngx_event_post_acceptex(ls, 1);
 }
 
 
