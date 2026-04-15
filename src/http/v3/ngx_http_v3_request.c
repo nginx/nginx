@@ -905,14 +905,11 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
     ngx_int_t   rc;
     ngx_str_t   host;
     in_port_t   port;
-    ngx_http_core_srv_conf_t  *cscf;
     static u_char              connect_path[] = "/";
 
     if (r->request_line.len) {
         return NGX_OK;
     }
-
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
     if (r->method_name.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -920,23 +917,21 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         goto failed;
     }
 
-    if (r->schema.len == 0
-        && !(r->method == NGX_HTTP_CONNECT && cscf->allow_connect))
+    if (r->schema.len == 0 && r->method != NGX_HTTP_CONNECT)
     {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent no \":scheme\" header");
         goto failed;
     }
 
-    if (r->uri_start == NULL
-        && !(r->method == NGX_HTTP_CONNECT && cscf->allow_connect))
+    if (r->uri_start == NULL && r->method != NGX_HTTP_CONNECT)
     {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent no \":path\" header");
         goto failed;
     }
 
-    if (r->method == NGX_HTTP_CONNECT && cscf->allow_connect) {
+    if (r->method == NGX_HTTP_CONNECT) {
         if (r->host_end == NULL) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent no \":authority\" header");

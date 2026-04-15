@@ -3562,15 +3562,12 @@ static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
     u_char  *p;
-    ngx_http_core_srv_conf_t  *cscf;
 
     static const u_char ending[] = " HTTP/2.0";
     static u_char        connect_path[] = "/";
 
-    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
-
-    if (r->method == NGX_HTTP_CONNECT && cscf->allow_connect) {
-        if (r->headers_in.server.len == 0) {
+    if (r->method == NGX_HTTP_CONNECT) {
+        if (r->host_end == NULL) {
             ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                           "client sent no :authority header");
             ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
