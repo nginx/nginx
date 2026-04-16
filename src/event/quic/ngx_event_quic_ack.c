@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_event_quic_qlog.h>
 
 
 #define NGX_QUIC_MAX_ACK_GAP                 2
@@ -246,6 +247,8 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
     ngx_log_debug4(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic rtt sample latest:%M min:%M avg:%M var:%M",
                    latest_rtt, qc->min_rtt, qc->avg_rtt, qc->rttvar);
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 }
 
 
@@ -336,6 +339,8 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     }
 
     qc->pto_count = 0;
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 
     return NGX_OK;
 }
@@ -448,6 +453,8 @@ done:
     if (blocked && cg->in_flight < cg->window) {
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 }
 
 
@@ -660,6 +667,10 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                 nlost++;
             }
 
+            ngx_quic_qlog_pkt_lost(c, qc, ctx, start,
+                                   (ngx_msec_int_t) wait <= 0
+                                   ? NGX_QUIC_QLOG_PKT_LOST_TIME
+                                   : NGX_QUIC_QLOG_PKT_LOST_REORDERING);
             ngx_quic_resend_frames(c, ctx);
         }
     }
@@ -721,6 +732,8 @@ ngx_quic_persistent_congestion(ngx_connection_t *c)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic congestion persistent t:%M win:%uz",
                    ngx_current_msec, cg->window);
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 }
 
 
@@ -921,6 +934,8 @@ done:
     if (blocked && cg->in_flight < cg->window) {
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 }
 
 
@@ -1162,6 +1177,8 @@ ngx_quic_pto_handler(ngx_event_t *ev)
     }
 
     qc->pto_count++;
+
+    ngx_quic_qlog_metrics_updated(c, qc);
 
     ngx_quic_set_lost_timer(c);
 

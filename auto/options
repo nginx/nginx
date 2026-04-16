@@ -46,6 +46,7 @@ USE_THREADS=NO
 NGX_FILE_AIO=NO
 
 QUIC_BPF=NO
+QUIC_QLOG=NO
 
 HTTP=YES
 
@@ -223,6 +224,7 @@ do
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
 
         --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
+        --with-quic_qlog_module)         QUIC_QLOG=YES              ;;
 
         --with-ipv6)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
@@ -471,6 +473,7 @@ cat << END
   --with-file-aio                    enable file AIO support
 
   --without-quic_bpf_module          disable ngx_quic_bpf_module
+  --with-quic_qlog_module            enable QUIC qlog support
 
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_v2_module              enable ngx_http_v2_module
