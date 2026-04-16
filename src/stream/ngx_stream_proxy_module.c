@@ -853,9 +853,9 @@ static ngx_array_t *
 ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
     size_t *sizep)
 {
-    u_char                            *blob, *q;
+    u_char                            *blob, *q, client_flags;
     ngx_int_t                          verify_i;
-    ngx_uint_t                         i, n_ssl, has_ssl_verify;
+    ngx_uint_t                         i, n_ssl, has_ssl_verify, has_ssl_cn;
     uint32_t                           verify;
     size_t                             ssl_sub_total;
     ngx_str_t                         *vals;
@@ -878,6 +878,7 @@ ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
     *sizep = 0;
     n_ssl = 0;
     has_ssl_verify = 0;
+    has_ssl_cn = 0;
     verify = 0xFFFFFFFF;  /* default: not verified */
     ssl_sub_total = 0;
     ctlv = conf_tlvs->elts;
@@ -902,6 +903,11 @@ ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
         } else if (ctlv[i].is_ssl_sub) {
             n_ssl++;
             ssl_sub_total += 3 + vals[i].len;  /* sub-TLV: type(1)+len(2)+val */
+
+            /* ssl_cn presence drives PP2_CLIENT_CERT_SESS / CERT_CONN flags */
+            if (ctlv[i].type == 0x22) {
+                has_ssl_cn = 1;
+            }
 
         } else {
             *sizep += 3 + vals[i].len;  /* regular TLV wire size */
@@ -937,8 +943,25 @@ ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
 
         q = blob;
 
-        /* PP2_CLIENT_SSL (0x01): client connected over SSL/TLS */
-        *q++ = 0x01;
+        /*
+         * PP2_CLIENT_SSL      (0x01): client connected over SSL/TLS
+         * PP2_CLIENT_CERT_CONN (0x02): certificate verified in this connection
+         * PP2_CLIENT_CERT_SESS (0x04): certificate verified in this session
+         */
+        client_flags = 0x01;  /* PP2_CLIENT_SSL */
+
+        if (has_ssl_cn) {
+            client_flags |= 0x04;  /* PP2_CLIENT_CERT_SESS */
+#if (NGX_SSL)
+            if (s->connection->ssl != NULL
+                && !SSL_session_reused(s->connection->ssl->connection))
+            {
+                client_flags |= 0x02;  /* PP2_CLIENT_CERT_CONN */
+            }
+#endif
+        }
+
+        *q++ = client_flags;
 
         /* verify field in network byte order */
         *q++ = (u_char) (verify >> 24);
