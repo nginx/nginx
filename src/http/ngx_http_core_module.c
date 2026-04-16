@@ -1144,7 +1144,10 @@ ngx_http_core_access_phase(ngx_http_request_t *r, ngx_http_phase_handler_t *ph)
         if (rc == NGX_OK) {
             r->access_code = 0;
 
-            for (h = r->headers_out.www_authenticate; h; h = h->next) {
+            h = ngx_http_proxy_auth(r) ? r->headers_out.proxy_authenticate
+                                       : r->headers_out.www_authenticate;
+
+            for ( /* void */ ; h; h = h->next) {
                 h->hash = 0;
             }
 
@@ -2001,19 +2004,23 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 ngx_int_t
 ngx_http_auth_basic_user(ngx_http_request_t *r)
 {
-    ngx_str_t   auth, encoded;
-    ngx_uint_t  len;
+    ngx_str_t         auth, encoded;
+    ngx_uint_t        len;
+    ngx_table_elt_t  *h;
 
     if (r->headers_in.user.len == 0 && r->headers_in.user.data != NULL) {
         return NGX_DECLINED;
     }
 
-    if (r->headers_in.authorization == NULL) {
+    h = ngx_http_proxy_auth(r) ? r->headers_in.proxy_authorization
+                               : r->headers_in.authorization;
+
+    if (h == NULL) {
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
     }
 
-    encoded = r->headers_in.authorization->value;
+    encoded = h->value;
 
     if (encoded.len < sizeof("Basic ") - 1
         || ngx_strncasecmp(encoded.data, (u_char *) "Basic ",
