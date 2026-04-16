@@ -549,6 +549,54 @@ ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
 }
 
 
+u_char *
+ngx_proxy_protocol_v2_write_crc32c(ngx_connection_t *c, u_char *buf,
+    u_char *p, u_char *last)
+{
+    uint16_t                      len;
+    uint32_t                      crc;
+    ngx_proxy_protocol_header_t  *header;
+    ngx_proxy_protocol_tlv_t     *wire;
+
+    /* type(1) + len(2) + crc32c_value(4) = 7 bytes */
+    if (p + 7 > last) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "too small buffer for PROXY protocol v2 CRC32c TLV");
+        return NULL;
+    }
+
+    /* Append CRC32c TLV with zeroed value field */
+    wire = (ngx_proxy_protocol_tlv_t *) p;
+    wire->type = 0x03;
+    wire->len[0] = 0;
+    wire->len[1] = 4;
+    p += sizeof(ngx_proxy_protocol_tlv_t);
+
+    p[0] = 0;
+    p[1] = 0;
+    p[2] = 0;
+    p[3] = 0;
+    p += 4;
+
+    /* Update the PPv2 length field to include this TLV */
+    header = (ngx_proxy_protocol_header_t *) buf;
+    len = ngx_proxy_protocol_parse_uint16(header->len) + 7;
+    header->len[0] = (u_char) (len >> 8);
+    header->len[1] = (u_char) len;
+
+    /* Compute CRC32c over the entire assembled header (zeroed value included) */
+    crc = ngx_crc32c(buf, p - buf);
+
+    /* Write the checksum in network byte order */
+    p[-4] = (u_char) (crc >> 24);
+    p[-3] = (u_char) (crc >> 16);
+    p[-2] = (u_char) (crc >> 8);
+    p[-1] = (u_char) crc;
+
+    return p;
+}
+
+
 static u_char *
 ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
