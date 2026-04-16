@@ -341,6 +341,7 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
     ngx_proxy_protocol_header_t        *header;
     ngx_proxy_protocol_inet_addrs_t    *in;
 #if (NGX_HAVE_INET6)
+    struct in6_addr                    *src6, *dst6;
     ngx_proxy_protocol_inet6_addrs_t   *in6;
 #endif
 #if (NGX_HAVE_UNIX_DOMAIN)
@@ -401,26 +402,48 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET6:
 
-        header->family_transport = 0x20 | transport;  /* AF_INET6 */
-        header->len[0] = 0;
-        header->len[1] = sizeof(ngx_proxy_protocol_inet6_addrs_t);
-
-        in6 = (ngx_proxy_protocol_inet6_addrs_t *) p;
-
-        ngx_memcpy(in6->src_addr,
-                   &((struct sockaddr_in6 *) c->sockaddr)->sin6_addr, 16);
-        ngx_memcpy(in6->dst_addr,
-                   &((struct sockaddr_in6 *) c->local_sockaddr)->sin6_addr, 16);
+        src6 = &((struct sockaddr_in6 *) c->sockaddr)->sin6_addr;
+        dst6 = &((struct sockaddr_in6 *) c->local_sockaddr)->sin6_addr;
 
         port = ngx_inet_get_port(c->sockaddr);
         lport = ngx_inet_get_port(c->local_sockaddr);
 
-        in6->src_port[0] = (u_char) (port >> 8);
-        in6->src_port[1] = (u_char) port;
-        in6->dst_port[0] = (u_char) (lport >> 8);
-        in6->dst_port[1] = (u_char) lport;
+        if (IN6_IS_ADDR_V4MAPPED(src6)) {
 
-        p += sizeof(ngx_proxy_protocol_inet6_addrs_t);
+            header->family_transport = 0x10 | transport;  /* AF_INET */
+            header->len[0] = 0;
+            header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+            in = (ngx_proxy_protocol_inet_addrs_t *) p;
+
+            ngx_memcpy(in->src_addr, src6->s6_addr + 12, 4);
+            ngx_memcpy(in->dst_addr, dst6->s6_addr + 12, 4);
+
+            in->src_port[0] = (u_char) (port >> 8);
+            in->src_port[1] = (u_char) port;
+            in->dst_port[0] = (u_char) (lport >> 8);
+            in->dst_port[1] = (u_char) lport;
+
+            p += sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+        } else {
+
+            header->family_transport = 0x20 | transport;  /* AF_INET6 */
+            header->len[0] = 0;
+            header->len[1] = sizeof(ngx_proxy_protocol_inet6_addrs_t);
+
+            in6 = (ngx_proxy_protocol_inet6_addrs_t *) p;
+
+            ngx_memcpy(in6->src_addr, src6, 16);
+            ngx_memcpy(in6->dst_addr, dst6, 16);
+
+            in6->src_port[0] = (u_char) (port >> 8);
+            in6->src_port[1] = (u_char) port;
+            in6->dst_port[0] = (u_char) (lport >> 8);
+            in6->dst_port[1] = (u_char) lport;
+
+            p += sizeof(ngx_proxy_protocol_inet6_addrs_t);
+        }
 
         break;
 
