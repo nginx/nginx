@@ -375,6 +375,10 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET:
 
+        if (c->local_sockaddr->sa_family != AF_INET) {
+            goto mixed;
+        }
+
         header->family_transport = 0x10 | transport;  /* AF_INET */
         header->len[0] = 0;
         header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
@@ -402,13 +406,17 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_INET6:
 
+        if (c->local_sockaddr->sa_family != AF_INET6) {
+            goto mixed;
+        }
+
         src6 = &((struct sockaddr_in6 *) c->sockaddr)->sin6_addr;
         dst6 = &((struct sockaddr_in6 *) c->local_sockaddr)->sin6_addr;
 
         port = ngx_inet_get_port(c->sockaddr);
         lport = ngx_inet_get_port(c->local_sockaddr);
 
-        if (IN6_IS_ADDR_V4MAPPED(src6)) {
+        if (IN6_IS_ADDR_V4MAPPED(src6) && IN6_IS_ADDR_V4MAPPED(dst6)) {
 
             header->family_transport = 0x10 | transport;  /* AF_INET */
             header->len[0] = 0;
@@ -453,6 +461,10 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 
     case AF_UNIX:
 
+        if (c->local_sockaddr->sa_family != AF_UNIX) {
+            goto mixed;
+        }
+
         header->family_transport = 0x30 | transport;  /* AF_UNIX */
         header->len[0] = 0;
         header->len[1] = sizeof(ngx_proxy_protocol_unix_addrs_t);
@@ -483,6 +495,11 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 #endif
 
     default:
+
+    mixed:
+
+        ngx_log_error(NGX_LOG_CRIT, c->log, 0,
+                      "PROXY protocol v2 unsupported address family");
 
         header->family_transport = 0x00;  /* UNSPEC */
         header->len[0] = 0;
