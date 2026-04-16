@@ -48,6 +48,16 @@ typedef struct {
 } ngx_proxy_protocol_inet6_addrs_t;
 
 
+#if (NGX_HAVE_UNIX_DOMAIN)
+
+typedef struct {
+    u_char                                  src_addr[108];
+    u_char                                  dst_addr[108];
+} ngx_proxy_protocol_unix_addrs_t;
+
+#endif
+
+
 typedef struct {
     u_char                                  type;
     u_char                                  len[2];
@@ -333,6 +343,10 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 #if (NGX_HAVE_INET6)
     ngx_proxy_protocol_inet6_addrs_t   *in6;
 #endif
+#if (NGX_HAVE_UNIX_DOMAIN)
+    size_t                              path_len;
+    ngx_proxy_protocol_unix_addrs_t    *un;
+#endif
 
     static const u_char  signature[] = "\r\n\r\n\0\r\nQUIT\n";
 
@@ -407,6 +421,39 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
         in6->dst_port[1] = (u_char) lport;
 
         p += sizeof(ngx_proxy_protocol_inet6_addrs_t);
+
+        break;
+
+#endif
+
+#if (NGX_HAVE_UNIX_DOMAIN)
+
+    case AF_UNIX:
+
+        header->family_transport = 0x30 | transport;  /* AF_UNIX */
+        header->len[0] = 0;
+        header->len[1] = sizeof(ngx_proxy_protocol_unix_addrs_t);
+
+        un = (ngx_proxy_protocol_unix_addrs_t *) p;
+
+        ngx_memzero(un, sizeof(ngx_proxy_protocol_unix_addrs_t));
+
+        path_len = (c->socklen > (socklen_t) sizeof(sa_family_t))
+                   ? ngx_min(c->socklen - sizeof(sa_family_t),
+                             sizeof(un->src_addr))
+                   : 0;
+
+        if (path_len) {
+            ngx_memcpy(un->src_addr,
+                       ((struct sockaddr_un *) c->sockaddr)->sun_path,
+                       path_len);
+        }
+
+        ngx_memcpy(un->dst_addr,
+                   ((struct sockaddr_un *) c->local_sockaddr)->sun_path,
+                   sizeof(un->dst_addr));
+
+        p += sizeof(ngx_proxy_protocol_unix_addrs_t);
 
         break;
 
