@@ -3966,6 +3966,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
 #endif
+#ifdef SSL_R_RECORD_LAYER_FAILURE
+            || n == SSL_R_RECORD_LAYER_FAILURE                       /*  313 */
+#endif
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
             || n == SSL_R_RENEGOTIATE_EXT_TOO_LONG                   /*  335 */
             || n == SSL_R_RENEGOTIATION_ENCODING_ERR                 /*  336 */
