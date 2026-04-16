@@ -3016,6 +3016,28 @@ ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* ssl_0x<hex>: explicit hex type for an SSL sub-TLV */
+    if (type == -1
+        && value[1].len >= 7
+        && value[1].data[0] == 's'
+        && value[1].data[1] == 's'
+        && value[1].data[2] == 'l'
+        && value[1].data[3] == '_'
+        && value[1].data[4] == '0'
+        && (value[1].data[5] == 'x' || value[1].data[5] == 'X'))
+    {
+        type = ngx_hextoi(value[1].data + 6, value[1].len - 6);
+
+        if (type == NGX_ERROR || type < 0 || type > 255) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid PROXY protocol TLV ssl sub-type "
+                               "\"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        is_ssl_sub = 1;
+    }
+
     /* fall back to numeric: 0x-prefixed hex or decimal */
     if (type == -1) {
         if (value[1].len > 2
