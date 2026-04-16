@@ -118,6 +118,7 @@ $t->waitforsocket('127.0.0.1:' . port(8083));
 #   ssl_version [36]: type 0x21, len  7, value "TLSv1.3"
 #   ssl_cipher  [46]: type 0x23, len 22, value "TLS_AES_256_GCM_SHA384"
 #   ssl_cn      [71]: type 0x22, len 11, value "example.com"
+# client byte = PP2_CLIENT_SSL|PP2_CLIENT_CERT_SESS = 0x05 (ssl_cn is set)
 # payload at offset 85
 
 my $d1 = stream('127.0.0.1:' . port(8080))->io('hello');
@@ -125,7 +126,7 @@ my $d1 = stream('127.0.0.1:' . port(8080))->io('hello');
 is(unpack('n', substr($d1, 14, 2)), 69,   'ssl_tlv len field');
 is(unpack('C', substr($d1, 28, 1)), 0x20, 'ssl_tlv outer type');
 is(unpack('n', substr($d1, 29, 2)), 54,   'ssl_tlv outer length');
-is(unpack('C', substr($d1, 31, 1)), 0x01, 'ssl_tlv client flags');
+is(unpack('C', substr($d1, 31, 1)), 0x05, 'ssl_tlv client flags');
 is(unpack('N', substr($d1, 32, 4)), 0xFFFFFFFF, 'ssl_tlv verify');
 
 is(unpack('C', substr($d1, 36, 1)), 0x21,           'ssl_version type');

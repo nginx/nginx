@@ -28,8 +28,11 @@ struct ngx_proxy_protocol_s {
 
 
 typedef struct {
-    ngx_uint_t          type;   /* 0-255 */
+    ngx_uint_t          type;         /* 0-255 */
     ngx_str_t           value;
+    ngx_uint_t          is_ssl_sub;   /* sub-TLV inside PP2_TYPE_SSL */
+    ngx_uint_t          is_ssl_verify;/* ssl_verify field, not a wire TLV */
+    ngx_uint_t          is_ssl_raw;   /* raw PP2_TYPE_SSL body passthrough */
 } ngx_proxy_protocol_write_tlv_t;
 
 
