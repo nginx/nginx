@@ -495,6 +495,60 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last)
 }
 
 
+u_char *
+ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
+    u_char *last, ngx_array_t *tlvs)
+{
+    u_char                           *p;
+    ngx_uint_t                        i;
+    uint16_t                          len;
+    ngx_proxy_protocol_header_t      *header;
+    ngx_proxy_protocol_tlv_t         *wire;
+    ngx_proxy_protocol_write_tlv_t   *tlv;
+
+    if (tlvs == NULL || tlvs->nelts == 0) {
+        return ngx_proxy_protocol_v2_write(c, buf, last);
+    }
+
+    p = ngx_proxy_protocol_v2_write(c, buf, last);
+    if (p == NULL) {
+        return NULL;
+    }
+
+    /* update the PPv2 length field to include TLVs */
+    header = (ngx_proxy_protocol_header_t *) buf;
+    len = ngx_proxy_protocol_parse_uint16(header->len);
+
+    tlv = tlvs->elts;
+    for (i = 0; i < tlvs->nelts; i++) {
+        len += sizeof(ngx_proxy_protocol_tlv_t) + (uint16_t) tlv[i].value.len;
+    }
+
+    header->len[0] = (u_char) (len >> 8);
+    header->len[1] = (u_char) len;
+
+    /* append TLV records */
+    tlv = tlvs->elts;
+    for (i = 0; i < tlvs->nelts; i++) {
+        if (p + sizeof(ngx_proxy_protocol_tlv_t) + tlv[i].value.len > last) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "too small buffer for PROXY protocol v2 TLVs");
+            return NULL;
+        }
+
+        wire = (ngx_proxy_protocol_tlv_t *) p;
+        wire->type = (u_char) tlv[i].type;
+        wire->len[0] = (u_char) (tlv[i].value.len >> 8);
+        wire->len[1] = (u_char) tlv[i].value.len;
+        p += sizeof(ngx_proxy_protocol_tlv_t);
+
+        p = ngx_cpymem(p, tlv[i].value.data, tlv[i].value.len);
+    }
+
+    return p;
+}
+
+
 static u_char *
 ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {

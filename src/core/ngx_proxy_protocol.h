@@ -27,12 +27,20 @@ struct ngx_proxy_protocol_s {
 };
 
 
+typedef struct {
+    ngx_uint_t          type;   /* 0-255 */
+    ngx_str_t           value;
+} ngx_proxy_protocol_write_tlv_t;
+
+
 u_char *ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 u_char *ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf,
     u_char *last);
 u_char *ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf,
     u_char *last);
+u_char *ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
+    u_char *last, ngx_array_t *tlvs);
 ngx_int_t ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
 
