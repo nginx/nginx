@@ -76,6 +76,7 @@ $t->waitforsocket('127.0.0.1:' . port(8082));
 #   verify field = 42 = 0x0000002A (big-endian)
 #   ssl_version [36]: type 0x21, len  7, value "TLSv1.3"
 #   ssl_cn      [46]: type 0x22, len 11, value "example.com"
+# client byte = PP2_CLIENT_SSL|PP2_CLIENT_CERT_SESS = 0x05 (ssl_cn is set)
 # payload at offset 60
 
 my $d1 = stream('127.0.0.1:' . port(8080))->io('hello');
@@ -83,7 +84,7 @@ my $d1 = stream('127.0.0.1:' . port(8080))->io('hello');
 is(unpack('n', substr($d1, 14, 2)), 44,   'ssl_verify len field');
 is(unpack('C', substr($d1, 28, 1)), 0x20, 'ssl_verify outer type');
 is(unpack('n', substr($d1, 29, 2)), 29,   'ssl_verify outer length');
-is(unpack('C', substr($d1, 31, 1)), 0x01, 'ssl_verify client flags');
+is(unpack('C', substr($d1, 31, 1)), 0x05, 'ssl_verify client flags');
 is(unpack('N', substr($d1, 32, 4)), 42,   'ssl_verify verify field');
 
 is(unpack('C', substr($d1, 36, 1)), 0x21,     'ssl_verify ssl_version type');
