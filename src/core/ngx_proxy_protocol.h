@@ -17,6 +17,23 @@
 #define NGX_PROXY_PROTOCOL_V2_MAX_HEADER  232
 #define NGX_PROXY_PROTOCOL_MAX_HEADER     4096
 
+#define NGX_PROXY_PROTOCOL_AF_UNSPEC      0
+#define NGX_PROXY_PROTOCOL_AF_INET        1
+#define NGX_PROXY_PROTOCOL_AF_INET6       2
+#define NGX_PROXY_PROTOCOL_AF_UNIX        3
+
+#define NGX_PROXY_PROTOCOL_V2_TYPE_ALPN           0x01
+#define NGX_PROXY_PROTOCOL_V2_TYPE_AUTHORITY      0x02
+#define NGX_PROXY_PROTOCOL_V2_TYPE_CRC32C         0x03
+#define NGX_PROXY_PROTOCOL_V2_TYPE_UNIQUE_ID      0x05
+#define NGX_PROXY_PROTOCOL_V2_TYPE_SSL            0x20
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_VERSION 0x21
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_CN      0x22
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_CIPHER  0x23
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_SIG_ALG 0x24
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_KEY_ALG 0x25
+#define NGX_PROXY_PROTOCOL_V2_TYPE_NETNS          0x30
+
 
 struct ngx_proxy_protocol_s {
     ngx_str_t           src_addr;
@@ -46,6 +63,9 @@ u_char *ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
     u_char *last, ngx_array_t *tlvs);
 u_char *ngx_proxy_protocol_v2_write_crc32c(ngx_connection_t *c, u_char *buf,
     u_char *p, u_char *last);
+ngx_int_t ngx_proxy_protocol_tlv_type(ngx_str_t *name, ngx_uint_t *typep,
+    ngx_uint_t *is_ssl_subp, ngx_uint_t *is_ssl_verifyp,
+    ngx_uint_t *is_ssl_rawp);
 ngx_int_t ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
 
