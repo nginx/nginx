@@ -31,7 +31,7 @@ use Test::Nginx::Stream qw/ stream /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/stream/)->plan(10)
+my $t = Test::Nginx->new()->has(qw/stream/)->plan(12)
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -61,6 +61,7 @@ cust:$proxy_protocol_tlv_0xae
 auth:$proxy_protocol_tlv_authority
 ssl_ver:$proxy_protocol_tlv_ssl_version
 ssl_cn:$proxy_protocol_tlv_ssl_cn
+ssl_cip:$proxy_protocol_tlv_ssl_cipher
 ";
     }
 
@@ -98,6 +99,17 @@ ssl_cn:$proxy_protocol_tlv_ssl_cn
         proxy_protocol_tlv  ssl_cn       "test.example.com";
         proxy_protocol_tlv  alpn         "h2";
         proxy_protocol_tlv  authority    "example.com";
+    }
+
+    # Server 4: ssl_0x<NN> numeric sub-type syntax — ssl_0x22 is CN,
+    # ssl_0x23 is cipher.
+    server {
+        listen      127.0.0.1:%%PORT_8084%%;
+        proxy_pass  127.0.0.1:%%PORT_8091%%;
+        proxy_protocol          on;
+        proxy_protocol_version  2;
+        proxy_protocol_tlv  ssl_0x22  "numeric-cn";
+        proxy_protocol_tlv  ssl_0x23  "cipher-str";
     }
 }
 
@@ -181,6 +193,18 @@ sub pp2_header {
     like($r, qr/ssl_cn:test\.example\.com/,  'ordered ssl_cn');
     like($r, qr/alpn:h2/,                    'ordered alpn');
     like($r, qr/auth:example\.com/,          'ordered authority');
+}
+
+# 4. ssl_0x<NN> numeric sub-type syntax.
+#
+# Server 4 uses ssl_0x22 (= CN sub-type) and ssl_0x23 (= cipher sub-type) to
+# verify that numeric hex sub-type names are parsed and written correctly.
+
+{
+    my $r = stream('127.0.0.1:' . port(8084))->io('');
+
+    like($r, qr/ssl_cn:numeric-cn/,   'ssl_0x22 numeric sub-type');
+    like($r, qr/ssl_cip:cipher-str/,  'ssl_0x23 numeric sub-type');
 }
 
 ###############################################################################
