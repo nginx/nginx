@@ -920,11 +920,11 @@ ngx_mail_proxy_write_handler(ngx_event_t *wev)
 static ngx_int_t
 ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
 {
-    u_char                  *p;
-    ssize_t                  n, size;
-    ngx_connection_t        *c;
-    ngx_mail_proxy_conf_t   *pcf;
-    u_char                   buf[NGX_PROXY_PROTOCOL_V2_MAX_HEADER];
+    u_char                          *buf, *last;
+    ssize_t                          n, size;
+    ngx_connection_t                *c;
+    ngx_mail_proxy_conf_t           *pcf;
+    ngx_proxy_protocol_write_conf_t  pp_conf;
 
     s->connection->log->action = "sending PROXY protocol header to upstream";
 
@@ -933,22 +933,20 @@ ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
 
     pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
 
-    if (pcf->proxy_protocol_version == 2) {
-        p = ngx_proxy_protocol_v2_write_tlvs(s->connection, buf,
-                                             buf + sizeof(buf), NULL);
-    } else {
-        p = ngx_proxy_protocol_write(s->connection, buf,
-                                     buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
-    }
+    pp_conf.complex_value = NULL;
+    pp_conf.version = pcf->proxy_protocol_version;
+    pp_conf.tlvs = NULL;
+    pp_conf.crc32c = 0;
 
-    if (p == NULL) {
+    buf = ngx_proxy_protocol_write_conf(s->connection, &pp_conf, &last);
+    if (buf == NULL) {
         ngx_mail_proxy_internal_server_error(s);
         return NGX_ERROR;
     }
 
     c = s->proxy->upstream.connection;
 
-    size = p - buf;
+    size = last - buf;
 
     n = c->send(c, buf, size);
 

@@ -737,6 +737,105 @@ ngx_proxy_protocol_v2_write_crc32c(ngx_connection_t *c, u_char *buf,
 }
 
 
+static ngx_array_t *
+ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
+    ngx_proxy_protocol_write_conf_t *conf, size_t *sizep)
+{
+    ngx_uint_t                      i;
+    ngx_array_t                    *tlvs;
+    ngx_proxy_protocol_conf_tlv_t  *ctlv;
+    ngx_proxy_protocol_write_tlv_t *tlv;
+
+    tlvs = ngx_array_create(c->pool, conf->tlvs->nelts,
+                            sizeof(ngx_proxy_protocol_write_tlv_t));
+    if (tlvs == NULL) {
+        return NULL;
+    }
+
+    ctlv = conf->tlvs->elts;
+
+    for (i = 0; i < conf->tlvs->nelts; i++) {
+        tlv = ngx_array_push(tlvs);
+        if (tlv == NULL) {
+            return NULL;
+        }
+
+        tlv->type = ctlv[i].type;
+        tlv->is_ssl_sub = ctlv[i].is_ssl_sub;
+        tlv->is_ssl_verify = ctlv[i].is_ssl_verify;
+        tlv->is_ssl_raw = ctlv[i].is_ssl_raw;
+
+        if (conf->complex_value(c->data, ctlv[i].cv, &tlv->value) != NGX_OK) {
+            return NULL;
+        }
+    }
+
+    *sizep = ngx_proxy_protocol_v2_tlvs_size(tlvs);
+    return tlvs;
+}
+
+
+u_char *
+ngx_proxy_protocol_write_conf(ngx_connection_t *c,
+    ngx_proxy_protocol_write_conf_t *conf, u_char **lastp)
+{
+    u_char       *buf, *p;
+    size_t        buf_size, tlv_size;
+    ngx_array_t  *tlvs;
+
+    if (conf->version != 2) {
+        buf = ngx_pnalloc(c->pool, NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        if (buf == NULL) {
+            return NULL;
+        }
+
+        p = ngx_proxy_protocol_write(c, buf,
+                                     buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        if (p == NULL) {
+            return NULL;
+        }
+
+        *lastp = p;
+        return buf;
+    }
+
+    tlvs = NULL;
+    tlv_size = 0;
+
+    if (conf->tlvs != NULL && conf->tlvs->nelts > 0) {
+        tlvs = ngx_proxy_protocol_eval_tlvs(c, conf, &tlv_size);
+        if (tlvs == NULL) {
+            return NULL;
+        }
+    }
+
+    buf_size = NGX_PROXY_PROTOCOL_V2_MAX_HEADER + tlv_size;
+    if (conf->crc32c) {
+        buf_size += 7;  /* type(1) + len(2) + crc32c_value(4) */
+    }
+
+    buf = ngx_pnalloc(c->pool, buf_size);
+    if (buf == NULL) {
+        return NULL;
+    }
+
+    p = ngx_proxy_protocol_v2_write_tlvs(c, buf, buf + buf_size, tlvs);
+    if (p == NULL) {
+        return NULL;
+    }
+
+    if (conf->crc32c) {
+        p = ngx_proxy_protocol_v2_write_crc32c(c, buf, p, buf + buf_size);
+        if (p == NULL) {
+            return NULL;
+        }
+    }
+
+    *lastp = p;
+    return buf;
+}
+
+
 static u_char *
 ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
