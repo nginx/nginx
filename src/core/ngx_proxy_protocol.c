@@ -9,6 +9,37 @@
 #include <ngx_core.h>
 
 
+#define NGX_PROXY_PROTOCOL_V2_SIGNATURE  "\r\n\r\n\0\r\nQUIT\n"
+
+#define NGX_PROXY_PROTOCOL_V1_MAX_HEADER  107
+#define NGX_PROXY_PROTOCOL_V2_MAX_HEADER  52
+
+#define NGX_PROXY_PROTOCOL_AF_UNSPEC      0
+#define NGX_PROXY_PROTOCOL_AF_INET        1
+#define NGX_PROXY_PROTOCOL_AF_INET6       2
+#define NGX_PROXY_PROTOCOL_AF_UNIX        3
+
+#define NGX_PROXY_PROTOCOL_TYPE_UNSPEC    0
+#define NGX_PROXY_PROTOCOL_TYPE_STREAM    1
+#define NGX_PROXY_PROTOCOL_TYPE_DGRAM     2
+
+#define NGX_PROXY_PROTOCOL_V2_TYPE_ALPN           0x01
+#define NGX_PROXY_PROTOCOL_V2_TYPE_AUTHORITY      0x02
+#define NGX_PROXY_PROTOCOL_V2_TYPE_CRC32C         0x03
+#define NGX_PROXY_PROTOCOL_V2_TYPE_NOOP           0x04
+#define NGX_PROXY_PROTOCOL_V2_TYPE_UNIQUE_ID      0x05
+#define NGX_PROXY_PROTOCOL_V2_TYPE_SSL            0x20
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_VERSION 0x21
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_CN      0x22
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_CIPHER  0x23
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_SIG_ALG 0x24
+#define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_KEY_ALG 0x25
+#define NGX_PROXY_PROTOCOL_V2_TYPE_NETNS          0x30
+
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_SSL          0x01
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_CONN    0x02
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_SESS    0x04
+
 #define ngx_proxy_protocol_parse_uint16(p)                                    \
     ( ((uint16_t) (p)[0] << 8)                                                \
     + (           (p)[1]) )
@@ -60,6 +91,24 @@ typedef struct {
     ngx_str_t                               name;
     ngx_uint_t                              type;
 } ngx_proxy_protocol_tlv_entry_t;
+
+
+typedef struct {
+    ngx_uint_t          type;         /* 0-255 */
+    ngx_str_t           value;
+    ngx_uint_t          is_ssl_sub;   /* sub-TLV inside PP2_TYPE_SSL */
+    ngx_uint_t          is_ssl_verify;/* ssl_verify field, not a wire TLV */
+    ngx_uint_t          is_ssl_raw;   /* raw PP2_TYPE_SSL body passthrough */
+} ngx_proxy_protocol_write_tlv_t;
+
+
+typedef struct {
+    ngx_uint_t          type;
+    ngx_uint_t          is_ssl_sub;
+    ngx_uint_t          is_ssl_verify;
+    ngx_uint_t          is_ssl_raw;
+    void               *cv;
+} ngx_proxy_protocol_conf_tlv_t;
 
 
 static u_char *ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p,
@@ -323,7 +372,7 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 }
 
 
-u_char *
+static u_char *
 ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     u_char                             *p;
@@ -449,7 +498,7 @@ ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *las
 }
 
 
-size_t
+static size_t
 ngx_proxy_protocol_v2_tlvs_size(ngx_array_t *tlvs)
 {
     ngx_uint_t                      i, has_ssl;
@@ -628,7 +677,7 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf,
 }
 
 
-u_char *
+static u_char *
 ngx_proxy_protocol_v2_write_crc32c(ngx_connection_t *c, u_char *buf,
     u_char *p, u_char *last)
 {
@@ -673,6 +722,105 @@ ngx_proxy_protocol_v2_write_crc32c(ngx_connection_t *c, u_char *buf,
     p[-1] = (u_char) crc;
 
     return p;
+}
+
+
+static ngx_array_t *
+ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
+    ngx_proxy_protocol_write_conf_t *conf, size_t *sizep)
+{
+    ngx_uint_t                      i;
+    ngx_array_t                    *tlvs;
+    ngx_proxy_protocol_conf_tlv_t  *ctlv;
+    ngx_proxy_protocol_write_tlv_t *tlv;
+
+    tlvs = ngx_array_create(c->pool, conf->tlvs->nelts,
+                            sizeof(ngx_proxy_protocol_write_tlv_t));
+    if (tlvs == NULL) {
+        return NULL;
+    }
+
+    ctlv = conf->tlvs->elts;
+
+    for (i = 0; i < conf->tlvs->nelts; i++) {
+        tlv = ngx_array_push(tlvs);
+        if (tlv == NULL) {
+            return NULL;
+        }
+
+        tlv->type = ctlv[i].type;
+        tlv->is_ssl_sub = ctlv[i].is_ssl_sub;
+        tlv->is_ssl_verify = ctlv[i].is_ssl_verify;
+        tlv->is_ssl_raw = ctlv[i].is_ssl_raw;
+
+        if (conf->complex_value(c->data, ctlv[i].cv, &tlv->value) != NGX_OK) {
+            return NULL;
+        }
+    }
+
+    *sizep = ngx_proxy_protocol_v2_tlvs_size(tlvs);
+    return tlvs;
+}
+
+
+u_char *
+ngx_proxy_protocol_write_conf(ngx_connection_t *c,
+    ngx_proxy_protocol_write_conf_t *conf, u_char **lastp)
+{
+    u_char       *buf, *p;
+    size_t        buf_size, tlv_size;
+    ngx_array_t  *tlvs;
+
+    if (conf->version != 2) {
+        buf = ngx_pnalloc(c->pool, NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        if (buf == NULL) {
+            return NULL;
+        }
+
+        p = ngx_proxy_protocol_write(c, buf,
+                                     buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
+        if (p == NULL) {
+            return NULL;
+        }
+
+        *lastp = p;
+        return buf;
+    }
+
+    tlvs = NULL;
+    tlv_size = 0;
+
+    if (conf->tlvs != NULL && conf->tlvs->nelts > 0) {
+        tlvs = ngx_proxy_protocol_eval_tlvs(c, conf, &tlv_size);
+        if (tlvs == NULL) {
+            return NULL;
+        }
+    }
+
+    buf_size = NGX_PROXY_PROTOCOL_V2_MAX_HEADER + tlv_size;
+    if (conf->crc32c) {
+        buf_size += 7;  /* type(1) + len(2) + crc32c_value(4) */
+    }
+
+    buf = ngx_pnalloc(c->pool, buf_size);
+    if (buf == NULL) {
+        return NULL;
+    }
+
+    p = ngx_proxy_protocol_v2_write(c, buf, buf + buf_size, tlvs);
+    if (p == NULL) {
+        return NULL;
+    }
+
+    if (conf->crc32c) {
+        p = ngx_proxy_protocol_v2_write_crc32c(c, buf, p, buf + buf_size);
+        if (p == NULL) {
+            return NULL;
+        }
+    }
+
+    *lastp = p;
+    return buf;
 }
 
 
@@ -837,7 +985,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_proxy_protocol_tlv_type(ngx_str_t *name, ngx_uint_t *typep,
     ngx_uint_t *is_ssl_subp, ngx_uint_t *is_ssl_verifyp,
     ngx_uint_t *is_ssl_rawp)
