@@ -516,12 +516,15 @@ u_char *
 ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
     u_char *last, ngx_array_t *tlvs)
 {
-    u_char                           *p;
-    ngx_uint_t                        i;
-    uint16_t                          len;
-    ngx_proxy_protocol_header_t      *header;
-    ngx_proxy_protocol_tlv_t         *wire;
-    ngx_proxy_protocol_write_tlv_t   *tlv;
+    u_char                            *p, *ssl_start;
+    u_char                             client_flags;
+    ngx_int_t                          verify_i;
+    ngx_uint_t                         i, has_ssl, has_ssl_cn;
+    uint32_t                           verify;
+    uint16_t                           len, ssl_body_len;
+    ngx_proxy_protocol_header_t       *header;
+    ngx_proxy_protocol_tlv_t          *wire;
+    ngx_proxy_protocol_write_tlv_t    *tlv;
 
     if (tlvs == NULL || tlvs->nelts == 0) {
         return ngx_proxy_protocol_v2_write(c, buf, last);
@@ -532,21 +535,40 @@ ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
         return NULL;
     }
 
-    /* update the PPv2 length field to include TLVs */
     header = (ngx_proxy_protocol_header_t *) buf;
     len = ngx_proxy_protocol_parse_uint16(header->len);
 
     tlv = tlvs->elts;
+    has_ssl = 0;
+    has_ssl_cn = 0;
+    verify = 0xFFFFFFFF;
+
     for (i = 0; i < tlvs->nelts; i++) {
-        len += sizeof(ngx_proxy_protocol_tlv_t) + (uint16_t) tlv[i].value.len;
+        if (tlv[i].is_ssl_verify) {
+            has_ssl = 1;
+        } else if (tlv[i].is_ssl_sub) {
+            has_ssl = 1;
+            len += 3 + (uint16_t) tlv[i].value.len;
+            if (tlv[i].type == 0x22) {
+                has_ssl_cn = 1;
+            }
+        } else {
+            len += 3 + (uint16_t) tlv[i].value.len;
+        }
+    }
+
+    if (has_ssl) {
+        len += 3 + 5;  /* outer 0x20 TLV header + client(1) + verify(4) */
     }
 
     header->len[0] = (u_char) (len >> 8);
     header->len[1] = (u_char) len;
 
-    /* append TLV records */
-    tlv = tlvs->elts;
     for (i = 0; i < tlvs->nelts; i++) {
+        if (tlv[i].is_ssl_sub || tlv[i].is_ssl_verify) {
+            continue;
+        }
+
         if (p + sizeof(ngx_proxy_protocol_tlv_t) + tlv[i].value.len > last) {
             ngx_log_error(NGX_LOG_ALERT, c->log, 0,
                           "too small buffer for PROXY protocol v2 TLVs");
@@ -558,9 +580,74 @@ ngx_proxy_protocol_v2_write_tlvs(ngx_connection_t *c, u_char *buf,
         wire->len[0] = (u_char) (tlv[i].value.len >> 8);
         wire->len[1] = (u_char) tlv[i].value.len;
         p += sizeof(ngx_proxy_protocol_tlv_t);
-
         p = ngx_cpymem(p, tlv[i].value.data, tlv[i].value.len);
     }
+
+    if (!has_ssl) {
+        return p;
+    }
+
+    ssl_start = p;
+    p += sizeof(ngx_proxy_protocol_tlv_t);  /* TLV header filled below */
+
+    client_flags = 0x01;  /* PP2_CLIENT_SSL */
+
+    if (has_ssl_cn) {
+        client_flags |= 0x04;  /* PP2_CLIENT_CERT_SESS */
+#if (NGX_SSL)
+        if (c->ssl != NULL && !SSL_session_reused(c->ssl->connection)) {
+            client_flags |= 0x02;  /* PP2_CLIENT_CERT_CONN */
+        }
+#endif
+    }
+
+    *p++ = client_flags;
+
+    for (i = 0; i < tlvs->nelts; i++) {
+        if (!tlv[i].is_ssl_verify) {
+            continue;
+        }
+
+        verify_i = ngx_atoi(tlv[i].value.data, tlv[i].value.len);
+        if (verify_i == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "invalid PROXY protocol ssl_verify value \"%V\"",
+                          &tlv[i].value);
+            return NULL;
+        }
+
+        verify = (uint32_t) verify_i;
+        break;
+    }
+
+    *p++ = (u_char) (verify >> 24);
+    *p++ = (u_char) (verify >> 16);
+    *p++ = (u_char) (verify >> 8);
+    *p++ = (u_char)  verify;
+
+    for (i = 0; i < tlvs->nelts; i++) {
+        if (!tlv[i].is_ssl_sub) {
+            continue;
+        }
+
+        if (p + sizeof(ngx_proxy_protocol_tlv_t) + tlv[i].value.len > last) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "too small buffer for PROXY protocol v2 TLVs");
+            return NULL;
+        }
+
+        *p++ = (u_char) tlv[i].type;
+        *p++ = (u_char) (tlv[i].value.len >> 8);
+        *p++ = (u_char)  tlv[i].value.len;
+        p = ngx_cpymem(p, tlv[i].value.data, tlv[i].value.len);
+    }
+
+    ssl_body_len = (uint16_t) (p - ssl_start
+                               - sizeof(ngx_proxy_protocol_tlv_t));
+    wire = (ngx_proxy_protocol_tlv_t *) ssl_start;
+    wire->type = 0x20;
+    wire->len[0] = (u_char) (ssl_body_len >> 8);
+    wire->len[1] = (u_char)  ssl_body_len;
 
     return p;
 }

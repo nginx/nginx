@@ -854,12 +854,8 @@ static ngx_array_t *
 ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
     size_t *sizep)
 {
-    u_char                            *blob, *q, client_flags;
-    ngx_int_t                          verify_i;
-    ngx_uint_t                         i, n_ssl, has_ssl_verify, has_ssl_cn;
-    uint32_t                           verify;
+    ngx_uint_t                         i, n_ssl, has_ssl_verify;
     size_t                             ssl_sub_total;
-    ngx_str_t                         *vals;
     ngx_array_t                       *tlvs;
     ngx_stream_proxy_protocol_tlv_t   *ctlv;
     ngx_proxy_protocol_write_tlv_t    *tlv;
@@ -870,126 +866,41 @@ ngx_stream_proxy_build_tlvs(ngx_stream_session_t *s, ngx_array_t *conf_tlvs,
         return NULL;
     }
 
-    vals = ngx_palloc(s->connection->pool,
-                      conf_tlvs->nelts * sizeof(ngx_str_t));
-    if (vals == NULL) {
-        return NULL;
-    }
-
     *sizep = 0;
     n_ssl = 0;
     has_ssl_verify = 0;
-    has_ssl_cn = 0;
-    verify = 0xFFFFFFFF;  /* default: not verified */
     ssl_sub_total = 0;
     ctlv = conf_tlvs->elts;
 
-    /* evaluate all TLV values; tally regular, ssl sub-TLVs, and ssl_verify */
     for (i = 0; i < conf_tlvs->nelts; i++) {
-        if (ngx_stream_complex_value(s, ctlv[i].value, &vals[i]) != NGX_OK) {
-            return NULL;
-        }
-
-        if (ctlv[i].is_ssl_verify) {
-            verify_i = ngx_atoi(vals[i].data, vals[i].len);
-            if (verify_i == NGX_ERROR) {
-                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                              "invalid PROXY protocol ssl_verify value \"%V\"",
-                              &vals[i]);
-                return NULL;
-            }
-            verify = (uint32_t) verify_i;
-            has_ssl_verify = 1;
-
-        } else if (ctlv[i].is_ssl_sub) {
-            n_ssl++;
-            ssl_sub_total += 3 + vals[i].len;  /* sub-TLV: type(1)+len(2)+val */
-
-            /* ssl_cn presence drives PP2_CLIENT_CERT_SESS / CERT_CONN flags */
-            if (ctlv[i].type == 0x22) {
-                has_ssl_cn = 1;
-            }
-
-        } else {
-            *sizep += 3 + vals[i].len;  /* regular TLV wire size */
-        }
-    }
-
-    /* outer 0x20 TLV: type(1)+len(2)+client(1)+verify(4)+sub-TLVs */
-    if (n_ssl || has_ssl_verify) {
-        *sizep += 3 + 5 + ssl_sub_total;
-    }
-
-    /* emit regular TLVs in configured order */
-    for (i = 0; i < conf_tlvs->nelts; i++) {
-        if (ctlv[i].is_ssl_sub || ctlv[i].is_ssl_verify) {
-            continue;
-        }
-
         tlv = ngx_array_push(tlvs);
         if (tlv == NULL) {
             return NULL;
         }
 
         tlv->type = ctlv[i].type;
-        tlv->value = vals[i];
+        tlv->is_ssl_sub = ctlv[i].is_ssl_sub;
+        tlv->is_ssl_verify = ctlv[i].is_ssl_verify;
+        tlv->is_ssl_raw = ctlv[i].is_ssl_raw;
+
+        if (ngx_stream_complex_value(s, ctlv[i].value, &tlv->value) != NGX_OK) {
+            return NULL;
+        }
+
+        if (ctlv[i].is_ssl_verify) {
+            has_ssl_verify = 1;
+
+        } else if (ctlv[i].is_ssl_sub) {
+            n_ssl++;
+            ssl_sub_total += 3 + tlv->value.len;
+
+        } else {
+            *sizep += 3 + tlv->value.len;
+        }
     }
 
-    /* assemble compound PP2_TYPE_SSL (0x20) TLV */
     if (n_ssl || has_ssl_verify) {
-        blob = ngx_palloc(s->connection->pool, 5 + ssl_sub_total);
-        if (blob == NULL) {
-            return NULL;
-        }
-
-        q = blob;
-
-        /*
-         * PP2_CLIENT_SSL      (0x01): client connected over SSL/TLS
-         * PP2_CLIENT_CERT_CONN (0x02): certificate verified in this connection
-         * PP2_CLIENT_CERT_SESS (0x04): certificate verified in this session
-         */
-        client_flags = 0x01;  /* PP2_CLIENT_SSL */
-
-        if (has_ssl_cn) {
-            client_flags |= 0x04;  /* PP2_CLIENT_CERT_SESS */
-#if (NGX_SSL)
-            if (s->connection->ssl != NULL
-                && !SSL_session_reused(s->connection->ssl->connection))
-            {
-                client_flags |= 0x02;  /* PP2_CLIENT_CERT_CONN */
-            }
-#endif
-        }
-
-        *q++ = client_flags;
-
-        /* verify field in network byte order */
-        *q++ = (u_char) (verify >> 24);
-        *q++ = (u_char) (verify >> 16);
-        *q++ = (u_char) (verify >> 8);
-        *q++ = (u_char) verify;
-
-        for (i = 0; i < conf_tlvs->nelts; i++) {
-            if (!ctlv[i].is_ssl_sub) {
-                continue;
-            }
-
-            /* sub-TLV: type(1) + len(2) + value */
-            *q++ = (u_char) ctlv[i].type;
-            *q++ = (u_char) (vals[i].len >> 8);
-            *q++ = (u_char) vals[i].len;
-            q = ngx_cpymem(q, vals[i].data, vals[i].len);
-        }
-
-        tlv = ngx_array_push(tlvs);
-        if (tlv == NULL) {
-            return NULL;
-        }
-
-        tlv->type = 0x20;
-        tlv->value.data = blob;
-        tlv->value.len = 5 + ssl_sub_total;
+        *sizep += 3 + 5 + ssl_sub_total;
     }
 
     return tlvs;
