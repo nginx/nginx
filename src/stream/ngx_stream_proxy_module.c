@@ -769,7 +769,7 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
 
         u->state->peer->len = u->peer.name->len;
         u->state->peer->data = (u_char *) (u->state->peer + 1);
-        ngx_memcpy(u->state->peer->data, u->peer.name->data, u->peer.name->len);
+        ngx_memcpy(u->state->peer->data, u->peer.name->data, u->state->peer->len);
 
         u->peer.name = u->state->peer;
     }
