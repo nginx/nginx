@@ -839,9 +839,10 @@ found:
     }
 
     u->peer.start_time = ngx_current_msec;
+    u->peer.unique = u->conf->next_upstream_unique;
 
     if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
+        && (!u->peer.unique || u->peer.tries > u->conf->next_upstream_tries))
     {
         u->peer.tries = u->conf->next_upstream_tries;
     }
@@ -1282,9 +1283,10 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     ur->ctx = NULL;
 
     u->peer.start_time = ngx_current_msec;
+    u->peer.unique = u->conf->next_upstream_unique;
 
     if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
+        && (!u->peer.unique || u->peer.tries > u->conf->next_upstream_tries))
     {
         u->peer.tries = u->conf->next_upstream_tries;
     }

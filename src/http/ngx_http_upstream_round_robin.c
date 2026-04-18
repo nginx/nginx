@@ -713,7 +713,7 @@ ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
     ngx_http_upstream_rr_peers_wlock(peers);
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
-    if (peers->config && rrp->config != *peers->config) {
+    if (pc->unique && peers->config && rrp->config != *peers->config) {
         goto busy;
     }
 #endif
@@ -919,7 +919,9 @@ best_chosen:
     n = p / (8 * sizeof(uintptr_t));
     m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
 
-    rrp->tried[n] |= m;
+    if (pc->unique) {
+        rrp->tried[n] |= m;
+    }
 
     if (now - best->checked > best->fail_timeout) {
         best->checked = now;
@@ -1037,7 +1039,13 @@ ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc, void *data,
 
         ngx_http_upstream_rr_peers_unlock(rrp->peers);
 
-        pc->tries = 0;
+        if (pc->unique) {
+            pc->tries = 0;
+
+        } else if (pc->tries) {
+            pc->tries--;
+        }
+
         return;
     }
 
