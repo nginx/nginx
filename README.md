@@ -145,7 +145,7 @@ sudo apt install gcc make
 ### Installing dependency libraries
 
 ```bash
-sudo apt install libpcre3-dev zlib1g-dev
+sudo apt install libpcre2-dev zlib1g-dev
 ```
 
 > [!WARNING]
