@@ -105,6 +105,8 @@ static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_body_length(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_id(ngx_http_request_t *r,
@@ -307,6 +309,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
       0, 0, 0 },
 
     { ngx_string("request_length"), NULL, ngx_http_variable_request_length,
+      0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("request_body_length"), NULL, ngx_http_variable_request_body_length,
       0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("request_time"), NULL, ngx_http_variable_request_time,
@@ -2256,6 +2261,28 @@ ngx_http_variable_request_length(ngx_http_request_t *r,
     }
 
     v->len = ngx_sprintf(p, "%O", r->request_length) - p;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_body_length(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char  *p;
+
+    p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(p, "%O",
+                         r->request_length - r->request_header_length) - p;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
