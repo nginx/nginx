@@ -151,8 +151,9 @@ sudo apt install libpcre3-dev zlib1g-dev
 > [!WARNING]
 > This is the minimal set of dependency libraries needed to build NGINX with rewriting and gzip capabilities. Other dependencies may be required if you choose to build NGINX with additional modules. Monitor the output of the `configure` command discussed in the following sections for information on which modules may be missing. For example, if you plan to use SSL certificates to encrypt traffic with TLS, you'll need to install the OpenSSL library. To do so, issue the following command.
 
->```bash
->sudo apt install libssl-dev
+> ```bash
+> sudo apt install libssl-dev
+> ```
 
 ## Cloning the NGINX GitHub repository
 Using your preferred method, clone the NGINX repository into your development directory. See [Cloning a GitHub Repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) for additional help.
