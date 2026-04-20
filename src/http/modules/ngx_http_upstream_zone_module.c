@@ -863,7 +863,7 @@ ngx_http_upstream_zone_resolve_handler(ngx_resolver_ctx_t *ctx)
 
 again:
 
-    for (peerp = &peers->peer; *peerp; /* void */ ) {
+    for (peerp = &peers->peer; *peerp; /* void */) {
         peer = *peerp;
 
         if (peer->host != host) {

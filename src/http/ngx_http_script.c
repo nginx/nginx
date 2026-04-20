@@ -467,7 +467,7 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
         return NGX_ERROR;
     }
 
-    for (i = 0; i < sc->source->len; /* void */ ) {
+    for (i = 0; i < sc->source->len; /* void */) {
 
         name.len = 0;
 
