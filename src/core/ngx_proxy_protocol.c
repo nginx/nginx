@@ -916,6 +916,13 @@ ngx_proxy_protocol_write_conf(ngx_connection_t *c,
     ngx_array_t  *tlvs;
 
     if (conf->version != 2) {
+        if (c->type == SOCK_DGRAM) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "PROXY protocol version 1 is not supported "
+                          "for UDP, use \"proxy_protocol_version 2\"");
+            return NULL;
+        }
+
         buf = ngx_pnalloc(c->pool, NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
         if (buf == NULL) {
             return NULL;
