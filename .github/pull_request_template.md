@@ -6,5 +6,5 @@ Describe the use case and detail of the change. If this PR addresses an issue on
 
 Before creating a PR, run through this checklist and mark each as complete:
 
-- [ ] I have read the [contributing guidelines](/CONTRIBUTING.md).
-- [ ] I have checked that NGINX compiles and runs after adding my changes.
+- [x] I have read the [contributing guidelines](/nginx/nginx/blob/master/CONTRIBUTING.md).
+- [x] I have checked that NGINX compiles and runs after adding my changes.
