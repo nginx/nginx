@@ -948,6 +948,10 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     char                 *err;
     X509                 *x509;
     X509_NAME            *name;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
+    X509_NAME            *sname;
     X509_STORE           *store;
     STACK_OF(X509)       *chain;
     STACK_OF(X509_NAME)  *list;
@@ -1003,8 +1007,8 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             return NGX_ERROR;
         }
 
-        name = X509_get_subject_name(x509);
-        if (name == NULL) {
+        sname = X509_get_subject_name(x509);
+        if (sname == NULL) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                           "X509_get_subject_name(\"%s\") failed", cert->data);
             sk_X509_NAME_pop_free(list, X509_NAME_free);
@@ -1012,7 +1016,7 @@ ngx_ssl_client_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
             return NGX_ERROR;
         }
 
-        name = X509_NAME_dup(name);
+        name = X509_NAME_dup(sname);
         if (name == NULL) {
             sk_X509_NAME_pop_free(list, X509_NAME_free);
             sk_X509_pop_free(chain, X509_free);
@@ -1197,6 +1201,9 @@ ngx_ssl_verify_callback(int ok, X509_STORE_CTX *x509_store)
     char              *subject, *issuer;
     int                err, depth;
     X509              *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME         *sname, *iname;
     ngx_connection_t  *c;
     ngx_ssl_conn_t    *ssl_conn;
@@ -3891,6 +3898,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_PACKET_LENGTH_TOO_LONG
             || n == SSL_R_PACKET_LENGTH_TOO_LONG                     /*  198 */
 #endif
+#ifdef SSL_R_INVALID_ALERT
+            || n == SSL_R_INVALID_ALERT                              /*  205 */
+#endif
             || n == SSL_R_RECORD_LENGTH_MISMATCH                     /*  213 */
 #ifdef SSL_R_TOO_MANY_WARNING_ALERTS
             || n == SSL_R_TOO_MANY_WARNING_ALERTS                    /*  220 */
@@ -3950,9 +3960,14 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_SSL3_SESSION_ID_TOO_LONG
             || n == SSL_R_SSL3_SESSION_ID_TOO_LONG                   /*  300 */
+#elif (defined SSL_R_TLS_SESSION_ID_TOO_LONG)
+            || n == SSL_R_TLS_SESSION_ID_TOO_LONG                    /*  300 */
 #endif
 #ifdef SSL_R_BAD_ECPOINT
             || n == SSL_R_BAD_ECPOINT                                /*  306 */
+#endif
+#ifdef SSL_R_RECORD_LAYER_FAILURE
+            || n == SSL_R_RECORD_LAYER_FAILURE                       /*  313 */
 #endif
 #ifdef SSL_R_RENEGOTIATE_EXT_TOO_LONG
             || n == SSL_R_RENEGOTIATE_EXT_TOO_LONG                   /*  335 */
@@ -3986,33 +4001,8 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_BAD_RECORD_TYPE
             || n == SSL_R_BAD_RECORD_TYPE                            /*  443 */
 #endif
-            || n == 1000 /* SSL_R_SSLV3_ALERT_CLOSE_NOTIFY */
-#ifdef SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE
-            || n == SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE             /* 1010 */
-            || n == SSL_R_SSLV3_ALERT_BAD_RECORD_MAC                 /* 1020 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPTION_FAILED              /* 1021 */
-            || n == SSL_R_TLSV1_ALERT_RECORD_OVERFLOW                /* 1022 */
-            || n == SSL_R_SSLV3_ALERT_DECOMPRESSION_FAILURE          /* 1030 */
-            || n == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE              /* 1040 */
-            || n == SSL_R_SSLV3_ALERT_NO_CERTIFICATE                 /* 1041 */
-            || n == SSL_R_SSLV3_ALERT_BAD_CERTIFICATE                /* 1042 */
-            || n == SSL_R_SSLV3_ALERT_UNSUPPORTED_CERTIFICATE        /* 1043 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_REVOKED            /* 1044 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_EXPIRED            /* 1045 */
-            || n == SSL_R_SSLV3_ALERT_CERTIFICATE_UNKNOWN            /* 1046 */
-            || n == SSL_R_SSLV3_ALERT_ILLEGAL_PARAMETER              /* 1047 */
-            || n == SSL_R_TLSV1_ALERT_UNKNOWN_CA                     /* 1048 */
-            || n == SSL_R_TLSV1_ALERT_ACCESS_DENIED                  /* 1049 */
-            || n == SSL_R_TLSV1_ALERT_DECODE_ERROR                   /* 1050 */
-            || n == SSL_R_TLSV1_ALERT_DECRYPT_ERROR                  /* 1051 */
-            || n == SSL_R_TLSV1_ALERT_EXPORT_RESTRICTION             /* 1060 */
-            || n == SSL_R_TLSV1_ALERT_PROTOCOL_VERSION               /* 1070 */
-            || n == SSL_R_TLSV1_ALERT_INSUFFICIENT_SECURITY          /* 1071 */
-            || n == SSL_R_TLSV1_ALERT_INTERNAL_ERROR                 /* 1080 */
-            || n == SSL_R_TLSV1_ALERT_USER_CANCELLED                 /* 1090 */
-            || n == SSL_R_TLSV1_ALERT_NO_RENEGOTIATION               /* 1100 */
-#endif
-            || n == 1121 /* SSL_R_TLSV1_ALERT_ECH_REQUIRED */
+            || (n >= SSL_AD_REASON_OFFSET                            /* 1000 */
+                && n <= SSL_AD_REASON_OFFSET + 255)
             )
         {
             switch (c->log_error) {
@@ -6012,6 +6002,9 @@ ngx_ssl_get_subject_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6066,6 +6059,9 @@ ngx_ssl_get_issuer_dn(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     BIO        *bio;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6122,6 +6118,9 @@ ngx_ssl_get_subject_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     char       *p;
     size_t      len;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;
@@ -6170,6 +6169,9 @@ ngx_ssl_get_issuer_dn_legacy(ngx_connection_t *c, ngx_pool_t *pool,
     char       *p;
     size_t      len;
     X509       *cert;
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+    const
+#endif
     X509_NAME  *name;
 
     s->len = 0;

@@ -514,6 +514,7 @@ static ngx_keyval_t  ngx_http_grpc_headers[] = {
     { ngx_string("TE"), ngx_string("$grpc_internal_trailers") },
     { ngx_string("Host"), ngx_string("") },
     { ngx_string("Connection"), ngx_string("") },
+    { ngx_string("Proxy-Connection"), ngx_string("") },
     { ngx_string("Transfer-Encoding"), ngx_string("") },
     { ngx_string("Keep-Alive"), ngx_string("") },
     { ngx_string("Expect"), ngx_string("") },

@@ -67,6 +67,11 @@
 #endif
 
 
+#if (OPENSSL_VERSION_NUMBER < 0x1010000fL)
+#define ASN1_STRING_get0_data(x)     (x)->data
+#endif
+
+
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined SSL_get_peer_certificate)
 #define SSL_get_peer_certificate(s)  SSL_get1_peer_certificate(s)
 #endif

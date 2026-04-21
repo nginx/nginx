@@ -152,21 +152,17 @@ ngx_quic_cbs_recv_rcd(ngx_ssl_conn_t *ssl_conn,
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, qc->read_level);
 
-    for (cl = ctx->crypto.chain; cl; cl = cl->next) {
+    cl = ctx->crypto.chain;
+
+    if (cl == NULL || cl->buf->sync) {
+        *data = NULL;
+        *bytes_read = 0;
+
+    } else {
         b = cl->buf;
-
-        if (b->sync) {
-            /* hole */
-
-            *bytes_read = 0;
-
-            break;
-        }
 
         *data = b->pos;
         *bytes_read = b->last - b->pos;
-
-        break;
     }
 
     return 1;
