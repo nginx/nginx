@@ -198,6 +198,14 @@ ngx_http_realip_handler(ngx_http_request_t *r)
             return NGX_DECLINED;
         }
 
+        // Handle composites like $http_x_forwarded_for,$proxy_protocol_addr with missing header value
+        while (var_value.len
+               && (var_value.data[0] == ' ' || var_value.data[0] == ','))
+        {
+            var_value.data++;
+            var_value.len--;
+        }
+
         if (var_value.len == 0) {
             return NGX_DECLINED;
         }
