@@ -5,6 +5,20 @@
 <change_log title="nginx">
 
 
+<changes ver="1.29.9" date="">
+
+<change type="feature">
+<para lang="ru">
+директива real_ip_header поддерживает переменные.
+</para>
+<para lang="en">
+variables support in the "real_ip_header" directive.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.29.8" date="2026-04-07">
 
 <change type="feature">
