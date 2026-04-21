@@ -113,6 +113,7 @@ struct ngx_ssl_ocsp_ctx_s {
 
     ngx_resolver_t              *resolver;
     ngx_msec_t                   resolver_timeout;
+    ngx_resolver_ctx_t          *resolve;
 
     ngx_msec_t                   timeout;
 
@@ -1341,6 +1342,10 @@ ngx_ssl_ocsp_done(ngx_ssl_ocsp_ctx_t *ctx)
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp done");
 
+    if (ctx->resolve) {
+        ngx_resolve_name_done(ctx->resolve);
+    }
+
     if (ctx->peer.connection) {
         ngx_close_connection(ctx->peer.connection);
     }
@@ -1433,7 +1438,10 @@ ngx_ssl_ocsp_request(ngx_ssl_ocsp_ctx_t *ctx)
         resolve->data = ctx;
         resolve->timeout = ctx->resolver_timeout;
 
+        ctx->resolve = resolve;
+
         if (ngx_resolve_name(resolve) != NGX_OK) {
+            ctx->resolve = NULL;
             ngx_ssl_ocsp_error(ctx);
             return;
         }
@@ -1522,6 +1530,7 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
     }
 
     ngx_resolve_name_done(resolve);
+    ctx->resolve = NULL;
 
     ngx_ssl_ocsp_connect(ctx);
     return;
@@ -1529,6 +1538,8 @@ ngx_ssl_ocsp_resolve_handler(ngx_resolver_ctx_t *resolve)
 failed:
 
     ngx_resolve_name_done(resolve);
+    ctx->resolve = NULL;
+
     ngx_ssl_ocsp_error(ctx);
 }
 
