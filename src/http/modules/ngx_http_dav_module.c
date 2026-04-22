@@ -23,7 +23,18 @@ typedef struct {
     ngx_uint_t  access;
     ngx_uint_t  min_delete_depth;
     ngx_flag_t  create_full_put_path;
+    ngx_flag_t  follow_symlinks;
 } ngx_http_dav_loc_conf_t;
+
+
+typedef struct {
+    unsigned    follow_symlinks:1;
+} ngx_http_dav_delete_ctx_t;
+
+
+typedef struct {
+    unsigned    found_symlink:1;
+} ngx_http_dav_prescan_ctx_t;
 
 
 typedef struct {
@@ -41,6 +52,9 @@ static ngx_int_t ngx_http_dav_delete_path(ngx_http_request_t *r,
     ngx_str_t *path, ngx_uint_t dir);
 static ngx_int_t ngx_http_dav_delete_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
+static ngx_int_t ngx_http_dav_delete_pre_tree(ngx_tree_ctx_t *ctx,
+    ngx_str_t *path);
+static ngx_int_t ngx_http_dav_is_symlink(ngx_log_t *log, u_char *path);
 static ngx_int_t ngx_http_dav_noop(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 
 static ngx_int_t ngx_http_dav_mkcol_handler(ngx_http_request_t *r,
@@ -48,6 +62,8 @@ static ngx_int_t ngx_http_dav_mkcol_handler(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_dav_copy_move_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_dav_copy_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
+static ngx_int_t ngx_http_dav_check_symlink(ngx_tree_ctx_t *ctx,
+    ngx_str_t *path);
 static ngx_int_t ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 static ngx_int_t ngx_http_dav_copy_tree_file(ngx_tree_ctx_t *ctx,
@@ -88,6 +104,13 @@ static ngx_command_t  ngx_http_dav_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_dav_loc_conf_t, create_full_put_path),
+      NULL },
+
+    { ngx_string("dav_follow_symlinks"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_dav_loc_conf_t, follow_symlinks),
       NULL },
 
     { ngx_string("min_delete_depth"),
@@ -405,17 +428,50 @@ ok:
 static ngx_int_t
 ngx_http_dav_delete_path(ngx_http_request_t *r, ngx_str_t *path, ngx_uint_t dir)
 {
-    char            *failed;
-    ngx_tree_ctx_t   tree;
+    char                       *failed;
+    ngx_tree_ctx_t              tree;
+    ngx_http_dav_delete_ctx_t   ctx;
+    ngx_http_dav_loc_conf_t    *dlcf;
 
     if (dir) {
 
+        dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
+        ctx.follow_symlinks = dlcf->follow_symlinks;
+
+        if (!ctx.follow_symlinks) {
+            ngx_int_t  src;
+
+            path->data[path->len] = '\0';
+            src = ngx_http_dav_is_symlink(r->connection->log, path->data);
+
+            if (src == -1) {
+                path->data[path->len] = '/';
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            if (src == 1) {
+                if (ngx_delete_file(path->data) == NGX_FILE_ERROR) {
+                    return ngx_http_dav_error(r->connection->log, ngx_errno,
+                                              NGX_HTTP_NOT_FOUND,
+                                              ngx_delete_file_n,
+                                              path->data);
+                }
+
+                path->data[path->len] = '/';
+                return NGX_OK;
+            }
+
+            path->data[path->len] = '/';
+        }
+
         tree.init_handler = NULL;
         tree.file_handler = ngx_http_dav_delete_file;
-        tree.pre_tree_handler = ngx_http_dav_noop;
+        tree.pre_tree_handler = ctx.follow_symlinks
+                                ? ngx_http_dav_noop
+                                : ngx_http_dav_delete_pre_tree;
         tree.post_tree_handler = ngx_http_dav_delete_dir;
         tree.spec_handler = ngx_http_dav_delete_file;
-        tree.data = NULL;
+        tree.data = &ctx;
         tree.alloc = 0;
         tree.log = r->connection->log;
 
@@ -475,6 +531,80 @@ ngx_http_dav_delete_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 
         (void) ngx_http_dav_error(ctx->log, ngx_errno, 0, ngx_delete_file_n,
                                   path->data);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_dav_is_symlink(ngx_log_t *log, u_char *path)
+{
+    ngx_file_info_t  fi;
+
+    if (ngx_link_info(path, &fi) == NGX_FILE_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, log, ngx_errno,
+                      ngx_link_info_n " \"%s\" failed", path);
+        return -1;
+    }
+
+    return ngx_is_link(&fi);
+}
+
+
+static ngx_int_t
+ngx_http_dav_delete_pre_tree(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+{
+    ngx_int_t                    rc;
+    ngx_http_dav_delete_ctx_t   *dctx;
+
+    dctx = ctx->data;
+
+    if (dctx->follow_symlinks) {
+        return NGX_OK;
+    }
+
+    rc = ngx_http_dav_is_symlink(ctx->log, path->data);
+
+    if (rc == -1) {
+        return NGX_DECLINED;
+    }
+
+    if (rc == 1) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ctx->log, 0,
+                       "http delete symlink: \"%s\"", path->data);
+
+        if (ngx_delete_file(path->data) == NGX_FILE_ERROR) {
+            (void) ngx_http_dav_error(ctx->log, ngx_errno, 0,
+                                      ngx_delete_file_n, path->data);
+        }
+
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_dav_check_symlink(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+{
+    ngx_int_t                     rc;
+    ngx_http_dav_prescan_ctx_t   *ps;
+
+    ps = ctx->data;
+
+    rc = ngx_http_dav_is_symlink(ctx->log, path->data);
+
+    if (rc == 1) {
+        ngx_log_error(NGX_LOG_ERR, ctx->log, 0,
+                      "symlink found in \"%s\"", path->data);
+        ps->found_symlink = 1;
+        return NGX_ABORT;
+    }
+
+    if (rc == -1) {
+        return NGX_ABORT;
     }
 
     return NGX_OK;
@@ -555,6 +685,8 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
                       "COPY and MOVE with body are unsupported");
         return NGX_HTTP_UNSUPPORTED_MEDIA_TYPE;
     }
+
+    dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
 
     dest = r->headers_in.destination;
 
@@ -781,6 +913,44 @@ overwrite_done:
             return NGX_HTTP_BAD_REQUEST;
         }
 
+        path.len -= 2;  /* omit "/\0" */
+
+        if (!dlcf->follow_symlinks) {
+            ngx_int_t                    src;
+            ngx_http_dav_prescan_ctx_t   ps;
+
+            path.data[path.len] = '\0';
+            src = ngx_http_dav_is_symlink(r->connection->log, path.data);
+            path.data[path.len] = '/';
+
+            if (src == -1) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            if (src == 1) {
+                return NGX_HTTP_FORBIDDEN;
+            }
+
+            ngx_memzero(&ps, sizeof(ngx_http_dav_prescan_ctx_t));
+
+            tree.init_handler = NULL;
+            tree.file_handler = ngx_http_dav_check_symlink;
+            tree.pre_tree_handler = ngx_http_dav_check_symlink;
+            tree.post_tree_handler = ngx_http_dav_noop;
+            tree.spec_handler = ngx_http_dav_check_symlink;
+            tree.data = &ps;
+            tree.alloc = 0;
+            tree.log = r->connection->log;
+
+            if (ngx_walk_tree(&tree, &path) != NGX_OK) {
+                if (ps.found_symlink) {
+                    return NGX_HTTP_FORBIDDEN;
+                }
+
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+        }
+
         if (overwrite) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http delete: \"%s\"", copy.path.data);
@@ -791,11 +961,6 @@ overwrite_done:
                 return rc;
             }
         }
-    }
-
-    if (ngx_is_dir(&fi)) {
-
-        path.len -= 2;  /* omit "/\0" */
 
         if (r->method == NGX_HTTP_MOVE) {
             if (ngx_rename_file(path.data, copy.path.data) != NGX_FILE_ERROR) {
@@ -838,9 +1003,6 @@ overwrite_done:
     } else {
 
         if (r->method == NGX_HTTP_MOVE) {
-
-            dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
-
             ext.access = 0;
             ext.path_access = dlcf->access;
             ext.time = -1;
@@ -1059,7 +1221,12 @@ ngx_http_dav_error(ngx_log_t *log, ngx_err_t err, ngx_int_t not_found,
         level = NGX_LOG_ERR;
         rc = not_found;
 
-    } else if (err == NGX_EACCES || err == NGX_EPERM) {
+    } else if (err == NGX_EACCES || err == NGX_EPERM
+#if (NGX_HAVE_OPENAT)
+               || err == NGX_ELOOP || err == NGX_EMLINK
+#endif
+              )
+    {
         level = NGX_LOG_ERR;
         rc = NGX_HTTP_FORBIDDEN;
 
@@ -1141,6 +1308,7 @@ ngx_http_dav_create_loc_conf(ngx_conf_t *cf)
     conf->min_delete_depth = NGX_CONF_UNSET_UINT;
     conf->access = NGX_CONF_UNSET_UINT;
     conf->create_full_put_path = NGX_CONF_UNSET;
+    conf->follow_symlinks = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1162,6 +1330,9 @@ ngx_http_dav_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->create_full_put_path,
                          prev->create_full_put_path, 0);
+
+    ngx_conf_merge_value(conf->follow_symlinks,
+                         prev->follow_symlinks, 1);
 
     return NGX_CONF_OK;
 }
