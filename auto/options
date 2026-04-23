@@ -293,7 +293,13 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
                                          HTTP_UPSTREAM_RANDOM=NO    ;;
         --without-http_upstream_keepalive_module) HTTP_UPSTREAM_KEEPALIVE=NO ;;
         --without-http_upstream_zone_module) HTTP_UPSTREAM_ZONE=NO  ;;
-        --without-http_upstream_sticky)  HTTP_UPSTREAM_STICKY=NO    ;;
+        --without-http_upstream_sticky_module) HTTP_UPSTREAM_STICKY=NO ;;
+        --without-http_upstream_sticky)
+            HTTP_UPSTREAM_STICKY=NO
+            NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
+$0: warning: the \"--without-http_upstream_sticky\" option is deprecated, \
+use the \"--without-http_upstream_sticky_module\" option instead"
+        ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
         --with-http_perl_module=dynamic) HTTP_PERL=DYNAMIC          ;;
@@ -518,7 +524,8 @@ cat << END
                                      disable ngx_http_upstream_keepalive_module
   --without-http_upstream_zone_module
                                      disable ngx_http_upstream_zone_module
-  --without-http_upstream_sticky     disable sticky upstream modules
+  --without-http_upstream_sticky_module
+                                     disable ngx_http_upstream_sticky_module
 
   --with-http_perl_module            enable ngx_http_perl_module
   --with-http_perl_module=dynamic    enable dynamic ngx_http_perl_module
