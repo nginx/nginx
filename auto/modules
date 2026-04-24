@@ -964,6 +964,19 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_TUNNEL = YES ]; then
+        have=NGX_HTTP_TUNNEL . auto/have
+
+        ngx_module_name=ngx_http_tunnel_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_tunnel_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_TUNNEL
+
+        . auto/module
+    fi
+
     if [ $HTTP_STUB_STATUS = YES ]; then
         have=NGX_STAT_STUB . auto/have
 
