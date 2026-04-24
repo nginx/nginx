@@ -14,7 +14,7 @@
 /* FreeBSD, NetBSD, OpenBSD */
 
 #define ngx_init_setproctitle(log) NGX_OK
-#define ngx_setproctitle(title)    setproctitle("%s", title)
+#define ngx_setproctitle_fmt       setproctitle
 
 
 #else /* !NGX_HAVE_SETPROCTITLE */
@@ -27,7 +27,7 @@
 #define NGX_SETPROCTITLE_PAD       ' '
 
 ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
-void ngx_setproctitle(char *title);
+void ngx_setproctitle_fmt(const char *fmt, ...);
 
 #elif (NGX_LINUX) || (NGX_DARWIN)
 
@@ -35,18 +35,24 @@ void ngx_setproctitle(char *title);
 #define NGX_SETPROCTITLE_PAD       '\0'
 
 ngx_int_t ngx_init_setproctitle(ngx_log_t *log);
-void ngx_setproctitle(char *title);
+void ngx_setproctitle_fmt(const char *fmt, ...);
 
 #else
 
 #define ngx_init_setproctitle(log) NGX_OK
-#define ngx_setproctitle(title)
+static ngx_inline void ngx_setproctitle_fmt(const char *fmt, ...) { /* void */ }
 
 #endif /* OSes */
 
 #endif /* NGX_SETPROCTITLE_USES_ENV */
 
 #endif /* NGX_HAVE_SETPROCTITLE */
+
+
+#define ngx_setproctitle(title)           ngx_setproctitle_fmt("%s", title)
+
+#define ngx_setproctitle_gen(title, gen)                                      \
+    ngx_setproctitle_fmt("%s #%llu", title, (unsigned long long) gen)
 
 
 #endif /* _NGX_SETPROCTITLE_H_INCLUDED_ */
