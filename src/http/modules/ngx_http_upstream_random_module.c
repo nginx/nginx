@@ -327,7 +327,9 @@ found:
     ngx_http_upstream_rr_peer_unlock(peers, peer);
     ngx_http_upstream_rr_peers_unlock(peers);
 
-    rrp->tried[n] |= m;
+    if (pc->unique) {
+        rrp->tried[n] |= m;
+    }
 
     return NGX_OK;
 }
@@ -463,7 +465,9 @@ found:
 
     ngx_http_upstream_rr_peers_unlock(peers);
 
-    rrp->tried[n] |= m;
+    if (pc->unique) {
+        rrp->tried[n] |= m;
+    }
 
     return NGX_OK;
 }

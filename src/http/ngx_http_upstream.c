@@ -99,6 +99,7 @@ static void ngx_http_upstream_dummy_handler(ngx_http_request_t *r,
 static void ngx_http_upstream_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_uint_t ft_type);
 static void ngx_http_upstream_cleanup(void *data);
+static void ngx_http_upstream_connect_handler(ngx_event_t *ev);
 static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc);
 
@@ -838,9 +839,10 @@ found:
     }
 
     u->peer.start_time = ngx_current_msec;
+    u->peer.unique = u->conf->next_upstream_unique;
 
     if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
+        && (!u->peer.unique || u->peer.tries > u->conf->next_upstream_tries))
     {
         u->peer.tries = u->conf->next_upstream_tries;
     }
@@ -1281,9 +1283,10 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     ur->ctx = NULL;
 
     u->peer.start_time = ngx_current_msec;
+    u->peer.unique = u->conf->next_upstream_unique;
 
     if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
+        && (!u->peer.unique || u->peer.tries > u->conf->next_upstream_tries))
     {
         u->peer.tries = u->conf->next_upstream_tries;
     }
@@ -4725,6 +4728,42 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         u->peer.connection = NULL;
     }
 
+    if (u->conf->next_upstream_delay) {
+
+        if (u->event == NULL) {
+            u->event = ngx_pcalloc(r->pool, sizeof(ngx_event_t));
+            if (u->event == NULL) {
+                ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+
+            u->event->handler = ngx_http_upstream_connect_handler;
+            u->event->data = r;
+            u->event->log = r->connection->log;
+        }
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "next http upstream delay %M",
+                       u->conf->next_upstream_delay);
+
+        ngx_add_timer(u->event, u->conf->next_upstream_delay);
+        return;
+    }
+
+    ngx_http_upstream_connect(r, u);
+}
+
+
+static void
+ngx_http_upstream_connect_handler(ngx_event_t *ev)
+{
+    ngx_http_request_t   *r;
+    ngx_http_upstream_t  *u;
+
+    r = ev->data;
+    u = r->upstream;
+
     ngx_http_upstream_connect(r, u);
 }
 
@@ -4821,6 +4860,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     }
 
     u->peer.connection = NULL;
+
+    if (u->event && u->event->timer_set) {
+        ngx_del_timer(u->event);
+    }
 
     if (u->pipe) {
         u->pipe->upstream = NULL;
