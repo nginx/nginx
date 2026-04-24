@@ -256,8 +256,9 @@ typedef struct {
 #endif
 
     ngx_str_t                        module;
+    ngx_uint_t                       ignore_input;
 
-    NGX_COMPAT_BEGIN(6)
+    NGX_COMPAT_BEGIN(5)
     NGX_COMPAT_END
 } ngx_http_upstream_conf_t;
 

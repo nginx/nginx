@@ -620,6 +620,8 @@ typedef struct {
 
 #define ngx_http_ephemeral(r)  (void *) (&r->uri_start)
 
+#define ngx_http_proxy_auth(r)  ((r)->method == NGX_HTTP_CONNECT)
+
 
 extern ngx_http_header_t       ngx_http_headers_in[];
 extern ngx_http_header_out_t   ngx_http_headers_out[];
