@@ -5711,6 +5711,40 @@ ngx_ssl_get_session_reused(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_handshake_rtt(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x30200000L)
+
+    uint64_t  rtt;
+    u_char   *p;
+
+    if (SSL_get_handshake_rtt(c->ssl->connection, &rtt) > 0) {
+        if (pool == NULL) {
+            pool = c->pool;
+        }
+
+        s->data = ngx_pnalloc(pool, NGX_INT64_LEN + 1);
+        if (s->data == NULL) {
+            return NGX_ERROR;
+        }
+
+        p = ngx_sprintf(s->data, "%uL", rtt);
+        *p = '\0';
+        s->len = p - s->data;
+
+        return NGX_OK;
+    }
+
+#endif
+
+    s->len = 0;
+    s->data = (u_char *) "";
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_early_data(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     s->len = 0;
