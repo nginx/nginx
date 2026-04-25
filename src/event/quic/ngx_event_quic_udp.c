@@ -168,7 +168,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
                 c->log->handler = NULL;
 
                 ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                               "quic recvmsg: fd:%d n:%z", c->fd, n);
+                               "quic recvmsg: fd:%d n:%z", lc->fd, n);
 
                 c->log->handler = handler;
             }
@@ -211,12 +211,23 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         ngx_accept_disabled = ngx_cycle->connection_n / 8
                               - ngx_cycle->free_connection_n;
 
-        c = ngx_get_connection(lc->fd, ev->log);
-        if (c == NULL) {
+        c = NULL;
+
+#if (NGX_QUIC_BPF)
+        if (ngx_quic_bpf_get_client_connection(lc, &c) != NGX_OK) {
             return;
         }
+#endif
 
-        c->shared = 1;
+        if (c == NULL) {
+            c = ngx_get_connection(lc->fd, ev->log);
+            if (c == NULL) {
+                return;
+            }
+
+            c->shared = 1;
+        }
+
         c->type = SOCK_DGRAM;
         c->socklen = socklen;
 
@@ -327,7 +338,7 @@ ngx_quic_recvmsg(ngx_event_t *ev)
 
             ngx_log_debug4(NGX_LOG_DEBUG_EVENT, log, 0,
                            "*%uA quic recvmsg: %V fd:%d n:%z",
-                           c->number, &addr, c->fd, n);
+                           c->number, &addr, lc->fd, n);
         }
 
         }

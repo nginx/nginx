@@ -73,6 +73,7 @@ struct ngx_event_s {
     /* to test on worker exit */
     unsigned         channel:1;
     unsigned         resolver:1;
+    unsigned         quic:1;
 
     unsigned         cancelable:1;
 

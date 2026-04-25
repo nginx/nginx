@@ -323,6 +323,12 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
                       + conf->max_concurrent_streams_bidi)
                      * conf->stream_buffer_size / 2000;
 
+    if (c->fd == c->listening->fd
+        && ngx_quic_bpf_enabled((ngx_cycle_t *) ngx_cycle))
+    {
+        qc->listen_bound = 1;
+    }
+
     if (pkt->validated && pkt->retried) {
         qc->tp.retry_scid.len = pkt->dcid.len;
         qc->tp.retry_scid.data = ngx_pstrdup(c->pool, &pkt->dcid);
@@ -427,6 +433,15 @@ ngx_quic_input_handler(ngx_event_t *rev)
         c->close = 0;
 
         if (!ngx_exiting || !qc->streams.initialized) {
+            qc->error = NGX_QUIC_ERR_NO_ERROR;
+            qc->error_reason = "graceful shutdown";
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
+
+        if (qc->listen_bound) {
+            c->fd = (ngx_socket_t) -1;
+
             qc->error = NGX_QUIC_ERR_NO_ERROR;
             qc->error_reason = "graceful shutdown";
             ngx_quic_close_connection(c, NGX_ERROR);
@@ -935,7 +950,9 @@ ngx_quic_handle_packet(ngx_connection_t *c, ngx_quic_conf_t *conf,
         pkt->odcid = pkt->dcid;
     }
 
-    if (ngx_terminate || ngx_exiting) {
+    if ((ngx_terminate || ngx_exiting)
+        && !ngx_quic_bpf_enabled((ngx_cycle_t *) ngx_cycle))
+    {
         if (conf->retry) {
             return ngx_quic_send_retry(c, conf, pkt);
         }
