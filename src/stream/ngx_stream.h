@@ -264,8 +264,7 @@ struct ngx_stream_session_s {
     ngx_connection_t              *connection;
 
     off_t                          received;
-    time_t                         start_sec;
-    ngx_msec_t                     start_msec;
+    ngx_msec_t                     start_time;
 
     ngx_log_handler_pt             log_handler;
 

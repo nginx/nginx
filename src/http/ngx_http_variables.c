@@ -2270,7 +2270,6 @@ ngx_http_variable_request_time(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     u_char          *p;
-    ngx_time_t      *tp;
     ngx_msec_int_t   ms;
 
     p = ngx_pnalloc(r->pool, NGX_TIME_T_LEN + 4);
@@ -2278,10 +2277,7 @@ ngx_http_variable_request_time(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    tp = ngx_timeofday();
-
-    ms = (ngx_msec_int_t)
-             ((tp->sec - r->start_sec) * 1000 + (tp->msec - r->start_msec));
+    ms = (ngx_msec_int_t) (ngx_current_msec - r->start_time);
     ms = ngx_max(ms, 0);
 
     v->len = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000) - p;

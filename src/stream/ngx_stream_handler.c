@@ -23,7 +23,6 @@ ngx_stream_init_connection(ngx_connection_t *c)
     u_char                        text[NGX_SOCKADDR_STRLEN];
     size_t                        len;
     ngx_uint_t                    i;
-    ngx_time_t                   *tp;
     ngx_event_t                  *rev;
     struct sockaddr              *sa;
     ngx_stream_port_t            *port;
@@ -173,9 +172,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
         return;
     }
 
-    tp = ngx_timeofday();
-    s->start_sec = tp->sec;
-    s->start_msec = tp->msec;
+    s->start_time = ngx_current_msec;
 
     rev = c->read;
     rev->handler = ngx_stream_session_handler;
