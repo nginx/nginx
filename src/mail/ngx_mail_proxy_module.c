@@ -894,6 +894,7 @@ ngx_mail_proxy_write_handler(ngx_event_t *wev)
 
     if (ngx_handle_write_event(wev, 0) != NGX_OK) {
         ngx_mail_proxy_internal_server_error(s);
+        return;
     }
 
     if (c->read->ready) {
