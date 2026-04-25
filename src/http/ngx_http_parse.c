@@ -101,6 +101,11 @@ static uint32_t  usual[] = {
 
 #endif
 
+static inline ngx_int_t
+ngx_http_field_value_char(u_char ch)
+{
+    return ch >= 0x20 ? ch != 0x7f : ch == 0x09;
+}
 
 /* gcc, icc, msvc and others compile these switches as an jump table */
 
@@ -852,6 +857,40 @@ done:
     return NGX_OK;
 }
 
+static ngx_int_t
+ngx_http_non_alnum_dash_header_char(u_char ch)
+{
+    switch (ch) {
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '*':
+    case '+':
+    case '.':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static ngx_int_t
+ngx_http_token_char(u_char ch)
+{
+    u_char c = (ch | 0x20);
+    if (('a' <= c && c <= 'z') || ('0' <= ch && ch <= '9') || ch == '-') {
+        return 1;
+    }
+
+    return ngx_http_non_alnum_dash_header_char(ch);
+}
 
 ngx_int_t
 ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
@@ -865,7 +904,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         sw_space_before_value,
         sw_value,
         sw_space_after_value,
-        sw_ignore_line,
         sw_almost_done,
         sw_header_almost_done
     } state;
@@ -916,22 +954,14 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     break;
                 }
 
-                if (ch == '_') {
-                    if (allow_underscores) {
-                        hash = ngx_hash(0, ch);
-                        r->lowcase_header[0] = ch;
-                        i = 1;
-
-                    } else {
-                        hash = 0;
-                        i = 0;
-                        r->invalid_header = 1;
-                    }
-
+                if (ch == '_' && allow_underscores) {
+                    hash = ngx_hash(0, ch);
+                    r->lowcase_header[0] = ch;
+                    i = 1;
                     break;
                 }
 
-                if (ch <= 0x20 || ch == 0x7f || ch == ':') {
+                if (!ngx_http_non_alnum_dash_header_char(ch)) {
                     r->header_end = p;
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
@@ -975,32 +1005,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch == CR) {
-                r->header_name_end = p;
-                r->header_start = p;
-                r->header_end = p;
-                state = sw_almost_done;
-                break;
-            }
-
-            if (ch == LF) {
-                r->header_name_end = p;
-                r->header_start = p;
-                r->header_end = p;
-                goto done;
-            }
-
-            /* IIS may send the duplicate "HTTP/1.1 ..." lines */
-            if (ch == '/'
-                && r->upstream
-                && p - r->header_name_start == 4
-                && ngx_strncmp(r->header_name_start, "HTTP", 4) == 0)
-            {
-                state = sw_ignore_line;
-                break;
-            }
-
-            if (ch <= 0x20 || ch == 0x7f) {
+            if (!ngx_http_non_alnum_dash_header_char(ch)) {
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
@@ -1013,6 +1018,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 r->header_start = p;
@@ -1023,13 +1029,14 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 r->header_start = p;
                 r->header_end = p;
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f) {
+                    r->header_start = p;
+                    state = sw_value;
+                    break;
+                }
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
-            default:
-                r->header_start = p;
-                state = sw_value;
-                break;
             }
             break;
 
@@ -1037,6 +1044,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 r->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -1047,7 +1055,9 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             case LF:
                 r->header_end = p;
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f)
+                    break;
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
@@ -1057,29 +1067,20 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
                 break;
             case LF:
                 goto done;
-            case '\0':
+            default:
+                if (ch > 0x20 && ch != 0x7f) {
+                    state = sw_value;
+                    break;
+                }
                 r->header_end = p;
                 return NGX_HTTP_PARSE_INVALID_HEADER;
-            default:
-                state = sw_value;
-                break;
-            }
-            break;
-
-        /* ignore header line */
-        case sw_ignore_line:
-            switch (ch) {
-            case LF:
-                state = sw_start;
-                break;
-            default:
-                break;
             }
             break;
 
@@ -1088,8 +1089,6 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             switch (ch) {
             case LF:
                 goto done;
-            case CR:
-                break;
             default:
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
@@ -1841,6 +1840,11 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto done;
+            default:
+                if (ch < 0x20 || ch == 0x7f) {
+                    return NGX_ERROR;
+                }
+                break;
             }
             break;
 
@@ -2206,24 +2210,26 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     enum {
         sw_chunk_start = 0,
         sw_chunk_size,
+        sw_chunk_extension_before_semi,
+        sw_chunk_extension_before_semi_bws,
         sw_chunk_extension,
+        sw_chunk_extension_bws_before_equal,
+        sw_chunk_extension_name,
+        sw_chunk_extension_value_start,
+        sw_chunk_extension_quoted_value,
+        sw_chunk_extension_value_quoted_backslash,
+        sw_chunk_extension_unquoted_value,
         sw_chunk_extension_almost_done,
         sw_chunk_data,
-        sw_after_data,
         sw_after_data_almost_done,
-        sw_last_chunk_extension,
-        sw_last_chunk_extension_almost_done,
         sw_trailer,
         sw_trailer_almost_done,
-        sw_trailer_header,
+        sw_trailer_name,
+        sw_trailer_value,
         sw_trailer_header_almost_done
     } state;
 
     state = ctx->state;
-
-    if (state == sw_chunk_data && ctx->size == 0) {
-        state = sw_after_data;
-    }
 
     rc = NGX_AGAIN;
 
@@ -2269,62 +2275,60 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 ctx->size = ctx->size * 16 + (c - 'a' + 10);
                 break;
             }
+            /* fall through */
 
-            if (ctx->size == 0) {
-
-                switch (ch) {
-                case CR:
-                    state = sw_last_chunk_extension_almost_done;
-                    break;
-                case ';':
-                case ' ':
-                case '\t':
-                    state = sw_last_chunk_extension;
-                    break;
-                default:
-                    goto invalid;
-                }
-
-                break;
-            }
-
+        case sw_chunk_extension_before_semi:
+before_semi:
             switch (ch) {
             case CR:
                 state = sw_chunk_extension_almost_done;
                 break;
             case ';':
-            case ' ':
-            case '\t':
                 state = sw_chunk_extension;
                 break;
+            case ' ':
+            case '\t':
+                state = sw_chunk_extension_before_semi_bws;
+                break; /* BWS */
             default:
                 goto invalid;
             }
 
             break;
 
-        case sw_chunk_extension:
+        case sw_chunk_extension_before_semi_bws:
             switch (ch) {
-            case CR:
-                state = sw_chunk_extension_almost_done;
+            case ' ':
+            case '\t':
                 break;
-            case LF:
+            case ';':
+                state = sw_chunk_extension;
+                break;
+            default:
                 goto invalid;
             }
             break;
 
-        case sw_chunk_extension_almost_done:
-            if (ch == LF) {
-                state = sw_chunk_data;
+        case sw_chunk_extension:
+            if (ngx_http_token_char(ch)) {
+                state = sw_chunk_extension_name;
                 break;
             }
-            goto invalid;
+            switch (ch) {
+            case ' ':
+            case '\t':
+                break; /* BWS */
+            default:
+                goto invalid;
+            }
+            break;
 
         case sw_chunk_data:
-            rc = NGX_OK;
-            goto data;
+            if (ctx->size != 0) {
+                rc = NGX_OK;
+                goto data;
+            }
 
-        case sw_after_data:
             switch (ch) {
             case CR:
                 state = sw_after_data_almost_done;
@@ -2341,18 +2345,79 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
             }
             goto invalid;
 
-        case sw_last_chunk_extension:
-            switch (ch) {
-            case CR:
-                state = sw_last_chunk_extension_almost_done;
+
+        case sw_chunk_extension_name:
+            if (ngx_http_token_char(ch)) {
                 break;
-            case LF:
+            }
+
+            state = sw_chunk_extension_bws_before_equal;
+
+            /* fall through */
+
+        case sw_chunk_extension_bws_before_equal:
+            switch (ch) {
+            case ' ':
+            case '\t':
+                break; /* BWS */
+            case '=':
+                state = sw_chunk_extension_value_start;
+                break;
+            default:
                 goto invalid;
             }
             break;
 
-        case sw_last_chunk_extension_almost_done:
+        case sw_chunk_extension_value_start:
+            if (ngx_http_token_char(ch)) {
+                state = sw_chunk_extension_unquoted_value;
+                break;
+            }
+            switch (ch) {
+            case ' ':
+            case '\t':
+                break; /* BWS */
+            case '"':
+                state = sw_chunk_extension_quoted_value;
+                break;
+            default:
+                goto invalid;
+            }
+            break;
+
+        case sw_chunk_extension_quoted_value:
+            if (ch == '"') {
+                state = sw_chunk_extension_before_semi;
+                break;
+            }
+            if (ch == '\\') {
+                state = sw_chunk_extension_value_quoted_backslash;
+                break;
+            }
+            if (ngx_http_field_value_char(ch)) {
+                break;
+            }
+            goto invalid;
+
+        case sw_chunk_extension_value_quoted_backslash:
+            if (ngx_http_field_value_char(ch)) {
+                state = sw_chunk_extension_quoted_value;
+                break;
+            }
+            goto invalid;
+
+        case sw_chunk_extension_unquoted_value:
+            if (ngx_http_token_char(ch)) {
+                break;
+            }
+            goto before_semi;
+
+        case sw_chunk_extension_almost_done:
             if (ch == LF) {
+                if (ctx->size) {
+                    state = sw_chunk_data;
+                    break;
+                }
                 if (keep_trailers) {
                     goto done;
                 }
@@ -2362,16 +2427,17 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
             goto invalid;
 
         case sw_trailer:
-            switch (ch) {
-            case CR:
+            if (ch == CR) {
                 state = sw_trailer_almost_done;
                 break;
-            case LF:
-                goto invalid;
-            default:
-                state = sw_trailer_header;
             }
-            break;
+            if (ngx_http_token_char(ch)) {
+                state = sw_trailer_name;
+                r->lowcase_index = 1;
+                r->lowcase_header[0] = (ch | 0x20);
+                break;
+            }
+            goto invalid;
 
         case sw_trailer_almost_done:
             if (ch == LF) {
@@ -2379,15 +2445,44 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
             }
             goto invalid;
 
-        case sw_trailer_header:
-            switch (ch) {
-            case CR:
+        case sw_trailer_name:
+            if (ngx_http_token_char(ch)) {
+                if (r->lowcase_index < NGX_HTTP_LC_HEADER_LEN) {
+                    /* ASCII uppercase letters become the lowercase ones.
+                     * '-' is unchanged. */
+                    r->lowcase_header[r->lowcase_index++] = (ch | 0x20);
+                }
+                break;
+            }
+            if (ch == ':') {
+                switch (r->lowcase_index) {
+#define X(v)                                                                   \
+                case sizeof(v "") - 1:                                         \
+                    if (memcmp(r->lowcase_header, v, r->lowcase_index) == 0) { \
+                        goto invalid;                                          \
+                    }                                                          \
+                    break
+                X("transfer-encoding");
+                X("content-length");
+                X("upgrade");
+#undef X
+                default:
+                    break;
+                }
+                state = sw_trailer_value;
+                break;
+            }
+            goto invalid;
+
+        case sw_trailer_value:
+            if (ngx_http_field_value_char(ch)) {
+                break;
+            }
+            if (ch == CR) {
                 state = sw_trailer_header_almost_done;
                 break;
-            case LF:
-                goto invalid;
             }
-            break;
+            goto invalid;
 
         case sw_trailer_header_almost_done:
             if (ch == LF) {
@@ -2404,52 +2499,62 @@ data:
     ctx->state = state;
     b->pos = pos;
 
-    if (ctx->size > NGX_MAX_OFF_T_VALUE - 5) {
+    if (ctx->size > NGX_MAX_OFF_T_VALUE - 13) {
         goto invalid;
     }
-
+    off_t min_length = (ctx->size ? ctx->size + 7 /* CRLF "0" CRLF CRLF */
+                        : 2 /* CRLF */);
     switch (state) {
-
     case sw_chunk_start:
         ctx->length = 5 /* "0" CRLF CRLF */;
         break;
     case sw_chunk_size:
-        ctx->length = 2 /* CRLF */
-                      + (ctx->size ? ctx->size + 7 /* CRLF "0" CRLF CRLF */
-                                   : 2 /* CRLF */);
-        break;
-    case sw_chunk_extension:
-        ctx->length = 2 /* CRLF */ + ctx->size + 7 /* CRLF "0" CRLF CRLF */;
+    case sw_chunk_extension_before_semi:
+    case sw_chunk_extension_unquoted_value:
+        ctx->length = 2 /* CRLF */ + min_length;
         break;
     case sw_chunk_extension_almost_done:
-        ctx->length = 1 /* LF */ + ctx->size + 7 /* CRLF "0" CRLF CRLF */;
+        ctx->length = 1 /* LF */ + min_length;
+        break;
+    case sw_chunk_extension_before_semi_bws:
+        ctx->length = 6 /* ;a=b CRLF */ + min_length;
+        break;
+    case sw_chunk_extension:
+        ctx->length = 5 /* a=b CRLF */ + min_length;
+        break;
+    case sw_chunk_extension_bws_before_equal:
+    case sw_chunk_extension_name:
+        ctx->length = 4 /* =b CRLF */ + min_length;
+        break;
+    case sw_chunk_extension_value_start:
+        ctx->length = 3 /* b CRLF */ + min_length;
+        break;
+    case sw_chunk_extension_quoted_value:
+        ctx->length = 3 /* " CRLF */ + min_length;
+        break;
+    case sw_chunk_extension_value_quoted_backslash:
+        ctx->length = 4 /* a" CRLF */ + min_length;
         break;
     case sw_chunk_data:
-        ctx->length = ctx->size + 7 /* CRLF "0" CRLF CRLF */;
-        break;
-    case sw_after_data:
-        ctx->length = 7 /* CRLF "0" CRLF CRLF */;
+        ctx->length = min_length;
         break;
     case sw_after_data_almost_done:
         ctx->length = 6 /* LF "0" CRLF CRLF */;
         break;
-    case sw_last_chunk_extension:
-        ctx->length = 4 /* CRLF CRLF */;
-        break;
-    case sw_last_chunk_extension_almost_done:
-        ctx->length = 3 /* LF CRLF */;
-        break;
     case sw_trailer:
         ctx->length = 2 /* CRLF */;
         break;
-    case sw_trailer_almost_done:
-        ctx->length = 1 /* LF */;
+    case sw_trailer_name:
+        ctx->length = 5 /* : CRLF CRLF */;
         break;
-    case sw_trailer_header:
+    case sw_trailer_value:
         ctx->length = 4 /* CRLF CRLF */;
         break;
     case sw_trailer_header_almost_done:
         ctx->length = 3 /* LF CRLF */;
+        break;
+    case sw_trailer_almost_done:
+        ctx->length = 1 /* LF */;
         break;
 
     }
