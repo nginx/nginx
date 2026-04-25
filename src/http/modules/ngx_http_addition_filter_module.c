@@ -181,7 +181,7 @@ ngx_http_addition_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     rc = ngx_http_next_body_filter(r, in);
 
-    if (rc == NGX_ERROR || !last || conf->after_body.len == 0) {
+    if (rc == NGX_ERROR || !last) {
         return rc;
     }
 
