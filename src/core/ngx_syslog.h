@@ -12,6 +12,7 @@ typedef struct {
     ngx_uint_t         facility;
     ngx_uint_t         severity;
     ngx_str_t          tag;
+    ngx_str_t          msgid;
 
     ngx_str_t         *hostname;
 
@@ -23,6 +24,7 @@ typedef struct {
 
     unsigned           busy:1;
     unsigned           nohostname:1;
+    unsigned           rfc5424:1;
 } ngx_syslog_peer_t;
 
 

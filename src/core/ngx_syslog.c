@@ -10,9 +10,12 @@
 
 
 #define NGX_SYSLOG_MAX_STR                                                    \
-    NGX_MAX_ERROR_STR + sizeof("<255>Jan 01 00:00:00 ") - 1                   \
+    NGX_MAX_ERROR_STR + sizeof("<255>1 ") - 1                                 \
+    + sizeof("1970-09-28T12:00:00.000+06:00") - 1 + 1 /* space */            \
     + (NGX_MAXHOSTNAMELEN - 1) + 1 /* space */                                \
-    + 32 /* tag */ + 2 /* colon, space */
+    + 48 /* APP-NAME/TAG */ + 1 /* space */                                   \
+    + NGX_INT64_LEN /* PROCID */ + 1 /* space */                              \
+    + 32 /* MSGID */ + sizeof(" - ") - 1
 
 
 static char *ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer);
@@ -49,6 +52,82 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
         return NGX_CONF_ERROR;
     }
 
+    if (peer->tag.data != NULL) {
+        ngx_uint_t  j;
+        u_char      ch;
+
+        if (peer->rfc5424) {
+
+            /*
+             * RFC 5424: APP-NAME is at most 48 printable US-ASCII
+             * characters (0x21-0x7E; space and controls are excluded).
+             */
+            for (j = 0; j < peer->tag.len; j++) {
+                ch = peer->tag.data[j];
+
+                if (ch < '!' || ch > '~') {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "syslog \"tag\" must contain "
+                                       "printable US-ASCII characters");
+                    return NGX_CONF_ERROR;
+                }
+            }
+
+        } else {
+
+            /*
+             * RFC 3164: the TAG is a string of ABNF alphanumeric
+             * characters that MUST NOT exceed 32 characters.
+             */
+            if (peer->tag.len > 32) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog tag length exceeds 32");
+                return NGX_CONF_ERROR;
+            }
+
+            for (j = 0; j < peer->tag.len; j++) {
+                ch = ngx_tolower(peer->tag.data[j]);
+
+                if (ch < '0'
+                    || (ch > '9' && ch < 'a' && ch != '_')
+                    || ch > 'z')
+                {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "syslog \"tag\" only allows "
+                                       "alphanumeric characters "
+                                       "and underscore");
+                    return NGX_CONF_ERROR;
+                }
+            }
+        }
+    }
+
+    if (peer->msgid.data != NULL) {
+        ngx_uint_t  j;
+        u_char      ch;
+
+        if (!peer->rfc5424) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "syslog \"msgid\" requires rfc=rfc5424");
+            return NGX_CONF_ERROR;
+        }
+
+        /*
+         * RFC 5424 §6.2.7: MSGID consists of printable US-ASCII
+         * characters (0x21-0x7E; space and controls are excluded).
+         */
+        for (j = 0; j < peer->msgid.len; j++) {
+            ch = peer->msgid.data[j];
+
+            if (ch < '!' || ch > '~') {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog \"msgid\" must contain "
+                                   "printable US-ASCII characters");
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
+
     if (peer->server.sockaddr == NULL) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "no syslog server specified");
@@ -65,6 +144,10 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 
     if (peer->tag.data == NULL) {
         ngx_str_set(&peer->tag, "nginx");
+    }
+
+    if (peer->msgid.data == NULL) {
+        ngx_str_set(&peer->msgid, "-");
     }
 
     peer->hostname = &cf->cycle->hostname;
@@ -92,7 +175,7 @@ ngx_syslog_process_conf(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 static char *
 ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 {
-    u_char      *p, *comma, c;
+    u_char      *p, *comma;
     size_t       len;
     ngx_str_t   *value;
     ngx_url_t    u;
@@ -188,29 +271,58 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
             }
 
             /*
-             * RFC 3164: the TAG is a string of ABNF alphanumeric characters
-             * that MUST NOT exceed 32 characters.
+             * Character set and maximum length depend on the syslog
+             * protocol version (rfc= parameter) and are validated in
+             * ngx_syslog_process_conf() once all parameters are known.
+             * RFC 5424 APP-NAME allows up to 48 printable US-ASCII
+             * characters; RFC 3164 TAG allows up to 32 alphanumeric
+             * characters.  Reject anything that exceeds the larger
+             * of the two limits here so that the later check can rely
+             * on the data fitting into the statically-sized buffers.
              */
-            if (len - 4 > 32) {
+            if (len - 4 > 48) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "syslog tag length exceeds 32");
+                                   "syslog tag length exceeds 48");
                 return NGX_CONF_ERROR;
-            }
-
-            for (i = 4; i < len; i++) {
-                c = ngx_tolower(p[i]);
-
-                if (c < '0' || (c > '9' && c < 'a' && c != '_') || c > 'z') {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "syslog \"tag\" only allows "
-                                       "alphanumeric characters "
-                                       "and underscore");
-                    return NGX_CONF_ERROR;
-                }
             }
 
             peer->tag.data = p + 4;
             peer->tag.len = len - 4;
+
+        } else if (ngx_strncmp(p, "rfc=", 4) == 0) {
+
+            if (ngx_strcmp(p + 4, "rfc5424") == 0) {
+                peer->rfc5424 = 1;
+
+            } else if (ngx_strcmp(p + 4, "rfc3164") != 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "unknown syslog \"rfc\" value \"%s\"",
+                                   p + 4);
+                return NGX_CONF_ERROR;
+            }
+
+        } else if (ngx_strncmp(p, "msgid=", 6) == 0) {
+
+            if (peer->msgid.data != NULL) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "duplicate syslog \"msgid\"");
+                return NGX_CONF_ERROR;
+            }
+
+            /*
+             * RFC 5424 §6.2.7: MSGID is at most 32 printable US-ASCII
+             * characters.  Character set and protocol-version constraints
+             * are validated in ngx_syslog_process_conf() once all
+             * parameters are known.
+             */
+            if (len - 6 > 32) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "syslog msgid length exceeds 32");
+                return NGX_CONF_ERROR;
+            }
+
+            peer->msgid.data = p + 6;
+            peer->msgid.len = len - 6;
 
         } else if (len == 10 && ngx_strncmp(p, "nohostname", 10) == 0) {
             peer->nohostname = 1;
@@ -237,9 +349,54 @@ ngx_syslog_parse_args(ngx_conf_t *cf, ngx_syslog_peer_t *peer)
 u_char *
 ngx_syslog_add_header(ngx_syslog_peer_t *peer, u_char *buf)
 {
-    ngx_uint_t  pri;
+    ngx_uint_t   pri;
+    ngx_str_t    datetime, tz;
+    ngx_time_t  *tp;
 
     pri = peer->facility * 8 + peer->severity;
+
+    if (peer->rfc5424) {
+
+        /*
+         * RFC 5424 HEADER: VERSION SP TIMESTAMP SP HOSTNAME SP
+         *                  APP-NAME SP PROCID SP MSGID SP STRUCTURED-DATA SP
+         *
+         * TIMESTAMP is formatted as an ISO 8601 date-time with
+         * millisecond precision and UTC offset, e.g.:
+         *   2003-10-11T22:14:15.003+05:30
+         *
+         * The date, time, and UTC offset are taken from the
+         * ngx_cached_http_log_iso8601 cache ("YYYY-MM-DDTHH:MM:SS±HH:MM",
+         * 25 bytes).  The first 19 bytes are "YYYY-MM-DDTHH:MM:SS"
+         * and the trailing 6 bytes are "±HH:MM".  The millisecond
+         * field is read live from ngx_timeofday() so that it reflects
+         * the current event-loop tick rather than the start of the
+         * current second.
+         *
+         * PROCID is the nginx process PID.  MSGID and STRUCTURED-DATA
+         * are set to the nil value "-".
+         */
+
+        tp = ngx_timeofday();
+
+        datetime.data = ngx_cached_http_log_iso8601.data;
+        datetime.len  = sizeof("1970-09-28T12:00:00") - 1;
+
+        tz.data = ngx_cached_http_log_iso8601.data
+                  + sizeof("1970-09-28T12:00:00") - 1;
+        tz.len  = sizeof("+06:00") - 1;
+
+        if (peer->nohostname) {
+            return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V - %V %P %V - ",
+                               pri, &datetime, tp->msec, &tz,
+                               &peer->tag, ngx_pid, &peer->msgid);
+        }
+
+        return ngx_sprintf(buf, "<%ui>1 %V.%03ui%V %V %V %P %V - ",
+                           pri, &datetime, tp->msec, &tz,
+                           peer->hostname, &peer->tag, ngx_pid,
+                           &peer->msgid);
+    }
 
     if (peer->nohostname) {
         return ngx_sprintf(buf, "<%ui>%V %V: ", pri, &ngx_cached_syslog_time,
