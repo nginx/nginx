@@ -2746,7 +2746,7 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    cmcf->variables_keys = ngx_pcalloc(cf->temp_pool,
+    cmcf->variables_keys = ngx_pcalloc(cf->pool,
                                        sizeof(ngx_hash_keys_arrays_t));
     if (cmcf->variables_keys == NULL) {
         return NGX_ERROR;
@@ -2775,6 +2775,130 @@ ngx_http_variables_add_core_vars(ngx_conf_t *cf)
         }
 
         *v = *cv;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_variables_merge_core_vars(ngx_conf_t *cf, void *conf)
+{
+    ngx_http_core_main_conf_t *cmcf = conf;
+
+    ngx_uint_t                  i;
+    ngx_hash_key_t             *okey;
+    ngx_http_variable_t        *ov, *v;
+    ngx_http_core_main_conf_t  *ocmcf;
+
+    ocmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
+
+    cmcf->variables_keys = ngx_pcalloc(cf->pool,
+                                       sizeof(ngx_hash_keys_arrays_t));
+    if (cmcf->variables_keys == NULL) {
+        return NGX_ERROR;
+    }
+
+    cmcf->variables_keys->pool = cf->pool;
+    cmcf->variables_keys->temp_pool = cf->pool;
+
+    if (ngx_hash_keys_array_init(cmcf->variables_keys, NGX_HASH_SMALL)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    okey = ocmcf->variables_keys->keys.elts;
+
+    for (i = 0; i < ocmcf->variables_keys->keys.nelts; i++) {
+        ov = okey[i].value;
+
+        v = ngx_palloc(cf->pool, sizeof(ngx_http_variable_t));
+        if (v == NULL) {
+            return NGX_ERROR;
+        }
+
+        v->name.len = ov->name.len;
+        v->name.data = ngx_pnalloc(cf->pool, ov->name.len);
+        if (v->name.data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(v->name.data, ov->name.data, ov->name.len);
+
+        v->set_handler = ov->set_handler;
+        v->get_handler = ov->get_handler;
+        v->data = ov->data;
+        v->flags = ov->flags;
+        v->index = ov->index;
+
+        if (ngx_hash_add_key(cmcf->variables_keys, &v->name, v, 0) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    if (ngx_array_init(&cmcf->variables, cf->pool, ocmcf->variables.nelts,
+                       sizeof(ngx_http_variable_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    v = ngx_array_push_n(&cmcf->variables, ocmcf->variables.nelts);
+    if (v == NULL) {
+        return NGX_ERROR;
+    }
+
+    ov = ocmcf->variables.elts;
+
+    for (i = 0; i < ocmcf->variables.nelts; i++) {
+
+        v[i].name.len = ov[i].name.len;
+        v[i].name.data = ngx_pnalloc(cf->pool, ov[i].name.len);
+        if (v[i].name.data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(v[i].name.data, ov[i].name.data, ov[i].name.len);
+
+        v[i].set_handler = ov[i].set_handler;
+        v[i].get_handler = ov[i].get_handler;
+        v[i].data = ov[i].data;
+        v[i].flags = ov[i].flags;
+        v[i].index = ov[i].index;
+    }
+
+    if (ngx_array_init(&cmcf->prefix_variables, cf->pool,
+                       ocmcf->prefix_variables.nelts,
+                       sizeof(ngx_http_variable_t))
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    v = ngx_array_push_n(&cmcf->prefix_variables,
+                         ocmcf->prefix_variables.nelts);
+    if (v == NULL) {
+        return NGX_ERROR;
+    }
+
+    ov = ocmcf->prefix_variables.elts;
+
+    for (i = 0; i < ocmcf->prefix_variables.nelts; i++) {
+
+        v[i].name.len = ov[i].name.len;
+        v[i].name.data = ngx_pnalloc(cf->pool, ov[i].name.len);
+        if (v[i].name.data == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(v[i].name.data, ov[i].name.data, ov[i].name.len);
+
+        v[i].set_handler = ov[i].set_handler;
+        v[i].get_handler = ov[i].get_handler;
+        v[i].data = ov[i].data;
+        v[i].flags = ov[i].flags;
+        v[i].index = ov[i].index;
     }
 
     return NGX_OK;
@@ -2883,8 +3007,6 @@ ngx_http_variables_init_vars(ngx_conf_t *cf)
     {
         return NGX_ERROR;
     }
-
-    cmcf->variables_keys = NULL;
 
     return NGX_OK;
 }
