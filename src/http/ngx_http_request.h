@@ -282,6 +282,7 @@ typedef struct {
 
     ngx_table_elt_t                  *cache_control;
     ngx_table_elt_t                  *link;
+    ngx_table_elt_t                  *age;
 
     ngx_str_t                        *override_charset;
 

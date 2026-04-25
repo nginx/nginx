@@ -55,6 +55,7 @@
 #define NGX_HTTP_UPSTREAM_IGN_XA_BUFFERING   0x00000080
 #define NGX_HTTP_UPSTREAM_IGN_XA_CHARSET     0x00000100
 #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
+#define NGX_HTTP_UPSTREAM_IGN_AGE            0x00000400
 
 
 #define NGX_HTTP_UPSTREAM_NOTIFY_HEADER      0x1
@@ -302,14 +303,17 @@ typedef struct {
 
     ngx_table_elt_t                 *cache_control;
     ngx_table_elt_t                 *set_cookie;
+    ngx_table_elt_t                 *age;
 
     off_t                            content_length_n;
     time_t                           last_modified_time;
+    time_t                           age_n;
 
     unsigned                         connection_close:1;
     unsigned                         chunked:1;
     unsigned                         no_cache:1;
     unsigned                         expired:1;
+    unsigned                         max_age:1;
 } ngx_http_upstream_headers_in_t;
 
 
