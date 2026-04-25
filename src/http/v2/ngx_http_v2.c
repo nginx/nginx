@@ -3572,6 +3572,7 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
     size_t                    len;
     u_char                   *p;
+    ngx_uint_t                classic_connect;
     ngx_http_core_srv_conf_t *cscf;
 
     static const u_char ending[] = " HTTP/2.0";
@@ -3586,6 +3587,8 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
     if (r->method == NGX_HTTP_CONNECT) {
         goto method_connect;
     }
+
+    classic_connect = 0;
 
     if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -3616,14 +3619,38 @@ method_connect:
         return NGX_ERROR;
     }
 
-    if (r->headers_in.server.len == 0) {
+    if (r->schema.len == 0 && r->unparsed_uri.len == 0) {
+        classic_connect = 1;
+
+        if (r->headers_in.server.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :authority header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        len = r->headers_in.server.len;
+
+        goto construct_request_line;
+    }
+
+    classic_connect = 0;
+
+    if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent no :authority header");
+                      "client sent no :scheme header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
 
-    len = r->headers_in.server.len;
+    if (r->unparsed_uri.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no :path header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    len = r->unparsed_uri.len;
 
 construct_request_line:
 
@@ -3641,7 +3668,7 @@ construct_request_line:
 
     *p++ = ' ';
 
-    if (r->method == NGX_HTTP_CONNECT) {
+    if (classic_connect) {
         p = ngx_cpymem(p, r->headers_in.server.data, r->headers_in.server.len);
 
         r->uri_start = (u_char *) "/";

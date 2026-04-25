@@ -912,6 +912,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
     size_t                    len, target_len;
     u_char                   *p;
     ngx_int_t                 rc;
+    ngx_uint_t                classic_connect;
     ngx_str_t                 host;
     ngx_http_core_srv_conf_t *cscf;
     in_port_t   port;
@@ -929,6 +930,8 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
     if (r->method == NGX_HTTP_CONNECT) {
         goto method_connect;
     }
+
+    classic_connect = 0;
 
     if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -957,16 +960,38 @@ method_connect:
         return NGX_ERROR;
     }
 
-    if (r->host_start == NULL) {
+    if (r->schema.len == 0 && r->uri_start == NULL) {
+        classic_connect = 1;
+
+        if (r->host_start == NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no \":authority\" header");
+            goto failed;
+        }
+
+        r->uri_start = (u_char *) "/";
+        r->uri_end = r->uri_start + 1;
+
+        target_len = (size_t) (r->host_end - r->host_start);
+
+        goto construct_request_line;
+    }
+
+    classic_connect = 0;
+
+    if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent no \":authority\" header");
+                      "client sent no \":scheme\" header");
         goto failed;
     }
 
-    r->uri_start = (u_char *) "/";
-    r->uri_end = r->uri_start + 1;
+    if (r->uri_start == NULL) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":path\" header");
+        goto failed;
+    }
 
-    target_len = (size_t) (r->host_end - r->host_start);
+    target_len = (size_t) (r->uri_end - r->uri_start);
 
 construct_request_line:
 
@@ -983,7 +1008,7 @@ construct_request_line:
     p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
     *p++ = ' ';
 
-    if (r->method == NGX_HTTP_CONNECT) {
+    if (classic_connect) {
         p = ngx_cpymem(p, r->host_start, target_len);
 
     } else {
