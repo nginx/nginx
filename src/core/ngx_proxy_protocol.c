@@ -3,15 +3,13 @@
  * Copyright (C) Roman Arutyunyan
  * Copyright (C) Nginx, Inc.
  */
-
-
 #include <ngx_config.h>
 #include <ngx_core.h>
-
 
 #define NGX_PROXY_PROTOCOL_AF_INET          1
 #define NGX_PROXY_PROTOCOL_AF_INET6         2
 
+#define NGX_PROXY_PROTOCOL_V2_SIG "\x0D\x0A\x0D\x0A\x00\x0D\x0A\x51\x55\x49\x54\x0A"
 
 #define ngx_proxy_protocol_parse_uint16(p)                                    \
     ( ((uint16_t) (p)[0] << 8)                                                \
@@ -319,6 +317,119 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
     lport = ngx_inet_get_port(c->local_sockaddr);
 
     return ngx_slprintf(buf, last, " %ui %ui" CRLF, port, lport);
+}
+
+ngx_int_t
+ngx_proxy_protocol_v2_build_tlv(ngx_connection_t *c,
+                                ngx_proxy_v2_tlv *tlvs,
+                                ngx_uint_t n)
+{
+    size_t    size = 0;
+    u_char   *p;
+    ngx_uint_t i;
+
+    for (i = 0; i < n; i++) {
+        size += 3 + tlvs[i].length; /* type + length(2) + value */
+    }
+
+    p = ngx_palloc(c->pool, size);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    c->ppv2_tlv.pos = p;
+    c->ppv2_tlv.len = size;
+
+    for (i = 0; i < n; i++) {
+        *p++ = tlvs[i].type;
+        *p++ = (u_char) (tlvs[i].length >> 8);
+        *p++ = (u_char) (tlvs[i].length);
+
+        p = ngx_cpymem(p, tlvs[i].value.data, tlvs[i].length);
+    }
+
+    return NGX_OK;
+}
+
+
+u_char *
+ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last) {
+  u_char *buf_ptr = buf;
+  ngx_uint_t port, lport;
+
+  if (last - buf < NGX_PROXY_PROTOCOL_V2_MAX_HEADER) {
+    ngx_log_error(NGX_LOG_ALERT, c->log, 0, "the buffer is too small for proxy protocol v2");
+    return NULL;
+  }
+
+  buf_ptr = ngx_cpymem(buf_ptr, NGX_PROXY_PROTOCOL_V2_SIG, 12);
+  *buf_ptr++ = 0x21;
+
+  port = ngx_inet_get_port(c->sockaddr);
+  lport = ngx_inet_get_port(c->local_sockaddr);
+
+  switch (c->sockaddr->sa_family) {
+    case AF_INET: {
+      *buf_ptr++ = 0x11;
+
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x0C;
+
+      struct sockaddr_in *sin;
+      sin = (struct sockaddr_in *) c->sockaddr;
+
+      struct sockaddr_in *lsin;
+      lsin = (struct sockaddr_in *) c->local_sockaddr;
+
+      buf_ptr = ngx_cpymem(buf_ptr, &sin->sin_addr.s_addr, 4);
+      buf_ptr = ngx_cpymem(buf_ptr, &lsin->sin_addr.s_addr, 4);
+
+      *buf_ptr++ = (u_char) (port >> 8);
+      *buf_ptr++ = (u_char) port;
+
+      *buf_ptr++ = (u_char) (lport >> 8);
+      *buf_ptr++ = (u_char) lport;
+
+      break;
+    }
+#if (NGX_HAVE_INET6)
+    case AF_INET6: {
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x24;
+
+      struct sockaddr_in6 *sin6;
+      sin6 = (struct sockaddr_in6 *) c->sockaddr;
+
+      struct sockaddr_in6 *lsin6;
+      lsin6 = (struct sockaddr_in6 *) c->local_sockaddr;
+
+      buf_ptr = ngx_cpymem(buf_ptr, &sin6->sin6_addr, 16);
+      buf_ptr = ngx_cpymem(buf_ptr, &lsin6->sin6_addr, 16);
+
+      *buf_ptr++ = (u_char)(port >> 8);
+      *buf_ptr++ = (u_char) port;
+
+      *buf_ptr++ = (u_char)(lport >> 8);
+      *buf_ptr++ = (u_char) lport;
+      break;
+    }
+#endif
+    default: {
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x00;
+      *buf_ptr++ = 0x00;
+      ngx_log_error(NGX_LOG_ALERT, c->log, 0, "unsupported address family");
+      return NULL;
+    }
+  }
+
+  if (c->ppv2_tlv.len) {
+      buf_ptr = ngx_cpymem(buf_ptr,
+                            c->ppv2_tlv.pos,
+                            c->ppv2_tlv.len);
+  }
+
+  return buf_ptr;
 }
 
 
