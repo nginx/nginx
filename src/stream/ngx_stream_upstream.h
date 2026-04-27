@@ -93,6 +93,7 @@ struct ngx_stream_upstream_srv_conf_s {
 
 
 typedef struct {
+    ngx_uint_t                         status;
     ngx_msec_t                         response_time;
     ngx_msec_t                         connect_time;
     ngx_msec_t                         first_byte_time;

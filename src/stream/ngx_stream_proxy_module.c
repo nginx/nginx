@@ -2198,6 +2198,8 @@ ngx_stream_proxy_next_upstream(ngx_stream_session_t *s)
 
     pscf = ngx_stream_get_module_srv_conf(s, ngx_stream_proxy_module);
 
+    u->state->status = NGX_STREAM_BAD_GATEWAY;
+
     timeout = pscf->next_upstream_timeout;
 
     if (u->peer.tries == 0
@@ -2258,6 +2260,10 @@ ngx_stream_proxy_finalize(ngx_stream_session_t *s, ngx_uint_t rc)
     if (u->state) {
         if (u->state->response_time == (ngx_msec_t) -1) {
             u->state->response_time = ngx_current_msec - u->start_time;
+        }
+
+        if (u->state->status == 0) {
+            u->state->status = rc;
         }
 
         if (pc) {
