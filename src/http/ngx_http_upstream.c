@@ -680,6 +680,14 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         u->peer.so_keepalive = 1;
     }
 
+    if (u->conf->socket_rcvbuf) {
+        u->peer.rcvbuf = (int) u->conf->socket_rcvbuf;
+    }
+
+    if (u->conf->socket_sndbuf) {
+        u->peer.sndbuf = (int) u->conf->socket_sndbuf;
+    }
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     u->output.alignment = clcf->directio_alignment;
