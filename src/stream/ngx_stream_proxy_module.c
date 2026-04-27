@@ -34,6 +34,8 @@ typedef struct {
     ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
+    ngx_int_t                        socket_rcvbuf;
+    ngx_int_t                        socket_sndbuf;
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -91,6 +93,8 @@ static char *ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent,
 static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_stream_proxy_socket_buf(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 #if (NGX_STREAM_SSL)
@@ -164,6 +168,20 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, socket_keepalive),
+      NULL },
+
+    { ngx_string("proxy_socket_rcvbuf"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_stream_proxy_socket_buf,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, socket_rcvbuf),
+      NULL },
+
+    { ngx_string("proxy_socket_sndbuf"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_stream_proxy_socket_buf,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, socket_sndbuf),
       NULL },
 
     { ngx_string("proxy_connect_timeout"),
@@ -456,6 +474,9 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
     if (pscf->socket_keepalive) {
         u->peer.so_keepalive = 1;
     }
+
+    u->peer.rcvbuf = (int) pscf->socket_rcvbuf;
+    u->peer.sndbuf = (int) pscf->socket_sndbuf;
 
     u->peer.type = c->type;
     u->start_sec = ngx_time();
@@ -2367,6 +2388,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->proxy_protocol = NGX_CONF_UNSET;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
+    conf->socket_rcvbuf = NGX_CONF_UNSET;
+    conf->socket_sndbuf = NGX_CONF_UNSET;
     conf->half_close = NGX_CONF_UNSET;
 
 #if (NGX_STREAM_SSL)
@@ -2427,6 +2450,10 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->socket_keepalive,
                               prev->socket_keepalive, 0);
+
+    ngx_conf_merge_value(conf->socket_rcvbuf, prev->socket_rcvbuf, 0);
+
+    ngx_conf_merge_value(conf->socket_sndbuf, prev->socket_sndbuf, 0);
 
     ngx_conf_merge_value(conf->half_close, prev->half_close, 0);
 
@@ -2830,6 +2857,47 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
     }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_proxy_socket_buf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char  *p = conf;
+
+    ngx_int_t   *np;
+    ngx_str_t   *value;
+    ssize_t      size;
+
+    np = (ngx_int_t *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        *np = 0;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "max") == 0) {
+        *np = NGX_MAX_INT32_VALUE;
+        return NGX_CONF_OK;
+    }
+
+    size = ngx_parse_size(&value[1]);
+
+    if (size == NGX_ERROR || size <= 0 || size > NGX_MAX_INT32_VALUE) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid value \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    *np = (ngx_int_t) size;
 
     return NGX_CONF_OK;
 }
