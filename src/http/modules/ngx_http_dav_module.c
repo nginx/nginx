@@ -733,6 +733,35 @@ overwrite_done:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http copy to: \"%s\"", copy.path.data);
 
+    len = path.len - 1;
+
+    if (len > 0 && path.data[len - 1] == '/') {
+        len--;
+    }
+
+    if (len == copy.path.len
+        && ngx_strncmp(path.data, copy.path.data, len) == 0)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "both URI \"%V\" and \"Destination\" URI \"%V\" "
+                      "point to the same location",
+                      &r->uri, &dest->value);
+        return NGX_HTTP_FORBIDDEN;
+    }
+
+    if (slash
+        && ngx_strncmp(path.data, copy.path.data,
+                       ngx_min(len, copy.path.len)) == 0
+        && (len < copy.path.len
+            ? copy.path.data[len] == '/'
+            : path.data[copy.path.len] == '/'))
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "\"%V\" could not be %Ved to collection \"%V\"",
+                      &r->uri, &r->method_name, &dest->value);
+        return NGX_HTTP_FORBIDDEN;
+    }
+
     if (ngx_link_info(copy.path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
 
