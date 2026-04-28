@@ -1568,6 +1568,14 @@ ngx_tcp_nodelay(ngx_connection_t *c)
 ngx_int_t
 ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
 {
+    return ngx_connection_error_n(c, err, text, NULL);
+}
+
+
+ngx_int_t
+ngx_connection_error_n(ngx_connection_t *c, ngx_err_t err, char *text,
+    ngx_str_t *name)
+{
     ngx_uint_t  level;
 
     /* Winsock may return NGX_ECONNABORTED instead of NGX_ECONNRESET */
@@ -1623,7 +1631,11 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         level = NGX_LOG_ALERT;
     }
 
-    ngx_log_error(level, c->log, err, text);
+    if (name) {
+        ngx_log_error(level, c->log, err, "%s \"%V\"", text, name);
+    } else {
+        ngx_log_error(level, c->log, err, text);
+    }
 
     return NGX_ERROR;
 }

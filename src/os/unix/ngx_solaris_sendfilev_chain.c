@@ -176,7 +176,8 @@ ngx_solaris_sendfilev_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
             default:
                 wev->error = 1;
-                ngx_connection_error(c, err, "sendfilev() failed");
+                ngx_connection_error_n(c, err, "sendfilev() failed",
+                                       file ? &file->file->name : NULL);
                 return NGX_CHAIN_ERROR;
             }
 
