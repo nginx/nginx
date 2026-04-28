@@ -276,7 +276,8 @@ eintr:
 
         default:
             c->write->error = 1;
-            ngx_connection_error(c, err, "sendfile() failed");
+            ngx_connection_error_n(c, err, "sendfile() failed",
+                                   &file->file->name);
             return NGX_ERROR;
         }
     }
@@ -360,7 +361,8 @@ ngx_linux_sendfile_thread(ngx_connection_t *c, ngx_buf_t *file, size_t size)
 
         if (ctx->err) {
             wev->error = 1;
-            ngx_connection_error(c, ctx->err, "sendfile() failed");
+            ngx_connection_error_n(c, ctx->err, "sendfile() failed",
+                                   &file->file->name);
             return NGX_ERROR;
         }
 

@@ -148,7 +148,8 @@ ngx_darwin_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
                 default:
                     wev->error = 1;
-                    (void) ngx_connection_error(c, err, "sendfile() failed");
+                    (void) ngx_connection_error_n(c, err, "sendfile() failed",
+                                                  &file->file->name);
                     return NGX_CHAIN_ERROR;
                 }
 

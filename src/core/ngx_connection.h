@@ -230,6 +230,8 @@ ngx_int_t ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
     ngx_uint_t port);
 ngx_int_t ngx_tcp_nodelay(ngx_connection_t *c);
 ngx_int_t ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text);
+ngx_int_t ngx_connection_error_n(ngx_connection_t *c, ngx_err_t err,
+    char *text, ngx_str_t *name);
 
 ngx_connection_t *ngx_get_connection(ngx_socket_t s, ngx_log_t *log);
 void ngx_free_connection(ngx_connection_t *c);
