@@ -154,6 +154,8 @@ static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
     ngx_str_t *value);
+static ngx_int_t ngx_http_v2_parse_protocol(ngx_http_request_t *r,
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
@@ -3325,6 +3327,16 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
         break;
 
+    case 8:
+        if (ngx_memcmp(header->name.data, "protocol",
+                       sizeof("protocol") - 1)
+            == 0)
+        {
+            return ngx_http_v2_parse_protocol(r, &header->value);
+        }
+
+        break;
+
     case 9:
         if (ngx_memcmp(header->name.data, "authority", sizeof("authority") - 1)
             == 0)
@@ -3568,6 +3580,29 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 
 
 static ngx_int_t
+ngx_http_v2_parse_protocol(ngx_http_request_t *r, ngx_str_t *value)
+{
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    r->connect_protocol = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
     size_t                    len;
@@ -3586,6 +3621,13 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 
     if (r->method == NGX_HTTP_CONNECT) {
         goto method_connect;
+    }
+
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent :protocol header with non-CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
 
     classic_connect = 0;
@@ -3619,7 +3661,9 @@ method_connect:
         return NGX_ERROR;
     }
 
-    if (r->schema.len == 0 && r->unparsed_uri.len == 0) {
+    if (r->schema.len == 0 && r->unparsed_uri.len == 0
+        && r->connect_protocol.len == 0)
+    {
         classic_connect = 1;
 
         if (r->headers_in.server.len == 0) {
@@ -3639,6 +3683,13 @@ method_connect:
     if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent no :scheme header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    if (r->connect_protocol.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent extended CONNECT without :protocol header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
