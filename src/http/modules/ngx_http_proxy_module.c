@@ -1752,6 +1752,10 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    if (r->state == 0) {
+        r->header_name_start = u->buffer.pos;
+    }
+
     rc = ngx_http_parse_status_line(r, &u->buffer, &ctx->status);
 
     if (rc == NGX_AGAIN) {
@@ -1759,6 +1763,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     }
 
     if (rc == NGX_ERROR) {
+        u->buffer.pos = r->header_name_start;
 
 #if (NGX_HTTP_CACHE)
 
