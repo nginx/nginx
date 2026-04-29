@@ -60,6 +60,8 @@ static char *ngx_http_core_limit_except(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_core_set_io_uring(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_core_directio(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -419,6 +421,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
     { ngx_string("aio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_set_aio,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("io_uring"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_core_set_io_uring,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -3651,6 +3660,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
     clcf->subrequest_output_buffer_size = NGX_CONF_UNSET_SIZE;
     clcf->aio = NGX_CONF_UNSET;
+    clcf->io_uring = NGX_CONF_UNSET;
     clcf->aio_write = NGX_CONF_UNSET;
 #if (NGX_THREADS)
     clcf->thread_pool = NGX_CONF_UNSET_PTR;
@@ -3880,6 +3890,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->subrequest_output_buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
+    ngx_conf_merge_value(conf->io_uring, prev->io_uring, 0);
     ngx_conf_merge_value(conf->aio_write, prev->aio_write, 0);
 #if (NGX_THREADS)
     ngx_conf_merge_ptr_value(conf->thread_pool, prev->thread_pool, NULL);
@@ -4879,6 +4890,40 @@ ngx_http_core_set_aio(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #else
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"aio threads\" "
+                           "is unsupported on this platform");
+        return NGX_CONF_ERROR;
+#endif
+    }
+
+    return "invalid value";
+}
+
+
+static char *
+ngx_http_core_set_io_uring(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_core_loc_conf_t *clcf = conf;
+
+    ngx_str_t  *value;
+
+    if (clcf->io_uring != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        clcf->io_uring = 0;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "on") == 0) {
+#if (NGX_HAVE_IO_URING)
+        clcf->io_uring = 1;
+        return NGX_CONF_OK;
+#else
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"io_uring on\" "
                            "is unsupported on this platform");
         return NGX_CONF_ERROR;
 #endif
