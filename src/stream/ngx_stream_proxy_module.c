@@ -1479,8 +1479,9 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
 
     size_t                        len;
     u_char                       *p, *buf;
-    ngx_str_t                     proto;
+    ngx_str_t                     proto, *value;
     ngx_uint_t                    i;
+    ngx_array_t                  *values;
     ngx_connection_t             *c;
     ngx_stream_upstream_t        *u;
     ngx_stream_complex_value_t   *cv;
@@ -1491,6 +1492,7 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     u = s->upstream;
     c = u->peer.connection;
 
+    values = NULL;
     len = 0;
 
     cv = pscf->ssl_alpn->elts;
@@ -1505,6 +1507,20 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
             continue;
         }
 
+        if (values == NULL) {
+            values = ngx_array_create(c->pool, 1, sizeof(ngx_str_t));
+            if (values == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
+        value = ngx_array_push(values);
+        if (value == NULL) {
+            return NGX_ERROR;
+        }
+
+        *value = proto;
+
         len += 1 + proto.len;
     }
 
@@ -1518,22 +1534,15 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     }
 
     p = buf;
+    value = values->elts;
 
-    for (i = 0; i < pscf->ssl_alpn->nelts; i++) {
-
-        if (ngx_stream_complex_value(s, &cv[i], &proto) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (proto.len == 0 || proto.len > 255) {
-            continue;
-        }
+    for (i = 0; i < values->nelts; i++) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                       "upstream SSL ALPN: \"%V\"", &proto);
+                       "upstream SSL ALPN: \"%V\"", &value[i]);
 
-        *p++ = proto.len;
-        p = ngx_cpymem(p, proto.data, proto.len);
+        *p++ = value[i].len;
+        p = ngx_cpymem(p, value[i].data, value[i].len);
     }
 
     if (SSL_set_alpn_protos(c->ssl->connection, buf, p - buf) != 0) {
