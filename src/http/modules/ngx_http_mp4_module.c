@@ -2467,7 +2467,7 @@ found:
         start_sample -= key_prefix;
 
         while (rest < key_prefix) {
-            trak->prefix += rest * duration;
+            trak->prefix += (uint64_t) rest * duration;
             key_prefix -= rest;
 
             entry--;
@@ -2478,7 +2478,7 @@ found:
             rest = count;
         }
 
-        trak->prefix += key_prefix * duration;
+        trak->prefix += (uint64_t) key_prefix * duration;
         trak->duration += trak->prefix;
         rest -= key_prefix;
 
