@@ -1703,6 +1703,8 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* "HTTP/" */
         case sw_start:
+            status->line_start = p;
+
             switch (ch) {
             case 'H':
                 state = sw_H;

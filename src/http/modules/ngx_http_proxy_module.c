@@ -1761,6 +1761,7 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     }
 
     if (rc == NGX_ERROR) {
+        u->buffer.pos = ctx->status.line_start;
 
 #if (NGX_HTTP_CACHE)
 
