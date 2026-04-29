@@ -127,6 +127,8 @@ IOCP_SRCS=src/event/modules/ngx_iocp_module.c
 FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
 LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
 
+LINUX_IO_URING_SRCS="src/os/unix/ngx_linux_io_uring_read.c"
+
 UNIX_INCS="$CORE_INCS $EVENT_INCS src/os/unix"
 
 UNIX_DEPS="$CORE_DEPS $EVENT_DEPS \

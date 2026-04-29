@@ -543,6 +543,15 @@ ngx_feature_libs=
 ngx_feature_test="accept4(0, NULL, NULL, SOCK_NONBLOCK)"
 . auto/feature
 
+if [ "$NGX_FILE_AIO" = YES -a "$NGX_IO_URING" = YES ]; then
+    cat << END
+
+$0: --with-io_uring and --with-file-aio cannot be enabled together yet
+
+END
+    exit 1
+fi
+
 if [ $NGX_FILE_AIO = YES ]; then
 
     ngx_feature="kqueue AIO support"
@@ -613,6 +622,80 @@ END
         exit 1
     fi
 fi
+
+if [ "$NGX_IO_URING" = YES ]; then
+
+    if [ "$NGX_SYSTEM" != "Linux" ]; then
+        cat << END
+
+$0: io_uring is supported on Linux only
+
+END
+        exit 1
+    fi
+
+    ngx_feature="io_uring headers and syscalls"
+    ngx_feature_name="NGX_HAVE_IO_URING"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <unistd.h>
+                      #include <string.h>
+                      #include <sys/syscall.h>
+                      #include <linux/io_uring.h>
+#ifndef SYS_io_uring_setup
+#define SYS_io_uring_setup __NR_io_uring_setup
+#endif
+#ifndef SYS_io_uring_enter
+#define SYS_io_uring_enter __NR_io_uring_enter
+#endif
+#ifndef SYS_io_uring_register
+#define SYS_io_uring_register __NR_io_uring_register
+#endif"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="struct io_uring_params p;
+                      memset(&p, 0, sizeof(p));
+                      (void) IORING_OP_READ;
+                      (void) IORING_OP_READV;
+                      (void) IORING_REGISTER_EVENTFD;
+                      (void) syscall(SYS_io_uring_setup, 2, &p)"
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+        cat << END
+
+$0: io_uring was requested but not found
+need linux/io_uring.h and SYS_io_uring_* declarations
+
+END
+        exit 1
+    fi
+
+    ngx_feature="liburing library"
+    ngx_feature_name="NGX_HAVE_LIBURING"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <liburing.h>"
+    ngx_feature_path=
+    ngx_feature_libs="-luring"
+    ngx_feature_test="struct io_uring ring;
+                      (void) io_uring_queue_init(2, &ring, 0);
+                      io_uring_queue_exit(&ring)"
+    . auto/feature
+
+    if [ $ngx_found = no ]; then
+        cat << END
+
+$0: io_uring was requested but liburing was not found
+install liburing (headers and library), or disable --with-io_uring
+
+END
+        exit 1
+    fi
+
+    CORE_LIBS="$CORE_LIBS -luring"
+
+    CORE_SRCS="$CORE_SRCS $LINUX_IO_URING_SRCS"
+fi
+
 
 
 have=NGX_HAVE_UNIX_DOMAIN . auto/have

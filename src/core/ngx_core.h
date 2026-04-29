@@ -23,6 +23,7 @@ typedef struct ngx_command_s         ngx_command_t;
 typedef struct ngx_file_s            ngx_file_t;
 typedef struct ngx_event_s           ngx_event_t;
 typedef struct ngx_event_aio_s       ngx_event_aio_t;
+typedef struct ngx_event_io_uring_s  ngx_event_io_uring_t;
 typedef struct ngx_connection_s      ngx_connection_t;
 typedef struct ngx_thread_task_s     ngx_thread_task_t;
 typedef struct ngx_ssl_s             ngx_ssl_t;

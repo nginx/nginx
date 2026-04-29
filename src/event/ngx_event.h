@@ -163,6 +163,22 @@ struct ngx_event_aio_s {
 #endif
 
 
+#if (NGX_HAVE_IO_URING)
+
+struct ngx_event_io_uring_s {
+    void                      *data;
+    ngx_event_handler_pt       handler;
+    ngx_file_t                *file;
+
+    ngx_fd_t                   fd;
+    int64_t                    res;
+
+    ngx_event_t                event;
+};
+
+#endif
+
+
 typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
