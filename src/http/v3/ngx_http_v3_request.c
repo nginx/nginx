@@ -896,6 +896,27 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_OK;
     }
 
+    if (name->len == 9 && ngx_strncmp(name->data, ":protocol", 9) == 0) {
+
+        if (r->connect_protocol.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":protocol\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":protocol\" header");
+            goto failed;
+        }
+
+        r->connect_protocol = *value;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http3 protocol \"%V\"", value);
+        return NGX_OK;
+    }
+
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent unknown pseudo-header \"%V\"", name);
 
@@ -931,6 +952,13 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         goto method_connect;
     }
 
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent \":protocol\" header with non-CONNECT "
+                      "method");
+        goto failed;
+    }
+
     classic_connect = 0;
 
     if (r->schema.len == 0) {
@@ -960,7 +988,9 @@ method_connect:
         return NGX_ERROR;
     }
 
-    if (r->schema.len == 0 && r->uri_start == NULL) {
+    if (r->schema.len == 0 && r->uri_start == NULL
+        && r->connect_protocol.len == 0)
+    {
         classic_connect = 1;
 
         if (r->host_start == NULL) {
@@ -982,6 +1012,13 @@ method_connect:
     if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent no \":scheme\" header");
+        goto failed;
+    }
+
+    if (r->connect_protocol.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent extended CONNECT without "
+                      "\":protocol\" header");
         goto failed;
     }
 
