@@ -79,7 +79,17 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->request_body = rb;
 
-    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
+    if (r->headers_in.content_length_n < 0
+        && !r->headers_in.chunked
+#if (NGX_HTTP_V2)
+        && !(r->stream && r->method == NGX_HTTP_CONNECT)
+#endif
+#if (NGX_HTTP_V3)
+        && !(r->http_version == NGX_HTTP_VERSION_30
+             && r->method == NGX_HTTP_CONNECT)
+#endif
+       )
+    {
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
