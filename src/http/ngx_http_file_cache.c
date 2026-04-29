@@ -18,8 +18,11 @@ static ngx_int_t ngx_http_file_cache_lock_wait(ngx_http_request_t *r,
     ngx_http_cache_t *c);
 static ngx_int_t ngx_http_file_cache_read(ngx_http_request_t *r,
     ngx_http_cache_t *c);
-static ssize_t ngx_http_file_cache_aio_read(ngx_http_request_t *r,
+static ssize_t ngx_http_file_cache_async_read(ngx_http_request_t *r,
     ngx_http_cache_t *c);
+#if (NGX_HAVE_IO_URING)
+static void ngx_http_cache_io_uring_event_handler(ngx_event_t *ev);
+#endif
 #if (NGX_HAVE_FILE_AIO)
 static void ngx_http_cache_aio_event_handler(ngx_event_t *ev);
 #endif
@@ -551,7 +554,7 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     ngx_http_file_cache_t         *cache;
     ngx_http_file_cache_header_t  *h;
 
-    n = ngx_http_file_cache_aio_read(r, c);
+    n = ngx_http_file_cache_async_read(r, c);
 
     if (n < 0) {
         return n;
@@ -681,13 +684,39 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
 
 static ssize_t
-ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
+ngx_http_file_cache_async_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 {
-#if (NGX_HAVE_FILE_AIO || NGX_THREADS)
+#if (NGX_HAVE_FILE_AIO || NGX_HAVE_IO_URING || NGX_THREADS)
     ssize_t                    n;
     ngx_http_core_loc_conf_t  *clcf;
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+#endif
+
+#if (NGX_HAVE_IO_URING)
+
+    if (clcf->io_uring && ngx_io_uring) {
+        n = ngx_file_io_uring_read(&c->file, c->buf->pos, c->body_start, 0,
+                                   r->pool);
+
+        if (n != NGX_AGAIN) {
+            c->reading = 0;
+            return n;
+        }
+
+        c->reading = 1;
+
+        c->file.io_uring->data = r;
+        c->file.io_uring->handler = ngx_http_cache_io_uring_event_handler;
+
+        ngx_add_timer(&c->file.io_uring->event, 60000);
+
+        r->main->blocked++;
+        r->aio = 1;
+
+        return NGX_AGAIN;
+    }
+
 #endif
 
 #if (NGX_HAVE_FILE_AIO)
@@ -734,6 +763,56 @@ ngx_http_file_cache_aio_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
     return ngx_read_file(&c->file, c->buf->pos, c->body_start, 0);
 }
+
+
+#if (NGX_HAVE_IO_URING)
+
+static void
+ngx_http_cache_io_uring_event_handler(ngx_event_t *ev)
+{
+    ngx_event_io_uring_t  *io_uring;
+    ngx_connection_t      *c;
+    ngx_http_request_t    *r;
+
+    io_uring = ev->data;
+    r = io_uring->data;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http file cache io_uring: \"%V?%V\"",
+                   &r->uri, &r->args);
+
+    if (ev->timedout) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "io_uring operation took too long");
+        ev->timedout = 0;
+        return;
+    }
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
+    }
+
+    r->main->blocked--;
+    r->aio = 0;
+
+    if (r->main->terminated) {
+        /*
+         * trigger connection event handler if the request was
+         * terminated
+         */
+
+        c->write->handler(c->write);
+
+    } else {
+        r->write_event_handler(r);
+        ngx_http_run_posted_requests(c);
+    }
+}
+
+#endif
 
 
 #if (NGX_HAVE_FILE_AIO)
