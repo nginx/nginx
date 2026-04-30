@@ -3905,6 +3905,22 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 
         n = ERR_GET_REASON(ERR_peek_last_error());
 
+#ifdef SSL_R_RECORD_LAYER_FAILURE
+
+        if (n == SSL_R_RECORD_LAYER_FAILURE
+            && ERR_GET_LIB(ERR_peek_error()) == ERR_LIB_SSL)
+        {
+            /*
+             * OpenSSL 3.2.0+ returns SSL_R_RECORD_LAYER_FAILURE in the
+             * error queue after many different errors, including memory
+             * allocation failures, so fallback to ERR_peek_error()
+             */
+
+            n = ERR_GET_REASON(ERR_peek_error());
+        }
+
+#endif
+
             /* handshake failures */
         if (n == SSL_R_BAD_CHANGE_CIPHER_SPEC                        /*  103 */
 #ifdef SSL_R_NO_SUITABLE_KEY_SHARE
@@ -3958,6 +3974,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #ifdef SSL_R_NO_CIPHERS_PASSED
             || n == SSL_R_NO_CIPHERS_PASSED                          /*  182 */
 #endif
+#ifdef SSL_R_NOT_ON_RECORD_BOUNDARY
+            || n == SSL_R_NOT_ON_RECORD_BOUNDARY                     /*  182 */
+#endif
             || n == SSL_R_NO_CIPHERS_SPECIFIED                       /*  183 */
 #ifdef SSL_R_BAD_CIPHER
             || n == SSL_R_BAD_CIPHER                                 /*  186 */
@@ -4003,6 +4022,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_MISSING_KEY_SHARE                          /*  258 */
 #endif
             || n == SSL_R_UNSUPPORTED_PROTOCOL                       /*  258 */
+#ifdef SSL_R_INVALID_CCS_MESSAGE
+            || n == SSL_R_INVALID_CCS_MESSAGE                        /*  260 */
+#endif
 #ifdef SSL_R_NO_SHARED_GROUP
             || n == SSL_R_NO_SHARED_GROUP                            /*  266 */
 #endif
@@ -4045,6 +4067,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED
             || n == SSL_R_UNSAFE_LEGACY_RENEGOTIATION_DISABLED       /*  338 */
+#endif
+#ifdef SSL_R_REQUIRED_COMPRESSION_ALGORITHM_MISSING
+            || n == SSL_R_REQUIRED_COMPRESSION_ALGORITHM_MISSING     /*  342 */
 #endif
 #ifdef SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING
             || n == SSL_R_SCSV_RECEIVED_WHEN_RENEGOTIATING           /*  345 */
