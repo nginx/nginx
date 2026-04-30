@@ -3947,6 +3947,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
             || n == SSL_R_BAD_KEY_UPDATE                             /*  122 */
 #endif
             || n == SSL_R_BLOCK_CIPHER_PAD_IS_WRONG                  /*  129 */
+#ifdef SSL_R_CLIENTHELLO_PARSE_FAILED
+            || n == SSL_R_CLIENTHELLO_PARSE_FAILED                   /*  131 */
+#endif
             || n == SSL_R_CCS_RECEIVED_EARLY                         /*  133 */
 #ifdef SSL_R_DECODE_ERROR
             || n == SSL_R_DECODE_ERROR                               /*  137 */
@@ -4007,6 +4010,9 @@ ngx_ssl_connection_error(ngx_connection_t *c, int sslerr, ngx_err_t err,
 #endif
 #ifdef SSL_R_NO_APPLICATION_PROTOCOL
             || n == SSL_R_NO_APPLICATION_PROTOCOL                    /*  235 */
+#endif
+#ifdef SSL_R_WRONG_CURVE
+            || n == SSL_R_WRONG_CURVE                                /*  243 */
 #endif
             || n == SSL_R_UNEXPECTED_MESSAGE                         /*  244 */
             || n == SSL_R_UNEXPECTED_RECORD                          /*  245 */
