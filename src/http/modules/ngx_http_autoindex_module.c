@@ -246,15 +246,6 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
 #endif
 
-    /* TODO: pool should be temporary pool */
-    pool = r->pool;
-
-    if (ngx_array_init(&entries, pool, 40, sizeof(ngx_http_autoindex_entry_t))
-        != NGX_OK)
-    {
-        return ngx_http_autoindex_error(r, &dir, &path);
-    }
-
     r->headers_out.status = NGX_HTTP_OK;
 
     switch (format) {
@@ -291,6 +282,18 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         return rc;
     }
 
+    pool = ngx_create_pool(4096, r->connection->log);
+    if (pool == NULL) {
+        return ngx_http_autoindex_error(r, &dir, &path);
+    }
+
+    if (ngx_array_init(&entries, pool, 40, sizeof(ngx_http_autoindex_entry_t))
+        != NGX_OK)
+    {
+        ngx_destroy_pool(pool);
+        return ngx_http_autoindex_error(r, &dir, &path);
+    }
+
     filename = path.data;
     filename[path.len] = '/';
 
@@ -303,6 +306,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
             if (err != NGX_ENOMOREFILES) {
                 ngx_log_error(NGX_LOG_CRIT, r->connection->log, err,
                               ngx_read_dir_n " \"%V\" failed", &path);
+                ngx_destroy_pool(pool);
                 return ngx_http_autoindex_error(r, &dir, &path);
             }
 
@@ -328,6 +332,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
                 filename = ngx_pnalloc(pool, allocated);
                 if (filename == NULL) {
+                    ngx_destroy_pool(pool);
                     return ngx_http_autoindex_error(r, &dir, &path);
                 }
 
@@ -348,6 +353,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                         continue;
                     }
 
+                    ngx_destroy_pool(pool);
                     return ngx_http_autoindex_error(r, &dir, &path);
                 }
 
@@ -355,6 +361,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
                     ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
                                   ngx_de_link_info_n " \"%s\" failed",
                                   filename);
+                    ngx_destroy_pool(pool);
                     return ngx_http_autoindex_error(r, &dir, &path);
                 }
             }
@@ -362,6 +369,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         entry = ngx_array_push(&entries);
         if (entry == NULL) {
+            ngx_destroy_pool(pool);
             return ngx_http_autoindex_error(r, &dir, &path);
         }
 
@@ -369,6 +377,7 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         entry->name.data = ngx_pnalloc(pool, len + 1);
         if (entry->name.data == NULL) {
+            ngx_destroy_pool(pool);
             return ngx_http_autoindex_error(r, &dir, &path);
         }
 
@@ -410,11 +419,11 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
         break;
     }
 
+    ngx_destroy_pool(pool);
+
     if (b == NULL) {
         return NGX_ERROR;
     }
-
-    /* TODO: free temporary pool */
 
     if (r == r->main) {
         b->last_buf = 1;
