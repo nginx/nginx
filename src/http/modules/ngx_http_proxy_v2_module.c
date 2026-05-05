@@ -910,6 +910,8 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
             f = (ngx_http_proxy_v2_frame_t *) headers_frame;
             f->flags |= NGX_HTTP_V2_END_STREAM_FLAG;
         }
+
+        b->last_buf = 1;
     }
 
     u->output.output_filter = ngx_http_proxy_v2_body_output_filter;
