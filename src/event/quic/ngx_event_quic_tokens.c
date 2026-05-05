@@ -235,6 +235,7 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
 
     if (now > exp) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic expired token");
+        ngx_explicit_memzero(tdec, sizeof(tdec));
         return NGX_DECLINED;
     }
 
@@ -248,18 +249,21 @@ ngx_quic_validate_token(ngx_connection_t *c, u_char *key,
     }
 
     pkt->validated = 1;
+    ngx_explicit_memzero(tdec, sizeof(tdec));
 
     return NGX_OK;
 
 garbage:
 
     ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic garbage token");
-
+    ngx_explicit_memzero(tdec, sizeof(tdec));
+    
     return NGX_ABORT;
 
 bad_token:
 
     ngx_log_error(NGX_LOG_INFO, c->log, 0, "quic invalid token");
-
+    ngx_explicit_memzero(tdec, sizeof(tdec));
+    
     return NGX_DECLINED;
 }
