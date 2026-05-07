@@ -458,15 +458,13 @@ ngx_http_index_init(ngx_conf_t *cf)
 }
 
 
-/* TODO: warn about duplicate indices */
-
 static char *
 ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_http_index_loc_conf_t *ilcf = conf;
 
     ngx_str_t                  *value;
-    ngx_uint_t                  i, n;
+    ngx_uint_t                  i, j, n;
     ngx_http_index_t           *index;
     ngx_http_script_compile_t   sc;
 
@@ -492,6 +490,36 @@ ngx_http_index_set_index(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "index \"%V\" in \"index\" directive is invalid",
                                &value[i]);
             return NGX_CONF_ERROR;
+        }
+
+        if (ilcf->indices->nelts) {
+            ngx_http_index_t  *old;
+            size_t             len;
+
+            old = ilcf->indices->elts;
+
+            for (j = 0; j < ilcf->indices->nelts; j++) {
+
+                if (old[j].lengths || old[j].values) {
+                    continue;
+                }
+
+                len = old[j].name.len;
+
+                if (old[j].name.data[0] != '/') {
+                    len--;
+                }
+
+                if (len == value[i].len
+                    && ngx_strncmp(old[j].name.data, value[i].data, len) == 0)
+                {
+                    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                                       "duplicate index \"%V\" in \"index\" "
+                                       "directive",
+                                       &value[i]);
+                    break;
+                }
+            }
         }
 
         index = ngx_array_push(ilcf->indices);
