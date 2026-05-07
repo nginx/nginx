@@ -70,6 +70,7 @@ typedef struct {
     ngx_http_proxy_vars_t          vars;
 
     ngx_flag_t                     redirect;
+    ngx_flag_t                     forward_proxy;
 
     ngx_uint_t                     http_version;
 
@@ -108,6 +109,8 @@ typedef struct {
 
 ngx_int_t ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     ngx_http_proxy_loc_conf_t *plcf);
+ngx_int_t ngx_http_proxy_eval_forward(ngx_http_request_t *r,
+    ngx_http_proxy_ctx_t *ctx, ngx_http_proxy_loc_conf_t *plcf);
 #if (NGX_HTTP_CACHE)
 ngx_int_t ngx_http_proxy_create_key(ngx_http_request_t *r);
 #endif
