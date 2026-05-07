@@ -64,6 +64,28 @@ ngx_os_init(ngx_log_t *log)
     }
 #endif
 
+#if (NGX_HAVE_SCHED_GETAFFINITY)
+    if (ngx_ncpu > 0) {
+        int         err;
+        size_t      sz;
+        cpu_set_t  *mask;
+
+        mask = CPU_ALLOC(ngx_ncpu);
+        if (mask == NULL) {
+            return NGX_ERROR;
+        }
+
+        sz = CPU_ALLOC_SIZE(ngx_ncpu);
+
+        err = sched_getaffinity(0, sz, mask);
+        if (err == 0) {
+            ngx_ncpu = CPU_COUNT_S(sz, mask);
+        }
+
+        CPU_FREE(mask);
+    }
+#endif
+
     if (ngx_ncpu < 1) {
         ngx_ncpu = 1;
     }
