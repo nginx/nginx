@@ -799,8 +799,8 @@ ngx_quic_expire_path_validation(ngx_connection_t *c, ngx_quic_path_t *path)
         bkp = ngx_quic_get_path(c, NGX_QUIC_PATH_BACKUP);
 
         if (bkp == NULL) {
-            qc->error = NGX_QUIC_ERR_NO_VIABLE_PATH;
-            qc->error_reason = "no viable path";
+            ngx_quic_set_error(c, NGX_QUIC_ERR_NO_VIABLE_PATH,
+                               "no viable path");
             return NGX_ERROR;
         }
 
