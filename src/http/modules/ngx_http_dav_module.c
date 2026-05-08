@@ -909,20 +909,35 @@ static ngx_int_t
 ngx_http_dav_validate_paths(ngx_http_request_t *r, ngx_str_t *src,
     ngx_str_t *dst, ngx_uint_t slash, ngx_table_elt_t *dest)
 {
-    size_t  len;
+    size_t           len;
+    ngx_file_info_t  src_fi, dst_fi;
 
-    len = src->len - 1;
+    /*
+     * Detect that the source and destination paths refer to the same
+     * filesystem object via inode comparison rather than a spelling-based
+     * string compare on the mapped paths.  String comparison is bypassable
+     * by non-canonical destination URIs that ngx_http_parse_unsafe_uri
+     * permits but does not normalise (e.g. "/./" segments) and is also
+     * defeated by symlink aliases or hardlinks.  An inode compare answers
+     * the actual semantic question and stays correct under future spelling
+     * variants.
+     */
 
-    if (len > 0 && src->data[len - 1] == '/') {
-        len--;
-    }
-
-    if (len == dst->len && ngx_strncmp(src->data, dst->data, len) == 0) {
+    if (ngx_file_info(src->data, &src_fi) != NGX_FILE_ERROR
+        && ngx_file_info(dst->data, &dst_fi) != NGX_FILE_ERROR
+        && ngx_file_uniq(&src_fi) == ngx_file_uniq(&dst_fi))
+    {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "both URI \"%V\" and \"Destination\" URI \"%V\" "
                       "point to the same location",
                       &r->uri, &dest->value);
         return NGX_HTTP_FORBIDDEN;
+    }
+
+    len = src->len - 1;
+
+    if (len > 0 && src->data[len - 1] == '/') {
+        len--;
     }
 
     if (slash
