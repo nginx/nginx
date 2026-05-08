@@ -161,6 +161,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_srv_conf_t, ecdh_curve),
       NULL },
 
+    { ngx_string("ssl_sigalgs"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, sigalgs),
+      NULL },
+
     { ngx_string("ssl_protocols"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
@@ -897,6 +904,7 @@ ngx_stream_ssl_create_srv_conf(ngx_conf_t *cf)
      *     sscf->certificate_values = NULL;
      *     sscf->dhparam = { 0, NULL };
      *     sscf->ecdh_curve = { 0, NULL };
+     *     sscf->sigalgs = { 0, NULL };
      *     sscf->client_certificate = { 0, NULL };
      *     sscf->trusted_certificate = { 0, NULL };
      *     sscf->crl = { 0, NULL };
@@ -983,6 +991,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->ecdh_curve, prev->ecdh_curve,
                          NGX_DEFAULT_ECDH_CURVE);
+
+    ngx_conf_merge_str_value(conf->sigalgs, prev->sigalgs, "");
 
     ngx_conf_merge_str_value(conf->ciphers, prev->ciphers, NGX_DEFAULT_CIPHERS);
 
@@ -1156,6 +1166,10 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (ngx_ssl_ecdh_curve(cf, &conf->ssl, &conf->ecdh_curve) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_sigalgs(cf, &conf->ssl, &conf->sigalgs) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
