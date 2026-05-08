@@ -1,30 +1,33 @@
 #!/usr/bin/perl
 
-# Tests for nginx dav module — incomplete same-path detection bypass
-# via "/./" dot-segments in the Destination header.
+# Regression test for the same-path COPY/MOVE detection bypass via
+# "/./" dot-segments in the Destination header (GHSA-39cr-2jxh-xxhx).
 #
-# Advisory: GHSA-39cr-2jxh-xxhx.
+# Background: ngx_http_dav_validate_paths() rejects COPY/MOVE when the
+# source and destination paths refer to the same filesystem object.
+# The original implementation compared the mapped paths as strings,
+# which was bypassable: ngx_http_parse_unsafe_uri() only rejected
+# "/../" segments, so a Destination URI containing "/./" produced a
+# different mapped string from the canonical source path while
+# resolving — at the kernel layer — to the same inode.  The string
+# compare returned NGX_OK, COPY/MOVE proceeded, and ngx_copy_file()
+# opened the same inode for write (O_TRUNC) it then read from,
+# zeroing the source file.
 #
-# Background: a recent change (upstream master) added
-# ngx_http_dav_validate_paths() which rejects COPY/MOVE when source and
-# destination resolve to the same filesystem path after merging duplicate
-# slashes via ngx_http_dav_merge_slashes(). The check is a string compare.
+# Two fixes close this:
+#   (1) ngx_http_dav_validate_paths() now compares inodes via
+#       ngx_file_info()/ngx_file_uniq() instead of strings.
+#   (2) ngx_http_parse_unsafe_uri() now rejects "/./" segments
+#       alongside "/../" (defence-in-depth, applied to both pre- and
+#       post-percent-decode pattern sites).
 #
-# The validation gap: ngx_http_parse_unsafe_uri() (used to validate the
-# Destination header) only rejects "/../" segments, not "/./" segments.
-# A destination URI containing "/./" therefore produces a different
-# string from the canonical source path while resolving — at the kernel
-# layer — to the same inode. The string compare returns "not equal", and
-# ngx_copy_file() ends up opening the same inode for write (O_TRUNC) that
-# it then reads from, leaving the source file empty (0 bytes) and the
-# request failing with 500.
-#
-# This test seeds a file, exercises the control (same-path COPY → 403),
-# then exercises two bypass variants (literal "/./" and percent-encoded
-# "%2e") and asserts both the buggy HTTP response and the resulting
-# zero-byte source file. Assertions are written so that when the
-# underlying bug is fixed they will fail — the natural signal that the
-# test needs to be updated.
+# This test seeds a file, asserts the same-path control case is
+# rejected, then exercises the literal "/./" and percent-encoded
+# "%2e" bypass variants and confirms both that the request is
+# rejected (any 4xx — fix #2 returns 400 from the URI validator,
+# fix #1 alone would return 403 from validate_paths) and that the
+# source file content is preserved.  A "/../" sanity case ensures
+# the existing parent-traversal rejection is unaffected.
 
 ###############################################################################
 
@@ -44,13 +47,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http dav/)->plan(8);
-
-# The bypass causes ngx_copy_file to read the source after it was just
-# truncated (same inode), producing "read() has read only 0 of N" alerts.
-# Those alerts are the concrete impact signal — mark them as TODO so the
-# harness's terminal "no alerts" assertion does not flag them as a regression.
-$t->todo_alerts();
+my $t = Test::Nginx->new()->has(qw/http dav/)->plan(9);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -87,44 +84,44 @@ my $r;
 $r = http_put('/file.txt', $body);
 like($r, qr!^HTTP/1\.\d 201!, 'PUT /file.txt seeds source');
 
-# Control: same-path COPY must be rejected (this is what the recently
-# added ngx_http_dav_validate_paths() exists to catch).
+# Control: same-path COPY must be rejected, and the source must
+# remain intact.
 $r = http_copy('/file.txt', '/file.txt');
 like($r, qr!^HTTP/1\.\d 403!, 'control: identical Destination → 403');
 is(slurp("$t->{_testdir}/file.txt"), $body,
     'control: source content preserved');
 
-# Bypass A — literal "/./" segment.
-# Should be 403 (same inode), but the dot-segment lets it through.
+# Bypass A — literal "/./" dot-segment in Destination must be
+# rejected.  Either fix layer is sufficient to prevent the bug;
+# accept any 4xx so the test stays green if either fix is reverted
+# in isolation.  The source must remain intact.
 $r = http_copy('/file.txt', '/./file.txt');
-unlike($r, qr!^HTTP/1\.\d 403!,
-    'BUG: /./ bypass — Destination not detected as same path');
+like($r, qr!^HTTP/1\.\d 4\d\d!,
+    '/./ Destination rejected (4xx)');
+is(slurp("$t->{_testdir}/file.txt"), $body,
+    '/./ bypass: source content preserved');
 
-# Side effect: the source has been opened with O_TRUNC by ngx_copy_file
-# while it was being read, so its content is now gone.
-is(-s "$t->{_testdir}/file.txt", 0,
-    'BUG: /./ bypass — source file truncated to 0 bytes');
-
-# Reseed for variant B.
+# Bypass B — percent-encoded variant "%2e" decodes to "." after
+# ngx_unescape_uri; both validator passes (pre- and post-decode) and
+# the inode-based same-target check catch this.
 http_put('/file2.txt', $body);
-
-# Bypass B — percent-encoded dot ("%2e").
-# ngx_http_parse_unsafe_uri runs a second validation pass after
-# ngx_unescape_uri rewrites %2e → "."; that second pass also checks
-# only for "/../", so %2e likewise slips through.
 $r = http_copy('/file2.txt', '/%2e/file2.txt');
-unlike($r, qr!^HTTP/1\.\d 403!,
-    'BUG: %2e bypass — Destination not detected as same path');
+like($r, qr!^HTTP/1\.\d 4\d\d!,
+    '%2e Destination rejected (4xx)');
+is(slurp("$t->{_testdir}/file2.txt"), $body,
+    '%2e bypass: source content preserved');
 
-is(-s "$t->{_testdir}/file2.txt", 0,
-    'BUG: %2e bypass — source file truncated to 0 bytes');
-
-# Sanity: a Destination header with "/../" must still be rejected as
-# unsafe (so we do not silently regress the existing protection).
+# Sanity: existing "/../" rejection still works.
 http_put('/file3.txt', $body);
 $r = http_copy('/file3.txt', '/sub/../file3.txt');
 like($r, qr!^HTTP/1\.\d 400!,
     'sanity: /../ Destination still rejected as unsafe URI');
+
+# Sanity: a benign COPY to a different path still succeeds, so the
+# tightened URI validator has not over-blocked.
+$r = http_copy('/file.txt', '/file_copied.txt');
+like($r, qr!^HTTP/1\.\d 20[14]!,
+    'sanity: ordinary COPY to a different path still succeeds');
 
 ###############################################################################
 
