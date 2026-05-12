@@ -58,6 +58,16 @@ typedef struct {
 } ngx_proxy_protocol_write_tlv_t;
 
 
+/* config-time TLV entry; cv is an opaque complex-value pointer */
+typedef struct {
+    ngx_uint_t          type;
+    ngx_uint_t          is_ssl_sub;
+    ngx_uint_t          is_ssl_verify;
+    ngx_uint_t          is_ssl_raw;
+    void               *cv;
+} ngx_proxy_protocol_conf_tlv_t;
+
+
 u_char *ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf,
     u_char *last);
 u_char *ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf,
@@ -73,6 +83,9 @@ ngx_int_t ngx_proxy_protocol_tlv_type(ngx_str_t *name, ngx_uint_t *typep,
     ngx_uint_t *is_ssl_rawp);
 ngx_int_t ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
+size_t ngx_proxy_protocol_v2_tlvs_size(ngx_array_t *tlvs);
+char *ngx_proxy_protocol_v2_add_tlv(ngx_conf_t *cf, ngx_array_t **tlvsp,
+    ngx_str_t *name, void *cv);
 
 
 #endif /* _NGX_PROXY_PROTOCOL_H_INCLUDED_ */
