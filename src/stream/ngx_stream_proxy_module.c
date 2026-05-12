@@ -23,6 +23,7 @@ typedef struct {
     ngx_uint_t                       type;
     ngx_uint_t                       is_ssl_sub;
     ngx_uint_t                       is_ssl_verify;
+    ngx_uint_t                       is_ssl_raw;
     ngx_stream_complex_value_t      *value;
 } ngx_stream_proxy_protocol_tlv_t;
 
@@ -1657,9 +1658,8 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
 
     size_t                        len;
     u_char                       *p, *buf;
-    ngx_str_t                     proto, *value;
+    ngx_str_t                     proto;
     ngx_uint_t                    i;
-    ngx_array_t                  *values;
     ngx_connection_t             *c;
     ngx_stream_upstream_t        *u;
     ngx_stream_complex_value_t   *cv;
@@ -1670,7 +1670,6 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     u = s->upstream;
     c = u->peer.connection;
 
-    values = NULL;
     len = 0;
 
     cv = pscf->ssl_alpn->elts;
@@ -1685,20 +1684,6 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
             continue;
         }
 
-        if (values == NULL) {
-            values = ngx_array_create(c->pool, 1, sizeof(ngx_str_t));
-            if (values == NULL) {
-                return NGX_ERROR;
-            }
-        }
-
-        value = ngx_array_push(values);
-        if (value == NULL) {
-            return NGX_ERROR;
-        }
-
-        *value = proto;
-
         len += 1 + proto.len;
     }
 
@@ -1712,15 +1697,22 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     }
 
     p = buf;
-    value = values->elts;
 
-    for (i = 0; i < values->nelts; i++) {
+    for (i = 0; i < pscf->ssl_alpn->nelts; i++) {
+
+        if (ngx_stream_complex_value(s, &cv[i], &proto) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        if (proto.len == 0 || proto.len > 255) {
+            continue;
+        }
 
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                       "upstream SSL ALPN: \"%V\"", &value[i]);
+                       "upstream SSL ALPN: \"%V\"", &proto);
 
-        *p++ = value[i].len;
-        p = ngx_cpymem(p, value[i].data, value[i].len);
+        *p++ = proto.len;
+        p = ngx_cpymem(p, proto.data, proto.len);
     }
 
     if (SSL_set_alpn_protos(c->ssl->connection, buf, p - buf) != 0) {
@@ -2184,11 +2176,6 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     if (u->state->first_byte_time == (ngx_msec_t) -1) {
                         u->state->first_byte_time = ngx_current_msec
                                                     - u->start_time;
-
-                        if (u->peer.notify) {
-                            u->peer.notify(&u->peer, u->peer.data,
-                                       NGX_STREAM_UPSTREAM_NOTIFY_FIRST_BYTE);
-                        }
                     }
                 }
 
@@ -3039,102 +3026,35 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
-typedef struct {
-    ngx_str_t   name;
-    ngx_uint_t  type;
-    ngx_uint_t  is_ssl_sub;
-    ngx_uint_t  is_ssl_verify;
-} ngx_stream_proxy_tlv_name_t;
-
-
-static ngx_stream_proxy_tlv_name_t  ngx_stream_proxy_tlv_names[] = {
-    { ngx_string("alpn"),        0x01, 0, 0 },
-    { ngx_string("authority"),   0x02, 0, 0 },
-    { ngx_string("unique_id"),   0x05, 0, 0 },
-    { ngx_string("ssl_verify"),  0x00, 0, 1 },
-    { ngx_string("ssl_version"), 0x21, 1, 0 },
-    { ngx_string("ssl_cn"),      0x22, 1, 0 },
-    { ngx_string("ssl_cipher"),  0x23, 1, 0 },
-    { ngx_string("ssl_sig_alg"), 0x24, 1, 0 },
-    { ngx_string("ssl_key_alg"), 0x25, 1, 0 },
-    { ngx_string("netns"),       0x30, 0, 0 },
-    { ngx_null_string,            0x00, 0, 0 }
-};
-
-
 static char *
 ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_stream_proxy_srv_conf_t  *pscf = conf;
 
-    ngx_uint_t                             j;
-    ngx_int_t                              type;
-    ngx_uint_t                             is_ssl_sub, is_ssl_verify;
+    ngx_int_t                              rc;
+    ngx_uint_t                             j, type;
+    ngx_uint_t                             is_ssl_sub, is_ssl_verify, is_ssl_raw;
     ngx_str_t                             *value;
     ngx_stream_compile_complex_value_t     ccv;
     ngx_stream_proxy_protocol_tlv_t       *tlv, *existing;
-    ngx_stream_proxy_tlv_name_t           *nm;
 
     value = cf->args->elts;
 
-    type = -1;
-    is_ssl_sub = 0;
-    is_ssl_verify = 0;
-
-    /* check named aliases first */
-    for (nm = ngx_stream_proxy_tlv_names; nm->name.len; nm++) {
-        if (value[1].len == nm->name.len
-            && ngx_memcmp(value[1].data, nm->name.data, nm->name.len) == 0)
-        {
-            type = (ngx_int_t) nm->type;
-            is_ssl_sub = nm->is_ssl_sub;
-            is_ssl_verify = nm->is_ssl_verify;
-            break;
-        }
+    rc = ngx_proxy_protocol_tlv_type(&value[1], &type, &is_ssl_sub,
+                                     &is_ssl_verify, &is_ssl_raw);
+    if (rc == NGX_DECLINED) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "unknown PROXY protocol TLV \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
     }
 
-    /* ssl_0x<hex>: explicit hex type for an SSL sub-TLV */
-    if (type == -1
-        && value[1].len >= 7
-        && value[1].data[0] == 's'
-        && value[1].data[1] == 's'
-        && value[1].data[2] == 'l'
-        && value[1].data[3] == '_'
-        && value[1].data[4] == '0'
-        && (value[1].data[5] == 'x' || value[1].data[5] == 'X'))
-    {
-        type = ngx_hextoi(value[1].data + 6, value[1].len - 6);
-
-        if (type == NGX_ERROR || type < 0 || type > 255) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid PROXY protocol TLV ssl sub-type "
-                               "\"%V\"", &value[1]);
-            return NGX_CONF_ERROR;
-        }
-
-        is_ssl_sub = 1;
+    if (rc == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid PROXY protocol TLV \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
     }
 
-    /* fall back to numeric: 0x-prefixed hex or decimal */
-    if (type == -1) {
-        if (value[1].len > 2
-            && value[1].data[0] == '0'
-            && (value[1].data[1] == 'x' || value[1].data[1] == 'X'))
-        {
-            type = ngx_hextoi(value[1].data + 2, value[1].len - 2);
-        } else {
-            type = ngx_atoi(value[1].data, value[1].len);
-        }
-
-        if (type == NGX_ERROR || type < 0 || type > 255) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid PROXY protocol TLV type \"%V\"",
-                               &value[1]);
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    if (!is_ssl_verify && type == 0x03) {
+    if (!is_ssl_verify && type == NGX_PROXY_PROTOCOL_V2_TYPE_CRC32C) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "TLV type 0x03 is reserved for CRC32c checksum, "
                            "use the \"proxy_protocol_crc32c\" directive");
@@ -3149,9 +3069,33 @@ ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
     } else {
-        /* duplicate detection */
+        /* duplicate and coexistence detection */
         existing = pscf->proxy_protocol_tlvs->elts;
         for (j = 0; j < pscf->proxy_protocol_tlvs->nelts; j++) {
+            if (is_ssl_raw) {
+                /* "ssl" raw body cannot coexist with sub-TLV directives */
+                if (existing[j].is_ssl_raw) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "duplicate PROXY protocol TLV "
+                                       "\"ssl\"");
+                    return NGX_CONF_ERROR;
+                }
+                if (existing[j].is_ssl_sub || existing[j].is_ssl_verify) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "\"ssl\" TLV conflicts with ssl "
+                                       "sub-TLV directives");
+                    return NGX_CONF_ERROR;
+                }
+                continue;
+            }
+            if (existing[j].is_ssl_raw
+                && (is_ssl_sub || is_ssl_verify))
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "ssl sub-TLV directives conflict with "
+                                   "\"ssl\" TLV");
+                return NGX_CONF_ERROR;
+            }
             if (is_ssl_verify) {
                 if (existing[j].is_ssl_verify) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
@@ -3160,8 +3104,9 @@ ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     return NGX_CONF_ERROR;
                 }
             } else if (!existing[j].is_ssl_verify
+                       && !existing[j].is_ssl_raw
                        && existing[j].is_ssl_sub == is_ssl_sub
-                       && existing[j].type == (ngx_uint_t) type)
+                       && existing[j].type == type)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "duplicate PROXY protocol TLV type \"%V\"",
@@ -3176,9 +3121,10 @@ ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    tlv->type = (ngx_uint_t) type;
+    tlv->type = type;
     tlv->is_ssl_sub = is_ssl_sub;
     tlv->is_ssl_verify = is_ssl_verify;
+    tlv->is_ssl_raw = is_ssl_raw;
 
     tlv->value = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
     if (tlv->value == NULL) {
