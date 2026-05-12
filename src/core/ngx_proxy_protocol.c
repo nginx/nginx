@@ -527,16 +527,16 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf,
     ssl_start = p;
     p += sizeof(ngx_proxy_protocol_tlv_t);  /* TLV header filled below */
 
-    client_flags = 0x01;  /* PP2_CLIENT_SSL */
+    client_flags = NGX_PROXY_PROTOCOL_V2_CLIENT_SSL;
 
     if (has_ssl_cn) {
-        client_flags |= 0x04;  /* PP2_CLIENT_CERT_SESS */
+        client_flags |= NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_SESS;
 #if (NGX_SSL)
         if (c->ssl != NULL
             && SSL_get_verify_result(c->ssl->connection) == X509_V_OK
             && !SSL_session_reused(c->ssl->connection))
         {
-            client_flags |= 0x02;  /* PP2_CLIENT_CERT_CONN */
+            client_flags |= NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_CONN;
         }
 #endif
     }

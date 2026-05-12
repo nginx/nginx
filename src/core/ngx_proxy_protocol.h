@@ -35,6 +35,10 @@
 #define NGX_PROXY_PROTOCOL_V2_SUBTYPE_SSL_KEY_ALG 0x25
 #define NGX_PROXY_PROTOCOL_V2_TYPE_NETNS          0x30
 
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_SSL          0x01
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_CONN    0x02
+#define NGX_PROXY_PROTOCOL_V2_CLIENT_CERT_SESS    0x04
+
 
 struct ngx_proxy_protocol_s {
     ngx_str_t           src_addr;
