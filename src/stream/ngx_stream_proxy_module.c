@@ -95,6 +95,8 @@ static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_proxy_protocol_passthrough(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 #if (NGX_STREAM_SSL)
 
@@ -288,6 +290,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol_conf)
           + offsetof(ngx_proxy_protocol_write_conf_t, crc32c),
+      NULL },
+
+    { ngx_string("proxy_protocol_passthrough"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
+      ngx_stream_proxy_protocol_passthrough,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
       NULL },
 
     { ngx_string("proxy_half_close"),
@@ -2399,6 +2408,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->proxy_protocol_conf.version = NGX_CONF_UNSET_UINT;
     conf->proxy_protocol_conf.tlvs = NGX_CONF_UNSET_PTR;
     conf->proxy_protocol_conf.crc32c = NGX_CONF_UNSET_UINT;
+    conf->proxy_protocol_conf.passthrough = NULL;
+    conf->proxy_protocol_conf.passthrough_all = 0;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
     conf->half_close = NGX_CONF_UNSET;
@@ -2467,6 +2478,14 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->proxy_protocol_conf.crc32c,
                               prev->proxy_protocol_conf.crc32c, 0);
+
+    ngx_conf_merge_ptr_value(conf->proxy_protocol_conf.passthrough,
+                             prev->proxy_protocol_conf.passthrough, NULL);
+
+    if (!conf->proxy_protocol_conf.passthrough_all) {
+        conf->proxy_protocol_conf.passthrough_all =
+            prev->proxy_protocol_conf.passthrough_all;
+    }
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 
@@ -2908,4 +2927,35 @@ ngx_stream_proxy_protocol_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return ngx_proxy_protocol_v2_add_tlv(cf, &pscf->proxy_protocol_conf.tlvs,
                                          &value[1], cv);
+}
+
+
+static char *
+ngx_stream_proxy_protocol_passthrough(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_stream_proxy_srv_conf_t  *pscf = conf;
+
+    ngx_uint_t   i;
+    ngx_str_t   *value;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        if (value[i].len == sizeof("all") - 1
+            && ngx_memcmp(value[i].data, "all", sizeof("all") - 1) == 0)
+        {
+            pscf->proxy_protocol_conf.passthrough_all = 1;
+            continue;
+        }
+
+        if (ngx_proxy_protocol_v2_add_passthrough(cf,
+                &pscf->proxy_protocol_conf.passthrough, &value[i])
+            != NGX_CONF_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    return NGX_CONF_OK;
 }
