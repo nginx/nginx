@@ -9,10 +9,6 @@
 #include <ngx_core.h>
 
 
-#define NGX_PROXY_PROTOCOL_AF_INET          1
-#define NGX_PROXY_PROTOCOL_AF_INET6         2
-
-
 #define ngx_proxy_protocol_parse_uint16(p)                                    \
     ( ((uint16_t) (p)[0] << 8)                                                \
     + (           (p)[1]) )
@@ -361,7 +357,7 @@ ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *las
 
     case AF_INET:
 
-        header->family_transport = 0x10 | transport;  /* AF_INET */
+        header->family_transport = (NGX_PROXY_PROTOCOL_AF_INET << 4) | transport;
         header->len[0] = 0;
         header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
 
@@ -396,7 +392,7 @@ ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *las
 
         if (IN6_IS_ADDR_V4MAPPED(src6)) {
 
-            header->family_transport = 0x10 | transport;  /* AF_INET */
+            header->family_transport = (NGX_PROXY_PROTOCOL_AF_INET << 4) | transport;
             header->len[0] = 0;
             header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
 
@@ -414,7 +410,7 @@ ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *las
 
         } else {
 
-            header->family_transport = 0x20 | transport;  /* AF_INET6 */
+            header->family_transport = (NGX_PROXY_PROTOCOL_AF_INET6 << 4) | transport;
             header->len[0] = 0;
             header->len[1] = sizeof(ngx_proxy_protocol_inet6_addrs_t);
 
@@ -437,7 +433,7 @@ ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *las
 
     default:
 
-        header->family_transport = 0x00;  /* UNSPEC */
+        header->family_transport = NGX_PROXY_PROTOCOL_AF_UNSPEC << 4;
         header->len[0] = 0;
         header->len[1] = 0;
 
