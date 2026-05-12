@@ -322,6 +322,186 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 }
 
 
+u_char *
+ngx_proxy_protocol_v2_write_header(ngx_connection_t *c, u_char *buf, u_char *last)
+{
+    u_char                             *p;
+    u_char                              transport;
+    ngx_uint_t                          port, lport;
+    ngx_proxy_protocol_header_t        *header;
+    ngx_proxy_protocol_inet_addrs_t    *in;
+#if (NGX_HAVE_INET6)
+    struct in6_addr                    *src6, *dst6;
+    ngx_proxy_protocol_inet6_addrs_t   *in6;
+#endif
+
+    static const u_char  signature[] = "\r\n\r\n\0\r\nQUIT\n";
+
+    if (last - buf < NGX_PROXY_PROTOCOL_V2_MAX_HEADER) {
+        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                      "too small buffer for PROXY protocol v2");
+        return NULL;
+    }
+
+    if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
+        return NULL;
+    }
+
+    header = (ngx_proxy_protocol_header_t *) buf;
+
+    ngx_memcpy(header->signature, signature, sizeof(signature) - 1);
+
+    header->version_command = 0x21;  /* version 2, PROXY command */
+
+    transport = (c->type == SOCK_DGRAM) ? 0x02 : 0x01;
+
+    p = buf + sizeof(ngx_proxy_protocol_header_t);
+
+    switch (c->sockaddr->sa_family) {
+
+    case AF_INET:
+
+        header->family_transport = 0x10 | transport;  /* AF_INET */
+        header->len[0] = 0;
+        header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+        in = (ngx_proxy_protocol_inet_addrs_t *) p;
+
+        ngx_memcpy(in->src_addr,
+                   &((struct sockaddr_in *) c->sockaddr)->sin_addr, 4);
+        ngx_memcpy(in->dst_addr,
+                   &((struct sockaddr_in *) c->local_sockaddr)->sin_addr, 4);
+
+        port = ngx_inet_get_port(c->sockaddr);
+        lport = ngx_inet_get_port(c->local_sockaddr);
+
+        in->src_port[0] = (u_char) (port >> 8);
+        in->src_port[1] = (u_char) port;
+        in->dst_port[0] = (u_char) (lport >> 8);
+        in->dst_port[1] = (u_char) lport;
+
+        p += sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+        break;
+
+#if (NGX_HAVE_INET6)
+
+    case AF_INET6:
+
+        src6 = &((struct sockaddr_in6 *) c->sockaddr)->sin6_addr;
+        dst6 = &((struct sockaddr_in6 *) c->local_sockaddr)->sin6_addr;
+
+        port = ngx_inet_get_port(c->sockaddr);
+        lport = ngx_inet_get_port(c->local_sockaddr);
+
+        if (IN6_IS_ADDR_V4MAPPED(src6)) {
+
+            header->family_transport = 0x10 | transport;  /* AF_INET */
+            header->len[0] = 0;
+            header->len[1] = sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+            in = (ngx_proxy_protocol_inet_addrs_t *) p;
+
+            ngx_memcpy(in->src_addr, src6->s6_addr + 12, 4);
+            ngx_memcpy(in->dst_addr, dst6->s6_addr + 12, 4);
+
+            in->src_port[0] = (u_char) (port >> 8);
+            in->src_port[1] = (u_char) port;
+            in->dst_port[0] = (u_char) (lport >> 8);
+            in->dst_port[1] = (u_char) lport;
+
+            p += sizeof(ngx_proxy_protocol_inet_addrs_t);
+
+        } else {
+
+            header->family_transport = 0x20 | transport;  /* AF_INET6 */
+            header->len[0] = 0;
+            header->len[1] = sizeof(ngx_proxy_protocol_inet6_addrs_t);
+
+            in6 = (ngx_proxy_protocol_inet6_addrs_t *) p;
+
+            ngx_memcpy(in6->src_addr, src6, 16);
+            ngx_memcpy(in6->dst_addr, dst6, 16);
+
+            in6->src_port[0] = (u_char) (port >> 8);
+            in6->src_port[1] = (u_char) port;
+            in6->dst_port[0] = (u_char) (lport >> 8);
+            in6->dst_port[1] = (u_char) lport;
+
+            p += sizeof(ngx_proxy_protocol_inet6_addrs_t);
+        }
+
+        break;
+
+#endif
+
+    default:
+
+        header->family_transport = 0x00;  /* UNSPEC */
+        header->len[0] = 0;
+        header->len[1] = 0;
+
+        break;
+    }
+
+    return p;
+}
+
+
+u_char *
+ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf,
+    u_char *last, ngx_array_t *tlvs)
+{
+    u_char                           *p;
+    ngx_uint_t                        i;
+    uint16_t                          len;
+    ngx_proxy_protocol_header_t      *header;
+    ngx_proxy_protocol_tlv_t         *wire;
+    ngx_proxy_protocol_write_tlv_t   *tlv;
+
+    if (tlvs == NULL || tlvs->nelts == 0) {
+        return ngx_proxy_protocol_v2_write_header(c, buf, last);
+    }
+
+    p = ngx_proxy_protocol_v2_write_header(c, buf, last);
+    if (p == NULL) {
+        return NULL;
+    }
+
+    /* update the PPv2 length field to include TLVs */
+    header = (ngx_proxy_protocol_header_t *) buf;
+    len = ngx_proxy_protocol_parse_uint16(header->len);
+
+    tlv = tlvs->elts;
+    for (i = 0; i < tlvs->nelts; i++) {
+        len += sizeof(ngx_proxy_protocol_tlv_t) + (uint16_t) tlv[i].value.len;
+    }
+
+    header->len[0] = (u_char) (len >> 8);
+    header->len[1] = (u_char) len;
+
+    /* append TLV records */
+    tlv = tlvs->elts;
+    for (i = 0; i < tlvs->nelts; i++) {
+        if (p + sizeof(ngx_proxy_protocol_tlv_t) + tlv[i].value.len > last) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "too small buffer for PROXY protocol v2 TLVs");
+            return NULL;
+        }
+
+        wire = (ngx_proxy_protocol_tlv_t *) p;
+        wire->type = (u_char) tlv[i].type;
+        wire->len[0] = (u_char) (tlv[i].value.len >> 8);
+        wire->len[1] = (u_char) tlv[i].value.len;
+        p += sizeof(ngx_proxy_protocol_tlv_t);
+
+        p = ngx_cpymem(p, tlv[i].value.data, tlv[i].value.len);
+    }
+
+    return p;
+}
+
+
 static u_char *
 ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
