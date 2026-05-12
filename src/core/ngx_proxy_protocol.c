@@ -1020,18 +1020,80 @@ static const ngx_uint_t  ngx_proxy_protocol_v2_ssl_sub_types[] = {
 #endif
 
 
+/* check if a given top-level TLV type is already in the output array */
+static ngx_uint_t
+ngx_proxy_protocol_v2_tlv_has_type(ngx_array_t *tlvs, ngx_uint_t type)
+{
+    ngx_uint_t                       i;
+    ngx_proxy_protocol_write_tlv_t  *tlv;
+
+    tlv = tlvs->elts;
+    for (i = 0; i < tlvs->nelts; i++) {
+        if (!tlv[i].is_ssl_sub && !tlv[i].is_ssl_verify
+            && tlv[i].type == type)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+/*
+ * check if the operator has configured this type at all (explicit value,
+ * empty-value suppression, or ssl-raw for type 0x20)
+ */
+static ngx_uint_t
+ngx_proxy_protocol_v2_user_owns_type(
+    ngx_proxy_protocol_write_conf_t *conf, ngx_uint_t type)
+{
+    ngx_uint_t                      i;
+    ngx_proxy_protocol_conf_tlv_t  *ctlv;
+
+    if (conf->tlvs == NULL) {
+        return 0;
+    }
+
+    ctlv = conf->tlvs->elts;
+    for (i = 0; i < conf->tlvs->nelts; i++) {
+        if (ctlv[i].is_ssl_verify) {
+            continue;
+        }
+
+        if (ctlv[i].is_ssl_raw) {
+            if (type == NGX_PROXY_PROTOCOL_V2_TYPE_SSL) {
+                return 1;
+            }
+            continue;
+        }
+
+        if (!ctlv[i].is_ssl_sub && ctlv[i].type == type) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
+
 static ngx_array_t *
 ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
     ngx_proxy_protocol_write_conf_t *conf, size_t *sizep)
 {
-    ngx_uint_t                       i, n;
-    ngx_str_t                        value;
-    ngx_array_t                     *tlvs;
-    ngx_proxy_protocol_conf_tlv_t   *ctlv;
-    ngx_proxy_protocol_write_tlv_t  *tlv;
+    u_char                           *pp, *pp_end;
+    ngx_uint_t                        i, n, pt;
+    ngx_str_t                         value;
+    ngx_array_t                      *tlvs;
+    ngx_proxy_protocol_conf_tlv_t    *ctlv;
+    ngx_proxy_protocol_write_tlv_t   *tlv;
+    ngx_proxy_protocol_tlv_t         *inp;
+    ngx_uint_t                       *pt_type;
+    size_t                            ptlen;
 #if (NGX_SSL)
-    ngx_int_t                        rc;
-    ngx_uint_t                       type;
+    ngx_int_t                         rc;
+    ngx_uint_t                        type;
 #endif
 
     n = (conf->tlvs != NULL ? conf->tlvs->nelts : 0) + 7;
@@ -1065,6 +1127,84 @@ ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
             tlv->is_ssl_sub = ctlv[i].is_ssl_sub;
             tlv->is_ssl_verify = ctlv[i].is_ssl_verify;
             tlv->is_ssl_raw = ctlv[i].is_ssl_raw;
+        }
+    }
+
+    /* passthrough: forward incoming TLVs (higher priority than auto-fill) */
+
+    if (c->proxy_protocol != NULL
+        && c->proxy_protocol->tlvs.len > 0
+        && (conf->passthrough_all || conf->passthrough != NULL))
+    {
+        if (conf->passthrough_all) {
+            pp     = c->proxy_protocol->tlvs.data;
+            pp_end = pp + c->proxy_protocol->tlvs.len;
+
+            while (pp + sizeof(ngx_proxy_protocol_tlv_t) <= pp_end) {
+                inp   = (ngx_proxy_protocol_tlv_t *) pp;
+                pt    = inp->type;
+                ptlen = ngx_proxy_protocol_parse_uint16(inp->len);
+
+                pp += sizeof(ngx_proxy_protocol_tlv_t);
+
+                if (pp + ptlen > pp_end) {
+                    break;
+                }
+
+                if (pt == NGX_PROXY_PROTOCOL_V2_TYPE_CRC32C
+                    || ngx_proxy_protocol_v2_user_owns_type(conf, pt)
+                    || ngx_proxy_protocol_v2_tlv_has_type(tlvs, pt))
+                {
+                    pp += ptlen;
+                    continue;
+                }
+
+                tlv = ngx_array_push(tlvs);
+                if (tlv == NULL) {
+                    return NULL;
+                }
+
+                tlv->type        = pt;
+                tlv->value.data  = pp;
+                tlv->value.len   = ptlen;
+                tlv->is_ssl_sub  = 0;
+                tlv->is_ssl_verify = 0;
+                tlv->is_ssl_raw  = (pt == NGX_PROXY_PROTOCOL_V2_TYPE_SSL)
+                                   ? 1 : 0;
+
+                pp += ptlen;
+            }
+
+        } else {
+            pt_type = conf->passthrough->elts;
+
+            for (i = 0; i < conf->passthrough->nelts; i++) {
+                if (ngx_proxy_protocol_v2_user_owns_type(conf, pt_type[i])
+                    || ngx_proxy_protocol_v2_tlv_has_type(tlvs, pt_type[i]))
+                {
+                    continue;
+                }
+
+                if (ngx_proxy_protocol_lookup_tlv(c,
+                        &c->proxy_protocol->tlvs, pt_type[i], &value)
+                    != NGX_OK
+                    || value.len == 0)
+                {
+                    continue;
+                }
+
+                tlv = ngx_array_push(tlvs);
+                if (tlv == NULL) {
+                    return NULL;
+                }
+
+                tlv->type        = pt_type[i];
+                tlv->value       = value;
+                tlv->is_ssl_sub  = 0;
+                tlv->is_ssl_verify = 0;
+                tlv->is_ssl_raw  = (pt_type[i] == NGX_PROXY_PROTOCOL_V2_TYPE_SSL)
+                                   ? 1 : 0;
+            }
         }
     }
 
@@ -1108,7 +1248,9 @@ ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
         }
 
         if (!ngx_proxy_protocol_v2_user_has_type(conf,
-                NGX_PROXY_PROTOCOL_V2_TYPE_ALPN, 0))
+                NGX_PROXY_PROTOCOL_V2_TYPE_ALPN, 0)
+            && !ngx_proxy_protocol_v2_tlv_has_type(tlvs,
+                NGX_PROXY_PROTOCOL_V2_TYPE_ALPN))
         {
             if (ngx_proxy_protocol_v2_auto_alpn(c, &value) == NGX_OK) {
                 tlv = ngx_array_push(tlvs);
@@ -1125,7 +1267,9 @@ ngx_proxy_protocol_eval_tlvs(ngx_connection_t *c,
         }
 
         if (!ngx_proxy_protocol_v2_user_has_type(conf,
-                NGX_PROXY_PROTOCOL_V2_TYPE_AUTHORITY, 0))
+                NGX_PROXY_PROTOCOL_V2_TYPE_AUTHORITY, 0)
+            && !ngx_proxy_protocol_v2_tlv_has_type(tlvs,
+                NGX_PROXY_PROTOCOL_V2_TYPE_AUTHORITY))
         {
             if (ngx_proxy_protocol_v2_auto_authority(c, &value) == NGX_OK) {
                 tlv = ngx_array_push(tlvs);
@@ -1439,6 +1583,62 @@ ngx_proxy_protocol_tlv_type(ngx_str_t *name, ngx_uint_t *typep,
     *is_ssl_verifyp = 0;
     *is_ssl_rawp = 0;
     return NGX_OK;
+}
+
+
+char *
+ngx_proxy_protocol_v2_add_passthrough(ngx_conf_t *cf,
+    ngx_array_t **passthrough, ngx_str_t *name)
+{
+    ngx_int_t   rc;
+    ngx_uint_t  type, is_ssl_sub, is_ssl_verify, is_ssl_raw, *tp;
+
+    rc = ngx_proxy_protocol_tlv_type(name, &type, &is_ssl_sub, &is_ssl_verify,
+                                     &is_ssl_raw);
+    if (rc == NGX_DECLINED) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "unknown PROXY protocol TLV \"%V\"", name);
+        return NGX_CONF_ERROR;
+    }
+
+    if (rc == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid PROXY protocol TLV \"%V\"", name);
+        return NGX_CONF_ERROR;
+    }
+
+    if (is_ssl_sub || is_ssl_verify) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "SSL sub-TLV types cannot be used in "
+                           "\"proxy_protocol_passthrough\"; use "
+                           "\"proxy_protocol_passthrough ssl\" to forward "
+                           "the entire SSL TLV verbatim");
+        return NGX_CONF_ERROR;
+    }
+
+    if (type == NGX_PROXY_PROTOCOL_V2_TYPE_CRC32C) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "CRC32c TLV (0x03) cannot be passed through: "
+                           "the checksum covers the original wire bytes "
+                           "and is invalid on a re-assembled header");
+        return NGX_CONF_ERROR;
+    }
+
+    if (*passthrough == NULL) {
+        *passthrough = ngx_array_create(cf->pool, 4, sizeof(ngx_uint_t));
+        if (*passthrough == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    tp = ngx_array_push(*passthrough);
+    if (tp == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *tp = type;
+
+    return NGX_CONF_OK;
 }
 
 
