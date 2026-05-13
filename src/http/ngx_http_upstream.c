@@ -674,6 +674,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         u->peer.so_keepalive = 1;
     }
 
+    u->peer.rcvbuf = u->conf->socket_rcvbuf;
+    u->peer.sndbuf = u->conf->socket_sndbuf;
+
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     u->output.alignment = clcf->directio_alignment;
@@ -6953,6 +6956,48 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
             return NGX_CONF_ERROR;
         }
     }
+
+    return NGX_CONF_OK;
+}
+
+
+char *
+ngx_http_upstream_socket_buffer_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    char  *p = conf;
+
+    int        *np;
+    ngx_str_t  *value;
+    ssize_t     size;
+
+    np = (int *) (p + cmd->offset);
+
+    if (*np != NGX_CONF_UNSET) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        *np = 0;
+        return NGX_CONF_OK;
+    }
+
+    if (ngx_strcmp(value[1].data, "max") == 0) {
+        *np = NGX_MAX_INT32_VALUE;
+        return NGX_CONF_OK;
+    }
+
+    size = ngx_parse_size(&value[1]);
+
+    if (size == NGX_ERROR || size <= 0 || size > NGX_MAX_INT32_VALUE) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid value \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    *np = (int) size;
 
     return NGX_CONF_OK;
 }

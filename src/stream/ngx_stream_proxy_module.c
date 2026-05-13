@@ -34,8 +34,8 @@ typedef struct {
     ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
-    ngx_int_t                        socket_rcvbuf;
-    ngx_int_t                        socket_sndbuf;
+    int                              socket_rcvbuf;
+    int                              socket_sndbuf;
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -475,8 +475,8 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
         u->peer.so_keepalive = 1;
     }
 
-    u->peer.rcvbuf = (int) pscf->socket_rcvbuf;
-    u->peer.sndbuf = (int) pscf->socket_sndbuf;
+    u->peer.rcvbuf = pscf->socket_rcvbuf;
+    u->peer.sndbuf = pscf->socket_sndbuf;
 
     u->peer.type = c->type;
     u->start_sec = ngx_time();
@@ -2881,11 +2881,11 @@ ngx_stream_proxy_socket_buf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char  *p = conf;
 
-    ngx_int_t   *np;
-    ngx_str_t   *value;
-    ssize_t      size;
+    int        *np;
+    ngx_str_t  *value;
+    ssize_t     size;
 
-    np = (ngx_int_t *) (p + cmd->offset);
+    np = (int *) (p + cmd->offset);
 
     if (*np != NGX_CONF_UNSET) {
         return "is duplicate";
@@ -2911,7 +2911,7 @@ ngx_stream_proxy_socket_buf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    *np = (ngx_int_t) size;
+    *np = (int) size;
 
     return NGX_CONF_OK;
 }
