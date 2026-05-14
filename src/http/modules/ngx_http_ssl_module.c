@@ -29,6 +29,36 @@ static int ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
     const unsigned char **out, unsigned char *outlen,
     const unsigned char *in, unsigned int inlen, void *arg);
 #endif
+u_char *ngx_ssl_get_backend_protocol(ngx_connection_t *c);
+u_char *ngx_ssl_get_backend_cipher(ngx_connection_t *c);
+
+static ngx_int_t ngx_http_backend_ssl_add_variables(ngx_conf_t *cf);
+
+static ngx_int_t ngx_http_variable_backend_ssl_cipher(ngx_http_request_t *r,
+                                                      ngx_http_variable_value_t *v,
+                                                      uintptr_t data);
+
+static ngx_int_t ngx_http_variable_backend_ssl_protocol(ngx_http_request_t *r,
+                                                        ngx_http_variable_value_t *v,
+                                                        uintptr_t data);
+
+static ngx_http_module_t ngx_http_backend_ssl_module_ctx = {
+    ngx_http_backend_ssl_add_variables,  /* preconfiguration */
+    NULL,                                /* postconfiguration */
+    NULL, NULL,                          /* create/init main conf */
+    NULL, NULL,                          /* create/merge srv conf */
+    NULL, NULL                           /* create/merge loc conf */
+};
+
+
+ngx_module_t ngx_http_backend_ssl_module = {
+    NGX_MODULE_V1,
+    &ngx_http_backend_ssl_module_ctx,
+    NULL,
+    NGX_HTTP_MODULE,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NGX_MODULE_V1_PADDING
+};
 
 static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -88,6 +118,79 @@ static ngx_conf_enum_t  ngx_http_ssl_ocsp[] = {
     { ngx_string("leaf"), 2 },
     { ngx_null_string, 0 }
 };
+
+static ngx_int_t
+ngx_http_variable_backend_ssl_cipher(ngx_http_request_t *r,
+                                     ngx_http_variable_value_t *v,
+                                     uintptr_t data)
+{
+    // You'll need to pull this from your SSL backend context
+    ngx_http_backend_ssl_ctx_t *ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_backend_ssl_module);
+
+    if (ctx == NULL || ctx->backend_ssl_cipher == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = ctx->backend_ssl_cipher;
+    v->len = ngx_strlen(ctx->backend_ssl_cipher);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_variable_backend_ssl_protocol(ngx_http_request_t *r,
+                                     ngx_http_variable_value_t *v,
+                                     uintptr_t data)
+{
+    // You'll need to pull this from your SSL backend context
+    ngx_http_backend_ssl_ctx_t *ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_backend_ssl_module);
+
+    if (ctx == NULL || ctx->backend_ssl_protocol == NULL) {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    v->data = ctx->backend_ssl_protocol;
+    v->len = ngx_strlen(ctx->backend_ssl_protocol);
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+}
+
+// Add this function to register your custom variables
+static ngx_int_t
+ngx_http_backend_ssl_add_variables(ngx_conf_t *cf)
+{
+    ngx_http_variable_t  *var;
+	ngx_str_t name;
+
+	name.len = sizeof("backend_ssl_protocol") - 1;
+	name.data = (u_char *)"backend_ssl_protocol";
+	var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+    var->get_handler = ngx_http_variable_backend_ssl_protocol;
+
+	name.len = sizeof("backend_ssl_cipher") - 1;
+	name.data = (u_char *)"backend_ssl_cipher";
+	var = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+    if (var == NULL) {
+        return NGX_ERROR;
+    }
+    var->get_handler = ngx_http_variable_backend_ssl_cipher;
+
+    return NGX_OK;
+}
+
 
 
 static ngx_conf_post_t  ngx_http_ssl_conf_command_post =
@@ -316,6 +419,38 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_null_command
 };
 
+u_char *
+ngx_ssl_get_backend_cipher(ngx_connection_t *c)
+{
+    const SSL_CIPHER *cipher;
+    const char *name;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    cipher = SSL_get_current_cipher(c->ssl->connection);
+    if (cipher == NULL) {
+        return NULL;
+    }
+
+    name = SSL_CIPHER_get_name(cipher);
+    return (u_char *) name;
+}
+
+u_char *
+ngx_ssl_get_backend_protocol(ngx_connection_t *c)
+{
+    const char *proto;
+
+    if (c == NULL || c->ssl == NULL || c->ssl->connection == NULL) {
+        return NULL;
+    }
+
+    proto = SSL_get_version(c->ssl->connection);
+    return (u_char *) proto;
+}
+
 
 static ngx_http_module_t  ngx_http_ssl_module_ctx = {
     ngx_http_ssl_add_variables,            /* preconfiguration */
@@ -430,7 +565,14 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
       (uintptr_t) ngx_ssl_get_client_v_end, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_client_v_remain"), NULL, ngx_http_ssl_variable,
-      (uintptr_t) ngx_ssl_get_client_v_remain, NGX_HTTP_VAR_CHANGEABLE, 0 },
+      (uintptr_t) ngx_ssl_get_client_v_remain, NGX_HTTP_VAR_CHANGEABLE, 0 },	  
+	  
+	{ ngx_string("backend_ssl_protocol"), NULL,
+      ngx_http_variable_backend_ssl_protocol, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
+    { ngx_string("backend_ssl_cipher"), NULL,
+      ngx_http_variable_backend_ssl_cipher, 0, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
 
     { ngx_string("ssl_client_sigalg"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_client_sigalg, NGX_HTTP_VAR_CHANGEABLE, 0 },
