@@ -46,6 +46,12 @@ typedef struct {
 } ngx_http_ssi_block_t;
 
 
+typedef struct {
+    ngx_chain_t  *out;
+    unsigned      done:1;
+} ngx_http_ssi_stub_ctx_t;
+
+
 typedef enum {
     ssi_start_state = 0,
     ssi_tag_state,
@@ -325,39 +331,6 @@ static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 };
 
 
-static ngx_http_ssi_ctx_t *
-ngx_http_ssi_create_ctx(ngx_http_request_t *r)
-{
-    ngx_http_ssi_ctx_t       *ctx;
-    ngx_http_ssi_loc_conf_t  *slcf;
-
-    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
-    if (ctx == NULL) {
-        return NULL;
-    }
-
-    ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
-
-    slcf = ngx_http_get_module_loc_conf(r, ngx_http_ssi_filter_module);
-
-    ctx->value_len = slcf->value_len;
-    ctx->last_out = &ctx->out;
-
-    ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
-    ctx->output = 1;
-
-    ctx->params.elts = ctx->params_array;
-    ctx->params.size = sizeof(ngx_table_elt_t);
-    ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
-    ctx->params.pool = r->pool;
-
-    ctx->timefmt = ngx_http_ssi_timefmt;
-    ngx_str_set(&ctx->errmsg,
-                "[an error occurred while processing the directive]");
-
-    return ctx;
-}
-
 
 static ngx_int_t
 ngx_http_ssi_header_filter(ngx_http_request_t *r)
@@ -376,10 +349,28 @@ ngx_http_ssi_header_filter(ngx_http_request_t *r)
 
     mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 
-    ctx = ngx_http_ssi_create_ctx(r);
+    ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
     }
+
+    ngx_http_set_ctx(r, ctx, ngx_http_ssi_filter_module);
+
+
+    ctx->value_len = slcf->value_len;
+    ctx->last_out = &ctx->out;
+
+    ctx->encoding = NGX_HTTP_SSI_ENTITY_ENCODING;
+    ctx->output = 1;
+
+    ctx->params.elts = ctx->params_array;
+    ctx->params.size = sizeof(ngx_table_elt_t);
+    ctx->params.nalloc = NGX_HTTP_SSI_PARAMS_N;
+    ctx->params.pool = r->pool;
+
+    ctx->timefmt = ngx_http_ssi_timefmt;
+    ngx_str_set(&ctx->errmsg,
+                "[an error occurred while processing the directive]");
 
     r->filter_need_in_memory = 1;
 
@@ -2041,6 +2032,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_http_ssi_var_t          *var;
     ngx_http_ssi_ctx_t          *mctx;
     ngx_http_ssi_block_t        *bl;
+    ngx_http_ssi_stub_ctx_t     *sctx;
     ngx_http_post_subrequest_t  *psr;
 
     uri = params[NGX_HTTP_SSI_INCLUDE_VIRTUAL];
@@ -2139,7 +2131,13 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             return NGX_ERROR;
         }
 
+        sctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_stub_ctx_t));
+        if (sctx == NULL) {
+            return NGX_ERROR;
+        }
+
         psr->handler = ngx_http_ssi_stub_output;
+        psr->data = sctx;
 
         if (bl[i].count++) {
 
@@ -2176,10 +2174,10 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                 ll = &cl->next;
             }
 
-            psr->data = out;
+            sctx->out = out;
 
         } else {
-            psr->data = bl[i].bufs;
+            sctx->out = bl[i].bufs;
         }
     }
 
@@ -2247,32 +2245,20 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 static ngx_int_t
 ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
-    ngx_chain_t        *out;
-    ngx_http_ssi_ctx_t *ctx;
+    ngx_http_ssi_stub_ctx_t  *sctx = data;
 
     if (rc == NGX_ERROR || r->connection->error || r->request_output) {
         return rc;
     }
 
-    ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
-
-    if (ctx && ctx->stub_output_done) {
+    if (sctx->done) {
         return NGX_OK;
     }
 
-    if (ctx == NULL) {
-        ctx = ngx_http_ssi_create_ctx(r);
-        if (ctx == NULL) {
-            return NGX_ERROR;
-        }
-    }
-
-    ctx->stub_output_done = 1;
+    sctx->done = 1;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi stub output: \"%V?%V\"", &r->uri, &r->args);
-
-    out = data;
 
     if (!r->header_sent) {
         r->headers_out.content_type_len =
@@ -2284,7 +2270,7 @@ ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
         }
     }
 
-    return ngx_http_output_filter(r, out);
+    return ngx_http_output_filter(r, sctx->out);
 }
 
 
