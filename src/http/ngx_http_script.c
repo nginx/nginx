@@ -1183,6 +1183,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         return;
     }
 
+    e->is_args = 0;
     e->quote = code->redirect;
 
     e->pos = e->buf.data;
@@ -1769,6 +1770,7 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
     le.ip = code->lengths->elts;
     le.line = e->line;
     le.request = e->request;
+    le.is_args = e->is_args;
     le.quote = e->quote;
 
     for (len = 0; *(uintptr_t *) le.ip; len += lcode(&le)) {
