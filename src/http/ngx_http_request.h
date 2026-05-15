@@ -566,6 +566,7 @@ struct ngx_http_request_s {
     unsigned                          main_filter_need_in_memory:1;
     unsigned                          filter_need_in_memory:1;
     unsigned                          filter_need_temporary:1;
+    unsigned                          remote_user_set:1;
     unsigned                          preserve_body:1;
     unsigned                          allow_ranges:1;
     unsigned                          subrequest_ranges:1;
