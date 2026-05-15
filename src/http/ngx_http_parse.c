@@ -1908,8 +1908,13 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
         goto unsafe;
     }
 
-    if (p[0] == '.' && len > 1 && p[1] == '.'
-        && (len == 2 || ngx_path_separator(p[2])))
+    /* detect leading ".", "./", "..", and "../" */
+
+    if (p[0] == '.'
+        && (len == 1
+            || ngx_path_separator(p[1])
+            || (p[1] == '.'
+                && (len == 2 || ngx_path_separator(p[2])))))
     {
         goto unsafe;
     }
@@ -1939,12 +1944,15 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
             goto unsafe;
         }
 
-        if (ngx_path_separator(ch) && len > 2) {
+        if (ngx_path_separator(ch) && len > 1) {
 
-            /* detect "/../" and "/.." */
+            /* detect "/.", "/./", "/..", and "/../" */
 
-            if (p[0] == '.' && p[1] == '.'
-                && (len == 3 || ngx_path_separator(p[2])))
+            if (p[0] == '.'
+                && (len == 2
+                    || ngx_path_separator(p[1])
+                    || (p[1] == '.'
+                        && (len == 3 || ngx_path_separator(p[2])))))
             {
                 goto unsafe;
             }
@@ -1974,8 +1982,13 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
         len = uri->len;
         p = uri->data;
 
-        if (p[0] == '.' && len > 1 && p[1] == '.'
-            && (len == 2 || ngx_path_separator(p[2])))
+        /* detect leading ".", "./", "..", and "../" */
+
+        if (p[0] == '.'
+            && (len == 1
+                || ngx_path_separator(p[1])
+                || (p[1] == '.'
+                    && (len == 2 || ngx_path_separator(p[2])))))
         {
             goto unsafe;
         }
@@ -1988,12 +2001,15 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
                 goto unsafe;
             }
 
-            if (ngx_path_separator(ch) && len > 2) {
+            if (ngx_path_separator(ch) && len > 1) {
 
-                /* detect "/../" and "/.." */
+                /* detect "/.", "/./", "/..", and "/../" */
 
-                if (p[0] == '.' && p[1] == '.'
-                    && (len == 3 || ngx_path_separator(p[2])))
+                if (p[0] == '.'
+                    && (len == 2
+                        || ngx_path_separator(p[1])
+                        || (p[1] == '.'
+                            && (len == 3 || ngx_path_separator(p[2])))))
                 {
                     goto unsafe;
                 }
