@@ -1579,6 +1579,15 @@ ngx_http_scgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         return NGX_CONF_ERROR;
     }
 
+    if (conf->upstream.cache_min_uses != NGX_CONF_UNSET_UINT
+        && conf->upstream.cache_min_uses > 1023)
+    {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"scgi_cache_min_uses\" value %ui exceeds 1023 "
+                           "and effectively disables caching",
+                           conf->upstream.cache_min_uses);
+    }
+
     ngx_conf_merge_uint_value(conf->upstream.cache_min_uses,
                               prev->upstream.cache_min_uses, 1);
 
