@@ -5670,6 +5670,106 @@ ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_sigalgs(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+
+    int           n, i;
+    unsigned int  codepoint;
+    const char   *name;
+    u_char       *p;
+    size_t        len;
+
+    n = SSL_get0_sigalg(c->ssl->connection, -1, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = 0;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+        len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
+        len += sizeof(":") - 1;
+    }
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+
+        if (name) {
+            p = ngx_cpymem(p, name, ngx_strlen(name));
+
+        } else {
+            p = ngx_sprintf(p, "0x%04xd", (int) codepoint);
+        }
+
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#elif (OPENSSL_VERSION_NUMBER >= 0x10002000L && !defined OPENSSL_IS_BORINGSSL)
+
+    /*
+     * SSL_get_sigalgs() is designed for TLS 1.2; OBJ_nid2sn(psignandhash)
+     * can map distinct TLS SignatureScheme codes to the same OID name
+     * (e.g. 0x0403 and 0x081a both yield "ecdsa-with-SHA256"), so report
+     * raw TLS SignatureScheme codes to avoid ambiguity.
+     */
+
+    int            n, i;
+    unsigned char  rsig, rhash;
+    u_char        *p;
+    size_t         len;
+
+    n = SSL_get_sigalgs(c->ssl->connection, -1, NULL, NULL, NULL, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = n * (sizeof("0x0000") - 1 + sizeof(":") - 1);
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get_sigalgs(c->ssl->connection, i, NULL, NULL, NULL, &rsig, &rhash);
+        p = ngx_sprintf(p, "0x%04xd", (int) (rhash << 8 | rsig));
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#else
+
+    s->len = 0;
+
+#endif
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     u_char        *buf;
