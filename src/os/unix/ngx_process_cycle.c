@@ -955,7 +955,8 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
                 && c[i].read
                 && !c[i].read->accept
                 && !c[i].read->channel
-                && !c[i].read->resolver)
+                && !c[i].read->resolver
+                && !c[i].read->quic)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                               "*%uA open socket #%d left in connection %ui",
