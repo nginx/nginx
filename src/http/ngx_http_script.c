@@ -62,6 +62,11 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
     ngx_http_script_code_pt       code;
     ngx_http_script_len_code_pt   lcode;
     ngx_http_script_engine_t      e;
+#if (NGX_PCRE)
+    int                          *captures_snapshot;
+    ngx_uint_t                    saved_ncaptures;
+    u_char                       *saved_captures_data;
+#endif
 
     if (val->lengths == NULL) {
         *value = val->value;
@@ -76,6 +81,20 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
     e.request = r;
     e.flushed = 1;
 
+#if (NGX_PCRE)
+    saved_ncaptures = r->ncaptures;
+    saved_captures_data = r->captures_data;
+    captures_snapshot = NULL;
+
+    if (r->captures && r->ncaptures) {
+        captures_snapshot = ngx_palloc(r->pool, r->ncaptures * sizeof(int));
+        if (captures_snapshot == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_memcpy(captures_snapshot, r->captures, r->ncaptures * sizeof(int));
+    }
+#endif
+
     len = 0;
 
     while (*(uintptr_t *) e.ip) {
@@ -88,6 +107,14 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
     if (value->data == NULL) {
         return NGX_ERROR;
     }
+
+#if (NGX_PCRE)
+    r->ncaptures = saved_ncaptures;
+    r->captures_data = saved_captures_data;
+    if (captures_snapshot) {
+        ngx_memcpy(r->captures, captures_snapshot, saved_ncaptures * sizeof(int));
+    }
+#endif
 
     e.ip = val->values;
     e.pos = value->data;
@@ -1044,6 +1071,11 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
     ngx_http_script_engine_t       le;
     ngx_http_script_len_code_pt    lcode;
     ngx_http_script_regex_code_t  *code;
+#if (NGX_PCRE)
+    int                           *captures_snapshot;
+    ngx_uint_t                     saved_ncaptures;
+    u_char                        *saved_captures_data;
+#endif
 
     code = (ngx_http_script_regex_code_t *) e->ip;
 
@@ -1162,12 +1194,36 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         le.request = r;
         le.quote = code->redirect;
 
+#if (NGX_PCRE)
+        saved_ncaptures = r->ncaptures;
+        saved_captures_data = r->captures_data;
+        captures_snapshot = NULL;
+
+        if (r->captures && r->ncaptures) {
+            captures_snapshot = ngx_palloc(r->pool, r->ncaptures * sizeof(int));
+            if (captures_snapshot == NULL) {
+                e->ip = ngx_http_script_exit;
+                e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return;
+            }
+            ngx_memcpy(captures_snapshot, r->captures, r->ncaptures * sizeof(int));
+        }
+#endif
+
         len = 0;
 
         while (*(uintptr_t *) le.ip) {
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
             len += lcode(&le);
         }
+
+#if (NGX_PCRE)
+        r->ncaptures = saved_ncaptures;
+        r->captures_data = saved_captures_data;
+        if (captures_snapshot) {
+            ngx_memcpy(r->captures, captures_snapshot, saved_ncaptures * sizeof(int));
+        }
+#endif
 
         e->buf.len = len;
     }
