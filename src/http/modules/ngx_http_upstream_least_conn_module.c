@@ -271,7 +271,9 @@ best_chosen:
     n = p / (8 * sizeof(uintptr_t));
     m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
 
-    rrp->tried[n] |= m;
+    if (pc->unique) {
+        rrp->tried[n] |= m;
+    }
 
     ngx_http_upstream_rr_peers_unlock(peers);
 
