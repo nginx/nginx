@@ -896,6 +896,27 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_OK;
     }
 
+    if (name->len == 9 && ngx_strncmp(name->data, ":protocol", 9) == 0) {
+
+        if (r->connect_protocol.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":protocol\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":protocol\" header");
+            goto failed;
+        }
+
+        r->connect_protocol = *value;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http3 protocol \"%V\"", value);
+        return NGX_OK;
+    }
+
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent unknown pseudo-header \"%V\"", name);
 
@@ -909,10 +930,12 @@ failed:
 static ngx_int_t
 ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 {
-    size_t      len;
-    u_char     *p;
-    ngx_int_t   rc;
-    ngx_str_t   host;
+    size_t                    len, target_len;
+    u_char                   *p;
+    ngx_int_t                 rc;
+    ngx_uint_t                classic_connect;
+    ngx_str_t                 host;
+    ngx_http_core_srv_conf_t *cscf;
     in_port_t   port;
 
     if (r->request_line.len) {
@@ -924,6 +947,19 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
                       "client sent no \":method\" header");
         goto failed;
     }
+
+    if (r->method == NGX_HTTP_CONNECT) {
+        goto method_connect;
+    }
+
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent \":protocol\" header with non-CONNECT "
+                      "method");
+        goto failed;
+    }
+
+    classic_connect = 0;
 
     if (r->schema.len == 0) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
@@ -937,9 +973,66 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         goto failed;
     }
 
-    len = r->method_name.len + 1
-          + (r->uri_end - r->uri_start) + 1
-          + sizeof("HTTP/3.0") - 1;
+    target_len = (size_t) (r->uri_end - r->uri_start);
+
+    goto construct_request_line;
+
+method_connect:
+
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (!cscf->allow_connect) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return NGX_ERROR;
+    }
+
+    if (r->schema.len == 0 && r->uri_start == NULL
+        && r->connect_protocol.len == 0)
+    {
+        classic_connect = 1;
+
+        if (r->host_start == NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no \":authority\" header");
+            goto failed;
+        }
+
+        r->uri_start = (u_char *) "/";
+        r->uri_end = r->uri_start + 1;
+
+        target_len = (size_t) (r->host_end - r->host_start);
+
+        goto construct_request_line;
+    }
+
+    classic_connect = 0;
+
+    if (r->schema.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":scheme\" header");
+        goto failed;
+    }
+
+    if (r->connect_protocol.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent extended CONNECT without "
+                      "\":protocol\" header");
+        goto failed;
+    }
+
+    if (r->uri_start == NULL) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no \":path\" header");
+        goto failed;
+    }
+
+    target_len = (size_t) (r->uri_end - r->uri_start);
+
+construct_request_line:
+
+    len = r->method_name.len + 1 + target_len + 1 + sizeof("HTTP/3.0") - 1;
 
     p = ngx_pnalloc(r->pool, len);
     if (p == NULL) {
@@ -951,7 +1044,14 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
     p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
     *p++ = ' ';
-    p = ngx_cpymem(p, r->uri_start, r->uri_end - r->uri_start);
+
+    if (classic_connect) {
+        p = ngx_cpymem(p, r->host_start, target_len);
+
+    } else {
+        p = ngx_cpymem(p, r->uri_start, target_len);
+    }
+
     *p++ = ' ';
     p = ngx_cpymem(p, "HTTP/3.0", sizeof("HTTP/3.0") - 1);
 
@@ -1134,12 +1234,6 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         if (n != 0) {
             r->headers_in.chunked = 1;
         }
-    }
-
-    if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
     }
 
     if (r->method == NGX_HTTP_TRACE) {
