@@ -888,6 +888,8 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     tp = ngx_timeofday();
     srandom(((unsigned) ngx_pid << 16) ^ tp->sec ^ tp->msec);
 
+    ngx_random_init();
+
     for (i = 0; cycle->modules[i]; i++) {
         if (cycle->modules[i]->init_process) {
             if (cycle->modules[i]->init_process(cycle) == NGX_ERROR) {
