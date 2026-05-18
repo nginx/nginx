@@ -44,6 +44,11 @@ ngx_libc_localtime(time_t s, struct tm *tm)
     struct tm  *t;
 
     t = localtime(&s);
+    if (t == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
+
     *tm = *t;
 }
 
@@ -54,6 +59,11 @@ ngx_libc_gmtime(time_t s, struct tm *tm)
     struct tm  *t;
 
     t = gmtime(&s);
+    if (t == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
+
     *tm = *t;
 }
 

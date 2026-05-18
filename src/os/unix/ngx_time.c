@@ -46,6 +46,9 @@ ngx_timezone_update(void)
     s = time(NULL);
 
     t = localtime(&s);
+    if (t == NULL) {
+        return;
+    }
 
     strftime(buf, 4, "%H", t);
 
@@ -57,12 +60,20 @@ void
 ngx_localtime(time_t s, ngx_tm_t *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    (void) localtime_r(&s, tm);
+    if (localtime_r(&s, tm) == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
 
 #else
     ngx_tm_t  *t;
 
     t = localtime(&s);
+    if (t == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
+
     *tm = *t;
 
 #endif
@@ -76,12 +87,20 @@ void
 ngx_libc_localtime(time_t s, struct tm *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    (void) localtime_r(&s, tm);
+    if (localtime_r(&s, tm) == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
 
 #else
     struct tm  *t;
 
     t = localtime(&s);
+    if (t == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
+
     *tm = *t;
 
 #endif
@@ -92,12 +111,20 @@ void
 ngx_libc_gmtime(time_t s, struct tm *tm)
 {
 #if (NGX_HAVE_LOCALTIME_R)
-    (void) gmtime_r(&s, tm);
+    if (gmtime_r(&s, tm) == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
 
 #else
     struct tm  *t;
 
     t = gmtime(&s);
+    if (t == NULL) {
+        ngx_memzero(tm, sizeof(struct tm));
+        return;
+    }
+
     *tm = *t;
 
 #endif
