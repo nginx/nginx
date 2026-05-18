@@ -2198,3 +2198,77 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
 
     return NGX_OK;
 }
+
+ngx_int_t
+ngx_conf_check_field_name_and_strip_value(ngx_conf_t *cf,
+    const ngx_str_t *cmd_name, const ngx_str_t *name, ngx_str_t *value)
+{
+    size_t  out_cursor = 0, cursor = 0, end, original_end;
+    u_char  *ptr, ch;
+
+    if (ngx_http_valid_header_name(*name) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%V: Invalid HTTP field name",
+                           (ngx_str_t *)cmd_name);
+        return NGX_ERROR;
+    }
+
+#define ISSPACE(c) ((c) == ' ' || (c) == '\t')
+    end = original_end = value->len;
+    ptr = value->data;
+
+    while (cursor < end && ISSPACE(ptr[cursor])) {
+        cursor++;
+    }
+
+    for ( /* void */; cursor < end; ++cursor) {
+        ch = ptr[cursor];
+
+        if (ch == 0) {
+            goto fail;
+        }
+
+        if (ch != CR && ch != LF) {
+            ptr[out_cursor++] = ch;
+            continue;
+        }
+
+        if (ch == CR) {
+            if (end - cursor < 2 || ptr[cursor + 1] != LF) {
+                goto fail;
+            }
+            cursor++;
+        }
+        cursor++;
+
+        if (cursor >= end || !ISSPACE(ptr[cursor])) {
+            goto fail;
+        }
+
+        do {
+            cursor++;
+        } while (cursor < end && ISSPACE(ptr[cursor]));
+
+        while (out_cursor > 0 && ISSPACE(ptr[out_cursor - 1])) {
+            out_cursor--;
+        }
+
+        if (out_cursor > 0) {
+            ptr[out_cursor++] = ' ';
+        }
+    }
+
+    while (out_cursor > 0 && ISSPACE(ptr[out_cursor - 1])) {
+        out_cursor--;
+    }
+
+    if (out_cursor < original_end) {
+        memset(ptr + out_cursor, '\0', (size_t)(original_end - out_cursor));
+    }
+    value->len = out_cursor;
+    return NGX_OK;
+fail:
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "%V: Invalid HTTP field value", (ngx_str_t *)cmd_name);
+    return NGX_ERROR;
+}
