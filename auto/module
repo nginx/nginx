@@ -127,8 +127,39 @@ elif [ "$ngx_module_link" = YES ]; then
 
 elif [ "$ngx_module_link" = ADDON ]; then
 
-    eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
-                                      $ngx_module_name\"
+    if [ -n "$ngx_module_order" -a \
+         \( "$ngx_module_type" = "HTTP_FILTER" \
+         -o "$ngx_module_type" = "HTTP_AUX_FILTER" \) ]
+    then
+        before=
+        found=no
+        for mod in $ngx_module_order; do
+            if [ "$found" = yes ]; then
+                before="$mod"
+                break
+            fi
+
+            if [ "$mod" = "$ngx_module_name" ]; then
+                found=yes
+            fi
+        done
+
+        vname="${ngx_module_type}_MODULES"
+        eval modules=\$$vname
+        new_modules=
+        for mod in $modules; do
+            if [ "$mod" = "$before" ]; then
+                new_modules="$new_modules $ngx_module_name"
+            fi
+
+            new_modules="$new_modules $mod"
+        done
+
+        eval ${ngx_module_type}_MODULES=\"$new_modules\"
+    else
+        eval ${ngx_module_type}_MODULES=\"\$${ngx_module_type}_MODULES \
+                                          $ngx_module_name\"
+    fi
 
     srcs=
     for src in $ngx_module_srcs
