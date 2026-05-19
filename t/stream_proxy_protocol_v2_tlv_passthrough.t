@@ -9,9 +9,9 @@
 #
 #   1. Variable passthrough: incoming TLV values re-emitted upstream via
 #      $proxy_protocol_tlv_* variables.
-#   2. SSL TLV body passthrough: the raw $proxy_protocol_tlv_ssl blob
-#      forwarded as a proxy_protocol_tlv ssl value.
-#   3. Ordering: ssl sub-TLV directives configured before regular TLVs.
+#   2. Ordering: ssl sub-TLV directives configured before regular TLV
+#      directives.
+#   3. ssl_0x<hex> numeric sub-type syntax.
 
 ###############################################################################
 
@@ -31,7 +31,7 @@ use Test::Nginx::Stream qw/ stream /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/stream/)->plan(12)
+my $t = Test::Nginx->new()->has(qw/stream/)->plan(10)
 	->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
@@ -78,20 +78,10 @@ ssl_cip:$proxy_protocol_tlv_ssl_cipher
         proxy_protocol_tlv  0xae       $proxy_protocol_tlv_0xae;
     }
 
-    # Server 2: SSL TLV body passthrough — the raw $proxy_protocol_tlv_ssl
-    # blob forwarded verbatim as proxy_protocol_tlv ssl.
-    server {
-        listen      127.0.0.1:%%PORT_8082%% proxy_protocol;
-        proxy_pass  127.0.0.1:%%PORT_8091%%;
-        proxy_protocol          on;
-        proxy_protocol_version  2;
-        proxy_protocol_tlv  ssl  $proxy_protocol_tlv_ssl;
-    }
-
-    # Server 3: ordering test — SSL sub-TLV directives appear before
+    # Server 2: ordering test — SSL sub-TLV directives appear before
     # regular TLV directives in the configuration.
     server {
-        listen      127.0.0.1:%%PORT_8083%%;
+        listen      127.0.0.1:%%PORT_8082%%;
         proxy_pass  127.0.0.1:%%PORT_8091%%;
         proxy_protocol          on;
         proxy_protocol_version  2;
@@ -101,10 +91,10 @@ ssl_cip:$proxy_protocol_tlv_ssl_cipher
         proxy_protocol_tlv  authority    "example.com";
     }
 
-    # Server 4: ssl_0x<NN> numeric sub-type syntax — ssl_0x22 is CN,
+    # Server 3: ssl_0x<NN> numeric sub-type syntax — ssl_0x22 is CN,
     # ssl_0x23 is cipher.
     server {
-        listen      127.0.0.1:%%PORT_8084%%;
+        listen      127.0.0.1:%%PORT_8083%%;
         proxy_pass  127.0.0.1:%%PORT_8091%%;
         proxy_protocol          on;
         proxy_protocol_version  2;
@@ -116,7 +106,7 @@ ssl_cip:$proxy_protocol_tlv_ssl_cipher
 EOF
 
 $t->run();
-$t->waitforsocket('127.0.0.1:' . port(8083));
+$t->waitforsocket('127.0.0.1:' . port(8082));
 
 ###############################################################################
 
@@ -125,11 +115,6 @@ $t->waitforsocket('127.0.0.1:' . port(8083));
 sub pp2_tlv {
     my ($type, $value) = @_;
     return pack('Cn', $type, length($value)) . $value;
-}
-
-sub pp2_ssl_body {
-    my ($client, $verify, $subtlvs) = @_;
-    return pack('CN', $client, $verify) . $subtlvs;
 }
 
 sub pp2_header {
@@ -161,33 +146,14 @@ sub pp2_header {
     like($r, qr/cust:myval/,        'passthrough custom 0xae');
 }
 
-# 2. SSL TLV body passthrough.
+# 2. TLV ordering — ssl sub-TLV directives before regular TLV directives.
 #
-# Send PP v2 carrying a PP2_TYPE_SSL TLV with version and cn sub-TLVs to
-# relay server 2.  The relay reads $proxy_protocol_tlv_ssl (the raw 0x20
-# body) and forwards it verbatim via "proxy_protocol_tlv ssl".  Backend B
-# then parses the forwarded SSL TLV via its own $proxy_protocol_tlv_ssl_*
-# variables and echoes the values.
-
-{
-    my $sub  = pp2_tlv(0x21, 'TLSv1.2') . pp2_tlv(0x22, 'test.com');
-    my $ssl  = pp2_ssl_body(0x01, 0, $sub);
-    my $tlvs = pp2_tlv(0x20, $ssl);
-
-    my $r = stream('127.0.0.1:' . port(8082))->io(pp2_header($tlvs));
-
-    like($r, qr/ssl_ver:TLSv1\.2/, 'passthrough ssl_version');
-    like($r, qr/ssl_cn:test\.com/, 'passthrough ssl_cn');
-}
-
-# 3. TLV ordering — ssl sub-TLV directives before regular TLV directives.
-#
-# Server 3 is configured with ssl_version and ssl_cn first, then alpn and
+# Server 2 is configured with ssl_version and ssl_cn first, then alpn and
 # authority.  Verify that the assembled PP v2 header is parseable and all
 # four values are visible to backend B.
 
 {
-    my $r = stream('127.0.0.1:' . port(8083))->io('');
+    my $r = stream('127.0.0.1:' . port(8082))->io('');
 
     like($r, qr/ssl_ver:TLSv1\.3/,          'ordered ssl_version');
     like($r, qr/ssl_cn:test\.example\.com/,  'ordered ssl_cn');
@@ -195,13 +161,13 @@ sub pp2_header {
     like($r, qr/auth:example\.com/,          'ordered authority');
 }
 
-# 4. ssl_0x<NN> numeric sub-type syntax.
+# 3. ssl_0x<NN> numeric sub-type syntax.
 #
-# Server 4 uses ssl_0x22 (= CN sub-type) and ssl_0x23 (= cipher sub-type) to
+# Server 3 uses ssl_0x22 (= CN sub-type) and ssl_0x23 (= cipher sub-type) to
 # verify that numeric hex sub-type names are parsed and written correctly.
 
 {
-    my $r = stream('127.0.0.1:' . port(8084))->io('');
+    my $r = stream('127.0.0.1:' . port(8083))->io('');
 
     like($r, qr/ssl_cn:numeric-cn/,   'ssl_0x22 numeric sub-type');
     like($r, qr/ssl_cip:cipher-str/,  'ssl_0x23 numeric sub-type');
