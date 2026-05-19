@@ -168,7 +168,7 @@ ngx_http_v3_get_insert_buffer(ngx_connection_t *c)
     if (dt->insert_buffer == NULL) {
         h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
 
-        dt->insert_buffer = ngx_create_temp_buf(c->pool,
+        dt->insert_buffer = ngx_create_temp_buf(c->quic->parent->pool,
                                                 h3scf->max_table_capacity);
         if (dt->insert_buffer == NULL) {
             return NULL;
