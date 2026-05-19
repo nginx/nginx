@@ -161,6 +161,7 @@ static ngx_http_proxy_v2_ctx_t *
     ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc);
+static ngx_inline ngx_int_t ngx_http_proxy_v2_cached(ngx_http_request_t *r);
 static void ngx_http_proxy_v2_cleanup(void *data);
 
 static void ngx_http_proxy_v2_abort_request(ngx_http_request_t *r);
@@ -1451,7 +1452,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         /* frame payload */
 
-        if (u->peer.connection) {
+        if (!ngx_http_proxy_v2_cached(r)) {
 
             if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
                 rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
@@ -4141,9 +4142,7 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
     ngx_connection_t    *c;
     ngx_pool_cleanup_t  *cln;
 
-    c = pc->connection;
-
-    if (c == NULL) {
+    if (ngx_http_proxy_v2_cached(r)) {
         ctx->connection = ngx_palloc(r->pool, sizeof(ngx_http_proxy_v2_conn_t));
         if (ctx->connection == NULL) {
             return NGX_ERROR;
@@ -4153,6 +4152,8 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
 
         goto done;
     }
+
+    c = pc->connection;
 
     if (pc->cached) {
 
@@ -4206,6 +4207,17 @@ done:
     ctx->connection->last_stream_id = 1;
 
     return NGX_OK;
+}
+
+
+static ngx_inline ngx_int_t
+ngx_http_proxy_v2_cached(ngx_http_request_t *r)
+{
+#if (NGX_HTTP_CACHE)
+    return r->cached;
+#else
+    return 0;
+#endif
 }
 
 
