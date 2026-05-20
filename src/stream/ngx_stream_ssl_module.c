@@ -36,6 +36,8 @@ static int ngx_stream_ssl_certificate(ngx_ssl_conn_t *ssl_conn, void *arg);
 #endif
 static ngx_int_t ngx_stream_ssl_static_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_ssl_handshake_rtt_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_ssl_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 
@@ -372,6 +374,9 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
 
     { ngx_string("ssl_session_reused"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_reused, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
+    { ngx_string("ssl_handshake_rtt"), NULL, ngx_stream_ssl_handshake_rtt_variable,
+      (uintptr_t) ngx_ssl_get_handshake_rtt, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
     { ngx_string("ssl_server_name"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_server_name, NGX_STREAM_VAR_CHANGEABLE, 0 },
@@ -816,6 +821,35 @@ ngx_stream_ssl_static_variable(ngx_stream_session_t *s,
         for (len = 0; v->data[len]; len++) { /* void */ }
 
         v->len = len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+
+        return NGX_OK;
+    }
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_ssl_handshake_rtt_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+    ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
+
+    ngx_str_t  str;
+
+    if (s->connection->ssl) {
+
+        if (handler(s->connection, s->connection->pool, &str) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        v->len = str.len;
+        v->data = str.data;
         v->valid = 1;
         v->no_cacheable = 0;
         v->not_found = 0;

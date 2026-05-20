@@ -32,6 +32,8 @@ static int ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn,
 
 static ngx_int_t ngx_http_ssl_static_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_ssl_handshake_rtt_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_ssl_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 
@@ -374,6 +376,9 @@ static ngx_http_variable_t  ngx_http_ssl_vars[] = {
     { ngx_string("ssl_session_reused"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_reused, NGX_HTTP_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_handshake_rtt"), NULL, ngx_http_ssl_handshake_rtt_variable,
+      (uintptr_t) ngx_ssl_get_handshake_rtt, NGX_HTTP_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_early_data"), NULL, ngx_http_ssl_variable,
       (uintptr_t) ngx_ssl_get_early_data,
       NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_NOCACHEABLE, 0 },
@@ -556,6 +561,35 @@ ngx_http_ssl_static_variable(ngx_http_request_t *r,
         for (len = 0; v->data[len]; len++) { /* void */ }
 
         v->len = len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+
+        return NGX_OK;
+    }
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_ssl_handshake_rtt_variable(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    ngx_ssl_variable_handler_pt  handler = (ngx_ssl_variable_handler_pt) data;
+
+    ngx_str_t  s;
+
+    if (r->connection->ssl) {
+
+        if (handler(r->connection, r->pool, &s) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+        v->len = s.len;
+        v->data = s.data;
         v->valid = 1;
         v->no_cacheable = 0;
         v->not_found = 0;
