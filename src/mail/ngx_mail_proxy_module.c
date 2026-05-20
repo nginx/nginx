@@ -13,13 +13,16 @@
 
 
 typedef struct {
-    ngx_flag_t  enable;
-    ngx_flag_t  pass_error_message;
-    ngx_flag_t  xclient;
-    ngx_flag_t  smtp_auth;
-    ngx_flag_t  proxy_protocol;
-    size_t      buffer_size;
-    ngx_msec_t  timeout;
+    ngx_flag_t   enable;
+    ngx_flag_t   pass_error_message;
+    ngx_flag_t   xclient;
+    ngx_flag_t   smtp_auth;
+    ngx_flag_t   proxy_protocol;
+    ngx_uint_t   proxy_protocol_version;
+    ngx_array_t *proxy_protocol_passthrough;
+    ngx_uint_t   proxy_protocol_passthrough_all;
+    size_t       buffer_size;
+    ngx_msec_t   timeout;
 } ngx_mail_proxy_conf_t;
 
 
@@ -38,6 +41,15 @@ static void ngx_mail_proxy_close_session(ngx_mail_session_t *s);
 static void *ngx_mail_proxy_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static char *ngx_mail_proxy_protocol_passthrough(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+
+
+static ngx_conf_enum_t  ngx_mail_proxy_protocol_versions[] = {
+    { ngx_string("1"), 1 },
+    { ngx_string("2"), 2 },
+    { ngx_null_string, 0 }
+};
 
 
 static ngx_command_t  ngx_mail_proxy_commands[] = {
@@ -89,6 +101,20 @@ static ngx_command_t  ngx_mail_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_proxy_conf_t, proxy_protocol),
+      NULL },
+
+    { ngx_string("proxy_protocol_version"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_proxy_conf_t, proxy_protocol_version),
+      &ngx_mail_proxy_protocol_versions },
+
+    { ngx_string("proxy_protocol_passthrough"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
+      ngx_mail_proxy_protocol_passthrough,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      0,
       NULL },
 
       ngx_null_command
@@ -906,26 +932,35 @@ ngx_mail_proxy_write_handler(ngx_event_t *wev)
 static ngx_int_t
 ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
 {
-    u_char            *p;
-    ssize_t            n, size;
-    ngx_connection_t  *c;
-    u_char             buf[NGX_PROXY_PROTOCOL_V1_MAX_HEADER];
+    u_char                          *buf, *last;
+    ssize_t                          n, size;
+    ngx_connection_t                *c;
+    ngx_mail_proxy_conf_t           *pcf;
+    ngx_proxy_protocol_write_conf_t  pp_conf;
 
     s->connection->log->action = "sending PROXY protocol header to upstream";
 
     ngx_log_debug0(NGX_LOG_DEBUG_MAIL, s->connection->log, 0,
                    "mail proxy send PROXY protocol header");
 
-    p = ngx_proxy_protocol_write(s->connection, buf,
-                                 buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
-    if (p == NULL) {
+    pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
+
+    pp_conf.complex_value = NULL;
+    pp_conf.version = pcf->proxy_protocol_version;
+    pp_conf.tlvs = NULL;
+    pp_conf.crc32c = 0;
+    pp_conf.passthrough = pcf->proxy_protocol_passthrough;
+    pp_conf.passthrough_all = pcf->proxy_protocol_passthrough_all;
+
+    buf = ngx_proxy_protocol_write_conf(s->connection, &pp_conf, &last);
+    if (buf == NULL) {
         ngx_mail_proxy_internal_server_error(s);
         return NGX_ERROR;
     }
 
     c = s->proxy->upstream.connection;
 
-    size = p - buf;
+    size = last - buf;
 
     n = c->send(c, buf, size);
 
@@ -1386,6 +1421,9 @@ ngx_mail_proxy_create_conf(ngx_conf_t *cf)
     pcf->xclient = NGX_CONF_UNSET;
     pcf->smtp_auth = NGX_CONF_UNSET;
     pcf->proxy_protocol = NGX_CONF_UNSET;
+    pcf->proxy_protocol_version = NGX_CONF_UNSET_UINT;
+    pcf->proxy_protocol_passthrough = NULL;
+    pcf->proxy_protocol_passthrough_all = 0;
     pcf->buffer_size = NGX_CONF_UNSET_SIZE;
     pcf->timeout = NGX_CONF_UNSET_MSEC;
 
@@ -1404,9 +1442,48 @@ ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->xclient, prev->xclient, 1);
     ngx_conf_merge_value(conf->smtp_auth, prev->smtp_auth, 0);
     ngx_conf_merge_value(conf->proxy_protocol, prev->proxy_protocol, 0);
+    ngx_conf_merge_uint_value(conf->proxy_protocol_version,
+                              prev->proxy_protocol_version, 1);
+    ngx_conf_merge_ptr_value(conf->proxy_protocol_passthrough,
+                             prev->proxy_protocol_passthrough, NULL);
+    if (!conf->proxy_protocol_passthrough_all) {
+        conf->proxy_protocol_passthrough_all =
+            prev->proxy_protocol_passthrough_all;
+    }
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 24 * 60 * 60000);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_proxy_protocol_passthrough(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+    ngx_mail_proxy_conf_t  *pcf = conf;
+
+    ngx_uint_t   i;
+    ngx_str_t   *value;
+
+    value = cf->args->elts;
+
+    for (i = 1; i < cf->args->nelts; i++) {
+        if (value[i].len == sizeof("all") - 1
+            && ngx_memcmp(value[i].data, "all", sizeof("all") - 1) == 0)
+        {
+            pcf->proxy_protocol_passthrough_all = 1;
+            continue;
+        }
+
+        if (ngx_proxy_protocol_v2_add_passthrough(cf,
+                &pcf->proxy_protocol_passthrough, &value[i])
+            != NGX_CONF_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+    }
 
     return NGX_CONF_OK;
 }
