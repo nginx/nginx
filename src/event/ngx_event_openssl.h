@@ -279,6 +279,7 @@ ngx_int_t ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file);
 ngx_int_t ngx_ssl_ech_files(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_array_t *filename);
 ngx_int_t ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name);
+ngx_int_t ngx_ssl_sigalgs(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *sigalgs);
 ngx_int_t ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_uint_t enable);
 ngx_int_t ngx_ssl_conf_commands(ngx_conf_t *cf, ngx_ssl_t *ssl,

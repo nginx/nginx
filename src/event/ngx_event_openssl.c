@@ -1842,6 +1842,24 @@ ngx_ssl_ecdh_curve(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *name)
 
 
 ngx_int_t
+ngx_ssl_sigalgs(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *sigalgs)
+{
+    if (sigalgs->len == 0) {
+        return NGX_OK;
+    }
+
+    if (SSL_CTX_set1_sigalgs_list(ssl->ctx, (char *) sigalgs->data) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set1_sigalgs_list(\"%V\") failed",
+                      sigalgs);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_early_data(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_uint_t enable)
 {
     if (!enable) {
