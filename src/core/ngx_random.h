@@ -1,0 +1,21 @@
+
+/*
+ * Copyright (C) Nginx, Inc.
+ */
+
+
+#ifndef _NGX_RANDOM_H_INCLUDED_
+#define _NGX_RANDOM_H_INCLUDED_
+
+
+#include <ngx_config.h>
+#include <ngx_core.h>
+
+
+extern uint64_t  ngx_random_key[2];
+
+uint64_t ngx_siphash(uint64_t k0, uint64_t k1, u_char *data, size_t len);
+void ngx_random_init(void);
+
+
+#endif /* _NGX_RANDOM_H_INCLUDED_ */

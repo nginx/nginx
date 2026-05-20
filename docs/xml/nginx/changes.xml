@@ -5,6 +5,24 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.1" date="2026-05-18">
+
+<change type="change">
+<para lang="ru">
+генерация переменной $request_id теперь использует SipHash вместо
+RAND_bytes или random(), что значительно быстрее при сохранении
+хороших статистических свойств.
+</para>
+<para lang="en">
+the $request_id variable generation now uses SipHash instead of
+RAND_bytes or random(), which is significantly faster while
+maintaining good statistical properties.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.0" date="2026-05-13">
 
 <change type="security">

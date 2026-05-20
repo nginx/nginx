@@ -94,6 +94,8 @@ ngx_os_init(ngx_log_t *log)
     tp = ngx_timeofday();
     srandom(((unsigned) ngx_pid << 16) ^ tp->sec ^ tp->msec);
 
+    ngx_random_init();
+
     return NGX_OK;
 }
 

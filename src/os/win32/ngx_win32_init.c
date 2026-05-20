@@ -275,6 +275,8 @@ nopoll:
     tp = ngx_timeofday();
     srand((ngx_pid << 16) ^ (unsigned) tp->sec ^ tp->msec);
 
+    ngx_random_init();
+
     return NGX_OK;
 }
 
