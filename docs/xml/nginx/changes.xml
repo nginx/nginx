@@ -5,6 +5,30 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.1" date="2026-05-22">
+
+<change type="security">
+<para lang="ru">
+при использовании конфигурации модуля ngx_http_rewrite_module
+с перекрывающимися выделениями
+могло происходить переполнение буфера в рабочем процессе,
+что потенциально могло приводить к выполнению произвольного кода
+(CVE-2026-9256).<br/>
+Спасибо Mufeed VH из Winfunc Research.
+</para>
+<para lang="en">
+a heap memory buffer overflow might occur in a worker process
+when using a configuration with overlapping captures
+in ngx_http_rewrite_module,
+potentially resulting in arbitrary code execution
+(CVE-2026-9256).<br/>
+Thanks to Mufeed VH of Winfunc Research.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.0" date="2026-05-13">
 
 <change type="security">
