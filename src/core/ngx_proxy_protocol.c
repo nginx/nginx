@@ -352,7 +352,23 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     len = ngx_proxy_protocol_parse_uint16(header->len);
 
     if ((size_t) (last - buf) < len) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, "header is too large");
+        /*
+         * Distinguish between a header that exceeds the maximum size limit
+         * and one that is valid but has not been fully received yet (e.g.
+         * when the PPv2 header spans multiple TCP segments).  The latter
+         * is indicated by len fitting within NGX_PROXY_PROTOCOL_MAX_HEADER.
+         */
+        if (len <= NGX_PROXY_PROTOCOL_MAX_HEADER
+                       - sizeof(ngx_proxy_protocol_header_t))
+        {
+            ngx_log_debug2(NGX_LOG_DEBUG_CORE, c->log, 0,
+                           "PROXY protocol v2 header not yet complete: "
+                           "%uz of %uz bytes received",
+                           (size_t) (last - buf), len);
+        } else {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "PROXY protocol v2 header is too large: %uz", len);
+        }
         return NULL;
     }
 
