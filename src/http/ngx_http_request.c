@@ -376,8 +376,9 @@ static void
 ngx_http_wait_request_handler(ngx_event_t *rev)
 {
     u_char                    *p;
-    size_t                     size;
+    size_t                     size, required;
     ssize_t                    n;
+    ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_connection_t          *c;
     ngx_http_connection_t     *hc;
@@ -476,6 +477,38 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
     b->last += n;
 
     if (hc->proxy_protocol) {
+
+        rc = ngx_proxy_protocol_v2_header_complete(b->pos,
+                                                   b->last - b->pos,
+                                                   NGX_PROXY_PROTOCOL_MAX_HEADER,
+                                                   &required);
+
+        if (rc == NGX_AGAIN || (rc == NGX_DECLINED && (b->last - b->pos) < 16))
+        {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http PROXY protocol header incomplete, "
+                           "available: %z", (ssize_t) (b->last - b->pos));
+
+            if (!rev->timer_set) {
+                ngx_add_timer(rev, cscf->client_header_timeout);
+                ngx_reusable_connection(c, 1);
+            }
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_http_close_connection(c);
+            }
+
+            return;
+        }
+
+        if (rc == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "PROXY protocol v2 header is too large: %uz",
+                          required);
+            ngx_http_close_connection(c);
+            return;
+        }
+
         hc->proxy_protocol = 0;
 
         p = ngx_proxy_protocol_read(c, b->pos, b->last);
@@ -674,7 +707,7 @@ static void
 ngx_http_ssl_handshake(ngx_event_t *rev)
 {
     u_char                    *p, buf[NGX_PROXY_PROTOCOL_MAX_HEADER + 1];
-    size_t                     size;
+    size_t                     size, required;
     ssize_t                    n;
     ngx_err_t                  err;
     ngx_int_t                  rc;
@@ -734,6 +767,39 @@ ngx_http_ssl_handshake(ngx_event_t *rev)
     }
 
     if (hc->proxy_protocol) {
+
+        rc = ngx_proxy_protocol_v2_header_complete(buf, n, sizeof(buf) - 1,
+                                                   &required);
+
+        if (rc == NGX_AGAIN || (rc == NGX_DECLINED && n < 16)) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, rev->log, 0,
+                           "http PROXY protocol header incomplete, "
+                           "available: %z", n);
+
+            rev->ready = 0;
+
+            if (!rev->timer_set) {
+                cscf = ngx_http_get_module_srv_conf(hc->conf_ctx,
+                                                    ngx_http_core_module);
+                ngx_add_timer(rev, cscf->client_header_timeout);
+                ngx_reusable_connection(c, 1);
+            }
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_http_close_connection(c);
+            }
+
+            return;
+        }
+
+        if (rc == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "PROXY protocol v2 header is too large: %uz",
+                          required);
+            ngx_http_close_connection(c);
+            return;
+        }
+
         hc->proxy_protocol = 0;
 
         p = ngx_proxy_protocol_read(c, buf, buf + n);

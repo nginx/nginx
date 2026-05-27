@@ -209,9 +209,10 @@ ngx_stream_init_connection(ngx_connection_t *c)
 static void
 ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
 {
-    u_char                      *p, buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
-    size_t                       size;
+    u_char                      *p, *cr, buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
+    size_t                       size, required;
     ssize_t                      n;
+    ngx_int_t                    rc;
     ngx_err_t                    err;
     ngx_connection_t            *c;
     ngx_stream_session_t        *s;
@@ -258,6 +259,75 @@ ngx_stream_proxy_protocol_handler(ngx_event_t *rev)
 
         ngx_stream_finalize_session(s, NGX_STREAM_OK);
         return;
+    }
+
+    rc = ngx_proxy_protocol_v2_header_complete(buf, n, sizeof(buf),
+                                               &required);
+
+    if (rc == NGX_AGAIN || (rc == NGX_DECLINED && n < 16)) {
+        ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                       "stream PROXY protocol header incomplete, "
+                       "available: %z", n);
+
+        rev->ready = 0;
+
+        if (!rev->timer_set) {
+            cscf = ngx_stream_get_module_srv_conf(s, ngx_stream_core_module);
+            ngx_add_timer(rev, cscf->proxy_protocol_timeout);
+        }
+
+        if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+            ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+        }
+
+        return;
+    }
+
+    if (rc == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "PROXY protocol v2 header is too large: %uz",
+                      required);
+        ngx_stream_finalize_session(s, NGX_STREAM_BAD_REQUEST);
+        return;
+    }
+
+    /*
+     * For PROXY protocol v1: if the header line terminator (\r\n)
+     * is not yet visible, wait for more data.
+     */
+
+    if (rc == NGX_DECLINED) {
+        ngx_int_t  found;
+
+        found = 0;
+
+        for (cr = buf; cr < buf + n - 1; cr++) {
+            if (cr[0] == CR && cr[1] == LF) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found && (size_t) n < NGX_PROXY_PROTOCOL_V1_MAX_HEADER) {
+            ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
+                           "stream PROXY protocol v1 header incomplete, "
+                           "available: %z", n);
+
+            rev->ready = 0;
+
+            if (!rev->timer_set) {
+                cscf = ngx_stream_get_module_srv_conf(s,
+                                                      ngx_stream_core_module);
+                ngx_add_timer(rev, cscf->proxy_protocol_timeout);
+            }
+
+            if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+                ngx_stream_finalize_session(s,
+                                            NGX_STREAM_INTERNAL_SERVER_ERROR);
+            }
+
+            return;
+        }
     }
 
     if (rev->timer_set) {
