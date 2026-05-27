@@ -32,6 +32,8 @@ u_char *ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf,
     u_char *last);
 ngx_int_t ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
     ngx_str_t *value);
+ngx_int_t ngx_proxy_protocol_v2_header_complete(u_char *buf, ssize_t n,
+    size_t max, size_t *required);
 
 
 #endif /* _NGX_PROXY_PROTOCOL_H_INCLUDED_ */

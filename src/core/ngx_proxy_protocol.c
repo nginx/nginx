@@ -612,3 +612,39 @@ ngx_proxy_protocol_lookup_tlv(ngx_connection_t *c, ngx_str_t *tlvs,
 
     return NGX_DECLINED;
 }
+
+
+ngx_int_t
+ngx_proxy_protocol_v2_header_complete(u_char *buf, ssize_t n, size_t max,
+    size_t *required)
+{
+    size_t  len;
+
+    static const u_char  signature[] = "\r\n\r\n\0\r\nQUIT\n";
+
+    if (n < (ssize_t) (sizeof(signature) - 1)) {
+        return NGX_DECLINED;
+    }
+
+    if (ngx_memcmp(buf, signature, sizeof(signature) - 1) != 0) {
+        return NGX_DECLINED;
+    }
+
+    if (n < 16) {
+        *required = 16;
+        return NGX_AGAIN;
+    }
+
+    len = ((size_t) buf[14] << 8) + buf[15];
+    *required = 16 + len;
+
+    if (*required > max) {
+        return NGX_ERROR;
+    }
+
+    if ((size_t) n < *required) {
+        return NGX_AGAIN;
+    }
+
+    return NGX_OK;
+}
