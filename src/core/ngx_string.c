@@ -2124,6 +2124,10 @@ ngx_memcpy(void *dst, const void *src, size_t n)
         ngx_debug_point();
     }
 
+    if (n == 0) {
+        return dst;
+    }
+
     return memcpy(dst, src, n);
 }
 
