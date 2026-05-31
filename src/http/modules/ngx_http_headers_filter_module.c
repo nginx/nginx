@@ -70,7 +70,7 @@ static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_uint_t ngx_http_header_name_is_valid(ngx_str_t *s);
-static ngx_int_t ngx_http_sanitize_header_value(ngx_http_request_t *r,
+static void ngx_http_sanitize_header_value(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_set_response_header(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
@@ -227,7 +227,7 @@ ngx_http_header_name_is_valid(ngx_str_t *s)
 }
 
 
-static ngx_int_t
+static void
 ngx_http_sanitize_header_value(ngx_http_request_t *r, ngx_str_t *value)
 {
     u_char  *data;
@@ -241,13 +241,14 @@ ngx_http_sanitize_header_value(ngx_http_request_t *r, ngx_str_t *value)
         }
     }
 
-    return NGX_OK;
+    return;
 
 sanitize:
 
     data = ngx_pnalloc(r->pool, value->len);
     if (data == NULL) {
-        return NGX_ERROR;
+        value->len = 0;
+        return;
     }
 
     for (i = 0; i < value->len; i++) {
@@ -256,8 +257,6 @@ sanitize:
     }
 
     value->data = data;
-
-    return NGX_OK;
 }
 
 
@@ -324,9 +323,7 @@ ngx_http_headers_filter(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            if (ngx_http_sanitize_header_value(r, &value) != NGX_OK) {
-                return NGX_ERROR;
-            }
+            ngx_http_sanitize_header_value(r, &value);
 
             if (h[i].handler(r, &h[i], &value) != NGX_OK) {
                 return NGX_ERROR;
@@ -417,9 +414,7 @@ ngx_http_trailers_filter(ngx_http_request_t *r, ngx_chain_t *in)
         }
 
         if (value.len) {
-            if (ngx_http_sanitize_header_value(r, &value) != NGX_OK) {
-                return NGX_ERROR;
-            }
+            ngx_http_sanitize_header_value(r, &value);
 
             t = ngx_list_push(&r->headers_out.trailers);
             if (t == NULL) {
