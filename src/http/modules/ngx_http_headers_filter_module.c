@@ -69,6 +69,7 @@ static ngx_int_t ngx_http_add_header(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
 static ngx_int_t ngx_http_set_last_modified(ngx_http_request_t *r,
     ngx_http_header_val_t *hv, ngx_str_t *value);
+static ngx_uint_t ngx_http_header_name_is_valid(ngx_str_t *s);
 static ngx_int_t ngx_http_sanitize_header_value(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_set_response_header(ngx_http_request_t *r,
@@ -195,6 +196,37 @@ static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
 
+static ngx_uint_t
+ngx_http_header_name_is_valid(ngx_str_t *s)
+{
+    u_char      ch;
+    ngx_uint_t  i;
+
+    if (s->len == 0) {
+        return 0;
+    }
+
+    for (i = 0; i < s->len; i++) {
+        ch = s->data[i];
+
+        if ((ch >= '0' && ch <= '9')
+            || (ch >= 'A' && ch <= 'Z')
+            || (ch >= 'a' && ch <= 'z')
+            || ch == '!' || ch == '#' || ch == '$' || ch == '%'
+            || ch == '&' || ch == '\'' || ch == '*' || ch == '+'
+            || ch == '-' || ch == '.' || ch == '^' || ch == '_'
+            || ch == '`' || ch == '|' || ch == '~')
+        {
+            continue;
+        }
+
+        return 0;
+    }
+
+    return 1;
+}
+
+
 static ngx_int_t
 ngx_http_sanitize_header_value(ngx_http_request_t *r, ngx_str_t *value)
 {
@@ -284,6 +316,10 @@ ngx_http_headers_filter(ngx_http_request_t *r)
                 continue;
             }
 
+            if (!ngx_http_header_name_is_valid(&h[i].key)) {
+                continue;
+            }
+
             if (ngx_http_complex_value(r, &h[i].value, &value) != NGX_OK) {
                 return NGX_ERROR;
             }
@@ -369,6 +405,10 @@ ngx_http_trailers_filter(ngx_http_request_t *r, ngx_chain_t *in)
     for (i = 0; i < conf->trailers->nelts; i++) {
 
         if (!safe_status && !h[i].always) {
+            continue;
+        }
+
+        if (!ngx_http_header_name_is_valid(&h[i].key)) {
             continue;
         }
 
