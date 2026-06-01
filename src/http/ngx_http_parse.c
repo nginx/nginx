@@ -1825,6 +1825,9 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto done;
+            default:
+                if (ch < 0x20 || ch == 0x7F)
+                    return NGX_ERROR;
             }
             break;
 
