@@ -80,6 +80,7 @@ typedef struct {
     ngx_uint_t                       sid;
     size_t                           length;
     size_t                           padding;
+    ssize_t                          window_delta;
     unsigned                         flags:8;
 
     unsigned                         incomplete:1;
