@@ -2049,10 +2049,10 @@ ngx_http_fastcgi_process_header(ngx_http_request_t *r)
 
                     status = ngx_atoi(status_line->data, 3);
 
-                    if (status == NGX_ERROR) {
+                    if (status < NGX_HTTP_OK || status > 599) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                      "upstream sent invalid status \"%V\"",
-                                      status_line);
+                                      "upstream sent invalid or unsupported "
+                                      "status \"%V\"", status_line);
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
