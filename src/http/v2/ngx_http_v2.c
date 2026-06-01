@@ -2274,15 +2274,6 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
         h2c->state.max_frame_set = 0;
     }
 
-    frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_SETTINGS_ACK_SIZE,
-                                  NGX_HTTP_V2_SETTINGS_FRAME,
-                                  NGX_HTTP_V2_ACK_FLAG, 0);
-    if (frame == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
-
-    ngx_http_v2_queue_ordered_frame(h2c, frame);
-
     if (h2c->state.init_window_set) {
         window_delta = (ssize_t) h2c->state.init_window_size
                        - (ssize_t) h2c->init_window;
@@ -2298,6 +2289,15 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         h2c->state.init_window_set = 0;
     }
+
+    frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_SETTINGS_ACK_SIZE,
+                                  NGX_HTTP_V2_SETTINGS_FRAME,
+                                  NGX_HTTP_V2_ACK_FLAG, 0);
+    if (frame == NULL) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+    }
+
+    ngx_http_v2_queue_ordered_frame(h2c, frame);
 
     return ngx_http_v2_state_complete(h2c, pos, end);
 }
