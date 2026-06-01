@@ -1873,7 +1873,8 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
-                    if (status < NGX_HTTP_OK && status != NGX_HTTP_EARLY_HINTS)
+                    if ((status < NGX_HTTP_OK && status != NGX_HTTP_EARLY_HINTS)
+                        || status > 599)
                     {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream sent unexpected :status \"%V\"",
