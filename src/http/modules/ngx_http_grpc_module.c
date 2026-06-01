@@ -1992,7 +1992,8 @@ ngx_http_grpc_filter_init(void *data)
     r = ctx->request;
     u = r->upstream;
 
-    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+    if (u->headers_in.status_n < NGX_HTTP_OK
+        || u->headers_in.status_n == NGX_HTTP_NO_CONTENT
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
         || r->method == NGX_HTTP_HEAD)
     {

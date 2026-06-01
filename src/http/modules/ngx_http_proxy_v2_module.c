@@ -1629,7 +1629,8 @@ ngx_http_proxy_v2_filter_init(void *data)
         return NGX_ERROR;
     }
 
-    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+    if (u->headers_in.status_n < NGX_HTTP_OK
+        || u->headers_in.status_n == NGX_HTTP_NO_CONTENT
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
         || ctx->ctx.head)
     {

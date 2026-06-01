@@ -27,6 +27,8 @@ static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_upstream_process_upgrade(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 #endif
 
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
@@ -329,6 +331,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, content_encoding), 0 },
+
+    { ngx_string("Upgrade"),
+                 ngx_http_upstream_process_upgrade, 0,
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
@@ -2644,7 +2650,7 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
 
-    if (u->conf->pass_early_hints) {
+    if (u->conf->pass_early_hints && r->http_version >= NGX_HTTP_VERSION_11) {
 
         u->early_hints_length += u->buffer.pos - u->buffer.start;
 
@@ -5454,6 +5460,15 @@ ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
         u->headers_in.connection_close = 1;
     }
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_upgrade(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+    r->upstream->headers_in.upgrade = 1;
     return NGX_OK;
 }
 

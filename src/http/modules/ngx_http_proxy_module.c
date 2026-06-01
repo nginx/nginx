@@ -1808,11 +1808,20 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
                    "http proxy status %ui \"%V\"",
                    u->headers_in.status_n, &u->headers_in.status_line);
 
+    if (ctx->status.code == NGX_HTTP_SWITCHING_PROTOCOLS
+        && !r->headers_in.upgrade)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent 101 Switching Protocols, "
+                      "but client didn't send Upgrade header");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
     if (ctx->status.http_version < NGX_HTTP_VERSION_11) {
 
-        if (ctx->status.code == NGX_HTTP_EARLY_HINTS) {
+        if (ctx->status.code < NGX_HTTP_OK) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent HTTP/1.0 response with early hints");
+                          "upstream sent HTTP/1.0 response with 1xx status");
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
 
@@ -1838,14 +1847,15 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     for ( ;; ) {
+        u = r->upstream;
 
-        rc = ngx_http_parse_header_line(r, &r->upstream->buffer, 1);
+        rc = ngx_http_parse_header_line(r, &u->buffer, 1);
 
         if (rc == NGX_OK) {
 
             /* a header line has been parsed successfully */
 
-            h = ngx_list_push(&r->upstream->headers_in.headers);
+            h = ngx_list_push(&u->headers_in.headers);
             if (h == NULL) {
                 return NGX_ERROR;
             }
@@ -1881,7 +1891,9 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                            "http proxy header: \"%V: %V\"",
                            &h->key, &h->value);
 
-            if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+            if (u->headers_in.status_n < NGX_HTTP_OK
+                && u->headers_in.status_n != NGX_HTTP_SWITCHING_PROTOCOLS)
+            {
                 continue;
             }
 
@@ -1908,14 +1920,19 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
             ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
-            if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+            if (u->headers_in.status_n < NGX_HTTP_OK
+                && u->headers_in.status_n != NGX_HTTP_SWITCHING_PROTOCOLS)
+            {
+                /* These responses never have a body. */
+                u->headers_in.chunked = 0;
+                u->headers_in.content_length_n = -1;
+
                 ctx->status.code = 0;
                 ctx->status.count = 0;
                 ctx->status.start = NULL;
                 ctx->status.end = NULL;
 
-                r->upstream->process_header =
-                                            ngx_http_proxy_process_status_line;
+                u->process_header = ngx_http_proxy_process_status_line;
                 r->state = 0;
                 return NGX_HTTP_UPSTREAM_EARLY_HINTS;
             }
@@ -1954,9 +1971,24 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 h->next = NULL;
             }
 
-            /* clear content length if response is chunked */
+            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS)
+            {
+                if (!u->headers_in.upgrade) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent 101 Switching Protocols "
+                                  "response without Upgrade header");
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
 
-            u = r->upstream;
+                u->upgrade = 1;
+                u->keepalive = 0;
+                /* These responses never have a body. */
+                u->headers_in.chunked = 0;
+                u->headers_in.content_length_n = -1;
+                return NGX_OK;
+            }
+
+            /* clear content length if response is chunked */
 
             if (u->headers_in.chunked) {
                 u->headers_in.content_length_n = -1;
@@ -1974,14 +2006,6 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                     && u->headers_in.content_length_n == 0))
             {
                 u->keepalive = !u->headers_in.connection_close;
-            }
-
-            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS) {
-                u->keepalive = 0;
-
-                if (r->headers_in.upgrade) {
-                    u->upgrade = 1;
-                }
             }
 
             return NGX_OK;
@@ -2021,6 +2045,13 @@ ngx_http_proxy_input_filter_init(void *data)
                    "http proxy filter init s:%ui h:%d c:%d l:%O",
                    u->headers_in.status_n, ctx->head, u->headers_in.chunked,
                    u->headers_in.content_length_n);
+
+    if (u->headers_in.status_n < NGX_HTTP_OK) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "internal error: ngx_http_proxy_input_filter_init "
+                      "called on 1xx response");
+        return NGX_ERROR;
+    }
 
     /* as per RFC2616, 4.4 Message Length */
 
