@@ -1810,6 +1810,15 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    /*
+     * Anything less than 100 or greater than 599 is invalid.
+     * 1xx responses need to be followed by another response
+     * and this code doesn't support that.
+     */
+    if (status < NGX_HTTP_OK || status > 599) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     if (status == NGX_HTTP_MOVED_PERMANENTLY
         || status == NGX_HTTP_MOVED_TEMPORARILY
         || status == NGX_HTTP_SEE_OTHER
