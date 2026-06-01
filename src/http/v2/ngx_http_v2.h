@@ -80,10 +80,12 @@ typedef struct {
     ngx_uint_t                       sid;
     size_t                           length;
     size_t                           padding;
+    size_t                           init_window_size;
     unsigned                         flags:8;
 
     unsigned                         incomplete:1;
     unsigned                         keep_pool:1;
+    unsigned                         init_window_set:1;
 
     /* HPACK */
     unsigned                         parse_name:1;
