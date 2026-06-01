@@ -183,6 +183,22 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    if (r->headers_out.status < NGX_HTTP_OK || r->headers_out.status > 599)
+    {
+        if (r->headers_out.status != NGX_HTTP_SWITCHING_PROTOCOLS) {
+            /*
+             * We shouldn't be here.  Either the status is bad (bug),
+             * or this is a non-101 1xx response (which should use the
+             * early hints filter instead).
+             */
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "%ui response made it to header filter",
+                          r->headers_out.status);
+            return NGX_ERROR;
+        }
+    }
+
+
     if (r->http_version < NGX_HTTP_VERSION_10) {
         return NGX_OK;
     }
