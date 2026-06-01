@@ -855,6 +855,10 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pool->log, 0,
                        "http charset invalid utf 1");
 
+        if (saved < &ctx->saved[ctx->saved_len]) {
+            saved = &ctx->saved[ctx->saved_len];
+        }
+
     } else {
         dst = ngx_sprintf(dst, "&#%uD;", n);
     }
