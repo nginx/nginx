@@ -1459,6 +1459,17 @@ ngx_http_uwsgi_input_filter_init(void *data)
                    "http uwsgi filter init s:%ui l:%O",
                    u->headers_in.status_n, u->headers_in.content_length_n);
 
+    /* We don't support 1xx responses. */
+    if (u->headers_in.status_n < NGX_HTTP_OK
+        || u->headers_in.status_n > 599)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent response with invalid or "
+                      "unsupported status %ui",
+                      u->headers_in.status_n);
+        return NGX_ERROR;
+    }
+
     if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED)
     {
