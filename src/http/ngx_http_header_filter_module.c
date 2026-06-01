@@ -196,6 +196,20 @@ ngx_http_header_filter(ngx_http_request_t *r)
                           r->headers_out.status);
             return NGX_ERROR;
         }
+
+        if (!r->upstream->upgrade
+            || !r->upstream->headers_in.upgrade
+            || r->http_version != NGX_HTTP_VERSION_11)
+        {
+            /*
+             * This is a 101 Switching Protocols response,
+             * but it wasn't properly upgraded or is otherwise
+             * invalid. This is a bug.
+             */
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "101 response not properly upgraded");
+            return NGX_ERROR;
+        }
     }
 
 
