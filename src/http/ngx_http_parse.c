@@ -748,16 +748,14 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
 
         /* first digit of major HTTP version */
         case sw_first_major_digit:
-            if (ch < '1' || ch > '9') {
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
-            }
-
-            r->http_major = ch - '0';
-
-            if (r->http_major > 1) {
+            if (ch != '1') {
+                if (ch < '1' || ch > '9') {
+                    return NGX_HTTP_PARSE_INVALID_REQUEST;
+                }
                 return NGX_HTTP_PARSE_INVALID_VERSION;
             }
 
+            r->http_major = 1;
             state = sw_major_digit;
             break;
 
@@ -772,13 +770,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
 
-            r->http_major = r->http_major * 10 + (ch - '0');
-
-            if (r->http_major > 1) {
-                return NGX_HTTP_PARSE_INVALID_VERSION;
-            }
-
-            break;
+            return NGX_HTTP_PARSE_INVALID_VERSION;
 
         /* first digit of minor HTTP version */
         case sw_first_minor_digit:
@@ -806,16 +798,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 break;
             }
 
-            if (ch < '0' || ch > '9') {
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
-            }
-
-            if (r->http_minor > 99) {
-                return NGX_HTTP_PARSE_INVALID_REQUEST;
-            }
-
-            r->http_minor = r->http_minor * 10 + (ch - '0');
-            break;
+            return NGX_HTTP_PARSE_INVALID_REQUEST;
 
         case sw_spaces_after_digit:
             switch (ch) {
@@ -1756,13 +1739,13 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* the first digit of major HTTP version */
         case sw_first_major_digit:
-            if (ch < '1' || ch > '9') {
-                return NGX_ERROR;
+            if (ch == '1') {
+                r->http_major = 1;
+                state = sw_major_digit;
+                break;
             }
 
-            r->http_major = ch - '0';
-            state = sw_major_digit;
-            break;
+            return NGX_ERROR;
 
         /* the major HTTP version or dot */
         case sw_major_digit:
@@ -1771,20 +1754,11 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
-            if (ch < '0' || ch > '9') {
-                return NGX_ERROR;
-            }
-
-            if (r->http_major > 99) {
-                return NGX_ERROR;
-            }
-
-            r->http_major = r->http_major * 10 + (ch - '0');
-            break;
+            return NGX_ERROR;
 
         /* the first digit of minor HTTP version */
         case sw_first_minor_digit:
-            if (ch < '0' || ch > '9') {
+            if (ch < '0' || ch > '1') {
                 return NGX_ERROR;
             }
 
@@ -1798,17 +1772,7 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
                 state = sw_status;
                 break;
             }
-
-            if (ch < '0' || ch > '9') {
-                return NGX_ERROR;
-            }
-
-            if (r->http_minor > 99) {
-                return NGX_ERROR;
-            }
-
-            r->http_minor = r->http_minor * 10 + (ch - '0');
-            break;
+            return NGX_ERROR;
 
         /* HTTP status code */
         case sw_status:
