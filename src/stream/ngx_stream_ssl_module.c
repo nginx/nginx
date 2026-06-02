@@ -367,6 +367,9 @@ static ngx_stream_variable_t  ngx_stream_ssl_vars[] = {
     { ngx_string("ssl_sigalg"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_sigalg, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
+    { ngx_string("ssl_sigalgs"), NULL, ngx_stream_ssl_variable,
+      (uintptr_t) ngx_ssl_get_sigalgs, NGX_STREAM_VAR_CHANGEABLE, 0 },
+
     { ngx_string("ssl_session_id"), NULL, ngx_stream_ssl_variable,
       (uintptr_t) ngx_ssl_get_session_id, NGX_STREAM_VAR_CHANGEABLE, 0 },
 
