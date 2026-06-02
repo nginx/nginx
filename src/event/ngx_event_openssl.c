@@ -5670,6 +5670,104 @@ ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
 
 ngx_int_t
+ngx_ssl_get_sigalgs(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x40000000L)
+
+    int            n, i;
+    size_t         len;
+    u_char        *p;
+    const char    *name;
+    unsigned int   codepoint;
+
+    n = SSL_get0_sigalg(c->ssl->connection, -1, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = 0;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+        len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
+        len += sizeof(":") - 1;
+    }
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get0_sigalg(c->ssl->connection, i, &codepoint, &name);
+
+        if (name) {
+            p = ngx_cpymem(p, name, ngx_strlen(name));
+
+        } else {
+            p = ngx_sprintf(p, "0x%04xd", codepoint);
+        }
+
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#elif defined SSL_CTRL_SET_SIGALGS
+
+    /*
+     * SSL_get_sigalgs() is only available in OpenSSL 1.0.2+,
+     * but uses a different naming, so emit raw codes
+     */
+
+    int             n, i;
+    size_t          len;
+    u_char         *p;
+    unsigned char   rsig, rhash;
+
+    n = SSL_get_sigalgs(c->ssl->connection, -1, NULL, NULL, NULL, NULL, NULL);
+
+    if (n <= 0) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+    len = n * (sizeof("0x0000") - 1 + sizeof(":") - 1);
+
+    s->data = ngx_pnalloc(pool, len);
+    if (s->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    p = s->data;
+
+    for (i = 0; i < n; i++) {
+        SSL_get_sigalgs(c->ssl->connection, i, NULL, NULL, NULL, &rsig, &rhash);
+        p = ngx_sprintf(p, "0x%04xd", rhash << 8 | rsig);
+        *p++ = ':';
+    }
+
+    p--;
+
+    s->len = p - s->data;
+
+#else
+
+    s->len = 0;
+
+#endif
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
 ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
     u_char        *buf;
