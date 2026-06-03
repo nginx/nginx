@@ -34,6 +34,9 @@ jobs:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           ORGANIZATION: nginx
           PROJECT_NUMBER: 33
+
+        env:
+          ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
         run: |
           gh api graphql -f query='
             query($org: String!, $number: Int!) {
@@ -59,6 +62,9 @@ jobs:
       - name: Add item to project
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+        env:
+          ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
         run: |
           NODE_ID=${{ github.event.issue.node_id }}
 
@@ -78,8 +84,11 @@ jobs:
       - name: Set item creation date
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+        env:
+          ISSUE_CREATED_AT: ${{ github.event.issue.created_at }}
         run: |
-          DATE=${{ github.event.issue.created_at }}
+          DATE=$ISSUE_CREATED_AT
 
           gh api graphql -f query='
             mutation(
