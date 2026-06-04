@@ -52,7 +52,7 @@ static u_char ngx_http_server_full_string[] = "Server: " NGINX_VER CRLF;
 static u_char ngx_http_server_build_string[] = "Server: " NGINX_VER_BUILD CRLF;
 
 static ngx_str_t ngx_http_early_hints_status_line =
-    ngx_string("HTTP/1.1 103 Early Hints" CRLF);
+    ngx_string("103 Early Hints");
 
 
 static ngx_str_t ngx_http_status_lines[] = {
@@ -211,7 +211,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     /* status line */
 
-    if (r->headers_out.status_line.len) {
+    if (r->headers_out.status_line.len > 4) {
         len += r->headers_out.status_line.len;
         status_line = &r->headers_out.status_line;
 #if (NGX_SUPPRESS_WARN)
@@ -632,12 +632,16 @@ ngx_http_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_early_hints_filter(ngx_http_request_t *r)
 {
-    size_t            len;
-    ngx_buf_t        *b;
-    ngx_uint_t        i;
-    ngx_chain_t       out;
-    ngx_list_part_t  *part;
-    ngx_table_elt_t  *header;
+    size_t               len;
+    ngx_buf_t           *b;
+    ngx_str_t           *status_line;
+    ngx_uint_t           i;
+    ngx_chain_t          out;
+    ngx_list_part_t     *part;
+    ngx_table_elt_t     *header;
+    ngx_http_upstream_t *u;
+
+    status_line = NULL;
 
     if (r != r->main) {
         return NGX_OK;
@@ -645,6 +649,18 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
 
     if (r->http_version < NGX_HTTP_VERSION_11) {
         return NGX_OK;
+    }
+
+    u = r->upstream;
+
+    if (u->headers_in.status_n < 100
+        || u->headers_in.status_n > 199
+        || u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS)
+    {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "Bad status code %ui in early hints filter",
+                      r->headers_out.status);
+        return NGX_ERROR;
     }
 
     len = 0;
@@ -676,17 +692,36 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    len += ngx_http_early_hints_status_line.len
-           /* the end of the early hints */
-           + sizeof(CRLF) - 1;
+    if (u->headers_in.status_line.len > 4) {
+        status_line = &u->headers_in.status_line;
+        len += status_line->len;
+    } else if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+        len += ngx_http_early_hints_status_line.len;
+    } else {
+        len += 4;
+    }
+
+    /* the end of the early hints */
+    len += (sizeof("HTTP/1.1 ") - 1) + 2 * (sizeof(CRLF) - 1);
 
     b = ngx_create_temp_buf(r->pool, len);
     if (b == NULL) {
         return NGX_ERROR;
     }
 
-    b->last = ngx_copy(b->last, ngx_http_early_hints_status_line.data,
-                       ngx_http_early_hints_status_line.len);
+    b->last = ngx_copy(b->last, "HTTP/1.1 ", sizeof("HTTP/1.1 ") - 1);
+
+    if (status_line != NULL) {
+        b->last = ngx_copy(b->last, status_line->data, status_line->len);
+    } else if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+        b->last = ngx_copy(b->last, ngx_http_early_hints_status_line.data,
+                           ngx_http_early_hints_status_line.len);
+    } else {
+        b->last = ngx_sprintf(b->last, "%03ui ", u->headers_in.status_n);
+    }
+
+    /* the end of status line */
+    *b->last++ = CR; *b->last++ = LF;
 
     part = &r->headers_out.headers.part;
     header = part->elts;
