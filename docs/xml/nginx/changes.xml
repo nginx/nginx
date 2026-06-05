@@ -5,6 +5,108 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.2" date="2026-06-17">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3 обработка специально созданной QUIC-сессии
+могла приводить к обращению к ранее освобождённой памяти,
+что позволяло атакующему повредить память рабочего процесса
+или вызвать segmentation fault в рабочем процессе (CVE-2026-42530).<br/>
+Спасибо Trung Nguyen из CyStack.
+</para>
+<para lang="en">
+use-after-free might occur
+when using HTTP/3 and processing a specially crafted QUIC session,
+allowing an attacker to cause worker process memory corruption
+or segmentation fault in a worker process (CVE-2026-42530).<br/>
+Thanks to Trung Nguyen of CyStack.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при проксировании специально созданного запроса на HTTP/2 или gRPC-бэкенд
+с использованием директив "ignore_invalid_headers off;" и
+"large_client_header_buffers" с большим значением
+могло происходить переполнение буфера в рабочем процессе,
+что позволяло атакующему повредить память рабочего процесса
+или вызвать segmentation fault в рабочем процессе (CVE-2026-42055).<br/>
+Спасибо Mufeed VH из Winfunc Research.
+</para>
+<para lang="en">
+a heap memory buffer overflow might occur in a worker process
+when using a configuration with "ignore_invalid_headers off;"
+and "large_client_header_buffers" with large configured values
+when proxying a specially crafted request to HTTP/2 or gRPC backend,
+allowing an attacker to cause worker process memory corruption
+or segmentation fault in a worker process (CVE-2026-42055).<br/>
+Thanks to Mufeed VH of Winfunc Research.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при обработке специально переданного ответа с декодированием из UTF-8
+через директиву charset_map могло происходить чтение данных
+за границами буфера рабочего процесса, что позволяло атакующему
+отправить клиенту ограниченное содержимое памяти рабочего процесса
+или вызвать segmentation fault в рабочем процессе (CVE-2026-48142).<br/>
+Спасибо Han Yan из Xiaomi и p4p3r из CYBERONE.
+</para>
+<para lang="en">
+a heap memory buffer overread might occur in a worker process
+while handling a specially sent response with decoding from UTF-8
+via the "charset_map" directive, allowing an attacker to cause
+a limited disclosure of worker proccess memory
+or segmentation fault in a worker process (CVE-2026-48142).<br/>
+Thanks to Han Yan of Xiaomi and p4p3r of CYBERONE.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь переменная $request_id использует SipHash-2-4.
+</para>
+<para lang="en">
+now the $request_id variable uses SipHash-2-4.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+переменная $ssl_sigalgs.
+</para>
+<para lang="en">
+the $ssl_sigalgs variable.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменная заданная директивой split_clients могла быть пустой,
+если все проценты были заданы явно и их сумма была равна 100%.
+</para>
+<para lang="en">
+a variable defined by the "split_clients" directive might be empty
+if all percentages were specified explicitly and summed up to 100%.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+сравнение хешей secure_link за константное время.<br/>
+Спасибо kodareef5.
+</para>
+<para lang="en">
+constant time "secure_link" hash comparison.<br/>
+Thanks to kodareef5.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.1" date="2026-05-22">
 
 <change type="security">
