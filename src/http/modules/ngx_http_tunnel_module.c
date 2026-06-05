@@ -271,7 +271,7 @@ ngx_http_tunnel_eval(ngx_http_request_t *r, ngx_http_tunnel_loc_conf_t *tlcf)
 static ngx_int_t
 ngx_http_tunnel_create_request(ngx_http_request_t *r)
 {
-    /* u->request_bufs = NULL */
+    r->upstream->request_bufs = NULL;
 
     return NGX_OK;
 }
