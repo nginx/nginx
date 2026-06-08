@@ -768,7 +768,7 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     uint64_t       n, ms, me, frame_end, old_last;
     ngx_uint_t     gi;
     ngx_buf_t     *b;
-    ngx_chain_t   *cl, **chain;
+    ngx_chain_t   *cl, **chain, *last_appended;
 
     ngx_quic_buf_validate(qb);
 
@@ -866,27 +866,51 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
      * we decide: write (gap or beyond old frontier) or skip (already in chain).
      */
 
-    /* Build a write list: sorted [ms, me) sub-ranges to write.
-     * We build it directly from the gap array + the append tail. */
+    /*
+     * Bytes to write fall into two disjoint categories:
+     *
+     *   A) [offset, min(frame_end, old_last)) intersected with existing gaps
+     *      — filling pre-existing holes (in-gap fills, rare: OOO delivery)
+     *
+     *   B) [max(offset, old_last), frame_end)
+     *      — pure append beyond the old write frontier (common hot path)
+     *
+     * Iteration: the gi-loop processes each gap in ascending order, then the
+     * append tail.  `chain` advances forward through the existing chain across
+     * iterations so the total chain traversal for all in-gap fills is O(n_nodes)
+     * combined, not O(n_nodes) per gap.
+     *
+     * Cursor optimisation: for the append case (gi == nranges) the insertion
+     * point is O(1) via qb->last_chain->next rather than a head scan.
+     * last_appended tracks the last newly-appended node so qb->last_chain can
+     * be updated in O(1) at the end without a separate tail scan.
+     */
+
+    last_appended = NULL;
+
+    /*
+     * chain: the **-pointer into the chain where the NEXT new node will be
+     * linked for in-gap fills.  It advances monotonically across iterations so
+     * we never re-scan nodes already passed.
+     */
+    chain = &qb->chain;
 
     for (gi = 0; gi <= qb->gaps.nranges && in && limit; gi++) {
 
-        /* ms..me is the sub-range of [offset, frame_end) to write */
+        /* ---- compute [ms, me): the sub-range of [offset, frame_end) to write */
         if (gi < qb->gaps.nranges) {
 
             ms = qb->gaps.ranges[gi].start;
             me = qb->gaps.ranges[gi].end;
 
-            /* intersect with [offset, frame_end) */
-            if (ms < offset) { ms = offset; }
+            if (ms < offset)    { ms = offset; }
             if (me > frame_end) { me = frame_end; }
-            if (ms >= me) { continue; }   /* gap outside frame */
-            if (ms >= old_last) { continue; } /* handled as append below */
-
-            if (me > old_last) { me = old_last; }
+            if (ms >= me)       { continue; }   /* gap outside the frame */
+            if (ms >= old_last) { continue; }   /* handled as append below */
+            if (me > old_last)  { me = old_last; }
 
         } else {
-            /* append tail: [old_last, frame_end) — only if frame extends beyond */
+            /* append tail */
             ms = old_last;
             if (ms < offset) { ms = offset; }
             me = frame_end;
@@ -901,7 +925,7 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
                             ngx_min(ms - offset, limit));
                 in->buf->pos += n;
                 offset += n;
-                limit -= n;
+                limit  -= n;
                 if (in->buf->pos == in->buf->last) {
                     in = in->next;
                 }
@@ -910,15 +934,29 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
             }
         }
 
-        /* ---- find chain insertion point: after last node ending <= ms ---- */
-        chain = &qb->chain;
-        for (cl = qb->chain; cl; cl = cl->next) {
-            if ((uint64_t) cl->buf->file_pos
-                + (uint64_t)(cl->buf->last - cl->buf->pos) > ms)
-            {
-                break;
+        /*
+         * ---- find insertion point ----
+         *
+         * Append (gi == nranges): O(1) via cursor — use the next slot of the
+         * last known tail node, or the chain head if the chain is empty.
+         *
+         * In-gap fill (gi < nranges): advance `chain` forward from its current
+         * position (preserved across iterations) — O(n_nodes) combined across
+         * all gaps, never re-scanning already-passed nodes.
+         */
+        if (gi == qb->gaps.nranges) {
+            chain = (qb->last_chain != NULL) ? &qb->last_chain->next
+                                             : &qb->chain;
+        } else {
+            while (*chain) {
+                cl = *chain;
+                if ((uint64_t) cl->buf->file_pos
+                    + (uint64_t)(cl->buf->last - cl->buf->pos) > ms)
+                {
+                    break;
+                }
+                chain = &cl->next;
             }
-            chain = &cl->next;
         }
 
         /* ---- copy data into new nodes for [ms, me) ---- */
@@ -966,6 +1004,11 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
             cl->next = *chain;
             *chain = cl;
             chain = &cl->next;
+
+            /* track last appended tail node for cursor update below */
+            if (gi == qb->gaps.nranges) {
+                last_appended = cl;
+            }
         }
     }
 
@@ -981,12 +1024,14 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
         return NGX_CHAIN_ERROR;
     }
 
-    /* ------------------------------------------------------------------ *
-     * Step 7: update last_chain cursor (last node in chain)
-     * ------------------------------------------------------------------ */
-    qb->last_chain = NULL;
-    for (cl = qb->chain; cl; cl = cl->next) {
-        qb->last_chain = cl;
+    /*
+     * Step 7: update last_chain cursor — O(1).
+     *
+     * If we appended nodes at the tail, last_appended is the new last node.
+     * If we only did in-gap fills (no append), the tail is unchanged.
+     */
+    if (last_appended != NULL) {
+        qb->last_chain = last_appended;
     }
 
     ngx_quic_buf_validate(qb);
