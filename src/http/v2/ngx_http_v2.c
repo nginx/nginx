@@ -2182,6 +2182,7 @@ ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     h2c->state.init_window_set = 0;
+    h2c->state.max_frame_set = 0;
 
     return ngx_http_v2_state_settings_params(h2c, pos, end);
 }
@@ -2239,7 +2240,8 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
                                                     NGX_HTTP_V2_PROTOCOL_ERROR);
             }
 
-            h2c->frame_size = value;
+            h2c->state.max_frame_size = value;
+            h2c->state.max_frame_set = 1;
             break;
 
         case NGX_HTTP_V2_ENABLE_PUSH_SETTING:
@@ -2265,6 +2267,11 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
         }
 
         pos += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
+    }
+
+    if (h2c->state.max_frame_set) {
+        h2c->frame_size = h2c->state.max_frame_size;
+        h2c->state.max_frame_set = 0;
     }
 
     frame = ngx_http_v2_get_frame(h2c, NGX_HTTP_V2_SETTINGS_ACK_SIZE,
