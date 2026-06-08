@@ -91,13 +91,19 @@ typedef struct {
 } ngx_quic_gaps_t;
 
 
+/*
+ * Receive/send buffer for a QUIC stream or crypto context.
+ * gaps is NULL when no out-of-order frames have been received;
+ * it is allocated from c->pool lazily on the first gap creation.
+ * NULL and gaps->nranges == 0 are both treated as "no holes".
+ */
 typedef struct {
     uint64_t                       size;
     uint64_t                       offset;
     uint64_t                       last_offset;
     ngx_chain_t                   *chain;
     ngx_chain_t                   *last_chain;
-    ngx_quic_gaps_t                gaps;
+    ngx_quic_gaps_t               *gaps;   /* NULL until first OOO frame */
 } ngx_quic_buffer_t;
 
 

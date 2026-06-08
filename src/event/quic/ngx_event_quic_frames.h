@@ -47,8 +47,9 @@ ngx_quic_buffer_has_data(ngx_quic_buffer_t *qb)
         return 0;
     }
 
-    if (qb->gaps.nranges > 0
-        && qb->gaps.ranges[0].start == qb->offset)
+    if (qb->gaps != NULL
+        && qb->gaps->nranges > 0
+        && qb->gaps->ranges[0].start == qb->offset)
     {
         return 0;
     }
