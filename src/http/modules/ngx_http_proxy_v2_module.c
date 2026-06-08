@@ -935,6 +935,14 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     }
 
     ctx->state = 0;
+    ctx->frame_state = 0;
+    ctx->fragment_state = 0;
+    ctx->rest = 0;
+    ctx->stream_id = 0;
+    ctx->type = 0;
+    ctx->flags = 0;
+    ctx->padding = 0;
+    ctx->error = 0;
     ctx->header_sent = 0;
     ctx->output_closed = 0;
     ctx->output_blocked = 0;
@@ -1437,6 +1445,10 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
+            if (rc == NGX_HTTP_UPSTREAM_RETRY) {
+                return NGX_HTTP_UPSTREAM_RETRY;
+            }
+
             if (rc == NGX_OK) {
                 continue;
             }
@@ -1918,7 +1930,9 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
         if (ctx->stream_id < ctx->id) {
 
-            /* TODO: we can retry non-idempotent requests */
+            if (ctx->error == 0) {
+                return NGX_HTTP_UPSTREAM_RETRY;
+            }
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent goaway with error %ui",
@@ -2204,6 +2218,10 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
         }
 
         if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_HTTP_UPSTREAM_RETRY) {
             return NGX_ERROR;
         }
 
