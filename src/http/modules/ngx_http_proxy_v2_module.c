@@ -3679,7 +3679,7 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (ctx->free == NULL && ctx->settings++ > 1000) {
+        if (ctx->settings++ > 1000) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent too many settings frames");
             return NGX_ERROR;
@@ -3837,7 +3837,7 @@ ngx_http_proxy_v2_parse_ping(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (ctx->free == NULL && ctx->pings++ > 1000) {
+        if (ctx->pings++ > 1000) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent too many ping frames");
             return NGX_ERROR;
