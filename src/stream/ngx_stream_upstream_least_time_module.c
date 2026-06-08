@@ -664,4 +664,3 @@ ngx_stream_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return ngx_conf_set_enum_slot(cf, cmd, conf);
 }
-

@@ -1171,7 +1171,7 @@ ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
 static ngx_inline ngx_int_t
 ngx_ssl_cert_already_in_hash(void)
 {
-#if !(OPENSSL_VERSION_NUMBER >= 0x1010009fL \
+#if !(OPENSSL_VERSION_NUMBER >= 0x1010009fL                                   \
       || LIBRESSL_VERSION_NUMBER >= 0x3050000fL)
     u_long  error;
 
