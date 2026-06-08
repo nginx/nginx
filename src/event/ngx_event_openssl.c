@@ -3251,7 +3251,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
          * OpenSSL 1.1.1 fails to return SSL_ERROR_SYSCALL if an error
          * happens during SSL_write() after close_notify alert from the
          * peer, and returns SSL_ERROR_ZERO_RETURN instead,
-         * https://git.openssl.org/?p=openssl.git;a=commitdiff;h=8051ab2
+         * see https://github.com/openssl/openssl/commit/8051ab2
          */
 
         sslerr = SSL_ERROR_SYSCALL;
