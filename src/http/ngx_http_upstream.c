@@ -2597,6 +2597,11 @@ done:
         return;
     }
 
+    if (rc == NGX_HTTP_UPSTREAM_RETRY) {
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_RETRY);
+        return;
+    }
+
     if (rc == NGX_ERROR) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -4598,7 +4603,8 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         }
 
         if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_403
-            || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404)
+            || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404
+            || ft_type == NGX_HTTP_UPSTREAM_FT_RETRY)
         {
             state = NGX_PEER_NEXT;
 
@@ -4619,7 +4625,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "upstream timed out");
     }
 
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
+    if (u->peer.cached
+        && (ft_type == NGX_HTTP_UPSTREAM_FT_ERROR
+            || ft_type == NGX_HTTP_UPSTREAM_FT_RETRY))
+    {
         /* TODO: inform balancer instead */
         u->peer.tries++;
     }
@@ -4670,14 +4679,16 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     timeout = u->conf->next_upstream_timeout;
 
-    if (u->request_sent
+    if (ft_type != NGX_HTTP_UPSTREAM_FT_RETRY
+        && u->request_sent
         && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
     {
         ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
     }
 
     if (u->peer.tries == 0
-        || ((u->conf->next_upstream & ft_type) != ft_type)
+        || (ft_type != NGX_HTTP_UPSTREAM_FT_RETRY
+            && ((u->conf->next_upstream & ft_type) != ft_type))
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
     {
