@@ -68,12 +68,36 @@ typedef enum {
 } ngx_quic_stream_recv_state_e;
 
 
+/*
+ * One contiguous range of bytes absent from the receive buffer.
+ * Invariant: start < end.  Empty gaps are never stored.
+ */
+typedef struct {
+    uint64_t                       start;
+    uint64_t                       end;
+} ngx_quic_gap_t;
+
+/*
+ * Compact set of gaps in the receive buffer.  Entries are sorted in
+ * ascending order of start, never overlapping, never adjacent.
+ * If a new frame would create more than NGX_QUIC_MAX_GAPS simultaneous
+ * gaps ngx_quic_write_buffer() returns NGX_CHAIN_ERROR (flood guard).
+ */
+#define NGX_QUIC_MAX_GAPS  8
+
+typedef struct {
+    ngx_uint_t                     nranges;
+    ngx_quic_gap_t                 ranges[NGX_QUIC_MAX_GAPS];
+} ngx_quic_gaps_t;
+
+
 typedef struct {
     uint64_t                       size;
     uint64_t                       offset;
     uint64_t                       last_offset;
     ngx_chain_t                   *chain;
     ngx_chain_t                   *last_chain;
+    ngx_quic_gaps_t                gaps;
 } ngx_quic_buffer_t;
 
 

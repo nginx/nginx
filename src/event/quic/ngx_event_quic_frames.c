@@ -24,6 +24,16 @@ static ngx_buf_t *ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b);
 static ngx_int_t ngx_quic_split_chain(ngx_connection_t *c, ngx_chain_t *cl,
     off_t offset);
 
+static ngx_int_t ngx_quic_gaps_insert(ngx_quic_gaps_t *gaps,
+    uint64_t start, uint64_t end);
+static ngx_int_t ngx_quic_gaps_written(ngx_quic_gaps_t *gaps,
+    uint64_t start, uint64_t end);
+#if (NGX_DEBUG)
+static void ngx_quic_buf_validate(ngx_quic_buffer_t *qb);
+#else
+#define ngx_quic_buf_validate(qb)
+#endif
+
 
 static ngx_buf_t *
 ngx_quic_alloc_buf(ngx_connection_t *c)
@@ -182,6 +192,7 @@ ngx_quic_split_chain(ngx_connection_t *c, ngx_chain_t *cl, off_t offset)
     tail->buf = tb;
 
     tb->pos += offset;
+    tb->file_pos = b->file_pos + offset;
 
     b->last = tb->pos;
     b->last_buf = 0;
@@ -429,13 +440,16 @@ ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
     ngx_buf_t    *b;
     ngx_chain_t  *out, **ll;
 
+    ngx_quic_buf_validate(qb);
+
     out = qb->chain;
 
     for (ll = &out; *ll; ll = &(*ll)->next) {
-        b = (*ll)->buf;
 
-        if (b->sync) {
-            /* hole */
+        /* stop at a leading gap */
+        if (qb->gaps.nranges > 0
+            && qb->gaps.ranges[0].start == qb->offset)
+        {
             break;
         }
 
@@ -443,6 +457,7 @@ ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
             break;
         }
 
+        b = (*ll)->buf;
         n = b->last - b->pos;
 
         if (n > limit) {
@@ -464,6 +479,8 @@ ngx_quic_read_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb, uint64_t limit)
     qb->chain = *ll;
     *ll = NULL;
 
+    ngx_quic_buf_validate(qb);
+
     return out;
 }
 
@@ -476,8 +493,26 @@ ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     ngx_buf_t    *b;
     ngx_chain_t  *cl;
 
-    while (qb->chain) {
-        if (qb->offset >= offset) {
+    while (qb->offset < offset) {
+
+        /* consume a leading gap record if present */
+        if (qb->gaps.nranges > 0
+            && qb->gaps.ranges[0].start == qb->offset)
+        {
+            if (qb->gaps.ranges[0].end <= offset) {
+                qb->offset = qb->gaps.ranges[0].end;
+                qb->gaps.nranges--;
+                ngx_memmove(&qb->gaps.ranges[0], &qb->gaps.ranges[1],
+                            qb->gaps.nranges * sizeof(ngx_quic_gap_t));
+            } else {
+                qb->gaps.ranges[0].start = offset;
+                qb->offset = offset;
+            }
+
+            continue;
+        }
+
+        if (qb->chain == NULL) {
             break;
         }
 
@@ -499,7 +534,7 @@ ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
         ngx_quic_free_chain(c, cl);
     }
 
-    if (qb->chain == NULL) {
+    if (qb->chain == NULL && qb->gaps.nranges == 0) {
         qb->offset = offset;
     }
 
@@ -507,6 +542,193 @@ ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
         qb->last_chain = NULL;
     }
 }
+
+
+/*
+ * Gap helpers.
+ *
+ * ngx_quic_gaps_insert: add gap [start, end) to the sorted gaps array.
+ * ngx_quic_gaps_written: remove/trim gaps covered by a written [start, end).
+ * ngx_quic_buf_validate: debug-mode invariant checker for ngx_quic_buffer_t.
+ */
+
+static ngx_int_t
+ngx_quic_gaps_insert(ngx_quic_gaps_t *gaps, uint64_t start, uint64_t end)
+{
+    ngx_uint_t      i, j;
+    ngx_quic_gap_t *r;
+
+    if (start >= end) {
+        return NGX_OK;
+    }
+
+    if (gaps->nranges == NGX_QUIC_MAX_GAPS) {
+        return NGX_ERROR;
+    }
+
+    /* find sorted insertion point */
+    r = gaps->ranges;
+    i = 0;
+
+    while (i < gaps->nranges && r[i].start < start) {
+        i++;
+    }
+
+    /* shift right */
+    for (j = gaps->nranges; j > i; j--) {
+        r[j] = r[j - 1];
+    }
+
+    r[i].start = start;
+    r[i].end   = end;
+    gaps->nranges++;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_gaps_written(ngx_quic_gaps_t *gaps, uint64_t start, uint64_t end)
+{
+    ngx_uint_t      i, n;
+    ngx_quic_gap_t *r, right;
+
+    if (start >= end || gaps->nranges == 0) {
+        return NGX_OK;
+    }
+
+    r = gaps->ranges;
+    n = gaps->nranges;
+    i = 0;
+
+    while (i < n) {
+
+        if (r[i].end <= start || r[i].start >= end) {
+            /* no overlap */
+            i++;
+            continue;
+        }
+
+        if (r[i].start >= start && r[i].end <= end) {
+            /* fully covered: remove */
+            n--;
+            ngx_memmove(&r[i], &r[i + 1],
+                        (n - i) * sizeof(ngx_quic_gap_t));
+            continue;
+        }
+
+        if (r[i].start < start && r[i].end > end) {
+            /* written range splits this gap: need two entries */
+            if (n == NGX_QUIC_MAX_GAPS) {
+                return NGX_ERROR;
+            }
+
+            right.start = end;
+            right.end   = r[i].end;
+            r[i].end    = start;
+
+            n++;
+            ngx_memmove(&r[i + 2], &r[i + 1],
+                        (n - i - 2) * sizeof(ngx_quic_gap_t));
+            r[i + 1] = right;
+            i += 2;
+            continue;
+        }
+
+        if (r[i].start < start) {
+            r[i].end = start;   /* trim right side */
+        } else {
+            r[i].start = end;   /* trim left side */
+        }
+
+        i++;
+    }
+
+    gaps->nranges = n;
+
+    return NGX_OK;
+}
+
+
+#if (NGX_DEBUG)
+
+static void
+ngx_quic_buf_validate(ngx_quic_buffer_t *qb)
+{
+    ngx_uint_t    i;
+    uint64_t      pos, size;
+    ngx_chain_t  *cl;
+
+    if (qb->last_offset < qb->offset) {
+        ngx_debug_point();
+        return;
+    }
+
+    pos  = qb->offset;
+    size = 0;
+    cl   = qb->chain;
+    i    = 0;
+
+    while (pos < qb->last_offset) {
+
+        if (i < qb->gaps.nranges
+            && qb->gaps.ranges[i].start == pos)
+        {
+            /* gap segment */
+            if (qb->gaps.ranges[i].end <= pos) {
+                ngx_debug_point();
+                return;
+            }
+
+            pos = qb->gaps.ranges[i].end;
+            i++;
+            continue;
+        }
+
+        /* data segment */
+        if (cl == NULL) {
+            ngx_debug_point();
+            return;
+        }
+
+        if (cl->buf->sync) {
+            ngx_debug_point();
+            return;
+        }
+
+        if ((uint64_t) cl->buf->file_pos != pos) {
+            ngx_debug_point();
+            return;
+        }
+
+        size += cl->buf->last - cl->buf->pos;
+        pos  += cl->buf->last - cl->buf->pos;
+        cl    = cl->next;
+    }
+
+    if (cl != NULL) {
+        ngx_debug_point();
+        return;
+    }
+
+    if (i != qb->gaps.nranges) {
+        ngx_debug_point();
+        return;
+    }
+
+    if (size != qb->size) {
+        ngx_debug_point();
+    }
+
+    for (i = 1; i < qb->gaps.nranges; i++) {
+        if (qb->gaps.ranges[i].start <= qb->gaps.ranges[i - 1].end) {
+            ngx_debug_point();
+            return;
+        }
+    }
+}
+
+#endif /* NGX_DEBUG */
 
 
 ngx_chain_t *
@@ -528,115 +750,246 @@ ngx_quic_alloc_chain(ngx_connection_t *c)
 }
 
 
+/*
+ * Write received data from `in` into the receive buffer `qb` at stream
+ * byte offset `offset`, consuming at most `limit` bytes.
+ *
+ * Gaps are tracked in qb->gaps as compact sorted intervals; the chain
+ * contains only data-bearing nodes ordered by stream offset.
+ * buf->file_pos stores each node's stream base offset.
+ *
+ * Returns the unconsumed tail of `in`, or NGX_CHAIN_ERROR on error.
+ */
 ngx_chain_t *
 ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     ngx_chain_t *in, uint64_t limit, uint64_t offset)
 {
-    u_char       *p;
-    uint64_t      n, base;
-    ngx_buf_t    *b;
-    ngx_chain_t  *cl, **chain;
+    u_char        *p;
+    uint64_t       n, ms, me, frame_end, old_last;
+    ngx_uint_t     gi;
+    ngx_buf_t     *b;
+    ngx_chain_t   *cl, **chain;
 
-    if (qb->last_chain && offset >= qb->last_offset) {
-        base = qb->last_offset;
-        chain = &qb->last_chain;
+    ngx_quic_buf_validate(qb);
 
-    } else {
-        base = qb->offset;
-        chain = &qb->chain;
+    /* ------------------------------------------------------------------ *
+     * Step 1: compute frame_end = offset + min(total_in_len, limit)
+     * ------------------------------------------------------------------ */
+    frame_end = offset;
+
+    for (cl = in; cl; cl = cl->next) {
+        b = cl->buf;
+        if (!ngx_buf_in_memory(b)) {
+            continue;
+        }
+        n = b->last - b->pos;
+        if (frame_end - offset + n > limit) {
+            n = limit - (frame_end - offset);
+        }
+        frame_end += n;
+        if (frame_end - offset == limit) {
+            break;
+        }
     }
 
-    while (in && limit) {
+    /* ------------------------------------------------------------------ *
+     * Step 2: discard frames entirely below the read pointer
+     * ------------------------------------------------------------------ */
+    if (frame_end <= qb->offset) {
+        while (in && limit) {
+            b = in->buf;
+            if (ngx_buf_in_memory(b)) {
+                n = ngx_min((uint64_t)(b->last - b->pos), limit);
+                in->buf->pos += n;
+                limit -= n;
+                if (in->buf->pos == in->buf->last) {
+                    in = in->next;
+                }
+            } else {
+                in = in->next;
+            }
+        }
+        return in;
+    }
 
-        if (offset < base) {
-            n = ngx_min((uint64_t) (in->buf->last - in->buf->pos),
-                        ngx_min(base - offset, limit));
-
+    /* ------------------------------------------------------------------ *
+     * Step 3: skip already-consumed prefix in `in`
+     * ------------------------------------------------------------------ */
+    while (in && offset < qb->offset) {
+        b = in->buf;
+        if (ngx_buf_in_memory(b)) {
+            n = ngx_min((uint64_t)(b->last - b->pos),
+                        ngx_min(qb->offset - offset, limit));
             in->buf->pos += n;
             offset += n;
             limit -= n;
-
             if (in->buf->pos == in->buf->last) {
                 in = in->next;
             }
+        } else {
+            in = in->next;
+        }
+    }
 
-            continue;
+    if (!in || !limit) {
+        return in;
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Step 4: if the frame jumps past the write frontier, record new gap
+     * ------------------------------------------------------------------ */
+    old_last = qb->last_offset;
+
+    if (offset > old_last) {
+        if (ngx_quic_gaps_insert(&qb->gaps, old_last, offset) != NGX_OK)
+        {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "quic too many gaps in receive buffer (flood)");
+            return NGX_CHAIN_ERROR;
+        }
+    }
+
+    if (frame_end > qb->last_offset) {
+        qb->last_offset = frame_end;
+    }
+
+    /*
+     * Bytes to write fall into two disjoint categories:
+     *
+     *   A) [offset, min(frame_end, old_last)) intersected with gap ranges
+     *      — filling pre-existing holes
+     *
+     *   B) [max(offset, old_last), frame_end)
+     *      — pure append beyond the old frontier (never in chain yet)
+     *
+     * We iterate `in` once from `offset` to `frame_end`.  For each position
+     * we decide: write (gap or beyond old frontier) or skip (already in chain).
+     */
+
+    /* Build a write list: sorted [ms, me) sub-ranges to write.
+     * We build it directly from the gap array + the append tail. */
+
+    for (gi = 0; gi <= qb->gaps.nranges && in && limit; gi++) {
+
+        /* ms..me is the sub-range of [offset, frame_end) to write */
+        if (gi < qb->gaps.nranges) {
+
+            ms = qb->gaps.ranges[gi].start;
+            me = qb->gaps.ranges[gi].end;
+
+            /* intersect with [offset, frame_end) */
+            if (ms < offset) { ms = offset; }
+            if (me > frame_end) { me = frame_end; }
+            if (ms >= me) { continue; }   /* gap outside frame */
+            if (ms >= old_last) { continue; } /* handled as append below */
+
+            if (me > old_last) { me = old_last; }
+
+        } else {
+            /* append tail: [old_last, frame_end) — only if frame extends beyond */
+            ms = old_last;
+            if (ms < offset) { ms = offset; }
+            me = frame_end;
+            if (ms >= me) { break; }
         }
 
-        cl = *chain;
+        /* ---- skip `in` forward to ms ---- */
+        while (in && offset < ms) {
+            b = in->buf;
+            if (ngx_buf_in_memory(b)) {
+                n = ngx_min((uint64_t)(b->last - b->pos),
+                            ngx_min(ms - offset, limit));
+                in->buf->pos += n;
+                offset += n;
+                limit -= n;
+                if (in->buf->pos == in->buf->last) {
+                    in = in->next;
+                }
+            } else {
+                in = in->next;
+            }
+        }
 
-        if (cl == NULL) {
+        /* ---- find chain insertion point: after last node ending <= ms ---- */
+        chain = &qb->chain;
+        for (cl = qb->chain; cl; cl = cl->next) {
+            if ((uint64_t) cl->buf->file_pos
+                + (uint64_t)(cl->buf->last - cl->buf->pos) > ms)
+            {
+                break;
+            }
+            chain = &cl->next;
+        }
+
+        /* ---- copy data into new nodes for [ms, me) ---- */
+        while (in && offset < me && limit) {
+
+            b = in->buf;
+            if (!ngx_buf_in_memory(b) || b->pos == b->last) {
+                in = in->next;
+                continue;
+            }
+
             cl = ngx_quic_alloc_chain(c);
             if (cl == NULL) {
                 return NGX_CHAIN_ERROR;
             }
 
-            cl->buf->last = cl->buf->end;
-            cl->buf->sync = 1; /* hole */
-            cl->next = NULL;
-            *chain = cl;
-        }
+            cl->buf->file_pos = offset;
+            p = cl->buf->pos;
 
-        b = cl->buf;
-        n = b->last - b->pos;
+            while (in && p < cl->buf->end && offset < me && limit) {
 
-        if (base + n <= offset) {
-            base += n;
-            chain = &cl->next;
-            continue;
-        }
+                b = in->buf;
+                if (!ngx_buf_in_memory(b) || b->pos == b->last) {
+                    in = in->next;
+                    continue;
+                }
 
-        if (b->sync && offset > base) {
-            if (ngx_quic_split_chain(c, cl, offset - base) != NGX_OK) {
-                return NGX_CHAIN_ERROR;
-            }
+                n = ngx_min((uint64_t)(cl->buf->end - p),
+                            ngx_min((uint64_t)(b->last - b->pos),
+                                    ngx_min(me - offset, limit)));
 
-            continue;
-        }
-
-        p = b->pos + (offset - base);
-
-        while (in) {
-
-            if (!ngx_buf_in_memory(in->buf) || in->buf->pos == in->buf->last) {
-                in = in->next;
-                continue;
-            }
-
-            if (p == b->last || limit == 0) {
-                break;
-            }
-
-            n = ngx_min(b->last - p, in->buf->last - in->buf->pos);
-            n = ngx_min(n, limit);
-
-            if (b->sync) {
-                ngx_memcpy(p, in->buf->pos, n);
+                ngx_memcpy(p, b->pos, n);
+                p        += n;
+                b->pos   += n;
+                offset   += n;
+                limit    -= n;
                 qb->size += n;
+
+                if (b->pos == b->last) {
+                    in = in->next;
+                }
             }
 
-            p += n;
-            in->buf->pos += n;
-            offset += n;
-            limit -= n;
-        }
-
-        if (b->sync && p == b->last) {
-            b->sync = 0;
-            continue;
-        }
-
-        if (b->sync && p != b->pos) {
-            if (ngx_quic_split_chain(c, cl, p - b->pos) != NGX_OK) {
-                return NGX_CHAIN_ERROR;
-            }
-
-            b->sync = 0;
+            cl->buf->last = p;
+            cl->next = *chain;
+            *chain = cl;
+            chain = &cl->next;
         }
     }
 
-    qb->last_offset = base;
-    qb->last_chain = *chain;
+    /* ------------------------------------------------------------------ *
+     * Step 6: remove ranges now written from gap set
+     * ------------------------------------------------------------------ */
+    if (ngx_quic_gaps_written(&qb->gaps, offset < frame_end ? offset : 0,
+                              frame_end)
+        != NGX_OK)
+    {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "quic gap split overflow in receive buffer");
+        return NGX_CHAIN_ERROR;
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Step 7: update last_chain cursor (last node in chain)
+     * ------------------------------------------------------------------ */
+    qb->last_chain = NULL;
+    for (cl = qb->chain; cl; cl = cl->next) {
+        qb->last_chain = cl;
+    }
+
+    ngx_quic_buf_validate(qb);
 
     return in;
 }
@@ -649,6 +1002,7 @@ ngx_quic_free_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb)
 
     qb->chain = NULL;
     qb->last_chain = NULL;
+    qb->gaps.nranges = 0;
 }
 
 
