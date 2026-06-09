@@ -786,7 +786,7 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     ngx_chain_t *in, uint64_t limit, uint64_t offset)
 {
     u_char        *p;
-    uint64_t       n, ms, me, frame_end, old_last;
+    uint64_t       n, ms, me, frame_end, frame_start, old_last;
     ngx_uint_t     gi;
     ngx_buf_t     *b;
     ngx_chain_t   *cl, **chain, *last_appended;
@@ -856,6 +856,15 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
         return in;
     }
 
+    /*
+     * frame_start: effective start of this frame after the already-consumed
+     * prefix has been skipped (Step 3 above).  The gi-loop below advances
+     * `offset` as it copies data, so frame_start must be captured here —
+     * before any mutation — and passed to ngx_quic_gaps_written (Step 6)
+     * to correctly identify which gap records are now covered.
+     */
+    frame_start = offset;
+
     /* ------------------------------------------------------------------ *
      * Step 4: if the frame jumps past the write frontier, record new gap
      * ------------------------------------------------------------------ */
@@ -864,9 +873,16 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     if (offset > old_last) {
         if (ngx_quic_gaps_insert(c, qb, old_last, offset) != NGX_OK)
         {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "quic too many gaps in receive buffer (flood)");
-            return NGX_CHAIN_ERROR;
+            /*
+             * The gap set is full.  Dropping this frame is safe: the
+             * sender's loss-recovery timer will retransmit it, and the
+             * insert will succeed once earlier gaps are filled first.
+             * Terminating the connection here would violate RFC 9000
+             * §2.2 which requires supporting out-of-order delivery.
+             */
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "quic receive gap set full, dropping frame");
+            return in;
         }
     }
 
@@ -1044,11 +1060,16 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     } /* end nranges block */
 
     /* ------------------------------------------------------------------ *
-     * Step 6: remove ranges now written from gap set
+     * Step 6: remove gap records now covered by the written range.
+     *
+     * Use frame_start (offset at entry to this stage, before the gi-loop
+     * advanced it) as the lower bound.  Using the post-loop `offset` here
+     * was the original bug: when all data is consumed offset == frame_end,
+     * so `offset < frame_end` is false and start=0 was passed, which
+     * erased ALL gap records from stream byte 0 to frame_end regardless
+     * of whether they were actually filled by this call.
      * ------------------------------------------------------------------ */
-    if (ngx_quic_gaps_written(qb->gaps, offset < frame_end ? offset : 0,
-                              frame_end)
-        != NGX_OK)
+    if (ngx_quic_gaps_written(qb->gaps, frame_start, frame_end) != NGX_OK)
     {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "quic gap split overflow in receive buffer");
