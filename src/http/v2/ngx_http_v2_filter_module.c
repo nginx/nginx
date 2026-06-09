@@ -147,6 +147,17 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    if (r->headers_out.status >= 100
+        && r->headers_out.status < NGX_HTTP_OK)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "Unsupported 1xx status code %ui",
+                      r->headers_out.status);
+        ngx_http_filter_finalize_request(r, NULL,
+                                         NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
     r->header_sent = 1;
 
     if (r != r->main) {
