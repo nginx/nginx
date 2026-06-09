@@ -46,6 +46,8 @@ typedef struct {
     ngx_chain_t                   *free;
     ngx_chain_t                   *busy;
 
+    ngx_http_request_t            *request;
+
     ngx_http_proxy_v2_conn_t      *connection;
 
     ngx_uint_t                     id;
@@ -83,6 +85,10 @@ typedef struct {
 
     unsigned                       literal:1;
     unsigned                       field_huffman:1;
+
+    ssize_t                        window_charge;  /* DATA payload framed but not yet charged to window */
+
+    off_t                          last_sent;      /* c->sent at last window charge */
 
     unsigned                       header_sent:1;
     unsigned                       output_closed:1;
@@ -160,11 +166,17 @@ static ngx_http_proxy_v2_ctx_t *
     ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc);
+static ngx_http_upstream_mux_hooks_t  ngx_http_proxy_v2_mux_hooks;
 static void ngx_http_proxy_v2_cleanup(void *data);
 
 static void ngx_http_proxy_v2_abort_request(ngx_http_request_t *r);
 static void ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r,
     ngx_int_t rc);
+
+static void ngx_http_proxy_v2_charge_window(ngx_http_proxy_v2_ctx_t *ctx,
+    off_t bytes_written);
+
+
 
 
 static ngx_http_module_t  ngx_http_proxy_v2_module_ctx = {
@@ -239,6 +251,7 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     plcf->upstream.preserve_output = 1;
 
     u = r->upstream;
+    u->http2 = 1;
 
     if (plcf->proxy_lengths == NULL) {
         ctx->ctx.vars = plcf->vars;
@@ -943,7 +956,9 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->status = 0;
     ctx->rst = 0;
     ctx->goaway = 0;
+
     ctx->connection = NULL;
+
     ctx->in = NULL;
     ctx->busy = NULL;
     ctx->out = NULL;
@@ -964,7 +979,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
     ngx_int_t                  rc;
     ngx_uint_t                 next, last;
     ngx_chain_t                *cl, *out, *ln, **ll;
-    ngx_http_upstream_t        *u;
+    ngx_http_upstream_t        *u = r->upstream;
     ngx_http_proxy_v2_ctx_t    *ctx;
     ngx_http_proxy_v2_frame_t  *f;
 
@@ -1013,6 +1028,9 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
                 f->stream_id_1 = (u_char) ((ctx->id >> 16) & 0xff);
                 f->stream_id_2 = (u_char) ((ctx->id >> 8) & 0xff);
                 f->stream_id_3 = (u_char) (ctx->id & 0xff);
+
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "proxy v2: patched frame sid=%ui", ctx->id);
 
                 p += (f->length_0 << 16) + (f->length_1 << 8) + f->length_2;
             }
@@ -1164,8 +1182,8 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
             f->stream_id_3 = (u_char) (ctx->id & 0xff);
 
             limit -= len;
-            ctx->send_window -= len;
-            ctx->connection->send_window -= len;
+            ctx->window_charge += len;
+            /* window decrement deferred to write-completion time */
 
         } while (!next && limit > 0);
 
@@ -1261,6 +1279,17 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
     rc = ngx_chain_writer(&r->upstream->writer, out);
 
+    if (u != NULL) {
+        ngx_connection_t  *sc = u->peer.connection;
+        if (sc != NULL) {
+            off_t  delta = sc->sent - ctx->last_sent;
+            if (delta > 0) {
+                ngx_http_proxy_v2_charge_window(ctx, delta);
+            }
+            ctx->last_sent = sc->sent;
+        }
+    }
+
     ngx_chain_update_chains(r->pool, &ctx->free, &ctx->busy, &out,
                          (ngx_buf_tag_t) &ngx_http_proxy_v2_body_output_filter);
 
@@ -1297,7 +1326,6 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
          * here anyway.
          */
 
-        u = r->upstream;
         u->length = 0;
         u->pipe->length = 0;
 
@@ -4050,9 +4078,20 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
-    if (ctx->connection == NULL) {
-        u = r->upstream;
+    u = r->upstream;
 
+    /*
+     * Force (re)resolution to the real v2_conn on the backend c's pool
+     * when we now have a real peer connection. This ensures the *creating*
+     * request (which saw c==NULL during create_request and got a temp
+     * v2c with id=0) picks up the shared real v2c (and registers for
+     * the multiplexer) once the socket exists. Second+ requests (fresh
+     * ctx, connection==NULL) also go through here.
+     */
+    if (ctx->connection == NULL
+        || (u && u->peer.connection != NULL
+            && (ctx->id == 0 || ctx->connection->init_window == 0)))
+    {
         if (ngx_http_proxy_v2_get_connection_data(r, ctx, &u->peer) != NGX_OK) {
             return NULL;
         }
@@ -4066,10 +4105,14 @@ static ngx_int_t
 ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc)
 {
-    ngx_connection_t    *c;
-    ngx_pool_cleanup_t  *cln;
+    ngx_connection_t          *c;
+    ngx_pool_cleanup_t        *cln;
+    ngx_http_upstream_t       *u;
+    ngx_http_upstream_mux_t   *mux;
 
     c = pc->connection;
+    u = r->upstream;
+    ctx->request = r;
 
     if (c == NULL) {
         ctx->connection = ngx_palloc(r->pool, sizeof(ngx_http_proxy_v2_conn_t));
@@ -4082,35 +4125,32 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
         goto done;
     }
 
-    if (pc->cached) {
-
-        /*
-         * for cached connections, connection data can be found
-         * in the cleanup handler
-         */
-
-        for (cln = c->pool->cleanup; cln; cln = cln->next) {
-            if (cln->handler == ngx_http_proxy_v2_cleanup) {
-                ctx->connection = cln->data;
-                break;
-            }
+    /*
+     * Look for existing per-connection v2 state attached to this
+     * backend c's pool.  Also find (or create) the upstream mux.
+     */
+    for (cln = c->pool->cleanup; cln; cln = cln->next) {
+        if (cln->handler == ngx_http_proxy_v2_cleanup) {
+            ctx->connection = cln->data;
+            break;
         }
+    }
 
-        if (ctx->connection == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "no connection data found for "
-                          "keepalive http2 connection");
-            return NGX_ERROR;
-        }
+    if (ctx->connection != NULL) {
+        /* reuse of already-initialized v2 state on this c */
+
 
         ctx->send_window = ctx->connection->init_window;
         ctx->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+        ctx->last_sent = c->sent;
 
         ctx->connection->last_stream_id += 2;
         ctx->id = ctx->connection->last_stream_id;
 
         return NGX_OK;
     }
+
+    /* first H2 proxy use ever on this backend connection c */
 
     cln = ngx_pool_cleanup_add(c->pool, sizeof(ngx_http_proxy_v2_conn_t));
     if (cln == NULL) {
@@ -4119,6 +4159,16 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
 
     cln->handler = ngx_http_proxy_v2_cleanup;
     ctx->connection = cln->data;
+
+    /* Create upstream mux for this connection (u->mux assigned by upstream layer) */
+
+    mux = ngx_http_upstream_mux_get(c);
+    if (mux == NULL) {
+        return NGX_ERROR;
+    }
+
+    mux->protocol_data = ctx->connection;
+    mux->hooks = &ngx_http_proxy_v2_mux_hooks;
 
     ctx->id = 1;
 
@@ -4130,8 +4180,19 @@ done:
 
     ctx->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+    ctx->last_sent = c ? c->sent : 0;
 
     ctx->connection->last_stream_id = 1;
+
+    if (c != NULL) {
+        u->keepalive = 1;
+
+        ngx_log_debug(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "proxy v2: NEW v2c=%p on #%uA c=%p fd=%d pool=%p "
+                       "ctx->id=%ui",
+                       ctx->connection, c->number, c, c->fd, c->pool,
+                       ctx->id);
+    }
 
     return NGX_OK;
 }
@@ -4147,6 +4208,101 @@ ngx_http_proxy_v2_cleanup(void *data)
     return;
 }
 
+/* Return the v2_conn state (if any) attached to this backend connection's
+ * pool via the sentinel cleanup. Used by core upstream (guards, force
+ * event drive on reuse) and internally. Returns void* so callers in
+ * core upstream do not need the private struct type.
+ */
+void *
+ngx_http_proxy_v2_get_connection(ngx_connection_t *c)
+{
+    ngx_pool_cleanup_t        *cln;
+
+    if (c == NULL || c->pool == NULL) {
+        return NULL;
+    }
+
+    for (cln = c->pool->cleanup; cln; cln = cln->next) {
+        if (cln->handler == ngx_http_proxy_v2_cleanup) {
+            return cln->data;
+        }
+    }
+
+    return NULL;
+}
+
+
+
+/*
+ * Charge the flow-control window for DATA payload that was actually
+ * written to the socket.  Called from drive_multiplex (slow path) and
+ * ngx_http_upstream.c (fast path) right after ngx_http_upstream_send_request.
+ *
+ * We defer window decrement from frame-construction time (body_output_filter)
+ * to write-completion time so that frames queued by enqueue_request (dummy
+ * send_chain) do not phantom-consume the window.
+ *
+ * To handle partial writes correctly we use c->sent: the caller saves
+ * c->sent before the write and passes the delta.  Only that many DATA
+ * bytes (capped by window_charge) are charged.
+ */
+static void
+ngx_http_proxy_v2_charge_window(ngx_http_proxy_v2_ctx_t *ctx,
+    off_t bytes_written)
+{
+    ssize_t  charge;
+
+    if (ctx == NULL || ctx->window_charge <= 0 || bytes_written <= 0) {
+        return;
+    }
+
+    charge = ctx->window_charge;
+    if (bytes_written < charge) {
+        charge = (ssize_t) bytes_written;
+    }
+
+    ngx_log_debug4(NGX_LOG_DEBUG_HTTP,
+                   ctx->request ? ctx->request->connection->log : NULL, 0,
+                   "proxy v2: charge window sid=%ui charge=%d (of %d) stream_win=%d",
+                   ctx->id, charge, ctx->window_charge, (int) ctx->send_window);
+
+    ctx->send_window -= charge;
+    ctx->connection->send_window -= charge;
+    ctx->window_charge -= charge;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_mux_can_send(ngx_http_upstream_t *u)
+{
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(u->request, ngx_http_proxy_v2_module);
+    if (ctx == NULL) {
+        return 1;
+    }
+
+    return ctx->send_window 
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_mux_is_done(ngx_http_upstream_t *u)
+{
+
+    if (u->writer.out != NULL) {
+        return 0;
+    }
+
+    return 1;
+}
+
+
+static ngx_http_upstream_mux_hooks_t  ngx_http_proxy_v2_mux_hooks = {
+    ngx_http_proxy_v2_mux_can_send,
+    ngx_http_proxy_v2_mux_is_done,
+};
+
 
 static void
 ngx_http_proxy_v2_abort_request(ngx_http_request_t *r)
@@ -4160,7 +4316,24 @@ ngx_http_proxy_v2_abort_request(ngx_http_request_t *r)
 static void
 ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize proxy http2 request");
+
+    ngx_http_upstream_t  *u;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+    if (ctx != NULL) {
+        u = r->upstream;
+        if (u != NULL && u->in_mux_queue) {
+            ngx_http_upstream_mux_dequeue(u);
+        }
+        ctx->connection = NULL;
+    }
+
     return;
 }
+
+
+

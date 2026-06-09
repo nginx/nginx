@@ -58,6 +58,7 @@
 
 
 #define NGX_HTTP_UPSTREAM_NOTIFY_HEADER      0x1
+#define NGX_HTTP_UPSTREAM_NOTIFY_CONNECT     0x2
 
 
 typedef struct {
@@ -334,6 +335,9 @@ typedef void (*ngx_http_upstream_handler_pt)(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 
 
+typedef struct ngx_http_upstream_mux_s  ngx_http_upstream_mux_t;
+
+
 struct ngx_http_upstream_s {
     ngx_http_upstream_handler_pt     read_event_handler;
     ngx_http_upstream_handler_pt     write_event_handler;
@@ -412,12 +416,20 @@ struct ngx_http_upstream_s {
     unsigned                         keepalive:1;
     unsigned                         upgrade:1;
     unsigned                         error:1;
+    unsigned                         http2:1;
 
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
+
+    ngx_http_request_t              *request;
+
+    ngx_http_upstream_mux_t         *mux;
+    ngx_queue_t                      mux_send_link;
+    unsigned                         in_mux_queue:1;
+    ngx_http_upstream_handler_pt     mux_handler;
 };
 
 
@@ -425,6 +437,18 @@ typedef struct {
     ngx_uint_t                      status;
     ngx_uint_t                      mask;
 } ngx_http_upstream_next_t;
+
+
+typedef struct {
+    ngx_int_t (*can_send)(ngx_http_upstream_t *u);
+    ngx_int_t (*is_done)(ngx_http_upstream_t *u);
+} ngx_http_upstream_mux_hooks_t;
+
+struct ngx_http_upstream_mux_s {
+    ngx_queue_t                    send_queue;
+    ngx_http_upstream_mux_hooks_t *hooks;
+    void                          *protocol_data;
+};
 
 
 typedef struct {
@@ -455,6 +479,16 @@ ngx_int_t ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
 
 #define ngx_http_conf_upstream_srv_conf(uscf, module)                         \
     uscf->srv_conf[module.ctx_index]
+
+
+ngx_http_upstream_mux_t *ngx_http_upstream_mux_get(ngx_connection_t *c);
+void ngx_http_upstream_mux_drive(ngx_connection_t *c,
+    ngx_http_upstream_mux_t *mux);
+void ngx_http_upstream_mux_enqueue(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+void ngx_http_upstream_mux_dequeue(ngx_http_upstream_t *u);
+ngx_uint_t ngx_http_upstream_mux_queue_has_waiters(
+    ngx_http_upstream_mux_t *mux);
 
 
 extern ngx_module_t        ngx_http_upstream_module;
