@@ -17,6 +17,7 @@ jobs:
     - name: git log --check
       run: |
         echo "## Whitespace Check Results" >${GITHUB_STEP_SUMMARY}
+        echo '```' >>${GITHUB_STEP_SUMMARY}
         err=0
         commit=
         while read dash hash subj
@@ -42,6 +43,7 @@ jobs:
             ;;
           esac
         done <<< $(git log --check --pretty=format:"--- %h %s" ${{github.event.pull_request.base.sha}}..)
+        echo '```' >>${GITHUB_STEP_SUMMARY}
 
         if test ${err} -ne 0
         then
