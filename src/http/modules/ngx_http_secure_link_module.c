@@ -102,8 +102,8 @@ ngx_http_secure_link_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
     u_char                       *p, *last;
-    ngx_str_t                     val, hash;
     time_t                        expires;
+    ngx_str_t                     val, hash;
     ngx_md5_t                     md5;
     ngx_http_secure_link_ctx_t   *ctx;
     ngx_http_secure_link_conf_t  *conf;
@@ -203,8 +203,8 @@ ngx_http_secure_link_old_variable(ngx_http_request_t *r,
     u_char      *p, *start, *end, *last;
     size_t       len;
     ngx_int_t    n;
-    ngx_uint_t   i;
     ngx_md5_t    md5;
+    ngx_uint_t   i;
     u_char       hash[16];
 
     p = &r->unparsed_uri.data[1];
