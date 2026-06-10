@@ -1534,6 +1534,85 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                 }
 
+                /*
+                 * RFC 9113, 8.2.2: an HTTP/2 message that contains
+                 * connection-specific header fields is malformed.
+                 * RFC 9110, 7.6.1 lists Connection, Proxy-Connection,
+                 * Keep-Alive, TE, Transfer-Encoding, and Upgrade.  While
+                 * a request MAY carry "TE: trailers" (RFC 9110, 10.1.4),
+                 * TE is a request-only field with no defined semantics in
+                 * a response, so it is rejected here unconditionally along
+                 * with the others.  Header names on the wire are lowercase
+                 * and have already been validated as such by
+                 * ngx_http_proxy_v2_validate_header_name().
+                 */
+
+                if (ctx->name.len == sizeof("connection") - 1
+                    && ngx_strncmp(ctx->name.data, "connection",
+                                   sizeof("connection") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                if (ctx->name.len == sizeof("proxy-connection") - 1
+                    && ngx_strncmp(ctx->name.data, "proxy-connection",
+                                   sizeof("proxy-connection") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                if (ctx->name.len == sizeof("keep-alive") - 1
+                    && ngx_strncmp(ctx->name.data, "keep-alive",
+                                   sizeof("keep-alive") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                if (ctx->name.len == sizeof("te") - 1
+                    && ngx_strncmp(ctx->name.data, "te",
+                                   sizeof("te") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                if (ctx->name.len == sizeof("transfer-encoding") - 1
+                    && ngx_strncmp(ctx->name.data, "transfer-encoding",
+                                   sizeof("transfer-encoding") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                if (ctx->name.len == sizeof("upgrade") - 1
+                    && ngx_strncmp(ctx->name.data, "upgrade",
+                                   sizeof("upgrade") - 1) == 0)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
                 h = ngx_list_push(&u->headers_in.headers);
                 if (h == NULL) {
                     return NGX_ERROR;
