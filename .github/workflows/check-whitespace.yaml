@@ -18,12 +18,12 @@ jobs:
       run: |
         echo "## Whitespace Check Results" >${GITHUB_STEP_SUMMARY}
         echo '```' >>${GITHUB_STEP_SUMMARY}
+        err=0
         commit=
         while read dash hash subj
         do
           case "${dash}" in
           "---")
-            err=0
             commit="${hash} (\"${subj}\")"
             ;;
           "")
