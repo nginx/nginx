@@ -74,6 +74,7 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t                       enable;
+    ngx_flag_t                       rfc9218_priority;
     size_t                           pool_size;
     ngx_uint_t                       concurrent_streams;
     size_t                           preread_size;
