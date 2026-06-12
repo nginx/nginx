@@ -1721,6 +1721,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_core_main_conf_t  *cmcf;
 
     static ngx_str_t cookie = ngx_string("cookie");
+    static ngx_str_t priority_name = ngx_string("priority");
 
     header = &h2c->state.header;
 
@@ -1817,6 +1818,29 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 
             return ngx_http_v2_state_header_complete(h2c, pos, end);
         }
+    }
+
+    /*
+     * RFC9218: Handle Priority request header for extensible priorities.
+     * Parse and store the priority parameters in the stream, but continue
+     * normal header processing so the header is visible to variables and
+     * forwarding.
+     *
+     * Parse the Priority header for RFC9218 extensible priorities.
+     */
+    if (header->name.len == priority_name.len
+        && ngx_memcmp(header->name.data, priority_name.data,
+                      priority_name.len) == 0)
+    {
+        if (ngx_http_priority_parse(&header->value,
+                                    &h2c->state.stream->priority) == NGX_OK)
+        {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http2 priority header: u=%ui, i=%ui",
+                           h2c->state.stream->priority.urgency,
+                           h2c->state.stream->priority.incremental);
+        }
+        /* Malformed priority values use defaults per RFC9218 */
     }
 
     if (header->name.len == cookie.len
