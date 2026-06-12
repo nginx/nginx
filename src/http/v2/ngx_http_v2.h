@@ -258,11 +258,49 @@ struct ngx_http_v2_out_frame_s {
 };
 
 
+/*
+ * Compare two streams for scheduling order.
+ *
+ * Returns 1 if existing stream 's' should come before 'stream' (break),
+ * returns 0 if search should continue.
+ *
+ * Uses RFC9218 urgency-based scheduling.
+ * Lower urgency value (0-7) = higher priority.
+ * At same urgency, non-incremental before incremental.
+ * At same urgency and incremental, lower stream ID wins (FIFO order).
+ */
+static ngx_inline ngx_uint_t
+ngx_http_v2_stream_comes_before(ngx_http_v2_connection_t *h2c,
+    ngx_http_v2_stream_t *s, ngx_http_v2_stream_t *stream)
+{
+    ngx_int_t  cmp;
+
+    /* RFC9218 urgency-based scheduling */
+    cmp = ngx_http_priority_compare(&s->priority, &stream->priority);
+
+    if (cmp < 0) {
+        return 1;
+    }
+
+    if (cmp == 0) {
+        /* Same priority: lower stream ID wins */
+        if (s->node->id <= stream->node->id) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+
 static ngx_inline void
 ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
 {
+    ngx_http_v2_stream_t      *s, *fs;
     ngx_http_v2_out_frame_t  **out;
+
+    fs = frame->stream;
 
     for (out = &h2c->last_out; *out; out = &(*out)->next) {
 
@@ -270,11 +308,9 @@ ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
             break;
         }
 
-        if ((*out)->stream->node->rank < frame->stream->node->rank
-            || ((*out)->stream->node->rank == frame->stream->node->rank
-                && (*out)->stream->node->rel_weight
-                   >= frame->stream->node->rel_weight))
-        {
+        s = (*out)->stream;
+
+        if (ngx_http_v2_stream_comes_before(h2c, s, fs)) {
             break;
         }
     }

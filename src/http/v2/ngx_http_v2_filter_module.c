@@ -1446,10 +1446,7 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     {
         s = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
 
-        if (s->node->rank < stream->node->rank
-            || (s->node->rank == stream->node->rank
-                && s->node->rel_weight >= stream->node->rel_weight))
-        {
+        if (ngx_http_v2_stream_comes_before(h2c, s, stream)) {
             break;
         }
     }
