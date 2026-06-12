@@ -9,6 +9,9 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <ngx_http_proxy_module.h>
+#if (NGX_HTTP_V2)
+#include <ngx_http_proxy_v2_module.h>
+#endif
 
 
 #define  NGX_HTTP_PROXY_COOKIE_SECURE           0x0001

@@ -460,6 +460,7 @@ ngx_int_t ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
 
 
 extern ngx_module_t        ngx_http_upstream_module;
+extern ngx_http_upstream_header_t  ngx_http_upstream_headers_in[];
 extern ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[];
 extern ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[];
 
