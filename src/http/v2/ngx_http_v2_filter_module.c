@@ -1431,6 +1431,7 @@ static void
 ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_stream_t *stream)
 {
+    ngx_int_t              cmp;
     ngx_queue_t           *q;
     ngx_http_v2_stream_t  *s;
 
@@ -1446,11 +1447,44 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     {
         s = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
 
-        if (s->node->rank < stream->node->rank
-            || (s->node->rank == stream->node->rank
-                && s->node->rel_weight >= stream->node->rel_weight))
+        /*
+         * RFC9218: When using extensible priorities, schedule by urgency.
+         */
+        if (h2c->rfc9218_enabled
+            || (stream->priority.valid && s->priority.valid))
         {
-            break;
+            cmp = ngx_http_priority_compare(&s->priority, &stream->priority);
+
+            if (cmp < 0) {
+                break;
+            }
+
+            if (cmp == 0) {
+                /*
+                 * Same urgency and incremental status.
+                 * Match queue_frame() logic for consistency.
+                 */
+                if (!s->priority.incremental && !stream->priority.incremental) {
+                    /* Both non-incremental: strict FIFO */
+                    if (s->node->id <= stream->node->id) {
+                        break;
+                    }
+                } else {
+                    /* Both incremental: allow interleaving */
+                    if (s->node->id < stream->node->id) {
+                        break;
+                    }
+                }
+            }
+
+        } else {
+            /* Legacy RFC7540 scheduling */
+            if (s->node->rank < stream->node->rank
+                || (s->node->rank == stream->node->rank
+                    && s->node->rel_weight >= stream->node->rel_weight))
+            {
+                break;
+            }
         }
     }
 

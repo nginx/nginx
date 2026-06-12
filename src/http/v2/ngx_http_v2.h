@@ -266,7 +266,11 @@ static ngx_inline void
 ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
 {
+    ngx_int_t                  cmp;
+    ngx_http_v2_stream_t      *s, *fs;
     ngx_http_v2_out_frame_t  **out;
+
+    fs = frame->stream;
 
     for (out = &h2c->last_out; *out; out = &(*out)->next) {
 
@@ -274,12 +278,44 @@ ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
             break;
         }
 
-        if ((*out)->stream->node->rank < frame->stream->node->rank
-            || ((*out)->stream->node->rank == frame->stream->node->rank
-                && (*out)->stream->node->rel_weight
-                   >= frame->stream->node->rel_weight))
+        s = (*out)->stream;
+
+        /*
+         * RFC9218: When using extensible priorities, schedule by urgency.
+         * Lower urgency value = higher priority.
+         */
+        if (h2c->rfc9218_enabled
+            || (fs->priority.valid && s->priority.valid))
         {
-            break;
+            /* RFC9218 urgency-based scheduling */
+            cmp = ngx_http_priority_compare(&s->priority, &fs->priority);
+
+            if (cmp < 0) {
+                /* s has higher priority, frame goes after */
+                break;
+            }
+
+            if (cmp == 0) {
+                /*
+                 * Same urgency and incremental status.
+                 * Use stream ID as tiebreaker (lower ID = higher priority).
+                 * Always maintain FIFO for frames from the same stream.
+                 */
+                if (s->node->id <= fs->node->id) {
+                    break;
+                }
+            }
+
+            /* cmp > 0: frame has higher priority, continue searching */
+
+        } else {
+            /* Legacy RFC7540 scheduling (rank/weight based) */
+            if (s->node->rank < fs->node->rank
+                || (s->node->rank == fs->node->rank
+                    && s->node->rel_weight >= fs->node->rel_weight))
+            {
+                break;
+            }
         }
     }
 
