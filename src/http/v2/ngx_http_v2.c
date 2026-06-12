@@ -86,6 +86,8 @@ static u_char *ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
 static u_char *ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
+static u_char *ngx_http_v2_state_priority_update(ngx_http_v2_connection_t *h2c,
+    u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_rst_stream(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c,
@@ -907,6 +909,11 @@ ngx_http_v2_state_head(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
                    "http2 frame type:%ui f:%Xd l:%uz sid:%ui",
                    type, h2c->state.flags, h2c->state.length, h2c->state.sid);
 
+    /* RFC9218: Handle PRIORITY_UPDATE frame (type 0x10) */
+    if (type == NGX_HTTP_V2_PRIORITY_UPDATE_FRAME) {
+        return ngx_http_v2_state_priority_update(h2c, pos, end);
+    }
+
     if (type >= NGX_HTTP_V2_FRAME_STATES) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent frame with unknown type %ui", type);
@@ -1338,6 +1345,44 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     node->stream = stream;
 
+    /*
+     * RFC9218: Apply any pending priority updates for this stream.
+     * PRIORITY_UPDATE frames may arrive before HEADERS.
+     */
+    if (h2c->pending_priorities) {
+        ngx_uint_t                       i, n;
+        ngx_http_v2_pending_priority_t  *pp;
+
+        pp = h2c->pending_priorities->elts;
+        n = h2c->pending_priorities->nelts;
+
+        for (i = 0; i < n; i++) {
+            if (pp[i].sid == node->id) {
+                stream->priority.client = pp[i].priority;
+                ngx_http_priority_state_update(&stream->priority);
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                               "http2 applied pending priority for stream %ui: "
+                               "u=%ui", node->id,
+                               stream->priority.effective.urgency);
+
+                /* Remove entry: swap with last and decrement count */
+                n--;
+                if (i < n) {
+                    pp[i] = pp[n];
+                }
+                h2c->pending_priorities->nelts = n;
+                break;
+            }
+        }
+    }
+
+    /*
+     * RFC9218: Even when RFC9218 is enabled, we still need to set up the
+     * node tree structure for proper node lifecycle management (the closed
+     * queue uses the node's queue member). We just don't use the dependency
+     * tree for scheduling.
+     */
     if (priority || node->parent == NULL) {
         node->weight = weight;
         ngx_http_v2_set_dependency(h2c, node, depend, excl);
@@ -2096,6 +2141,180 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     ngx_http_v2_set_dependency(h2c, node, depend, excl);
 
+    return ngx_http_v2_state_complete(h2c, pos, end);
+}
+
+
+static u_char *
+ngx_http_v2_state_priority_update(ngx_http_v2_connection_t *h2c, u_char *pos,
+    u_char *end)
+{
+    size_t                           len;
+    ngx_str_t                        value;
+    ngx_uint_t                       i, sid;
+    ngx_http_v2_node_t              *node;
+    ngx_http_priority_t              priority;
+    ngx_http_v2_stream_t            *stream;
+    ngx_http_v2_srv_conf_t          *h2scf;
+    ngx_http_v2_pending_priority_t  *pp;
+
+    /*
+     * RFC9218: PRIORITY_UPDATE frame format:
+     *   - Prioritized Stream ID (31 bits)
+     *   - Priority Field Value (variable length)
+     *
+     * Must be sent on stream 0, for client-initiated streams only.
+     */
+
+    if (h2c->state.sid != 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE frame on non-zero stream");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    if (h2c->state.length < 4) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE frame too short");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    len = h2c->state.length;
+
+    if ((size_t) (end - pos) < len) {
+        /*
+         * Frame is fragmented.  Only buffer if it fits in state buffer,
+         * otherwise skip to avoid overflow.
+         */
+        if (len > NGX_HTTP_V2_STATE_BUFFER_SIZE) {
+            if (--h2c->priority_limit == 0) {
+                ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                              "client sent too many PRIORITY_UPDATE frames");
+                return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_ENHANCE_YOUR_CALM);
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2 PRIORITY_UPDATE frame too large to buffer: "
+                           "%uz", len);
+            return ngx_http_v2_state_skip(h2c, pos, end);
+        }
+
+        return ngx_http_v2_state_save(h2c, pos, end,
+                                      ngx_http_v2_state_priority_update);
+    }
+
+    if (--h2c->priority_limit == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent too many PRIORITY_UPDATE frames");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
+    }
+
+    /* Parse Prioritized Stream ID (first 4 bytes, top bit reserved) */
+    sid = ngx_http_v2_parse_uint32(pos) & 0x7fffffff;
+    pos += 4;
+    len -= 4;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 PRIORITY_UPDATE frame for stream %ui, len=%uz",
+                   sid, len);
+
+    /* Must be odd (client-initiated) */
+    if (sid == 0 || (sid & 1) == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE for invalid stream %ui",
+                      sid);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    /* Parse Priority Field Value */
+    value.data = pos;
+    value.len = len;
+
+    ngx_http_priority_parse(&value, &priority);
+
+    /*
+     * A PRIORITY_UPDATE frame communicates a complete set of priority
+     * parameters (RFC 9218 Section 7): an omitted parameter is a signal to
+     * use its default, and an empty value is an explicit reset to the
+     * defaults.  ngx_http_priority_parse() has already seeded priority with
+     * those defaults, so it is applied as-is -- a value whose only members
+     * are unknown extensions still resets the recognized parameters to their
+     * defaults rather than retaining a stale prior signal.
+     */
+
+    node = ngx_http_v2_get_node_by_id(h2c, sid, 0);
+
+    if (node && node->stream) {
+        /* Stream exists, apply priority immediately */
+        stream = node->stream;
+        stream->priority.client = priority;
+        ngx_http_priority_state_update(&stream->priority);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 PRIORITY_UPDATE applied to stream %ui: "
+                       "u=%ui, i=%ui",
+                       sid, stream->priority.effective.urgency,
+                       stream->priority.effective.incremental);
+
+    } else if (sid > h2c->last_sid) {
+        /*
+         * Stream doesn't exist yet (sid > last_sid), buffer the priority.
+         * If sid <= last_sid, the stream already existed and is now closed,
+         * so there's no point buffering since it will never be created again.
+         */
+        h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                             ngx_http_v2_module);
+
+        if (h2c->pending_priorities == NULL) {
+            h2c->pending_priorities = ngx_array_create(h2c->pool, 4,
+                                        sizeof(ngx_http_v2_pending_priority_t));
+            if (h2c->pending_priorities == NULL) {
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+        }
+
+        /* Check if we already have a pending priority for this stream */
+        pp = h2c->pending_priorities->elts;
+        for (i = 0; i < h2c->pending_priorities->nelts; i++) {
+            if (pp[i].sid == sid) {
+                /* Update existing entry */
+                pp[i].priority = priority;
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                               "http2 PRIORITY_UPDATE updated pending for "
+                               "stream %ui: u=%ui",
+                               sid, pp[i].priority.urgency);
+                goto done;
+            }
+        }
+
+        /* Cap pending priorities at max_concurrent_streams */
+        if (h2c->pending_priorities->nelts >= h2scf->concurrent_streams) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2 PRIORITY_UPDATE ignored, pending limit "
+                           "reached for stream %ui", sid);
+            goto done;
+        }
+
+        /* Add new pending entry */
+        pp = ngx_array_push(h2c->pending_priorities);
+        if (pp == NULL) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
+        }
+
+        pp->sid = sid;
+        pp->priority = priority;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 PRIORITY_UPDATE buffered for stream "
+                       "%ui: u=%ui", sid, pp->priority.urgency);
+    }
+
+done:
+
+    pos += h2c->state.length - 4;
     return ngx_http_v2_state_complete(h2c, pos, end);
 }
 
