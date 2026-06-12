@@ -38,11 +38,12 @@
 #define NGX_HTTP_V2_SETTINGS_PARAM_SIZE          6
 
 /* settings fields */
-#define NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING    0x1
-#define NGX_HTTP_V2_ENABLE_PUSH_SETTING          0x2
-#define NGX_HTTP_V2_MAX_STREAMS_SETTING          0x3
-#define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING     0x4
-#define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING       0x5
+#define NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING      0x1
+#define NGX_HTTP_V2_ENABLE_PUSH_SETTING            0x2
+#define NGX_HTTP_V2_MAX_STREAMS_SETTING            0x3
+#define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING       0x4
+#define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING         0x5
+#define NGX_HTTP_V2_NO_RFC7540_PRIORITIES_SETTING  0x9
 
 #define NGX_HTTP_V2_FRAME_BUFFER_SIZE            24
 
@@ -2728,7 +2729,16 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
         return NGX_ERROR;
     }
 
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    /* Base settings: MAX_STREAMS, INIT_WINDOW_SIZE, MAX_FRAME_SIZE */
     len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 3;
+
+    /* Add NO_RFC7540_PRIORITIES if RFC9218 is enabled */
+    if (h2scf->rfc9218_priority) {
+        len += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
+    }
 
     buf = ngx_create_temp_buf(h2c->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE + len);
     if (buf == NULL) {
@@ -2756,9 +2766,6 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     buf->last = ngx_http_v2_write_sid(buf->last, 0);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
-
     buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_MAX_STREAMS_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
@@ -2772,6 +2779,18 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
                                          NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
                                          NGX_HTTP_V2_MAX_FRAME_SIZE);
+
+    if (h2scf->rfc9218_priority) {
+        /* RFC9218: Signal that we want to use extensible priorities */
+        buf->last = ngx_http_v2_write_uint16(buf->last,
+                                    NGX_HTTP_V2_NO_RFC7540_PRIORITIES_SETTING);
+        buf->last = ngx_http_v2_write_uint32(buf->last, 1);
+
+        h2c->rfc9218_enabled = 1;
+
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 RFC9218 extensible priorities enabled");
+    }
 
     ngx_http_v2_queue_blocked_frame(h2c, frame);
 
@@ -3098,6 +3117,9 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
 
     stream->request = r;
     stream->connection = h2c;
+
+    /* RFC9218: Initialize with default priority */
+    ngx_http_priority_init(&stream->priority);
 
     h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
 
