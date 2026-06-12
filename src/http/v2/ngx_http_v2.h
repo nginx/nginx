@@ -61,6 +61,16 @@ typedef u_char *(*ngx_http_v2_handler_pt) (ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 
 
+/*
+ * RFC9218: Pending priority update for streams not yet created.
+ * PRIORITY_UPDATE frames may arrive before the HEADERS frame.
+ */
+typedef struct {
+    ngx_uint_t                       sid;
+    ngx_http_priority_t              priority;
+} ngx_http_v2_pending_priority_t;
+
+
 typedef struct {
     ngx_flag_t                       enable;
     size_t                           pool_size;
@@ -169,6 +179,9 @@ struct ngx_http_v2_connection_s {
     unsigned                         table_update:1;
     unsigned                         blocked:1;
     unsigned                         goaway:1;
+
+    /* RFC9218 Extensible Priorities */
+    ngx_array_t                     *pending_priorities;
 };
 
 
@@ -223,6 +236,9 @@ struct ngx_http_v2_stream_s {
     unsigned                         rst_sent:1;
     unsigned                         no_flow_control:1;
     unsigned                         skip_data:1;
+
+    /* RFC9218 Extensible Priorities */
+    ngx_http_priority_t              priority;
 };
 
 
