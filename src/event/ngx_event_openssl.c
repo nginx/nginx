@@ -5953,6 +5953,8 @@ ngx_ssl_get_ech_outer_server_name(ngx_connection_t *c, ngx_pool_t *pool,
 
         s->data = ngx_pnalloc(pool, s->len);
         if (s->data == NULL) {
+            OPENSSL_free(inner_sni);
+            OPENSSL_free(outer_sni);
             return NGX_ERROR;
         }
 
