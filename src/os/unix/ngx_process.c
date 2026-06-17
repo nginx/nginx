@@ -23,7 +23,7 @@ typedef struct {
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
 static void ngx_process_get_status(void);
-static void ngx_unlock_mutexes(ngx_pid_t pid);
+static void ngx_unlock_mutexes(ngx_pid_t pid, ngx_int_t skip_inherit);
 
 
 int              ngx_argc;
@@ -470,14 +470,19 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 static void
 ngx_process_get_status(void)
 {
-    int              status;
-    char            *process;
-    ngx_pid_t        pid;
-    ngx_err_t        err;
-    ngx_int_t        i;
-    ngx_uint_t       one;
+    int               status;
+    char             *process;
+    ngx_pid_t         pid;
+    ngx_err_t         err;
+    ngx_int_t         i, skip_inherit;
+    ngx_uint_t        one;
+    ngx_core_conf_t  *ccf;
 
+    skip_inherit = 0;
     one = 0;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                           ngx_core_module);
 
     for ( ;; ) {
         pid = waitpid(-1, &status, WNOHANG);
@@ -541,6 +546,15 @@ ngx_process_get_status(void)
                           "%s %P exited on signal %d",
                           process, pid, WTERMSIG(status));
 #endif
+            if (ccf->auto_reload) {
+                ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
+                              "reconfiguring due to child exiting from "
+                              "abnormal signal %d", WTERMSIG(status));
+
+                ngx_processes[i].respawn = 0;
+                ngx_reconfigure = 1;
+                skip_inherit = 1;
+            }
 
         } else {
             ngx_log_error(NGX_LOG_NOTICE, ngx_cycle->log, 0,
@@ -556,13 +570,13 @@ ngx_process_get_status(void)
             ngx_processes[i].respawn = 0;
         }
 
-        ngx_unlock_mutexes(pid);
+        ngx_unlock_mutexes(pid, skip_inherit);
     }
 }
 
 
 static void
-ngx_unlock_mutexes(ngx_pid_t pid)
+ngx_unlock_mutexes(ngx_pid_t pid, ngx_int_t skip_inherit)
 {
     ngx_uint_t        i;
     ngx_shm_zone_t   *shm_zone;
@@ -603,6 +617,10 @@ ngx_unlock_mutexes(ngx_pid_t pid)
             ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                           "shared memory zone \"%V\" was locked by %P",
                           &shm_zone[i].shm.name, pid);
+        }
+
+        if (skip_inherit) {
+            shm_zone[i].skip_inherit = 1;
         }
     }
 }
