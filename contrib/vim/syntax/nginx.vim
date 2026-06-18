@@ -592,6 +592,7 @@ syn keyword ngxDirective contained ssl_handshake_timeout
 syn keyword ngxDirective contained ssl_ocsp
 syn keyword ngxDirective contained ssl_ocsp_cache
 syn keyword ngxDirective contained ssl_ocsp_responder
+syn keyword ngxDirective contained ssl_ocsp_responder_certificate
 syn keyword ngxDirective contained ssl_password_file
 syn keyword ngxDirective contained ssl_prefer_server_ciphers
 syn keyword ngxDirective contained ssl_preread
