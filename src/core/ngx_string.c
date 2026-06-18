@@ -1479,9 +1479,26 @@ ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len)
             break;
         }
 
-        while (src < next) {
-            *dst++ = *src++;
-            len--;
+        /*
+         * n counts remaining character slots (1 per iteration),
+         * but multi-byte UTF-8 sequences write more than 1 byte
+         * per iteration.  Adjust n to prevent buffer overflow.
+         */
+        {
+            size_t  count;
+
+            count = next - src;
+
+            if (n < count) {
+                break;
+            }
+
+            n -= count - 1;
+
+            while (src < next) {
+                *dst++ = *src++;
+                len--;
+            }
         }
     }
 
