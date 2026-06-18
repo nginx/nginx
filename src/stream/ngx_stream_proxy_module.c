@@ -2420,6 +2420,12 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->buffer_size,
                               prev->buffer_size, 16384);
 
+    if (conf->buffer_size == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"proxy_buffer_size\" must be greater than zero");
+        return NGX_CONF_ERROR;
+    }
+
     ngx_conf_merge_ptr_value(conf->upload_rate, prev->upload_rate, NULL);
 
     ngx_conf_merge_ptr_value(conf->download_rate, prev->download_rate, NULL);
