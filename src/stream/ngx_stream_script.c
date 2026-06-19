@@ -92,11 +92,16 @@ ngx_stream_complex_value(ngx_stream_session_t *s,
 
     e.ip = val->values;
     e.pos = value->data;
+    e.end = value->data + len;
     e.buf = *value;
 
     while (*(uintptr_t *) e.ip) {
         code = *(ngx_stream_script_code_pt *) e.ip;
         code((ngx_stream_script_engine_t *) &e);
+    }
+
+    if (e.status) {
+        return NGX_ERROR;
     }
 
     *value = e.buf;
@@ -526,10 +531,15 @@ ngx_stream_script_run(ngx_stream_session_t *s, ngx_str_t *value,
 
     e.ip = code_values;
     e.pos = value->data;
+    e.end = value->data + len;
 
     while (*(uintptr_t *) e.ip) {
         code = *(ngx_stream_script_code_pt *) e.ip;
         code((ngx_stream_script_engine_t *) &e);
+    }
+
+    if (e.status) {
+        return NULL;
     }
 
     return e.pos;
@@ -668,6 +678,25 @@ ngx_stream_script_add_code(ngx_array_t *codes, size_t size, void *code)
 }
 
 
+ngx_int_t
+ngx_stream_script_check_length(ngx_stream_script_engine_t *e, size_t len)
+{
+    if (e->end == NULL) {
+        return NGX_OK;
+    }
+
+    if (e->end - e->pos < (ssize_t) len) {
+        ngx_log_error(NGX_LOG_ALERT, e->session->connection->log, 0,
+                      "no buffer space in script copy");
+        e->ip = ngx_stream_script_exit;
+        e->status = NGX_STREAM_INTERNAL_SERVER_ERROR;
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
 static ngx_int_t
 ngx_stream_script_add_copy_code(ngx_stream_script_compile_t *sc,
     ngx_str_t *value, ngx_uint_t last)
@@ -737,6 +766,11 @@ ngx_stream_script_copy_code(ngx_stream_script_engine_t *e)
     p = e->pos;
 
     if (!e->skip) {
+
+        if (ngx_stream_script_check_length(e, code->len) != NGX_OK) {
+            return;
+        }
+
         e->pos = ngx_copy(p, e->ip + sizeof(ngx_stream_script_copy_code_t),
                           code->len);
     }
@@ -841,6 +875,11 @@ ngx_stream_script_copy_var_code(ngx_stream_script_engine_t *e)
         }
 
         if (value && !value->not_found) {
+
+            if (ngx_stream_script_check_length(e, value->len) != NGX_OK) {
+                return;
+            }
+
             p = e->pos;
             e->pos = ngx_copy(p, value->data, value->len);
 
@@ -941,6 +980,11 @@ ngx_stream_script_copy_capture_code(ngx_stream_script_engine_t *e)
         cap = s->captures;
         len = cap[n + 1] - cap[n];
         p = s->captures_data + cap[n];
+
+        if (ngx_stream_script_check_length(e, len) != NGX_OK) {
+            return;
+        }
+
         e->pos = ngx_copy(pos, p, len);
     }
 
@@ -1013,6 +1057,7 @@ ngx_stream_script_full_name_code(ngx_stream_script_engine_t *e)
         != NGX_OK)
     {
         e->ip = ngx_stream_script_exit;
+        e->status = NGX_STREAM_INTERNAL_SERVER_ERROR;
         return;
     }
 
