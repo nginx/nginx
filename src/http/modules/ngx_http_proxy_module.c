@@ -326,6 +326,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       offsetof(ngx_http_proxy_loc_conf_t, headers_source),
       NULL },
 
+    { ngx_string("proxy_set_authority"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_set_complex_value_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, authority),
+      NULL },
+
     { ngx_string("proxy_headers_hash_max_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -3585,6 +3592,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->headers_source = NGX_CONF_UNSET_PTR;
 
+    conf->authority = NGX_CONF_UNSET_PTR;
+
     conf->method = NGX_CONF_UNSET_PTR;
 
     conf->redirect = NGX_CONF_UNSET;
@@ -4074,6 +4083,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_ptr_value(conf->headers_source, prev->headers_source, NULL);
 
+    ngx_conf_merge_ptr_value(conf->authority, prev->authority, NULL);
+
     if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
 #if (NGX_HTTP_CACHE)
@@ -4113,6 +4124,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         prev->headers_cache = conf->headers_cache;
 #endif
         prev->host_set = conf->host_set;
+        prev->authority = conf->authority;
     }
 
     return NGX_CONF_OK;
@@ -4169,6 +4181,31 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
                 && ngx_strncasecmp(src[i].key.data, (u_char *) "Host", 4) == 0)
             {
                 conf->host_set = 1;
+
+                if (conf->authority != NULL) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "\"proxy_set_header Host\" cannot be "
+                                       "used with \"proxy_set_authority\"");
+                    return NGX_ERROR;
+
+                } else {
+                    ngx_http_compile_complex_value_t   ccv;
+
+                    conf->authority = ngx_palloc(cf->pool,
+                                            sizeof(ngx_http_complex_value_t));
+                    if (conf->authority == NULL) {
+                        return NGX_ERROR;
+                    }
+
+                    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+                    ccv.cf = cf;
+                    ccv.value = &src[i].value;
+                    ccv.complex_value = conf->authority;
+
+                    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+                        return NGX_ERROR;
+                    }
+                }
             }
 
             s = ngx_array_push(&headers_merged);
