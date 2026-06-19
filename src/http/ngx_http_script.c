@@ -1343,6 +1343,7 @@ ngx_http_script_copy_capture_len_code(ngx_http_script_engine_t *e)
 {
     int                                  *cap;
     u_char                               *p;
+    size_t                                len;
     ngx_uint_t                            n;
     ngx_http_request_t                   *r;
     ngx_http_script_copy_capture_code_t  *code;
@@ -1358,17 +1359,17 @@ ngx_http_script_copy_capture_len_code(ngx_http_script_engine_t *e)
     if (n < r->ncaptures) {
 
         cap = r->captures;
+        len = cap[n + 1] - cap[n];
 
         if ((e->is_args || e->quote)
             && (e->request->quoted_uri || e->request->plus_in_uri))
         {
-            p = r->captures_data;
+            p = r->captures_data + cap[n];
 
-            return cap[n + 1] - cap[n]
-                   + 2 * ngx_escape_uri(NULL, &p[cap[n]], cap[n + 1] - cap[n],
-                                        NGX_ESCAPE_ARGS);
+            return len + 2 * ngx_escape_uri(NULL, p, len, NGX_ESCAPE_ARGS);
+
         } else {
-            return cap[n + 1] - cap[n];
+            return len;
         }
     }
 
@@ -1381,6 +1382,7 @@ ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e)
 {
     int                                  *cap;
     u_char                               *p, *pos;
+    size_t                                len;
     ngx_uint_t                            n;
     ngx_http_request_t                   *r;
     ngx_http_script_copy_capture_code_t  *code;
@@ -1398,16 +1400,16 @@ ngx_http_script_copy_capture_code(ngx_http_script_engine_t *e)
     if (n < r->ncaptures) {
 
         cap = r->captures;
-        p = r->captures_data;
+        len = cap[n + 1] - cap[n];
+        p = r->captures_data + cap[n];
 
         if ((e->is_args || e->quote)
             && (e->request->quoted_uri || e->request->plus_in_uri))
         {
-            e->pos = (u_char *) ngx_escape_uri(pos, &p[cap[n]],
-                                               cap[n + 1] - cap[n],
-                                               NGX_ESCAPE_ARGS);
+            e->pos = (u_char *) ngx_escape_uri(pos, p, len, NGX_ESCAPE_ARGS);
+
         } else {
-            e->pos = ngx_copy(pos, &p[cap[n]], cap[n + 1] - cap[n]);
+            e->pos = ngx_copy(pos, p, len);
         }
     }
 
