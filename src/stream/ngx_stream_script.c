@@ -894,6 +894,7 @@ size_t
 ngx_stream_script_copy_capture_len_code(ngx_stream_script_engine_t *e)
 {
     int                                    *cap;
+    size_t                                  len;
     ngx_uint_t                              n;
     ngx_stream_session_t                   *s;
     ngx_stream_script_copy_capture_code_t  *code;
@@ -908,7 +909,8 @@ ngx_stream_script_copy_capture_len_code(ngx_stream_script_engine_t *e)
 
     if (n < s->ncaptures) {
         cap = s->captures;
-        return cap[n + 1] - cap[n];
+        len = cap[n + 1] - cap[n];
+        return len;
     }
 
     return 0;
@@ -920,6 +922,7 @@ ngx_stream_script_copy_capture_code(ngx_stream_script_engine_t *e)
 {
     int                                    *cap;
     u_char                                 *p, *pos;
+    size_t                                  len;
     ngx_uint_t                              n;
     ngx_stream_session_t                   *s;
     ngx_stream_script_copy_capture_code_t  *code;
@@ -936,8 +939,9 @@ ngx_stream_script_copy_capture_code(ngx_stream_script_engine_t *e)
 
     if (n < s->ncaptures) {
         cap = s->captures;
-        p = s->captures_data;
-        e->pos = ngx_copy(pos, &p[cap[n]], cap[n + 1] - cap[n]);
+        len = cap[n + 1] - cap[n];
+        p = s->captures_data + cap[n];
+        e->pos = ngx_copy(pos, p, len);
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_STREAM, e->session->connection->log, 0,
