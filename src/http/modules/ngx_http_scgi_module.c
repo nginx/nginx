@@ -643,7 +643,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 {
     off_t                         content_length_n;
     u_char                        ch, sep, *key, *val, *lowcase_key;
-    size_t                        len, key_len, val_len, allocated;
+    size_t                        len, params_len, key_len, val_len, allocated;
     ngx_buf_t                    *b;
     ngx_str_t                     content_length;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
@@ -668,6 +668,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 
     len = sizeof("CONTENT_LENGTH") + content_length.len + 1;
 
+    params_len = 0;
     header_params = 0;
     ignored = NULL;
 
@@ -705,8 +706,10 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-            len += key_len + val_len + 1;
+            params_len += key_len + val_len + 1;
         }
+
+        len += params_len;
     }
 
     if (scf->upstream.pass_request_headers) {
@@ -821,6 +824,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
 
         e.ip = params->values->elts;
         e.pos = b->last;
+        e.end = b->last + params_len;
         e.request = r;
         e.flushed = 1;
 
@@ -859,6 +863,10 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
 
+            if (e.status) {
+                return NGX_ERROR;
+            }
+
 #if (NGX_DEBUG)
             val = e.pos;
 #endif
@@ -866,11 +874,26 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) &e);
             }
+
+            if (e.status) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_http_script_check_length(&e, 1) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
             *e.pos++ = '\0';
             e.ip += sizeof(uintptr_t);
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "scgi param: \"%s: %s\"", key, val);
+        }
+
+        if (e.pos != e.end) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "scgi request length mismatch");
+            return NGX_ERROR;
         }
 
         b->last = e.pos;

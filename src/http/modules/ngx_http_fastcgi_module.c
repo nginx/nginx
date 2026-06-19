@@ -845,8 +845,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 {
     off_t                         file_pos;
     u_char                        ch, sep, *pos, *lowcase_key;
-    size_t                        size, len, key_len, val_len, padding,
-                                  allocated;
+    size_t                        size, len, params_len,
+                                  key_len, val_len, padding, allocated;
     ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
@@ -861,6 +861,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     ngx_http_script_len_code_pt   lcode;
 
     len = 0;
+    params_len = 0;
     header_params = 0;
     ignored = NULL;
 
@@ -900,8 +901,10 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-            len += 1 + key_len + ((val_len > 127) ? 4 : 1) + val_len;
+            params_len += 1 + key_len + ((val_len > 127) ? 4 : 1) + val_len;
         }
+
+        len += params_len;
     }
 
     if (flcf->upstream.pass_request_headers) {
@@ -1057,6 +1060,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
         e.ip = params->values->elts;
         e.pos = b->last;
+        e.end = b->last + params_len;
         e.request = r;
         e.flushed = 1;
 
@@ -1089,6 +1093,12 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_script_check_length(&e, 1 + ((val_len > 127) ? 4 : 1))
+                != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+
             *e.pos++ = (u_char) key_len;
 
             if (val_len > 127) {
@@ -1107,10 +1117,20 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
             }
             e.ip += sizeof(uintptr_t);
 
+            if (e.status) {
+                return NGX_ERROR;
+            }
+
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "fastcgi param: \"%*s: %*s\"",
                            key_len, e.pos - (key_len + val_len),
                            val_len, e.pos - val_len);
+        }
+
+        if (e.pos != e.end) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "fastcgi request length mismatch");
+            return NGX_ERROR;
         }
 
         b->last = e.pos;
