@@ -22,6 +22,8 @@ static ngx_int_t ngx_mail_verify_cert(ngx_mail_session_t *s,
     ngx_connection_t *c);
 #endif
 
+static void ngx_mail_block_read(ngx_event_t *rev);
+
 
 void
 ngx_mail_init_connection(ngx_connection_t *c)
@@ -415,8 +417,6 @@ ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
         s->out = cscf->protocol->cert_error;
         s->quit = 1;
 
-        c->write->handler = ngx_mail_send;
-
         ngx_mail_send(s->connection->write);
         return NGX_ERROR;
     }
@@ -435,8 +435,6 @@ ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
 
             s->out = cscf->protocol->no_cert;
             s->quit = 1;
-
-            c->write->handler = ngx_mail_send;
 
             ngx_mail_send(s->connection->write);
             return NGX_ERROR;
@@ -1098,6 +1096,11 @@ again:
 
     ngx_add_timer(wev, cscf->timeout);
 
+    if (s->quit) {
+        c->read->handler = ngx_mail_block_read;
+        c->write->handler = ngx_mail_send;
+    }
+
     if (ngx_handle_write_event(wev, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
         return;
@@ -1229,6 +1232,17 @@ ngx_mail_session_internal_server_error(ngx_mail_session_t *s)
     s->quit = 1;
 
     ngx_mail_send(s->connection->write);
+}
+
+
+static void
+ngx_mail_block_read(ngx_event_t *rev)
+{
+    ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0, "mail block read");
+
+    if (ngx_handle_read_event(rev, 0) != NGX_OK) {
+        ngx_mail_close_connection(rev->data);
+    }
 }
 
 
