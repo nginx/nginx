@@ -1967,7 +1967,7 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     p = pos;
     pos += NGX_HTTP_V2_FRAME_HEADER_SIZE;
 
-    ngx_memcpy(pos, p, len);
+    ngx_memmove(pos, p, len);
 
     len = ngx_http_v2_parse_length(head);
 
