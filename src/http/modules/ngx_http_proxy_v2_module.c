@@ -1919,9 +1919,11 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
             /* TODO: we can retry non-idempotent requests */
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent goaway with error %ui",
-                          ctx->error);
+            if (ctx->error != 0) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent goaway with error %ui",
+                              ctx->error);
+            }
 
             return NGX_ERROR;
         }
