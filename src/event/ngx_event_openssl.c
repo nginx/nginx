@@ -174,12 +174,14 @@ ngx_ssl_init(ngx_log_t *log)
     if (OPENSSL_INIT_set_config_appname(init, "nginx") == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0,
                       "OPENSSL_INIT_set_config_appname() failed");
+        OPENSSL_INIT_free(init);
         return NGX_ERROR;
     }
 #endif
 
     if (OPENSSL_init_ssl(opts, init) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
+        OPENSSL_INIT_free(init);
         return NGX_ERROR;
     }
 
