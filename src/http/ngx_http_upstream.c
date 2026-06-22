@@ -482,6 +482,7 @@ ngx_conf_bitmask_t  ngx_http_upstream_cache_method_mask[] = {
     { ngx_string("GET"), NGX_HTTP_GET },
     { ngx_string("HEAD"), NGX_HTTP_HEAD },
     { ngx_string("POST"), NGX_HTTP_POST },
+    { ngx_string("QUERY"), NGX_HTTP_QUERY },
     { ngx_null_string, 0 }
 };
 
