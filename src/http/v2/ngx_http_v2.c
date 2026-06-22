@@ -154,6 +154,8 @@ static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
     ngx_str_t *value);
+static ngx_int_t ngx_http_v2_parse_protocol(ngx_http_request_t *r,
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
@@ -3339,6 +3341,16 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
         break;
 
+    case 8:
+        if (ngx_memcmp(header->name.data, "protocol",
+                       sizeof("protocol") - 1)
+            == 0)
+        {
+            return ngx_http_v2_parse_protocol(r, &header->value);
+        }
+
+        break;
+
     case 9:
         if (ngx_memcmp(header->name.data, "authority", sizeof("authority") - 1)
             == 0)
@@ -3582,9 +3594,34 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 
 
 static ngx_int_t
+ngx_http_v2_parse_protocol(ngx_http_request_t *r, ngx_str_t *value)
+{
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    r->connect_protocol = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
-    u_char  *p;
+    size_t      len;
+    u_char     *p;
+    ngx_str_t   target;
 
     static const u_char ending[] = " HTTP/2.0";
 
@@ -3592,30 +3629,64 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    if (r->method_name.len == 0
-        || r->schema.len == 0
-        || r->unparsed_uri.len == 0)
-    {
-        if (r->method_name.len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent no :method header");
-
-        } else if (r->schema.len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent no :scheme header");
-
-        } else {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent no :path header");
-        }
-
+    if (r->method_name.len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent no :method header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
     }
 
-    r->request_line.len = r->method_name.len + 1
-                          + r->unparsed_uri.len
-                          + sizeof(ending) - 1;
+    if (r->connect_protocol.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent unsupported :protocol header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
+    }
+
+    if (r->method == NGX_HTTP_CONNECT) {
+        if (r->schema.len || r->unparsed_uri.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent invalid pseudo-headers with CONNECT");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        if (r->host_start == NULL || r->host_start == r->host_end) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :authority header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        target.data = r->host_start;
+        target.len = r->host_end - r->host_start;
+
+        r->uri_start = (u_char *) "/";
+        r->uri_end = r->uri_start + 1;
+        ngx_str_set(&r->uri, "/");
+        ngx_str_set(&r->unparsed_uri, "/");
+        r->valid_unparsed_uri = 1;
+
+    } else {
+        if (r->schema.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :scheme header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        if (r->unparsed_uri.len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent no :path header");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        target = r->unparsed_uri;
+    }
+
+    len = target.len;
+    r->request_line.len = r->method_name.len + 1 + len + sizeof(ending) - 1;
 
     p = ngx_pnalloc(r->pool, r->request_line.len + 1);
     if (p == NULL) {
@@ -3629,7 +3700,7 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 
     *p++ = ' ';
 
-    p = ngx_cpymem(p, r->unparsed_uri.data, r->unparsed_uri.len);
+    p = ngx_cpymem(p, target.data, len);
 
     ngx_memcpy(p, ending, sizeof(ending));
 
@@ -3812,6 +3883,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 {
     ngx_str_t                  host;
     ngx_connection_t          *fc;
+    ngx_http_core_srv_conf_t  *cscf;
     ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
 
@@ -3924,6 +3996,15 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
             goto failed;
         }
 
+        if (r->method == NGX_HTTP_CONNECT
+            && r->headers_in.content_length_n > 0)
+        {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT request with body");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            goto failed;
+        }
+
         if (r->headers_in.content_length_n > 0 && r->stream->in_closed) {
             ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                           "client prematurely closed stream");
@@ -3938,7 +4019,9 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
         r->headers_in.chunked = 1;
     }
 
-    if (r->method == NGX_HTTP_CONNECT) {
+    cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+    if (r->method == NGX_HTTP_CONNECT && !cscf->allow_connect) {
         ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         goto failed;
