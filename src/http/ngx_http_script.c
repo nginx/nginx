@@ -150,7 +150,9 @@ ngx_http_compile_complex_value(ngx_http_compile_complex_value_t *ccv)
 
     for (i = 0; i < v->len; i++) {
         if (v->data[i] == '$') {
-            if (v->data[i + 1] >= '1' && v->data[i + 1] <= '9') {
+            if (i + 1 < v->len
+                && v->data[i + 1] >= '1' && v->data[i + 1] <= '9')
+            {
                 nc++;
 
             } else {
