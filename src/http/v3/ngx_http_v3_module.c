@@ -237,7 +237,7 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->quic.stream_buffer_size,
                               prev->quic.stream_buffer_size,
-                              65536);
+                              1048576);
 
     conf->quic.max_concurrent_streams_bidi = conf->max_concurrent_streams;
 
