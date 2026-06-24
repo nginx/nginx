@@ -39,6 +39,8 @@ static ngx_int_t ngx_quic_control_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_max_stream_data(ngx_quic_stream_t *qs);
 static ngx_int_t ngx_quic_update_max_data(ngx_connection_t *c);
+static ngx_int_t ngx_quic_queue_data_blocked(ngx_connection_t *c);
+static ngx_int_t ngx_quic_queue_stream_data_blocked(ngx_quic_stream_t *qs);
 static void ngx_quic_set_event(ngx_event_t *ev);
 
 
@@ -1036,6 +1038,33 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "quic stream id:0x%xL flush limit:%O", qs->id, limit);
 
+    /* clear blocked state once flow-control credit becomes available again */
+
+    if (qc->streams.send_offset < qc->streams.send_max_data) {
+        qc->streams.blocked = 0;
+    }
+
+    if (qs->send_offset < qs->send_max_data) {
+        qs->blocked = 0;
+    }
+
+    /*
+     * There is buffered application data, but no flow-control credit to
+     * send it.  Advertise the blocked condition (RFC 9000, Section 4.1) so
+     * a peer that lost or delayed its MAX_DATA / MAX_STREAM_DATA update has
+     * an ack-eliciting signal to retransmit it within one RTT, rather than
+     * leaving the stream stalled until the idle timeout fires.
+     */
+
+    if (limit == 0 && qs->send.offset < qs->sent) {
+
+        if (qc->streams.send_offset >= qc->streams.send_max_data) {
+            return ngx_quic_queue_data_blocked(pc);
+        }
+
+        return ngx_quic_queue_stream_data_blocked(qs);
+    }
+
     len = qs->send.offset;
 
     out = ngx_quic_read_buffer(pc, &qs->send, limit);
@@ -1812,6 +1841,74 @@ ngx_quic_update_max_data(ngx_connection_t *c)
     frame->u.max_data.max_data = qc->streams.recv_max_data;
 
     ngx_quic_queue_frame(qc, frame);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_queue_data_blocked(ngx_connection_t *c)
+{
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+
+    if (qc->streams.blocked) {
+        return NGX_OK;
+    }
+
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
+    frame->type = NGX_QUIC_FT_DATA_BLOCKED;
+    frame->u.data_blocked.limit = qc->streams.send_max_data;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic data blocked limit:%uL", qc->streams.send_max_data);
+
+    ngx_quic_queue_frame(qc, frame);
+
+    qc->streams.blocked = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_queue_stream_data_blocked(ngx_quic_stream_t *qs)
+{
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    if (qs->blocked) {
+        return NGX_OK;
+    }
+
+    frame = ngx_quic_alloc_frame(pc);
+    if (frame == NULL) {
+        return NGX_ERROR;
+    }
+
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
+    frame->type = NGX_QUIC_FT_STREAM_DATA_BLOCKED;
+    frame->u.stream_data_blocked.id = qs->id;
+    frame->u.stream_data_blocked.limit = qs->send_max_data;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
+                   "quic stream id:0x%xL data blocked limit:%uL",
+                   qs->id, qs->send_max_data);
+
+    ngx_quic_queue_frame(qc, frame);
+
+    qs->blocked = 1;
 
     return NGX_OK;
 }
