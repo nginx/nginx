@@ -5258,9 +5258,12 @@ ngx_int_t
 ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
 {
     X509       *cert;
-    u_char     *addr, addr6[16];
+    u_char     *addr;
     size_t      alen;
     in_addr_t   addr4;
+#if (NGX_HAVE_INET6)
+    u_char      addr6[16];
+#endif
 
     cert = SSL_get_peer_certificate(c->ssl->connection);
     if (cert == NULL) {
