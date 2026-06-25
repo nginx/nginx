@@ -46,6 +46,12 @@ typedef struct {
 } ngx_http_ssi_block_t;
 
 
+typedef struct {
+    ngx_chain_t  *out;
+    unsigned      done:1;
+} ngx_http_ssi_stub_ctx_t;
+
+
 typedef enum {
     ssi_start_state = 0,
     ssi_tag_state,
@@ -2026,6 +2032,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_http_ssi_var_t          *var;
     ngx_http_ssi_ctx_t          *mctx;
     ngx_http_ssi_block_t        *bl;
+    ngx_http_ssi_stub_ctx_t     *sctx;
     ngx_http_post_subrequest_t  *psr;
 
     uri = params[NGX_HTTP_SSI_INCLUDE_VIRTUAL];
@@ -2124,7 +2131,13 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             return NGX_ERROR;
         }
 
+        sctx = ngx_pcalloc(r->pool, sizeof(ngx_http_ssi_stub_ctx_t));
+        if (sctx == NULL) {
+            return NGX_ERROR;
+        }
+
         psr->handler = ngx_http_ssi_stub_output;
+        psr->data = sctx;
 
         if (bl[i].count++) {
 
@@ -2161,10 +2174,10 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
                 ll = &cl->next;
             }
 
-            psr->data = out;
+            sctx->out = out;
 
         } else {
-            psr->data = bl[i].bufs;
+            sctx->out = bl[i].bufs;
         }
     }
 
@@ -2232,16 +2245,20 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 static ngx_int_t
 ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
-    ngx_chain_t  *out;
+    ngx_http_ssi_stub_ctx_t  *sctx = data;
 
     if (rc == NGX_ERROR || r->connection->error || r->request_output) {
         return rc;
     }
 
+    if (sctx->done) {
+        return NGX_OK;
+    }
+
+    sctx->done = 1;
+
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "ssi stub output: \"%V?%V\"", &r->uri, &r->args);
-
-    out = data;
 
     if (!r->header_sent) {
         r->headers_out.content_type_len =
@@ -2253,7 +2270,7 @@ ngx_http_ssi_stub_output(ngx_http_request_t *r, void *data, ngx_int_t rc)
         }
     }
 
-    return ngx_http_output_filter(r, out);
+    return ngx_http_output_filter(r, sctx->out);
 }
 
 
