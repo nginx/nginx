@@ -867,6 +867,10 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_DECLINED;
         }
 
+        if (r->request_body && r->request_body->temp_file) {
+            return NGX_DECLINED;
+        }
+
         rc = ngx_http_upstream_cache_get(r, u, &cache);
 
         if (rc != NGX_OK) {

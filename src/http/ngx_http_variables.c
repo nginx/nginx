@@ -2173,39 +2173,10 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
     ngx_chain_t  *cl;
 
     if (r->request_body == NULL
-        || (r->request_body->bufs == NULL && r->request_body->temp_file == NULL))
+        || r->request_body->bufs == NULL
+        || r->request_body->temp_file)
     {
         v->not_found = 1;
-
-        return NGX_OK;
-    }
-
-    if (r->request_body->temp_file) {
-        ngx_file_t  *file;
-        off_t        size;
-
-        file = &r->request_body->temp_file->file;
-        size = file->offset;
-
-        if (size == 0) {
-            v->not_found = 1;
-            return NGX_OK;
-        }
-
-        p = ngx_pnalloc(r->pool, size);
-        if (p == NULL) {
-            return NGX_ERROR;
-        }
-
-        if (ngx_read_file(file, p, size, 0) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        v->len = size;
-        v->valid = 1;
-        v->no_cacheable = 0;
-        v->not_found = 0;
-        v->data = p;
 
         return NGX_OK;
     }
