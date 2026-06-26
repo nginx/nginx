@@ -25,7 +25,6 @@ typedef struct {
     ngx_array_t               *headers_source;
 
     ngx_str_t                  host;
-    ngx_uint_t                 host_set;
     ngx_http_complex_value_t  *authority;
 
     ngx_array_t               *grpc_lengths;
@@ -204,6 +203,8 @@ static ngx_int_t ngx_http_grpc_init_headers(ngx_conf_t *cf,
 
 static char *ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_grpc_set_header(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 
 #if (NGX_HTTP_SSL)
 static char *ngx_http_grpc_ssl_certificate_cache(ngx_conf_t *cf,
@@ -335,7 +336,7 @@ static ngx_command_t  ngx_http_grpc_commands[] = {
 
     { ngx_string("grpc_set_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
-      ngx_conf_set_keyval_slot,
+      ngx_http_grpc_set_header,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_grpc_loc_conf_t, headers_source),
       NULL },
@@ -798,15 +799,16 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
     }
 
     /* :authority header */
+    host = &ctx->host;
 
     if (glcf->authority != NULL) {
         if (ngx_http_complex_value(r, glcf->authority, &host_val) != NGX_OK) {
             return NGX_ERROR;
         }
-        host = &host_val;
 
-    } else {
-        host = &ctx->host;
+        if (host_val.len) {
+            host = &host_val;
+        }
     }
 
     if (host->len > NGX_HTTP_V2_MAX_FIELD) {
@@ -4443,7 +4445,6 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
      *     conf->host = { 0, NULL };
-     *     conf->host_set = 0;
      *     conf->ssl = 0;
      *     conf->ssl_protocols = 0;
      *     conf->ssl_ciphers = { 0, NULL };
@@ -4646,7 +4647,6 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->headers_source == prev->headers_source) {
         conf->headers = prev->headers;
-        conf->host_set = prev->host_set;
     }
 
     rc = ngx_http_grpc_init_headers(cf, conf, &conf->headers,
@@ -4664,8 +4664,6 @@ ngx_http_grpc_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         && conf->headers_source == prev->headers_source)
     {
         prev->headers = conf->headers;
-        prev->host_set = conf->host_set;
-        prev->authority = conf->authority;
     }
 
     return NGX_CONF_OK;
@@ -4717,37 +4715,6 @@ ngx_http_grpc_init_headers(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *conf,
 
         src = conf->headers_source->elts;
         for (i = 0; i < conf->headers_source->nelts; i++) {
-
-            if (src[i].key.len == 4
-                && ngx_strncasecmp(src[i].key.data, (u_char *) "Host", 4) == 0)
-            {
-                conf->host_set = 1;
-
-                if (conf->authority != NULL) {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "\"grpc_set_header Host\" cannot be "
-                                       "used with \"grpc_set_authority\"");
-                    return NGX_ERROR;
-
-                } else {
-                    ngx_http_compile_complex_value_t   ccv;
-
-                    conf->authority = ngx_palloc(cf->pool,
-                                            sizeof(ngx_http_complex_value_t));
-                    if (conf->authority == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-                    ccv.cf = cf;
-                    ccv.value = &src[i].value;
-                    ccv.complex_value = conf->authority;
-
-                    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-                        return NGX_ERROR;
-                    }
-                }
-            }
 
             s = ngx_array_push(&headers_merged);
             if (s == NULL) {
@@ -4848,6 +4815,28 @@ ngx_http_grpc_init_headers(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *conf,
         }
 
         *code = (uintptr_t) NULL;
+    }
+
+    if (conf->authority == NULL) {
+        ngx_str_t                          v;
+        ngx_http_compile_complex_value_t   ccv;
+
+        ngx_str_set(&v, "$proxy_internal_host");
+
+        conf->authority = ngx_palloc(cf->pool,
+                                sizeof(ngx_http_complex_value_t));
+        if (conf->authority == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+        ccv.cf = cf;
+        ccv.value = &v;
+        ccv.complex_value = conf->authority;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     code = ngx_array_push_n(headers->lengths, sizeof(uintptr_t));
@@ -4968,6 +4957,48 @@ ngx_http_grpc_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_grpc_set_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_grpc_loc_conf_t   *glcf = conf;
+    ngx_str_t                   *value = cf->args->elts;
+
+    if (value[1].len == 4
+        && ngx_strncasecmp(value[1].data, (u_char *) "Host", 4) == 0)
+    {
+        ngx_http_compile_complex_value_t   ccv;
+
+        if (glcf->authority != NGX_CONF_UNSET_PTR
+            && glcf->authority != NULL)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"grpc_set_header Host\" cannot be "
+                               "used with \"grpc_set_authority\"");
+            return NGX_CONF_ERROR;
+        }
+
+        glcf->authority = ngx_palloc(cf->pool,
+                                     sizeof(ngx_http_complex_value_t));
+        if (glcf->authority == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+        ccv.cf = cf;
+        ccv.value = &value[2];
+        ccv.complex_value = glcf->authority;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        return NGX_CONF_OK;
+    }
+
+    return ngx_conf_set_keyval_slot(cf, cmd, conf);
 }
 
 

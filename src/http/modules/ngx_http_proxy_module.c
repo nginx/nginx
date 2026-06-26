@@ -113,6 +113,8 @@ static char *ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_proxy_set_header(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static char *ngx_http_proxy_cookie_domain(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_cookie_path(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -321,7 +323,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_set_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
-      ngx_conf_set_keyval_slot,
+      ngx_http_proxy_set_header,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, headers_source),
       NULL },
@@ -752,7 +754,7 @@ static char  ngx_http_proxy_version_11[] = " HTTP/1.1" CRLF;
 
 
 static ngx_keyval_t  ngx_http_proxy_headers[] = {
-    { ngx_string("Host"), ngx_string("$proxy_internal_host") },
+    { ngx_string("Host"), ngx_string("") },
     { ngx_string("Connection"), ngx_string("") },
     { ngx_string("Proxy-Connection"), ngx_string("") },
     { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
@@ -781,7 +783,7 @@ static ngx_str_t  ngx_http_proxy_hide_headers[] = {
 #if (NGX_HTTP_CACHE)
 
 static ngx_keyval_t  ngx_http_proxy_cache_headers[] = {
-    { ngx_string("Host"), ngx_string("$proxy_internal_host") },
+    { ngx_string("Host"), ngx_string("") },
     { ngx_string("Connection"), ngx_string("") },
     { ngx_string("Proxy-Connection"), ngx_string("") },
     { ngx_string("Content-Length"), ngx_string("$proxy_internal_body_length") },
@@ -1186,7 +1188,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                                   key_len, val_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method;
+    ngx_str_t                     method, host_val;
     ngx_uint_t                    i, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1313,6 +1315,15 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         len += key_len + sizeof(": ") - 1 + val_len + sizeof(CRLF) - 1;
     }
 
+    /* Host header */
+
+    if (ngx_http_complex_value(r, plcf->authority, &host_val) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (host_val.len) {
+        len += sizeof("Host: ") - 1 + host_val.len + sizeof(CRLF) - 1;
+    }
 
     if (plcf->upstream.pass_request_headers) {
         part = &r->headers_in.headers.part;
@@ -1398,6 +1409,14 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     } else {
         b->last = ngx_cpymem(b->last, ngx_http_proxy_version,
                              sizeof(ngx_http_proxy_version) - 1);
+    }
+
+    /* Host header */
+
+    if (host_val.len) {
+        b->last = ngx_cpymem(b->last, "Host: ", sizeof("Host: ") - 1);
+        b->last = ngx_copy(b->last, host_val.data, host_val.len);
+        *b->last++ = CR; *b->last++ = LF;
     }
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
@@ -3510,7 +3529,6 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
      *     conf->headers.values = NULL;
      *     conf->headers.hash = { NULL, 0 };
      *     conf->headers_cache.lengths = NULL;
-     *     conf->host_set = 0;
      *     conf->headers_cache.values = NULL;
      *     conf->headers_cache.hash = { NULL, 0 };
      *     conf->body_lengths = NULL;
@@ -4090,7 +4108,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_CACHE)
         conf->headers_cache = prev->headers_cache;
 #endif
-        conf->host_set = prev->host_set;
     }
 
     rc = ngx_http_proxy_init_headers(cf, conf, &conf->headers,
@@ -4123,8 +4140,6 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (NGX_HTTP_CACHE)
         prev->headers_cache = conf->headers_cache;
 #endif
-        prev->host_set = conf->host_set;
-        prev->authority = conf->authority;
     }
 
     return NGX_CONF_OK;
@@ -4176,37 +4191,6 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
 
         src = conf->headers_source->elts;
         for (i = 0; i < conf->headers_source->nelts; i++) {
-
-            if (src[i].key.len == 4
-                && ngx_strncasecmp(src[i].key.data, (u_char *) "Host", 4) == 0)
-            {
-                conf->host_set = 1;
-
-                if (conf->authority != NULL) {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "\"proxy_set_header Host\" cannot be "
-                                       "used with \"proxy_set_authority\"");
-                    return NGX_ERROR;
-
-                } else {
-                    ngx_http_compile_complex_value_t   ccv;
-
-                    conf->authority = ngx_palloc(cf->pool,
-                                            sizeof(ngx_http_complex_value_t));
-                    if (conf->authority == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-                    ccv.cf = cf;
-                    ccv.value = &src[i].value;
-                    ccv.complex_value = conf->authority;
-
-                    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-                        return NGX_ERROR;
-                    }
-                }
-            }
 
             s = ngx_array_push(&headers_merged);
             if (s == NULL) {
@@ -4307,6 +4291,28 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
         }
 
         *code = (uintptr_t) NULL;
+    }
+
+    if (conf->authority == NULL) {
+        ngx_str_t                          v;
+        ngx_http_compile_complex_value_t   ccv;
+
+        ngx_str_set(&v, "$proxy_internal_host");
+
+        conf->authority = ngx_palloc(cf->pool,
+                                sizeof(ngx_http_complex_value_t));
+        if (conf->authority == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+        ccv.cf = cf;
+        ccv.value = &v;
+        ccv.complex_value = conf->authority;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     code = ngx_array_push_n(headers->lengths, sizeof(uintptr_t));
@@ -4592,6 +4598,48 @@ ngx_http_proxy_redirect(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_set_header(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_proxy_loc_conf_t   *plcf = conf;
+    ngx_str_t                   *value = cf->args->elts;
+
+    if (value[1].len == 4
+        && ngx_strncasecmp(value[1].data, (u_char *) "Host", 4) == 0)
+    {
+        ngx_http_compile_complex_value_t   ccv;
+
+        if (plcf->authority != NGX_CONF_UNSET_PTR
+            && plcf->authority != NULL)
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"proxy_set_header Host\" cannot be "
+                               "used with \"proxy_set_authority\"");
+            return NGX_CONF_ERROR;
+        }
+
+        plcf->authority = ngx_palloc(cf->pool,
+                                     sizeof(ngx_http_complex_value_t));
+        if (plcf->authority == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+        ccv.cf = cf;
+        ccv.value = &value[2];
+        ccv.complex_value = plcf->authority;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+
+        return NGX_CONF_OK;
+    }
+
+    return ngx_conf_set_keyval_slot(cf, cmd, conf);
 }
 
 

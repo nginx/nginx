@@ -439,14 +439,16 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
     /* :authority header */
 
+    host = &ctx->ctx.vars.host_header;
+
     if (plcf->authority != NULL) {
         if (ngx_http_complex_value(r, plcf->authority, &host_val) != NGX_OK) {
             return NGX_ERROR;
         }
-        host = &host_val;
 
-    } else {
-        host = &ctx->ctx.vars.host_header;
+        if (host_val.len) {
+            host = &host_val;
+        }
     }
 
     if (host->len > NGX_HTTP_V2_MAX_FIELD) {
