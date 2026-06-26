@@ -3430,6 +3430,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     if (ngx_http_upstream_no_cache(r, u) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+        return;
     }
 
     if (u->cacheable) {
