@@ -4009,7 +4009,9 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
 
     if (rb->buf == NULL) {
         stream->skip_data = 1;
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "http2 cannot allocate request body buffer");
+        return NGX_HTTP_INSUFFICIENT_STORAGE;
     }
 
     buf = stream->preread;
@@ -4064,6 +4066,8 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
             == NGX_ERROR)
         {
             stream->skip_data = 1;
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "http2 failed to send WINDOW_UPDATE");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -4072,6 +4076,8 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
         if (!h2c->blocked) {
             if (ngx_http_v2_send_output_queue(h2c) == NGX_ERROR) {
                 stream->skip_data = 1;
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "http2 failed to send output queue");
                 return NGX_HTTP_INTERNAL_SERVER_ERROR;
             }
         }
