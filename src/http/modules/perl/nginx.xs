@@ -395,6 +395,7 @@ has_request_body(r, next)
     dXSTARG;
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
+    SV                   *next;
     ngx_int_t             rc;
 
     ngx_http_perl_set_request(r, ctx);
@@ -411,7 +412,13 @@ has_request_body(r, next)
         XSRETURN_UNDEF;
     }
 
-    ctx->next = SvRV(ST(1));
+    next = ST(1);
+
+    if (!SvROK(next) || SvTYPE(SvRV(next)) != SVt_PVCV) {
+        croak("has_request_body(): no handler provided");
+    }
+
+    ctx->next = SvRV(next);
 
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
@@ -1129,6 +1136,7 @@ sleep(r, sleep, next)
 
     ngx_http_request_t   *r;
     ngx_http_perl_ctx_t  *ctx;
+    SV                   *next;
     ngx_msec_t            sleep;
 
     ngx_http_perl_set_request(r, ctx);
@@ -1146,7 +1154,13 @@ sleep(r, sleep, next)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl sleep: %M", sleep);
 
-    ctx->next = SvRV(ST(2));
+    next = ST(2);
+
+    if (!SvROK(next) || SvTYPE(SvRV(next)) != SVt_PVCV) {
+        croak("sleep(): no handler provided");
+    }
+
+    ctx->next = SvRV(next);
 
     r->connection->write->delayed = 1;
     ngx_add_timer(r->connection->write, sleep);
