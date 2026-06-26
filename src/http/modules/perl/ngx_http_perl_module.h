@@ -50,6 +50,12 @@ typedef struct {
 } ngx_http_perl_var_t;
 
 
+typedef struct {
+    ngx_http_request_t       *request;
+    SV                       *sv;
+} ngx_http_perl_cleanup_t;
+
+
 extern ngx_module_t  ngx_http_perl_module;
 
 
@@ -68,6 +74,7 @@ extern void boot_DynaLoader(pTHX_ CV* cv);
 
 void ngx_http_perl_handle_request(ngx_http_request_t *r);
 void ngx_http_perl_sleep_handler(ngx_http_request_t *r);
+void ngx_http_perl_refcount_cleanup(void *data);
 
 
 #endif /* _NGX_HTTP_PERL_MODULE_H_INCLUDED_ */
