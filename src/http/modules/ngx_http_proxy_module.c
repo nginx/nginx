@@ -126,6 +126,8 @@ static char *ngx_http_proxy_cache(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_proxy_cache_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_proxy_cache_query_key(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 #endif
 #if (NGX_HTTP_SSL)
 static char *ngx_http_proxy_ssl_certificate_cache(ngx_conf_t *cf,
@@ -429,6 +431,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
     { ngx_string("proxy_cache_key"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_proxy_cache_key,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("proxy_cache_query_key"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_proxy_cache_query_key,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -1093,6 +1102,17 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
     key = ngx_array_push(&r->cache->keys);
     if (key == NULL) {
         return NGX_ERROR;
+    }
+
+    if (r->method == NGX_HTTP_QUERY) {
+        if (plcf->cache_query_key.value.data) {
+
+            if (ngx_http_complex_value(r, &plcf->cache_query_key, key) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            return NGX_OK;
+        }
     }
 
     if (plcf->cache_key.value.data) {
@@ -3862,6 +3882,25 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->cache_key = prev->cache_key;
     }
 
+    if (conf->cache_query_key.value.data == NULL) {
+        conf->cache_query_key = prev->cache_query_key;
+    }
+
+    if (conf->cache_query_key.value.data == NULL) {
+        ngx_str_t                          s = ngx_string("$scheme$proxy_host$request_uri|$request_body");
+        ngx_http_compile_complex_value_t   ccv;
+
+        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+        ccv.cf = cf;
+        ccv.value = &s;
+        ccv.complex_value = &conf->cache_query_key;
+
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
     ngx_conf_merge_value(conf->upstream.cache_lock,
                               prev->upstream.cache_lock, 0);
 
@@ -5036,6 +5075,34 @@ ngx_http_proxy_cache_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ccv.cf = cf;
     ccv.value = &value[1];
     ccv.complex_value = &plcf->cache_key;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_cache_query_key(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_proxy_loc_conf_t *plcf = conf;
+
+    ngx_str_t                         *value;
+    ngx_http_compile_complex_value_t   ccv;
+
+    value = cf->args->elts;
+
+    if (plcf->cache_query_key.value.data) {
+        return "is duplicate";
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &plcf->cache_query_key;
 
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;

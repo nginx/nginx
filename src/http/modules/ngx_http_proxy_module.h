@@ -65,6 +65,7 @@ typedef struct {
 
 #if (NGX_HTTP_CACHE)
     ngx_http_complex_value_t       cache_key;
+    ngx_http_complex_value_t       cache_query_key;
 #endif
 
     ngx_http_proxy_vars_t          vars;
