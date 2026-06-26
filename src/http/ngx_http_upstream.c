@@ -867,7 +867,9 @@ ngx_http_upstream_cache(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return NGX_DECLINED;
         }
 
-        if (r->request_body && r->request_body->temp_file) {
+        if (r->method == NGX_HTTP_QUERY
+            && r->request_body && r->request_body->temp_file)
+        {
             return NGX_DECLINED;
         }
 
