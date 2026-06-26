@@ -622,6 +622,9 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last_buf = 1;
     }
 
+    if (r->chunked) {
+        b->flush = 1;
+    }
     out.buf = b;
     out.next = NULL;
 
