@@ -41,16 +41,6 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
     p = (u_char *) SvPV(sv, len);
 
     s->len = len;
-
-    if (SvREADONLY(sv) && SvPOK(sv)) {
-        s->data = p;
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "perl sv2str: %08XD \"%V\"", sv->sv_flags, s);
-
-        return NGX_OK;
-    }
-
     s->data = ngx_pnalloc(r->pool, len);
     if (s->data == NULL) {
         return NGX_ERROR;
@@ -60,6 +50,29 @@ ngx_http_perl_sv2str(pTHX_ ngx_http_request_t *r, ngx_str_t *s, SV *sv)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "perl sv2str: %08XD \"%V\"", sv->sv_flags, s);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_perl_refcount(pTHX_ ngx_http_request_t *r, SV *sv)
+{
+    ngx_pool_cleanup_t       *cln;
+    ngx_http_perl_cleanup_t  *clnp;
+
+    cln = ngx_pool_cleanup_add(r->pool, sizeof(ngx_http_perl_cleanup_t));
+    if (cln == NULL) {
+        return NGX_ERROR;
+    }
+
+    cln->handler = ngx_http_perl_refcount_cleanup;
+
+    clnp = cln->data;
+    clnp->request = r;
+    clnp->sv = sv;
+
+    SvREFCNT_inc(sv);
 
     return NGX_OK;
 }
@@ -420,6 +433,12 @@ has_request_body(r, next)
 
     ctx->next = SvRV(next);
 
+    if (ngx_http_perl_refcount(aTHX_ r, ctx->next) != NGX_OK) {
+        ctx->error = 1;
+        ctx->next = NULL;
+        croak("ngx_http_perl_refcount() failed");
+    }
+
     r->request_body_in_single_buf = 1;
     r->request_body_in_persistent_file = 1;
     r->request_body_in_clean_file = 1;
@@ -670,7 +689,7 @@ print(r, ...)
     if (items == 2) {
 
         /*
-         * do zero copy for prolate single read-only SV:
+         * do zero copy for prolate single SV:
          *     $r->print("some text\n");
          */
 
@@ -680,12 +699,17 @@ print(r, ...)
             sv = SvRV(sv);
         }
 
-        if (SvREADONLY(sv) && SvPOK(sv)) {
+        if (SvPOK(sv)) {
 
             p = (u_char *) SvPV(sv, len);
 
             if (len == 0) {
                 XSRETURN_EMPTY;
+            }
+
+            if (ngx_http_perl_refcount(aTHX_ r, sv) != NGX_OK) {
+                ctx->error = 1;
+                croak("ngx_http_perl_refcount() failed");
             }
 
             b = ngx_calloc_buf(r->pool);
@@ -701,7 +725,7 @@ print(r, ...)
             b->end = b->last;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "$r->print: read-only SV: %z", len);
+                           "$r->print: single SV: %z", len);
 
             goto out;
         }
@@ -1161,6 +1185,12 @@ sleep(r, sleep, next)
     }
 
     ctx->next = SvRV(next);
+
+    if (ngx_http_perl_refcount(aTHX_ r, ctx->next) != NGX_OK) {
+        ctx->error = 1;
+        ctx->next = NULL;
+        croak("ngx_http_perl_refcount() failed");
+    }
 
     r->connection->write->delayed = 1;
     ngx_add_timer(r->connection->write, sleep);
