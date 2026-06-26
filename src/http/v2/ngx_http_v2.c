@@ -3390,9 +3390,8 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
     const u_char  *p, *m;
 
     /*
-     * This array takes less than 256 sequential bytes,
-     * and if typical CPU cache line size is 64 bytes,
-     * it is prefetched for 4 load operations.
+     * This array fits in a few sequential CPU cache lines
+     * for fast lookup of typical methods.
      */
     static const struct {
         u_char            len;
