@@ -9,6 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 #include <nginx.h>
+#include <ngx_md5.h>
 
 
 static ngx_http_variable_t *ngx_http_add_prefix_variable(ngx_conf_t *cf,
@@ -102,6 +103,8 @@ static ngx_int_t ngx_http_variable_request_completion(ngx_http_request_t *r,
 static ngx_int_t ngx_http_variable_request_body(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_body_file(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_variable_request_body_md5(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -304,6 +307,10 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
 
     { ngx_string("request_body_file"), NULL,
       ngx_http_variable_request_body_file,
+      0, 0, 0 },
+
+    { ngx_string("request_body_md5"), NULL,
+      ngx_http_variable_request_body_md5,
       0, 0, 0 },
 
     { ngx_string("request_length"), NULL, ngx_http_variable_request_length,
@@ -2239,6 +2246,76 @@ ngx_http_variable_request_body_file(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
     v->data = r->request_body->temp_file->file.name.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_variable_request_body_md5(ngx_http_request_t *r,
+    ngx_http_variable_value_t *v, uintptr_t data)
+{
+    u_char             *p;
+    ssize_t             n;
+    off_t               offset;
+    ngx_md5_t           md5;
+    ngx_buf_t          *buf;
+    ngx_file_t         *file;
+    ngx_chain_t        *cl;
+    u_char              hash[16];
+    u_char              buffer[4096];
+
+    if (r->request_body == NULL
+        || (r->request_body->bufs == NULL && r->request_body->temp_file == NULL))
+    {
+        v->not_found = 1;
+        return NGX_OK;
+    }
+
+    p = ngx_pnalloc(r->pool, 32);
+    if (p == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_md5_init(&md5);
+
+    if (r->request_body->temp_file) {
+        file = &r->request_body->temp_file->file;
+        offset = 0;
+
+        for ( ;; ) {
+            n = ngx_read_file(file, buffer, 4096, offset);
+
+            if (n == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (n == 0) {
+                break;
+            }
+
+            ngx_md5_update(&md5, buffer, n);
+            offset += n;
+        }
+
+    } else if (r->request_body->bufs) {
+        cl = r->request_body->bufs;
+        while (cl) {
+            buf = cl->buf;
+            ngx_md5_update(&md5, buf->pos, buf->last - buf->pos);
+            cl = cl->next;
+        }
+    }
+
+    ngx_md5_final(hash, &md5);
+
+    ngx_hex_dump(p, hash, 16);
+
+    v->len = 32;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->data = p;
 
     return NGX_OK;
 }
