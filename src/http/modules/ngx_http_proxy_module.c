@@ -3879,11 +3879,17 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
             }
         }
 
-        if (ngx_strnstr(conf->cache_key.value.data, "request_body",
-                        conf->cache_key.value.len) == NULL)
+        if (ngx_strnstr(conf->cache_key.value.data, "$request_body",
+                        conf->cache_key.value.len) == NULL
+            && ngx_strnstr(conf->cache_key.value.data, "${request_body}",
+                           conf->cache_key.value.len) == NULL
+            && ngx_strnstr(conf->cache_key.value.data, "${request_body_md5}",
+                           conf->cache_key.value.len) == NULL
+            && ngx_strnstr(conf->cache_key.value.data, "${request_body_file}",
+                           conf->cache_key.value.len) == NULL)
         {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "proxy_cache_key must contain \"$request_body\" or \"$request_body_md5\" when QUERY caching is enabled");
+                          "proxy_cache_key must contain \"$request_body\", \"$request_body_md5\", or \"$request_body_file\" when QUERY caching is enabled");
             return NGX_CONF_ERROR;
         }
     }

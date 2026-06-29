@@ -2283,10 +2283,31 @@ ngx_http_variable_request_body_md5(ngx_http_request_t *r,
         file = &r->request_body->temp_file->file;
         offset = 0;
 
+        ngx_fd_t    fd;
+        ngx_uint_t  reopened = 0;
+
+        fd = file->fd;
+
+        if (fd == NGX_INVALID_FILE) {
+            fd = ngx_open_file(file->name.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+
+            if (fd == NGX_INVALID_FILE) {
+                v->not_found = 1;
+                return NGX_OK;
+            }
+
+            file->fd = fd;
+            reopened = 1;
+        }
+
         for ( ;; ) {
             n = ngx_read_file(file, buffer, 4096, offset);
 
             if (n == NGX_ERROR) {
+                if (reopened) {
+                    (void) ngx_close_file(file->fd);
+                    file->fd = NGX_INVALID_FILE;
+                }
                 return NGX_ERROR;
             }
 
@@ -2296,6 +2317,14 @@ ngx_http_variable_request_body_md5(ngx_http_request_t *r,
 
             ngx_md5_update(&md5, buffer, n);
             offset += n;
+        }
+
+        if (reopened) {
+            if (ngx_close_file(file->fd) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                              ngx_close_file_n " \"%s\" failed", file->name.data);
+            }
+            file->fd = NGX_INVALID_FILE;
         }
 
     } else if (r->request_body->bufs) {
