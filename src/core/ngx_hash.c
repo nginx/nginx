@@ -764,7 +764,9 @@ ngx_hash_add_key(ngx_hash_keys_arrays_t *ha, ngx_str_t *key, void *value,
                 }
             }
 
-            if (key->data[i] == '.' && key->data[i + 1] == '.') {
+            if (key->data[i] == '.'
+                && i + 1 < key->len && key->data[i + 1] == '.')
+            {
                 return NGX_DECLINED;
             }
 
