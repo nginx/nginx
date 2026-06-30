@@ -229,7 +229,8 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
     if (!conf->enable
         || (r->headers_out.status != NGX_HTTP_OK
             && r->headers_out.status != NGX_HTTP_FORBIDDEN
-            && r->headers_out.status != NGX_HTTP_NOT_FOUND)
+            && r->headers_out.status != NGX_HTTP_NOT_FOUND
+            && r->headers_out.status != NGX_HTTP_GONE)
         || (r->headers_out.content_encoding
             && r->headers_out.content_encoding->value.len)
         || (r->headers_out.content_length_n != -1
