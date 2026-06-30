@@ -651,10 +651,12 @@ ngx_http_v2_early_hints_filter(ngx_http_request_t *r)
     ngx_list_part_t           *part;
     ngx_table_elt_t           *header;
     ngx_connection_t          *fc;
+    ngx_http_upstream_t       *u;
     ngx_http_v2_stream_t      *stream;
     ngx_http_v2_out_frame_t   *frame;
     ngx_http_v2_connection_t  *h2c;
 
+    u      = r->upstream;
     stream = r->stream;
 
     if (!stream) {
@@ -746,11 +748,11 @@ ngx_http_v2_early_hints_filter(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                    "http2 output header: \":status: %03ui\"",
-                   (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
+                   (ngx_uint_t) u->headers_in.status_n);
 
     *pos++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_STATUS_INDEX);
     *pos++ = NGX_HTTP_V2_ENCODE_RAW | 3;
-    pos = ngx_sprintf(pos, "%03ui", (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
+    pos = ngx_sprintf(pos, "%03ui", (ngx_uint_t) u->headers_in.status_n);
 
     part = &r->headers_out.headers.part;
     header = part->elts;
