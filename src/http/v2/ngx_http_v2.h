@@ -11,6 +11,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
+#include <ngx_http_priority.h>
 
 
 #define NGX_HTTP_V2_ALPN_PROTO           "\x02h2"
@@ -27,16 +28,17 @@
 #define NGX_HTTP_V2_FRAME_HEADER_SIZE    9
 
 /* frame types */
-#define NGX_HTTP_V2_DATA_FRAME           0x0
-#define NGX_HTTP_V2_HEADERS_FRAME        0x1
-#define NGX_HTTP_V2_PRIORITY_FRAME       0x2
-#define NGX_HTTP_V2_RST_STREAM_FRAME     0x3
-#define NGX_HTTP_V2_SETTINGS_FRAME       0x4
-#define NGX_HTTP_V2_PUSH_PROMISE_FRAME   0x5
-#define NGX_HTTP_V2_PING_FRAME           0x6
-#define NGX_HTTP_V2_GOAWAY_FRAME         0x7
-#define NGX_HTTP_V2_WINDOW_UPDATE_FRAME  0x8
-#define NGX_HTTP_V2_CONTINUATION_FRAME   0x9
+#define NGX_HTTP_V2_DATA_FRAME             0x00
+#define NGX_HTTP_V2_HEADERS_FRAME          0x01
+#define NGX_HTTP_V2_PRIORITY_FRAME         0x02
+#define NGX_HTTP_V2_RST_STREAM_FRAME       0x03
+#define NGX_HTTP_V2_SETTINGS_FRAME         0x04
+#define NGX_HTTP_V2_PUSH_PROMISE_FRAME     0x05
+#define NGX_HTTP_V2_PING_FRAME             0x06
+#define NGX_HTTP_V2_GOAWAY_FRAME           0x07
+#define NGX_HTTP_V2_WINDOW_UPDATE_FRAME    0x08
+#define NGX_HTTP_V2_CONTINUATION_FRAME     0x09
+#define NGX_HTTP_V2_PRIORITY_UPDATE_FRAME  0x10
 
 /* frame flags */
 #define NGX_HTTP_V2_NO_FLAG              0x00
@@ -61,8 +63,19 @@ typedef u_char *(*ngx_http_v2_handler_pt) (ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 
 
+/*
+ * RFC9218: Pending priority update for streams not yet created.
+ * PRIORITY_UPDATE frames may arrive before the HEADERS frame.
+ */
+typedef struct {
+    ngx_uint_t                       sid;
+    ngx_http_priority_t              priority;
+} ngx_http_v2_pending_priority_t;
+
+
 typedef struct {
     ngx_flag_t                       enable;
+    ngx_flag_t                       rfc9218_priority;
     size_t                           pool_size;
     ngx_uint_t                       concurrent_streams;
     size_t                           preread_size;
@@ -168,6 +181,11 @@ struct ngx_http_v2_connection_s {
     unsigned                         table_update:1;
     unsigned                         blocked:1;
     unsigned                         goaway:1;
+
+    /* RFC9218 Extensible Priorities */
+    unsigned                         rfc9218_enabled:1;
+
+    ngx_array_t                     *pending_priorities;
 };
 
 
@@ -222,6 +240,9 @@ struct ngx_http_v2_stream_s {
     unsigned                         rst_sent:1;
     unsigned                         no_flow_control:1;
     unsigned                         skip_data:1;
+
+    /* RFC9218 Extensible Priorities */
+    ngx_http_priority_t              priority;
 };
 
 
@@ -240,11 +261,64 @@ struct ngx_http_v2_out_frame_s {
 };
 
 
+/*
+ * Compare two streams for scheduling order.
+ *
+ * Returns 1 if existing stream 's' should come before 'stream' (break),
+ * returns 0 if search should continue.
+ *
+ * Uses RFC9218 urgency-based scheduling when:
+ * - RFC9218 globally enabled AND client has ACKed our SETTINGS, or
+ * - Either stream has explicit priority (from client or upstream)
+ *
+ * Otherwise falls back to legacy RFC7540 rank/weight scheduling.
+ */
+static ngx_inline ngx_uint_t
+ngx_http_v2_stream_comes_before(ngx_http_v2_connection_t *h2c,
+    ngx_http_v2_stream_t *s, ngx_http_v2_stream_t *stream)
+{
+    ngx_int_t  cmp;
+
+    if ((h2c->rfc9218_enabled && h2c->settings_ack)
+        || s->priority.valid || stream->priority.valid)
+    {
+        /* RFC9218 urgency-based scheduling */
+        cmp = ngx_http_priority_compare(&s->priority, &stream->priority);
+
+        if (cmp < 0) {
+            return 1;
+        }
+
+        if (cmp == 0) {
+            /* Same priority: lower stream ID wins */
+            if (s->node->id <= stream->node->id) {
+                return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /* Legacy RFC7540 scheduling (rank/weight based) */
+    if (s->node->rank < stream->node->rank
+        || (s->node->rank == stream->node->rank
+            && s->node->rel_weight >= stream->node->rel_weight))
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+
 static ngx_inline void
 ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
 {
+    ngx_http_v2_stream_t      *s, *fs;
     ngx_http_v2_out_frame_t  **out;
+
+    fs = frame->stream;
 
     for (out = &h2c->last_out; *out; out = &(*out)->next) {
 
@@ -252,11 +326,9 @@ ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
             break;
         }
 
-        if ((*out)->stream->node->rank < frame->stream->node->rank
-            || ((*out)->stream->node->rank == frame->stream->node->rank
-                && (*out)->stream->node->rel_weight
-                   >= frame->stream->node->rel_weight))
-        {
+        s = (*out)->stream;
+
+        if (ngx_http_v2_stream_comes_before(h2c, s, fs)) {
             break;
         }
     }

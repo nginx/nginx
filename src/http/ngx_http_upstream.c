@@ -139,6 +139,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_priority(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
@@ -329,6 +331,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, content_encoding), 0 },
+
+    { ngx_string("Priority"),
+                 ngx_http_upstream_process_priority, 0,
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
@@ -5573,6 +5579,62 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
     }
 
     r->cache->vary = vary;
+    }
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_priority(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+#if (NGX_HTTP_V2)
+    ngx_http_priority_t      server_priority;
+    ngx_http_v2_stream_t    *stream;
+    ngx_http_v2_srv_conf_t  *h2scf;
+
+    /*
+     * RFC9218 Section 8: Intermediaries can combine server priority hints
+     * with client priority.  When the upstream sends a Priority header,
+     * merge it with the client's requested priority and update the header
+     * to reflect the merged value per RFC9218 Section 5.4.
+     */
+
+    stream = r->stream;
+
+    if (stream != NULL) {
+        h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
+
+        if (h2scf->rfc9218_priority) {
+            if (ngx_http_priority_parse(&h->value, &server_priority) == NGX_OK
+                && server_priority.valid)
+            {
+                ngx_http_priority_merge(&stream->priority,
+                                        &stream->priority,
+                                        &server_priority);
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                               "http2 upstream priority merged: u=%ui i=%ui",
+                               stream->priority.urgency,
+                               stream->priority.incremental);
+
+                /*
+                 * Update header value to reflect merged priority.
+                 * Buffer needs space for "u=N, i" (max 6 bytes) plus NUL.
+                 */
+                h->value.data = ngx_pnalloc(r->pool, 7);
+                if (h->value.data == NULL) {
+                    return NGX_ERROR;
+                }
+
+                h->value.len = ngx_http_priority_format(h->value.data,
+                                                        &stream->priority)
+                               - h->value.data;
+                h->value.data[h->value.len] = '\0';
+            }
+        }
     }
 #endif
 

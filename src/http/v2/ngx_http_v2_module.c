@@ -80,6 +80,13 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       offsetof(ngx_http_v2_srv_conf_t, enable),
       NULL },
 
+    { ngx_string("http2_rfc9218_priority"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v2_srv_conf_t, rfc9218_priority),
+      NULL },
+
     { ngx_string("http2_recv_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -320,6 +327,7 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
     }
 
     h2scf->enable = NGX_CONF_UNSET;
+    h2scf->rfc9218_priority = NGX_CONF_UNSET;
 
     h2scf->pool_size = NGX_CONF_UNSET_SIZE;
 
@@ -340,6 +348,7 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v2_srv_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+    ngx_conf_merge_value(conf->rfc9218_priority, prev->rfc9218_priority, 0);
 
     ngx_conf_merge_size_value(conf->pool_size, prev->pool_size, 4096);
 
