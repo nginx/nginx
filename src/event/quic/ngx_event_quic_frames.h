@@ -36,6 +36,28 @@ void ngx_quic_skip_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
     uint64_t offset);
 void ngx_quic_free_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb);
 
+/*
+ * Returns 1 if contiguous data is available at qb->offset, 0 otherwise.
+ * Used instead of inspecting chain->buf->sync directly.
+ */
+static ngx_inline ngx_uint_t
+ngx_quic_buffer_has_data(ngx_quic_buffer_t *qb)
+{
+    if (qb->chain == NULL) {
+        return 0;
+    }
+
+    if (qb->gaps != NULL
+        && qb->gaps->nranges > 0
+        && qb->gaps->ranges[0].start == qb->offset)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+
 #if (NGX_DEBUG)
 void ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx);
 #else
