@@ -348,7 +348,7 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v2_srv_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
-    ngx_conf_merge_value(conf->rfc9218_priority, prev->rfc9218_priority, 1);
+    ngx_conf_merge_value(conf->rfc9218_priority, prev->rfc9218_priority, 0);
 
     ngx_conf_merge_size_value(conf->pool_size, prev->pool_size, 4096);
 
