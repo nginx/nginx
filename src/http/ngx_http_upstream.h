@@ -311,6 +311,7 @@ typedef struct {
     unsigned                         chunked:1;
     unsigned                         no_cache:1;
     unsigned                         expired:1;
+    unsigned                         upgrade:1;
 } ngx_http_upstream_headers_in_t;
 
 

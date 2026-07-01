@@ -1810,9 +1810,9 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 
     if (ctx->status.http_version < NGX_HTTP_VERSION_11) {
 
-        if (ctx->status.code == NGX_HTTP_EARLY_HINTS) {
+        if (ctx->status.code < NGX_HTTP_OK) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent HTTP/1.0 response with early hints");
+                          "upstream sent 1xx HTTP/1.0 response");
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
 

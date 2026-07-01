@@ -1804,6 +1804,15 @@ ngx_http_send_response(ngx_http_request_t *r, ngx_uint_t status,
         return rc;
     }
 
+    /*
+     * Can't respond 1xx, as that would mean a subsequent response is
+     * coming or the protocol is switching.  Can't respond 2xx to a
+     * CONNECT request, as that would mean a tunnel has opened.
+     */
+    if (status < (r->method == NGX_HTTP_CONNECT ? 300 : NGX_HTTP_OK)) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
     r->headers_out.status = status;
 
     if (ngx_http_complex_value(r, cv, &val) != NGX_OK) {
