@@ -124,6 +124,8 @@ struct ngx_conf_s {
     ngx_log_t            *log;
 
     void                 *ctx;
+
+    ngx_uint_t            dynamic; /* unsigned  dynamic:1; */
     ngx_uint_t            module_type;
     ngx_uint_t            cmd_type;
 
@@ -268,7 +270,7 @@ char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
 char *ngx_conf_param(ngx_conf_t *cf);
 char *ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename);
 char *ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
+ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 
 ngx_int_t ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name,
     ngx_uint_t conf_prefix);
@@ -290,6 +292,8 @@ char *ngx_conf_set_sec_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bufs_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_enum_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_conf_set_bitmask_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+extern ngx_uint_t  argument_number[];
 
 
 #endif /* _NGX_CONF_FILE_H_INCLUDED_ */

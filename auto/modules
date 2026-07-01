@@ -710,6 +710,19 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_EVAL = YES ]; then
+        have=NGX_HTTP_EVAL . auto/have
+
+        ngx_module_name=ngx_http_eval_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_eval_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_EVAL
+
+        . auto/module
+    fi
+
     if [ $HTTP_SSL = YES ]; then
         USE_OPENSSL=YES
         have=NGX_HTTP_SSL . auto/have
