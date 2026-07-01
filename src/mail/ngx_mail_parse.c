@@ -970,5 +970,21 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_MAIL_PARSE_INVALID_COMMAND;
     }
 
+    if (arg[0].len == 11) {
+
+        if (ngx_strncasecmp(arg[0].data, (u_char *) "OAUTHBEARER", 11) == 0) {
+
+            if (s->args.nelts != 2) {
+                return NGX_MAIL_PARSE_INVALID_COMMAND;
+            }
+
+            if (s->args.nelts == 2) {
+                return ngx_mail_auth_oauthbearer(s, c, 2);
+            }
+        }
+
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
     return NGX_MAIL_PARSE_INVALID_COMMAND;
 }

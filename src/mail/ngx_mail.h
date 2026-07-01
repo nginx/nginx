@@ -301,16 +301,18 @@ typedef struct {
 #define NGX_MAIL_AUTH_LOGIN_USERNAME    2
 #define NGX_MAIL_AUTH_APOP              3
 #define NGX_MAIL_AUTH_CRAM_MD5          4
-#define NGX_MAIL_AUTH_EXTERNAL          5
-#define NGX_MAIL_AUTH_NONE              6
+#define NGX_MAIL_AUTH_OAUTHBEARER       5
+#define NGX_MAIL_AUTH_EXTERNAL          6
+#define NGX_MAIL_AUTH_NONE              7
 
 
-#define NGX_MAIL_AUTH_PLAIN_ENABLED     0x0002
-#define NGX_MAIL_AUTH_LOGIN_ENABLED     0x0004
-#define NGX_MAIL_AUTH_APOP_ENABLED      0x0008
-#define NGX_MAIL_AUTH_CRAM_MD5_ENABLED  0x0010
-#define NGX_MAIL_AUTH_EXTERNAL_ENABLED  0x0020
-#define NGX_MAIL_AUTH_NONE_ENABLED      0x0040
+#define NGX_MAIL_AUTH_PLAIN_ENABLED            0x0002
+#define NGX_MAIL_AUTH_LOGIN_ENABLED            0x0004
+#define NGX_MAIL_AUTH_APOP_ENABLED             0x0008
+#define NGX_MAIL_AUTH_CRAM_MD5_ENABLED         0x0010
+#define NGX_MAIL_AUTH_OAUTHBEARER_ENABLED      0x0020
+#define NGX_MAIL_AUTH_EXTERNAL_ENABLED         0x0040
+#define NGX_MAIL_AUTH_NONE_ENABLED             0x0080
 
 
 #define NGX_MAIL_PARSE_INVALID_COMMAND  20
@@ -397,6 +399,11 @@ ngx_int_t ngx_mail_auth_cram_md5_salt(ngx_mail_session_t *s,
     ngx_connection_t *c, char *prefix, size_t len);
 ngx_int_t ngx_mail_auth_cram_md5(ngx_mail_session_t *s, ngx_connection_t *c);
 ngx_int_t ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n);
+ngx_int_t ngx_mail_decode_oauthbearer(ngx_str_t *passwd, ngx_str_t *login,
+    ngx_str_t *host,
+    ngx_connection_t *c);
+ngx_int_t ngx_mail_auth_oauthbearer(ngx_mail_session_t *s, ngx_connection_t *c,
     ngx_uint_t n);
 ngx_int_t ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c);
 

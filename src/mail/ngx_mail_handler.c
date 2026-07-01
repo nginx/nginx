@@ -758,6 +758,124 @@ ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
     return NGX_DONE;
 }
 
+ngx_int_t
+ngx_mail_decode_oauthbearer(ngx_str_t *passwd, ngx_str_t *login,
+    ngx_str_t *host,
+    ngx_connection_t *c)
+{
+    size_t len;
+    size_t field_index;
+    size_t field_maxlen_name = 10;
+    size_t field_maxlen_value = 256;
+    uint field_sep_reached = 0;
+    ngx_str_t field_name;
+    ngx_str_t field_value;
+
+    u_char *p,*n,*l,*h,*v;
+    u_char field_sep = 0x01;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth oauthbearer: \"%V\"", passwd);
+
+    p = passwd->data;
+
+    field_name.data = ngx_pnalloc(c->pool, field_maxlen_name);
+    field_name.len = 0;
+
+    field_value.data = ngx_pnalloc(c->pool, field_maxlen_value);
+    field_value.len = 0;
+
+    n = field_name.data;
+    v = field_value.data;
+    l = login->data;
+    h = host->data;
+
+    field_index = 0;
+
+    for(len = 0; len < passwd->len; len ++) {
+	    if(p[len] == field_sep) {
+		field_sep_reached = 0;
+		field_index = 0;
+
+		if (ngx_strncasecmp(n, (u_char *) "n,a", 3) == 0) {
+			/* comma at the end is not copied */
+			l = ngx_cpystrn(l, v, field_value.len);
+			login->len = field_value.len - 1;
+		} else if (ngx_strncasecmp(n, (u_char *) "host", 4) == 0) {
+			h = ngx_cpystrn(h, v, field_value.len + 1);
+			host->len = field_value.len;
+		}
+
+	        if (p[len+1] == field_sep) break;
+
+	    } else {
+		    if (p[len] == '=') {
+			    field_sep_reached = 1;
+			    field_index = 0;
+		    } else {
+			    if (field_sep_reached == 1) {
+				    v[field_index] = p[len];
+				    field_value.len = ++field_index;
+			    } else {
+				    n[field_index] = p[len];
+				    field_name.len = ++field_index;
+			    }
+		    }
+	    }
+    }
+
+    return NGX_DONE;
+}
+
+ngx_int_t
+ngx_mail_auth_oauthbearer(ngx_mail_session_t *s, ngx_connection_t *c,
+    ngx_uint_t n)
+{
+    ngx_str_t  *arg, passwd;
+    ngx_str_t  login;
+    ngx_str_t  host;
+
+    arg = s->args.elts;
+
+#if (NGX_DEBUG_MAIL_PASSWD)
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth oauthbearer: \"%V\"", &arg[0]);
+#endif
+
+    passwd.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[1].len));
+    if (passwd.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    login.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[1].len));
+    if (login.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    host.data = ngx_pnalloc(c->pool, ngx_base64_decoded_length(arg[1].len));
+    if (host.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_decode_base64(&passwd, &arg[1]) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+            "client sent invalid base64 encoding in AUTHENTICATE OAUTHBEARER command");
+        return NGX_MAIL_PARSE_INVALID_COMMAND;
+    }
+
+    ngx_mail_decode_oauthbearer(&passwd, &login, &host, c);
+
+    s->login = login;
+    s->host = host;
+    s->passwd = arg[1];
+
+#if (NGX_DEBUG_MAIL_PASSWD)
+    ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
+                   "mail auth oauthbearer: \"%V\"", &s->passwd);
+#endif
+
+    return NGX_DONE;
+}
 
 void
 ngx_mail_send(ngx_event_t *wev)
