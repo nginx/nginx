@@ -141,6 +141,8 @@ static ngx_int_t ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_copy_upgrade(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
     ngx_http_upstream_copy_multi_header_lines(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
@@ -286,6 +288,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
     { ngx_string("Connection"),
                  ngx_http_upstream_process_connection, 0,
                  ngx_http_upstream_ignore_header_line, 0, 0 },
+
+    { ngx_string("Upgrade"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_upgrade, 0, 0 },
 
     { ngx_string("Keep-Alive"),
                  ngx_http_upstream_ignore_header_line, 0,
@@ -5597,6 +5603,19 @@ ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
         ph = (ngx_table_elt_t **) ((char *) &r->headers_out + offset);
         *ph = ho;
         ho->next = NULL;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_copy_upgrade(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+
+    if (r->upstream->upgrade || r->http_version < NGX_HTTP_VERSION_20) {
+        return ngx_http_upstream_copy_header_line(r, h, 0);
     }
 
     return NGX_OK;
