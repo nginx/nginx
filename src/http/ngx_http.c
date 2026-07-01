@@ -67,6 +67,8 @@ static ngx_int_t ngx_http_add_addrs(ngx_conf_t *cf, ngx_http_port_t *hport,
 static ngx_int_t ngx_http_add_addrs6(ngx_conf_t *cf, ngx_http_port_t *hport,
     ngx_http_conf_addr_t *addr);
 #endif
+static ngx_int_t ngx_http_valid_field_name_internal(const ngx_str_t *name,
+    ngx_int_t allow_uppercase);
 
 ngx_uint_t   ngx_http_max_module;
 
@@ -2194,6 +2196,82 @@ ngx_http_set_default_types(ngx_conf_t *cf, ngx_array_t **types,
         type->value = (void *) 4;
 
         default_type++;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_valid_lowercase_field_name(const ngx_str_t *name)
+{
+    return ngx_http_valid_field_name_internal(name, 0);
+}
+
+
+ngx_int_t
+ngx_http_valid_field_name(const ngx_str_t *name)
+{
+    return ngx_http_valid_field_name_internal(name, 1);
+}
+
+
+static ngx_int_t
+ngx_http_valid_field_name_internal(const ngx_str_t *name,
+    ngx_int_t allow_uppercase)
+{
+    /* Check that the string is not empty. */
+    if (name->len == 0)
+        return NGX_ERROR;
+
+    /* Check that the characters are valid for an HTTP TOKEN */
+    for (size_t i = 0; i < name->len; ++i) {
+        u_char c = name->data[i];
+
+        /*
+         * Only allow uppercase letters if the caller asked for it.
+         * HTTP/2 and HTTP/3 don't allow them.
+         */
+        if (allow_uppercase && 'A' <= c && c <= 'Z')
+            continue;
+
+        if ('^' <= c && c <= 'z')
+            continue;
+
+        if ('0' <= c && c <= '9')
+            continue;
+
+        if ('#' <= c && c <= '\'')
+            continue;
+
+        if (c == '!' || c == '+' || c == '+' || c == '-' || c == '.' || c == '|'
+            || c == '~')
+            continue;
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_valid_field_value(const ngx_str_t *value)
+{
+    /* Field values may be empty. */
+    if (value->len == 0)
+        return NGX_OK;
+
+    /* Leading and trailing space and tab are not allowed. */
+    if (value->data[0] <= ' ' || value->data[value->len - 1] <= ' ')
+        return NGX_ERROR;
+
+    /* Check that the characters are valid for an HTTP field value. */
+    for (size_t i = 0; i < value->len; ++i) {
+        u_char c = value->data[i];
+
+        if (c < 0x20 ? c != '\t' : c == '\x7F')
+            return NGX_ERROR;
     }
 
     return NGX_OK;
