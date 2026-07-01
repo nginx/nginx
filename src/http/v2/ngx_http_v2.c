@@ -3277,6 +3277,20 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         r->invalid_header = 1;
     }
 
+    if (header->value.len == 0) {
+        return NGX_OK;
+    }
+
+    if (ngx_str_is_hws(header->value.data[0])
+        || ngx_str_is_hws(header->value.data[header->value.len - 1]))
+    {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent header \"%V\" with "
+                      "leading or trailing space or HTAB in value",
+                      &header->name);
+        return NGX_ERROR;
+    }
+
     for (i = 0; i != header->value.len; i++) {
         ch = header->value.data[i];
 
