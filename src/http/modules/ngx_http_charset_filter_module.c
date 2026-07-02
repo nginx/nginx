@@ -1197,6 +1197,13 @@ ngx_http_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    if (ngx_strcasecmp(value[1].data, (u_char *) "utf-8") == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"charset_map\" with \"utf-8\" charset "
+                           "should be given in the second column");
+        return NGX_CONF_ERROR;
+    }
+
     table = mcf->tables.elts;
     for (i = 0; i < mcf->tables.nelts; i++) {
         if ((src == table->src && dst == table->dst)
