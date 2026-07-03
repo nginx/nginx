@@ -104,7 +104,8 @@ ngx_stream_complex_value(ngx_stream_session_t *s,
         return NGX_ERROR;
     }
 
-    *value = e.buf;
+    value->data = e.buf.data;
+    value->len = e.pos - e.buf.data;
 
     return NGX_OK;
 }
@@ -496,6 +497,7 @@ u_char *
 ngx_stream_script_run(ngx_stream_session_t *s, ngx_str_t *value,
     void *code_lengths, size_t len, void *code_values)
 {
+    size_t                          n;
     ngx_uint_t                      i;
     ngx_stream_script_code_pt       code;
     ngx_stream_script_engine_t      e;
@@ -517,21 +519,23 @@ ngx_stream_script_run(ngx_stream_session_t *s, ngx_str_t *value,
     e.session = s;
     e.flushed = 1;
 
+    n = len;
+
     while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_stream_script_len_code_pt *) e.ip;
-        len += lcode(&e);
+        n += lcode(&e);
     }
 
 
-    value->len = len;
-    value->data = ngx_pnalloc(s->connection->pool, len);
+    value->len = n;
+    value->data = ngx_pnalloc(s->connection->pool, n);
     if (value->data == NULL) {
         return NULL;
     }
 
     e.ip = code_values;
     e.pos = value->data;
-    e.end = value->data + len;
+    e.end = value->data + n;
 
     while (*(uintptr_t *) e.ip) {
         code = *(ngx_stream_script_code_pt *) e.ip;
@@ -541,6 +545,8 @@ ngx_stream_script_run(ngx_stream_session_t *s, ngx_str_t *value,
     if (e.status) {
         return NULL;
     }
+
+    value->len = e.pos + len - value->data;
 
     return e.pos;
 }
@@ -1062,6 +1068,8 @@ ngx_stream_script_full_name_code(ngx_stream_script_engine_t *e)
     }
 
     e->buf = value;
+    e->pos = value.data + value.len;
+    e->end = e->pos;
 
     ngx_log_debug1(NGX_LOG_DEBUG_STREAM, e->session->connection->log, 0,
                    "stream script fullname: \"%V\"", &value);

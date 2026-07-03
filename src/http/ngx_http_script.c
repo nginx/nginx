@@ -103,7 +103,8 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
         return NGX_ERROR;
     }
 
-    *value = e.buf;
+    value->data = e.buf.data;
+    value->len = e.pos - e.buf.data;
 
     return NGX_OK;
 }
@@ -620,6 +621,7 @@ u_char *
 ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     void *code_lengths, size_t len, void *code_values)
 {
+    size_t                        n;
     ngx_uint_t                    i;
     ngx_http_script_code_pt       code;
     ngx_http_script_len_code_pt   lcode;
@@ -641,21 +643,23 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     e.request = r;
     e.flushed = 1;
 
+    n = len;
+
     while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
-        len += lcode(&e);
+        n += lcode(&e);
     }
 
 
-    value->len = len;
-    value->data = ngx_pnalloc(r->pool, len);
+    value->len = n;
+    value->data = ngx_pnalloc(r->pool, n);
     if (value->data == NULL) {
         return NULL;
     }
 
     e.ip = code_values;
     e.pos = value->data;
-    e.end = value->data + len;
+    e.end = value->data + n;
 
     while (*(uintptr_t *) e.ip) {
         code = *(ngx_http_script_code_pt *) e.ip;
@@ -665,6 +669,8 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     if (e.status) {
         return NULL;
     }
+
+    value->len = e.pos + len - value->data;
 
     return e.pos;
 }
@@ -1548,6 +1554,8 @@ ngx_http_script_full_name_code(ngx_http_script_engine_t *e)
     }
 
     e->buf = value;
+    e->pos = value.data + value.len;
+    e->end = e->pos;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
                    "http script fullname: \"%V\"", &value);
@@ -1855,8 +1863,18 @@ ngx_http_script_complex_value_code(ngx_http_script_engine_t *e)
 
     e->pos = e->buf.data;
     e->end = e->buf.data + len;
+}
 
-    e->sp->len = e->buf.len;
+
+void
+ngx_http_script_complex_value_end_code(ngx_http_script_engine_t *e)
+{
+    e->ip += sizeof(ngx_http_script_complex_value_end_code_t);
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
+                   "http script complex value end");
+
+    e->sp->len = e->pos - e->buf.data;
     e->sp->data = e->buf.data;
     e->sp++;
 }
