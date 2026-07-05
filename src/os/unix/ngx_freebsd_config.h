@@ -52,24 +52,6 @@
 #include <dlfcn.h>
 
 
-#if __FreeBSD_version < 400017
-
-/*
- * FreeBSD 3.x has no CMSG_SPACE() and CMSG_LEN() and has the broken CMSG_DATA()
- */
-
-#undef  CMSG_SPACE
-#define CMSG_SPACE(l)       (ALIGN(sizeof(struct cmsghdr)) + ALIGN(l))
-
-#undef  CMSG_LEN
-#define CMSG_LEN(l)         (ALIGN(sizeof(struct cmsghdr)) + (l))
-
-#undef  CMSG_DATA
-#define CMSG_DATA(cmsg)     ((u_char *)(cmsg) + ALIGN(sizeof(struct cmsghdr)))
-
-#endif
-
-
 #include <ngx_auto_config.h>
 
 
@@ -92,10 +74,6 @@
 
 #include <aio.h>
 typedef struct aiocb  ngx_aiocb_t;
-
-#if (__FreeBSD_version < 700005 && !defined __DragonFly__)
-#define sival_ptr     sigval_ptr
-#endif
 
 #endif
 
@@ -123,7 +101,6 @@ typedef struct aiocb  ngx_aiocb_t;
 
 
 extern char **environ;
-extern char  *malloc_options;
 
 
 #endif /* _NGX_FREEBSD_CONFIG_H_INCLUDED_ */
