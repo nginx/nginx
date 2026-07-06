@@ -59,6 +59,9 @@ typedef struct {
 extern ngx_module_t  ngx_http_perl_module;
 
 
+extern ngx_http_perl_ctx_t  *ngx_http_perl_active_context;
+
+
 /*
  * workaround for "unused variable `Perl___notused'" warning
  * when building with perl 5.6.1
