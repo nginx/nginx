@@ -303,6 +303,7 @@ ngx_single_process_cycle(ngx_cycle_t *cycle)
             }
 
             ngx_cycle = cycle;
+            
             ngx_update_process_title(cycle, 1);
         }
 
