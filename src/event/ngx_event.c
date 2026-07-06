@@ -433,15 +433,60 @@ static char *
 ngx_event_init_conf(ngx_cycle_t *cycle, void *conf)
 {
 #if (NGX_HAVE_REUSEPORT)
-    ngx_uint_t        i;
     ngx_core_conf_t  *ccf;
     ngx_listening_t  *ls;
 #endif
 
+    ngx_uint_t          i;
+    void             ***ecf;
+    ngx_event_module_t *m;
+
     if (ngx_get_conf(cycle->conf_ctx, ngx_events_module) == NULL) {
-        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
-                      "no \"events\" section in configuration");
-        return NGX_CONF_ERROR;
+
+        ecf = ngx_pcalloc(cycle->pool, sizeof(void *));
+        if (ecf == NULL){
+            return NGX_CONF_ERROR;
+        }
+
+        cycle->conf_ctx[ngx_events_module.index] = ecf;
+
+        ngx_event_max_module = ngx_count_modules(cycle, NGX_EVENT_MODULE);
+
+        *ecf = ngx_pcalloc(cycle->pool, ngx_event_max_module * sizeof(void *));
+        if (*ecf == NULL){
+          return NGX_CONF_ERROR;
+        }
+
+        for (i = 0; cycle->modules[i]; i++) {
+            if (cycle->modules[i]->type != NGX_EVENT_MODULE) {
+                continue;
+            }
+
+            m = cycle->modules[i]->ctx;
+
+            if (m->create_conf) {
+                (*ecf)[cycle->modules[i]->ctx_index] =
+                                                     m->create_conf(cycle);
+                if ((*ecf)[cycle->modules[i]->ctx_index] == NULL) {
+                    return NGX_CONF_ERROR;
+                }
+            }
+        }
+
+        for (i = 0; cycle->modules[i]; i++) {
+            if (cycle->modules[i]->type != NGX_EVENT_MODULE) {
+                continue;
+            }
+
+            m = cycle->modules[i]->ctx;
+
+            if (m->init_conf) {
+                if (m->init_conf(cycle,
+                            (*ecf)[cycle->modules[i]->ctx_index]) != NGX_CONF_OK){
+                    return NGX_CONF_ERROR;
+                }
+            }
+        }
     }
 
     if (cycle->connection_n < cycle->listening.nelts + 1) {
