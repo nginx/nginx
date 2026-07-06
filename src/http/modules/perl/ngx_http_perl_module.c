@@ -148,6 +148,9 @@ static ngx_http_ssi_command_t  ngx_http_perl_ssi_command = {
 #endif
 
 
+ngx_http_perl_ctx_t     *ngx_http_perl_active_context;
+
+
 static ngx_str_t         ngx_null_name = ngx_null_string;
 static HV               *nginx_stash;
 
@@ -746,6 +749,8 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
     PUSHMARK(sp);
 
+    ngx_http_perl_active_context = ctx;
+
     sv = sv_2mortal(sv_bless(newRV_noinc(newSViv(PTR2IV(ctx))), nginx));
     XPUSHs(sv);
 
@@ -789,6 +794,8 @@ ngx_http_perl_call_handler(pTHX_ ngx_http_request_t *r,
 
     FREETMPS;
     LEAVE;
+
+    ngx_http_perl_active_context = NULL;
 
     if (ctx->error) {
 

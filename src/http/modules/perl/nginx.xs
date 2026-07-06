@@ -18,6 +18,9 @@
 #define ngx_http_perl_set_request(r, ctx)                                     \
                                                                               \
     ctx = INT2PTR(ngx_http_perl_ctx_t *, SvIV((SV *) SvRV(ST(0))));           \
+    if (ctx != ngx_http_perl_active_context || ctx == NULL) {                 \
+        croak("invalid request object");                                      \
+    }                                                                         \
     r = ctx->request
 
 
