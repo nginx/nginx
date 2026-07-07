@@ -850,6 +850,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
     ngx_int_t                  rc;
     ngx_http_request_body_t   *rb;
     ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_core_loc_conf_t  *clcf;
 
     if (r->headers_in.chunked) {
 
@@ -870,6 +871,8 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
             r->request_body = rb;
         }
 
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
         for ( ;; ) {
 
             rc = ngx_http_parse_chunked(r, b, rb->chunked, 0);
@@ -877,6 +880,20 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
             if (rc == NGX_OK) {
 
                 /* a chunk has been parsed successfully */
+                rb->received += b->last - b->pos;
+
+                if(clcf->client_max_body_size &&
+                   rb->received > clcf->client_max_body_size) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "client intended to send too large chunked "
+                                  "body: %O+%O bytes",
+                                  rb->received,
+                                  clcf->client_max_body_size);
+
+                    r->lingering_close = 1;
+
+                    return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+                }
 
                 size = b->last - b->pos;
 
