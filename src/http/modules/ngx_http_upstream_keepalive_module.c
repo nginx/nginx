@@ -413,7 +413,19 @@ ngx_http_upstream_keepalive_close_handler(ngx_event_t *ev)
 
     n = recv(c->fd, buf, 1, MSG_PEEK);
 
-    if (n == -1 && ngx_socket_errno == NGX_EAGAIN) {
+    /*
+     * Data on an idle pooled upstream connection is unexpected for
+     * HTTP/1.1 but normal for HTTP/2-based upstreams (grpc_pass),
+     * where the peer sends SETTINGS, PING, and WINDOW_UPDATE frames
+     * on otherwise-idle connections.  Since this module is protocol-
+     * agnostic, keep the connection pooled whenever the peek returns
+     * data or EAGAIN; peer-side close (n == 0) and hard errors still
+     * evict the entry.  A stray byte on an HTTP/1.1 connection will
+     * surface as an invalid response on the next request rather than
+     * causing a premature close of a healthy connection.
+     */
+
+    if (n > 0 || (n == -1 && ngx_socket_errno == NGX_EAGAIN)) {
         ev->ready = 0;
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
