@@ -1099,7 +1099,7 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
             }
         }
 
-#elif (NGX_HAVE_IP_DONTFRAG)
+#elif (NGX_HAVE_IPV6_DONTFRAG)
 
         if (ls[i].quic && ls[i].sockaddr->sa_family == AF_INET6) {
             value = 1;
