@@ -90,6 +90,8 @@ typedef struct {
     ngx_uint_t                     max_concurrent_streams_bidi;
     ngx_uint_t                     max_concurrent_streams_uni;
     ngx_uint_t                     active_connection_id_limit;
+    size_t                         max_udp_payload_size;
+    size_t                         initial_max_data;
     size_t                         max_egress_udp_payload_size;
     ngx_int_t                      stream_close_code;
     ngx_int_t                      stream_reject_code_uni;
