@@ -472,7 +472,7 @@ ngx_feature_incs="#include <sys/socket.h>
                   #include <netinet/in.h>"
 ngx_feature_path=
 ngx_feature_libs=
-ngx_feature_test="setsockopt(0, IPPROTO_IP, IPV6_DONTFRAG, NULL, 0)"
+ngx_feature_test="setsockopt(0, IPPROTO_IPV6, IPV6_DONTFRAG, NULL, 0)"
 . auto/feature
 
 
