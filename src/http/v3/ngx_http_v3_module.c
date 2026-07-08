@@ -78,6 +78,20 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, quic.active_connection_id_limit),
       NULL },
 
+    { ngx_string("quic_max_udp_payload_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.max_udp_payload_size),
+      NULL },
+
+    { ngx_string("quic_initial_max_data"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.initial_max_data),
+      NULL },
+
     { ngx_string("quic_max_egress_udp_payload_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -216,6 +230,8 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->quic.stream_close_code = NGX_HTTP_V3_ERR_NO_ERROR;
     h3scf->quic.stream_reject_code_bidi = NGX_HTTP_V3_ERR_REQUEST_REJECTED;
     h3scf->quic.active_connection_id_limit = NGX_CONF_UNSET_UINT;
+    h3scf->quic.max_udp_payload_size = NGX_CONF_UNSET_SIZE;
+    h3scf->quic.initial_max_data = NGX_CONF_UNSET_SIZE;
     h3scf->quic.max_egress_udp_payload_size = NGX_CONF_UNSET_SIZE;
 
     h3scf->quic.init = ngx_http_v3_init;
@@ -257,6 +273,37 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->quic.active_connection_id_limit,
                               prev->quic.active_connection_id_limit,
                               2);
+
+    ngx_conf_merge_size_value(conf->quic.max_udp_payload_size,
+                              prev->quic.max_udp_payload_size,
+                              NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
+
+    if (conf->quic.max_udp_payload_size < NGX_QUIC_MIN_INITIAL_SIZE
+        || conf->quic.max_udp_payload_size > NGX_QUIC_MAX_UDP_PAYLOAD_SIZE)
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"quic_max_udp_payload_size\" must be between "
+                           "%d and %d",
+                           NGX_QUIC_MIN_INITIAL_SIZE,
+                           NGX_QUIC_MAX_UDP_PAYLOAD_SIZE);
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_conf_merge_size_value(conf->quic.initial_max_data,
+                              prev->quic.initial_max_data, 0);
+
+    if (conf->quic.initial_max_data
+        && conf->quic.initial_max_data < conf->quic.stream_buffer_size)
+    {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "\"quic_initial_max_data\" (%uz) raised to "
+                           "\"http3_stream_buffer_size\" (%uz): a connection "
+                           "window below one stream's window stalls every "
+                           "stream",
+                           conf->quic.initial_max_data,
+                           conf->quic.stream_buffer_size);
+        conf->quic.initial_max_data = conf->quic.stream_buffer_size;
+    }
 
     ngx_conf_merge_size_value(conf->quic.max_egress_udp_payload_size,
                               prev->quic.max_egress_udp_payload_size,
