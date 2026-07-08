@@ -38,10 +38,32 @@ ngx_setaffinity(ngx_cpuset_t *cpu_affinity, ngx_log_t *log)
 }
 
 
+/*
+ * The CPUs we may run on are those of the cpuset the process is assigned
+ * to, not its current mask, which "worker_cpu_affinity" can widen.
+ *
+ * Returns the number of CPUs in the mask, or 0 if unknown.
+ */
+
 ngx_int_t
 ngx_get_cpu_allowed(ngx_cpuset_t *mask, ngx_log_t *log)
 {
+#if (NGX_HAVE_CPUSET_GETAFFINITY && NGX_HAVE_CPU_COUNT)
+
+    if (cpuset_getaffinity(CPU_LEVEL_CPUSET, CPU_WHICH_PID, -1,
+                           sizeof(cpuset_t), mask)
+        == -1)
+    {
+        return 0;
+    }
+
+    return CPU_COUNT(mask);
+
+#else
+
     return 0;
+
+#endif
 }
 
 #elif (NGX_HAVE_SCHED_SETAFFINITY)
