@@ -3259,22 +3259,28 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         if ((ch >= 'a' && ch <= 'z')
             || (ch == '-')
             || (ch >= '0' && ch <= '9')
-            || (ch == '_' && cscf->underscores_in_headers))
+            || ch == '!' || ch == '#' || ch == '$' || ch == '%'
+            || ch == '&' || ch == '\'' || ch == '*' || ch == '+'
+            || ch == '.' || ch == '^' || ch == '`' || ch == '|'
+            || ch == '~')
         {
             continue;
         }
 
-        if (ch <= 0x20 || ch == 0x7f || ch == ':'
-            || (ch >= 'A' && ch <= 'Z'))
-        {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent invalid header name: \"%V\"",
-                          &header->name);
+        if (ch == '_') {
+            if (cscf->underscores_in_headers) {
+                continue;
+            }
 
-            return NGX_ERROR;
+            r->invalid_header = 1;
+            continue;
         }
 
-        r->invalid_header = 1;
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent invalid header name: \"%V\"",
+                      &header->name);
+
+        return NGX_ERROR;
     }
 
     for (i = 0; i != header->value.len; i++) {

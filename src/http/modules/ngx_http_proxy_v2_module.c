@@ -3296,17 +3296,22 @@ ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r, ngx_str_t *s)
     for (i = 0; i < s->len; i++) {
         ch = s->data[i];
 
-        if (ch == ':' && i > 0) {
-            return NGX_ERROR;
+        if ((ch >= 'a' && ch <= 'z')
+            || (ch >= '0' && ch <= '9')
+            || ch == '-' || ch == '_'
+            || ch == '!' || ch == '#' || ch == '$' || ch == '%'
+            || ch == '&' || ch == '\'' || ch == '*' || ch == '+'
+            || ch == '.' || ch == '^' || ch == '`' || ch == '|'
+            || ch == '~')
+        {
+            continue;
         }
 
-        if (ch >= 'A' && ch <= 'Z') {
-            return NGX_ERROR;
+        if (ch == ':' && i == 0) {
+            continue;
         }
 
-        if (ch <= 0x20 || ch == 0x7f) {
-            return NGX_ERROR;
-        }
+        return NGX_ERROR;
     }
 
     return NGX_OK;
