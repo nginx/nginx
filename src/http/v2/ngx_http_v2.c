@@ -179,9 +179,6 @@ static void ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
 static ngx_int_t ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c,
     ssize_t delta);
-static void ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
-    ngx_http_v2_node_t *node, ngx_uint_t depend, ngx_uint_t exclusive);
-static void ngx_http_v2_node_children_update(ngx_http_v2_node_t *node);
 
 static void ngx_http_v2_pool_cleanup(void *data);
 
@@ -1172,8 +1169,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
     size_t                     size;
-    ngx_uint_t                 padded, priority, depend, dependency, excl,
-                               weight;
+    ngx_uint_t                 padded, priority;
     ngx_uint_t                 status;
     ngx_http_v2_node_t        *node;
     ngx_http_v2_stream_t      *stream;
@@ -1238,37 +1234,18 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         h2c->state.length -= h2c->state.padding;
     }
 
-    depend = 0;
-    excl = 0;
-    weight = NGX_HTTP_V2_DEFAULT_WEIGHT;
-
     if (priority) {
-        dependency = ngx_http_v2_parse_uint32(pos);
-
-        depend = dependency & 0x7fffffff;
-        excl = dependency >> 31;
-        weight = pos[4] + 1;
-
+        /* Skip RFC7540 priority data; RFC9218 uses Priority header instead */
         pos += sizeof(uint32_t) + 1;
     }
 
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 HEADERS frame sid:%ui "
-                   "depends on %ui excl:%ui weight:%ui",
-                   h2c->state.sid, depend, excl, weight);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 HEADERS frame sid:%ui", h2c->state.sid);
 
     if (h2c->state.sid % 2 == 0 || h2c->state.sid <= h2c->last_sid) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent HEADERS frame with incorrect identifier "
                       "%ui, the last was %ui", h2c->state.sid, h2c->last_sid);
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
-    if (depend == h2c->state.sid) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent HEADERS frame for stream %ui "
-                      "with incorrect dependency", h2c->state.sid);
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
@@ -1373,17 +1350,6 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                 break;
             }
         }
-    }
-
-    /*
-     * RFC9218: Even when RFC9218 is enabled, we still need to set up the
-     * node tree structure for proper node lifecycle management (the closed
-     * queue uses the node's queue member). We just don't use the dependency
-     * tree for scheduling.
-     */
-    if (priority || node->parent == NULL) {
-        node->weight = weight;
-        ngx_http_v2_set_dependency(h2c, node, depend, excl);
     }
 
     clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
@@ -3418,9 +3384,8 @@ ngx_http_v2_get_node_by_id(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
 static ngx_http_v2_node_t *
 ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
 {
-    ngx_uint_t               weight;
-    ngx_queue_t             *q, *children;
-    ngx_http_v2_node_t      *node, **next, *n, *parent, *child;
+    ngx_queue_t             *q;
+    ngx_http_v2_node_t      *node, **next, *n;
     ngx_http_v2_srv_conf_t  *h2scf;
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
@@ -3446,49 +3411,6 @@ ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
 
         next = &n->index;
     }
-
-    ngx_queue_remove(&node->queue);
-
-    weight = 0;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-        weight += child->weight;
-    }
-
-    parent = node->parent;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-        child->parent = parent;
-        child->weight = node->weight * child->weight / weight;
-
-        if (child->weight == 0) {
-            child->weight = 1;
-        }
-    }
-
-    if (parent == NGX_HTTP_V2_ROOT) {
-        node->rank = 0;
-        node->rel_weight = 1.0;
-
-        children = &h2c->dependencies;
-
-    } else {
-        node->rank = parent->rank;
-        node->rel_weight = parent->rel_weight;
-
-        children = &parent->children;
-    }
-
-    ngx_http_v2_node_children_update(node);
-    ngx_queue_add(children, &node->children);
 
     ngx_memzero(node, sizeof(ngx_http_v2_node_t));
 
@@ -5206,117 +5128,6 @@ ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c, ssize_t delta)
     }
 
     return NGX_OK;
-}
-
-
-static void
-ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
-    ngx_http_v2_node_t *node, ngx_uint_t depend, ngx_uint_t exclusive)
-{
-    ngx_queue_t         *children, *q;
-    ngx_http_v2_node_t  *parent, *child, *next;
-
-    parent = depend ? ngx_http_v2_get_node_by_id(h2c, depend, 0) : NULL;
-
-    if (parent == NULL) {
-        parent = NGX_HTTP_V2_ROOT;
-
-        if (depend != 0) {
-            exclusive = 0;
-        }
-
-        node->rank = 1;
-        node->rel_weight = (1.0 / 256) * node->weight;
-
-        children = &h2c->dependencies;
-
-    } else {
-        if (node->parent != NULL) {
-
-            for (next = parent->parent;
-                 next != NGX_HTTP_V2_ROOT && next->rank >= node->rank;
-                 next = next->parent)
-            {
-                if (next != node) {
-                    continue;
-                }
-
-                ngx_queue_remove(&parent->queue);
-                ngx_queue_insert_after(&node->queue, &parent->queue);
-
-                parent->parent = node->parent;
-
-                if (node->parent == NGX_HTTP_V2_ROOT) {
-                    parent->rank = 1;
-                    parent->rel_weight = (1.0 / 256) * parent->weight;
-
-                } else {
-                    parent->rank = node->parent->rank + 1;
-                    parent->rel_weight = (node->parent->rel_weight / 256)
-                                         * parent->weight;
-                }
-
-                if (!exclusive) {
-                    ngx_http_v2_node_children_update(parent);
-                }
-
-                break;
-            }
-        }
-
-        node->rank = parent->rank + 1;
-        node->rel_weight = (parent->rel_weight / 256) * node->weight;
-
-        if (parent->stream == NULL) {
-            ngx_queue_remove(&parent->reuse);
-            ngx_queue_insert_tail(&h2c->closed, &parent->reuse);
-        }
-
-        children = &parent->children;
-    }
-
-    if (exclusive) {
-        for (q = ngx_queue_head(children);
-             q != ngx_queue_sentinel(children);
-             q = ngx_queue_next(q))
-        {
-            child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-            child->parent = node;
-        }
-
-        ngx_queue_add(&node->children, children);
-        ngx_queue_init(children);
-    }
-
-    if (node->parent != NULL) {
-        ngx_queue_remove(&node->queue);
-    }
-
-    ngx_queue_insert_tail(children, &node->queue);
-
-    node->parent = parent;
-
-    ngx_http_v2_node_children_update(node);
-}
-
-
-static void
-ngx_http_v2_node_children_update(ngx_http_v2_node_t *node)
-{
-    ngx_queue_t         *q;
-    ngx_http_v2_node_t  *child;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-
-        child->rank = node->rank + 1;
-        child->rel_weight = (node->rel_weight / 256) * child->weight;
-
-        ngx_http_v2_node_children_update(child);
-    }
 }
 
 
