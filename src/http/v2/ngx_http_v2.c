@@ -2066,8 +2066,7 @@ static u_char *
 ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    ngx_uint_t           depend, dependency, excl, weight;
-    ngx_http_v2_node_t  *node;
+    ngx_uint_t  depend, dependency, excl, weight;
 
     if (h2c->state.length != NGX_HTTP_V2_PRIORITY_SIZE) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -2111,54 +2110,17 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     /*
-     * RFC9218: When RFC9218 is enabled, ignore PRIORITY frames after
-     * validating them. Protocol errors are still detected.
-     *
-     * Only ignore after settings_ack, since the client may have sent
-     * PRIORITY frames before receiving our SETTINGS with NO_RFC7540_PRIORITIES.
-     *
-     * Ignored frames still count against priority_limit for flood protection.
+     * RFC9218: PRIORITY frames are ignored.  Protocol errors are still
+     * detected above.  Flood protection via priority_limit.
      */
-    if (h2c->settings_ack) {
-        if (--h2c->priority_limit == 0) {
-            ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                          "client sent too many PRIORITY frames");
-            return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_ENHANCE_YOUR_CALM);
-        }
-
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                       "http2 PRIORITY frame ignored (RFC9218 mode)");
-        return ngx_http_v2_state_complete(h2c, pos, end);
-    }
-
     if (--h2c->priority_limit == 0) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent too many PRIORITY frames");
-
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
 
-    node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
-
-    if (node == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
-
-    node->weight = weight;
-
-    if (node->stream == NULL) {
-        if (node->parent == NULL) {
-            h2c->closed_nodes++;
-
-        } else {
-            ngx_queue_remove(&node->reuse);
-        }
-
-        ngx_queue_insert_tail(&h2c->closed, &node->reuse);
-    }
-
-    ngx_http_v2_set_dependency(h2c, node, depend, excl);
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 PRIORITY frame ignored (RFC9218)");
 
     return ngx_http_v2_state_complete(h2c, pos, end);
 }
