@@ -105,6 +105,8 @@ typedef struct {
     ngx_str_t                  name;
     ngx_str_t                  value;
 
+    size_t                     trailer_limit;
+
     u_char                    *field_end;
     size_t                     field_length;
     size_t                     field_rest;
@@ -567,6 +569,8 @@ ngx_http_grpc_handler(ngx_http_request_t *r)
     ngx_http_set_ctx(r, ctx, ngx_http_grpc_module);
 
     glcf = ngx_http_get_module_loc_conf(r, ngx_http_grpc_module);
+
+    ctx->trailer_limit = glcf->upstream.buffer_size;
 
     u = r->upstream;
 
@@ -2025,6 +2029,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
 {
     ngx_http_grpc_ctx_t  *ctx = data;
 
+    size_t                len;
     ngx_int_t             rc;
     ngx_buf_t            *b, *buf;
     ngx_chain_t          *cl, **ll;
@@ -2342,6 +2347,16 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                                       &ctx->name, &ctx->value);
                         return NGX_ERROR;
                     }
+
+                    len = ctx->name.len + ctx->value.len;
+
+                    if (len > ctx->trailer_limit) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream sent too big trailers");
+                        return NGX_ERROR;
+                    }
+
+                    ctx->trailer_limit -= len;
 
                     h = ngx_list_push(&u->headers_in.trailers);
                     if (h == NULL) {

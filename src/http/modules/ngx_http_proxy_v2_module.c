@@ -76,6 +76,8 @@ typedef struct {
     ngx_str_t                      name;
     ngx_str_t                      value;
 
+    size_t                         trailer_limit;
+
     u_char                        *field_end;
     size_t                         field_length;
     size_t                         field_rest;
@@ -235,6 +237,8 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     ngx_http_set_ctx(r, &ctx->ctx, ngx_http_proxy_module);
 
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+    ctx->trailer_limit = plcf->upstream.buffer_size;
 
     plcf->upstream.preserve_output = 1;
 
@@ -2017,6 +2021,7 @@ static ngx_int_t
 ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
+    size_t                len;
     ngx_int_t             rc;
     ngx_table_elt_t      *h;
     ngx_http_upstream_t  *u;
@@ -2236,6 +2241,16 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                                       &ctx->name, &ctx->value);
                         return NGX_ERROR;
                     }
+
+                    len = ctx->name.len + ctx->value.len;
+
+                    if (len > ctx->trailer_limit) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream sent too big trailers");
+                        return NGX_ERROR;
+                    }
+
+                    ctx->trailer_limit -= len;
 
                     h = ngx_list_push(&u->headers_in.trailers);
                     if (h == NULL) {
