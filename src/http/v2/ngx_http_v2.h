@@ -50,8 +50,6 @@
 #define NGX_HTTP_V2_MAX_WINDOW           ((1U << 31) - 1)
 #define NGX_HTTP_V2_DEFAULT_WINDOW       65535
 
-#define NGX_HTTP_V2_DEFAULT_WEIGHT       16
-
 
 typedef struct ngx_http_v2_connection_s   ngx_http_v2_connection_t;
 typedef struct ngx_http_v2_node_s         ngx_http_v2_node_t;
@@ -168,7 +166,6 @@ struct ngx_http_v2_connection_s {
 
     ngx_http_v2_out_frame_t         *last_out;
 
-    ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
     ngx_uint_t                       closed_nodes;
@@ -189,13 +186,7 @@ struct ngx_http_v2_connection_s {
 struct ngx_http_v2_node_s {
     ngx_uint_t                       id;
     ngx_http_v2_node_t              *index;
-    ngx_http_v2_node_t              *parent;
-    ngx_queue_t                      queue;
-    ngx_queue_t                      children;
     ngx_queue_t                      reuse;
-    ngx_uint_t                       rank;
-    ngx_uint_t                       weight;
-    double                           rel_weight;
     ngx_http_v2_stream_t            *stream;
 };
 
