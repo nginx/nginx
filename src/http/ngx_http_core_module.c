@@ -1987,7 +1987,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
 
     alias = clcf->alias;
 
-    if (alias && !r->valid_location) {
+    if (alias && (!r->valid_location || r->uri_changed)) {
         ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                       "\"alias\" cannot be used in location \"%V\" "
                       "where URI was rewritten", &clcf->name);
