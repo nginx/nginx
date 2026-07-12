@@ -981,7 +981,7 @@ ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
     ngx_http_upstream_t  *u;
 
     if (ngx_http_script_run(r, &proxy, plcf->proxy_lengths->elts, 0,
-                            plcf->proxy_values->elts)
+                            plcf->proxy_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;

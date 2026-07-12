@@ -765,7 +765,7 @@ ngx_http_uwsgi_eval(ngx_http_request_t *r, ngx_http_uwsgi_loc_conf_t * uwcf)
     ngx_memzero(&url, sizeof(ngx_url_t));
 
     if (ngx_http_script_run(r, &url.url, uwcf->uwsgi_lengths->elts, 0,
-                            uwcf->uwsgi_values->elts)
+                            uwcf->uwsgi_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;

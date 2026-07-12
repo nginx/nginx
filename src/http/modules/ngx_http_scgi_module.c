@@ -574,7 +574,7 @@ ngx_http_scgi_eval(ngx_http_request_t *r, ngx_http_scgi_loc_conf_t * scf)
     ngx_memzero(&url, sizeof(ngx_url_t));
 
     if (ngx_http_script_run(r, &url.url, scf->scgi_lengths->elts, 0,
-                            scf->scgi_values->elts)
+                            scf->scgi_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;

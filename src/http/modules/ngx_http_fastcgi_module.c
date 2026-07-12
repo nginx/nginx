@@ -776,7 +776,7 @@ ngx_http_fastcgi_eval(ngx_http_request_t *r, ngx_http_fastcgi_loc_conf_t *flcf)
     ngx_memzero(&url, sizeof(ngx_url_t));
 
     if (ngx_http_script_run(r, &url.url, flcf->fastcgi_lengths->elts, 0,
-                            flcf->fastcgi_values->elts)
+                            flcf->fastcgi_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;
@@ -844,7 +844,7 @@ static ngx_int_t
 ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 {
     off_t                         file_pos;
-    u_char                        ch, sep, *pos, *lowcase_key;
+    u_char                        ch, sep, *pos, *lowcase_key, *params_body;
     size_t                        size, len, key_len, val_len, padding,
                                   allocated;
     ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
@@ -1051,6 +1051,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                      + sizeof(ngx_http_fastcgi_begin_request_t)
                      + sizeof(ngx_http_fastcgi_header_t);
 
+    params_body = b->last;
+
 
     if (params->lengths) {
         ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
@@ -1213,6 +1215,21 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
             continue;
         }
+    }
+
+    if ((size_t) (b->last - params_body) != len) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "fastcgi params size mismatch: "
+                      "length_pass=%uz fill_pass=%uz diff=%z",
+                      len, (size_t) (b->last - params_body),
+                      (ssize_t) (b->last - params_body) - (ssize_t) len);
+        return NGX_ERROR;
+    }
+
+    if (b->last > b->end) {
+        ngx_log_error(NGX_LOG_CRIT, r->connection->log, 0,
+                      "fastcgi params buffer overflow");
+        return NGX_ERROR;
     }
 
 

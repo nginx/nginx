@@ -350,6 +350,7 @@ struct ngx_http_core_loc_conf_s {
 
     ngx_array_t  *root_lengths;
     ngx_array_t  *root_values;
+    ngx_array_t  *root_flushes;
 
     ngx_array_t  *types;
     ngx_hash_t    types_hash;

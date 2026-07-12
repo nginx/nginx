@@ -216,7 +216,7 @@ ngx_http_tunnel_eval(ngx_http_request_t *r, ngx_http_tunnel_loc_conf_t *tlcf)
     ngx_memzero(&url, sizeof(ngx_url_t));
 
     if (ngx_http_script_run(r, &url.url, tlcf->tunnel_lengths->elts, 0,
-                            tlcf->tunnel_values->elts)
+                            tlcf->tunnel_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;
