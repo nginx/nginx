@@ -845,18 +845,21 @@ ngx_http_handler(ngx_http_request_t *r)
     r->connection->log->action = NULL;
 
     if (!r->internal) {
-        switch (r->headers_in.connection_type) {
-        case 0:
-            r->keepalive = (r->http_version > NGX_HTTP_VERSION_10);
-            break;
 
-        case NGX_HTTP_CONNECTION_CLOSE:
-            r->keepalive = 0;
-            break;
+        if (r->method != NGX_HTTP_CONNECT) {
+            switch (r->headers_in.connection_type) {
+            case 0:
+                r->keepalive = (r->http_version > NGX_HTTP_VERSION_10);
+                break;
 
-        case NGX_HTTP_CONNECTION_KEEP_ALIVE:
-            r->keepalive = 1;
-            break;
+            case NGX_HTTP_CONNECTION_CLOSE:
+                r->keepalive = 0;
+                break;
+
+            case NGX_HTTP_CONNECTION_KEEP_ALIVE:
+                r->keepalive = 1;
+                break;
+            }
         }
 
         r->lingering_close = (r->headers_in.content_length_n > 0
