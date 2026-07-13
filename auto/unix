@@ -132,7 +132,7 @@ fi
 ngx_feature="crypt()"
 ngx_feature_name="NGX_HAVE_CRYPT"
 ngx_feature_run=no
-ngx_feature_incs=
+ngx_feature_incs="$NGX_INCLUDE_CRYPT_H"
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="crypt(\"test\", \"salt\");"
@@ -144,7 +144,7 @@ if [ $ngx_found = no ]; then
     ngx_feature="crypt() in libcrypt"
     ngx_feature_name="NGX_HAVE_CRYPT"
     ngx_feature_run=no
-    ngx_feature_incs=
+    ngx_feature_incs="$NGX_INCLUDE_CRYPT_H"
     ngx_feature_path=
     ngx_feature_libs=-lcrypt
     . auto/feature
