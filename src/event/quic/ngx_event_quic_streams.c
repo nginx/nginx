@@ -39,6 +39,7 @@ static ngx_int_t ngx_quic_control_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_flow(ngx_quic_stream_t *qs, uint64_t last);
 static ngx_int_t ngx_quic_update_max_stream_data(ngx_quic_stream_t *qs);
 static ngx_int_t ngx_quic_update_max_data(ngx_connection_t *c);
+static ngx_int_t ngx_quic_check_blocked(ngx_quic_stream_t *qs);
 static void ngx_quic_set_event(ngx_event_t *ev);
 
 
@@ -1054,7 +1055,7 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     }
 
     if (len == 0 && !last) {
-        return NGX_OK;
+        return ngx_quic_check_blocked(qs);
     }
 
     frame = ngx_quic_alloc_frame(pc);
@@ -1082,6 +1083,10 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     ngx_log_debug3(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "quic stream id:0x%xL flush len:%O last:%ui",
                    qs->id, len, last);
+
+    if (ngx_quic_check_blocked(qs) != NGX_OK) {
+        return NGX_ERROR;
+    }
 
     if (qs->connection == NULL) {
         return ngx_quic_close_stream(qs);
@@ -1335,6 +1340,8 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
+    qc->streams.blocked = 0;
+
     if (tree->root == tree->sentinel
         || qc->streams.send_offset < qc->streams.send_max_data)
     {
@@ -1346,7 +1353,7 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     qc->streams.send_max_data = f->max_data;
     node = ngx_rbtree_min(tree->root, tree->sentinel);
 
-    while (node && qc->streams.send_offset < qc->streams.send_max_data) {
+    while (node) {
 
         qs = (ngx_quic_stream_t *) node;
         node = ngx_rbtree_next(tree, node);
@@ -1435,6 +1442,8 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
     if (f->limit <= qs->send_max_data) {
         return NGX_OK;
     }
+
+    qs->blocked = 0;
 
     if (qs->send_offset < qs->send_max_data) {
         /* not blocked on MAX_STREAM_DATA */
@@ -1810,6 +1819,75 @@ ngx_quic_update_max_data(ngx_connection_t *c)
     frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_MAX_DATA;
     frame->u.max_data.max_data = qc->streams.recv_max_data;
+
+    ngx_quic_queue_frame(qc, frame);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_check_blocked(ngx_quic_stream_t *qs)
+{
+    ngx_connection_t       *pc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_connection_t  *qc;
+
+    pc = qs->parent;
+    qc = ngx_quic_get_connection(pc);
+
+    if (qs->send.offset == qs->sent) {
+        /* all buffered data has been framed */
+        return NGX_OK;
+    }
+
+    /*
+     * There is buffered data, but no flow-control credit to send it.
+     * Advertise the blocked condition (RFC 9000, Section 4.1) so a peer
+     * that lost its MAX_DATA / MAX_STREAM_DATA update has an ack-eliciting
+     * signal to retransmit it, rather than leaving the stream stalled
+     * until the idle timeout fires.  A frame is sent once per limit;
+     * the flag is reset when the peer raises the limit.
+     */
+
+    if (qc->streams.send_offset >= qc->streams.send_max_data) {
+
+        if (qc->streams.blocked) {
+            return NGX_OK;
+        }
+
+        frame = ngx_quic_alloc_frame(pc);
+        if (frame == NULL) {
+            return NGX_ERROR;
+        }
+
+        frame->type = NGX_QUIC_FT_DATA_BLOCKED;
+        frame->u.data_blocked.limit = qc->streams.send_max_data;
+
+        qc->streams.blocked = 1;
+
+    } else if (qs->send_offset >= qs->send_max_data) {
+
+        if (qs->blocked) {
+            return NGX_OK;
+        }
+
+        frame = ngx_quic_alloc_frame(pc);
+        if (frame == NULL) {
+            return NGX_ERROR;
+        }
+
+        frame->type = NGX_QUIC_FT_STREAM_DATA_BLOCKED;
+        frame->u.stream_data_blocked.id = qs->id;
+        frame->u.stream_data_blocked.limit = qs->send_max_data;
+
+        qs->blocked = 1;
+
+    } else {
+        return NGX_OK;
+    }
+
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
 
     ngx_quic_queue_frame(qc, frame);
 

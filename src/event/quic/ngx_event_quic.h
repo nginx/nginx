@@ -124,6 +124,7 @@ struct ngx_quic_stream_s {
     ngx_quic_stream_recv_state_e   recv_state;
     unsigned                       cancelable:1;
     unsigned                       fin_acked:1;
+    unsigned                       blocked:1;
 };
 
 
