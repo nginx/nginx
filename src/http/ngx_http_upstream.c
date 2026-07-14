@@ -46,6 +46,8 @@ static ngx_int_t ngx_http_upstream_send_request_body(ngx_http_request_t *r,
 static void ngx_http_upstream_send_request_handler(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_read_request_handler(ngx_http_request_t *r);
+static void ngx_http_upstream_read_request_handler_delayed(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static void ngx_http_upstream_process_header(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
@@ -1328,7 +1330,11 @@ ngx_http_upstream_handler(ngx_event_t *ev)
     }
 
     if (ev->write) {
-        u->write_event_handler(r, u);
+        if (u->mux != NULL) {
+            ngx_http_upstream_mux_drive(u->peer.connection, u->mux);
+        } else {
+            u->write_event_handler(r, u);
+        }
 
     } else {
         u->read_event_handler(r, u);
@@ -1559,6 +1565,162 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 }
 
 
+/*
+ * Upstream mux: multiplexes multiple HTTP/2 streams over a single
+ * upstream connection via a send queue and fair round-robin scheduling.
+ * The mux is stored as a cleanup on the upstream connection's pool.
+ */
+
+
+static void
+ngx_http_upstream_mux_cleanup(void *data)
+{
+    /* pool-owned; nothing to free */
+}
+
+
+ngx_http_upstream_mux_t *
+ngx_http_upstream_mux_get(ngx_connection_t *c)
+{
+    ngx_http_upstream_mux_t  *mux;
+    ngx_pool_cleanup_t       *cln;
+
+    if (c == NULL || c->pool == NULL) {
+        return NULL;
+    }
+
+    for (cln = c->pool->cleanup; cln; cln = cln->next) {
+        if (cln->handler == ngx_http_upstream_mux_cleanup) {
+            return cln->data;
+        }
+    }
+
+    /* not found — create */
+    cln = ngx_pool_cleanup_add(c->pool, sizeof(ngx_http_upstream_mux_t));
+    if (cln == NULL) {
+        return NULL;
+    }
+
+    mux = cln->data;
+    ngx_memzero(mux, sizeof(ngx_http_upstream_mux_t));
+    ngx_queue_init(&mux->send_queue);
+
+    cln->handler = ngx_http_upstream_mux_cleanup;
+
+    return mux;
+}
+
+
+void
+ngx_http_upstream_mux_enqueue(ngx_http_request_t *r, ngx_http_upstream_t *u)
+{
+    ngx_http_upstream_mux_t  *mux;
+
+    mux = u->mux;
+    if (mux == NULL) {
+        return;
+    }
+
+    if (u->in_mux_queue) {
+        return;
+    }
+
+    ngx_queue_insert_tail(&mux->send_queue, &u->mux_send_link);
+    u->in_mux_queue = 1;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http upstream mux: enqueued r=%p", r);
+}
+
+
+void
+ngx_http_upstream_mux_dequeue(ngx_http_upstream_t *u)
+{
+    if (!u->in_mux_queue) {
+        return;
+    }
+
+    ngx_queue_remove(&u->mux_send_link);
+    ngx_queue_init(&u->mux_send_link);
+    u->in_mux_queue = 0;
+}
+
+
+ngx_uint_t
+ngx_http_upstream_mux_queue_has_waiters(ngx_http_upstream_mux_t *mux)
+{
+    if (mux == NULL) {
+        return 0;
+    }
+
+    return !ngx_queue_empty(&mux->send_queue);
+}
+
+
+void
+ngx_http_upstream_mux_drive(ngx_connection_t *c, ngx_http_upstream_mux_t *mux)
+{
+    ngx_queue_t            *q;
+    ngx_http_request_t     *r;
+    ngx_http_upstream_t    *u;
+
+    if (mux == NULL) {
+        return;
+    }
+
+    if (ngx_queue_empty(&mux->send_queue)) {
+        return;
+    }
+
+    q = ngx_queue_head(&mux->send_queue);
+    u = ngx_queue_data(q, ngx_http_upstream_t, mux_send_link);
+    r = u->request;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http upstream mux: drive r=%p", r);
+
+    if (mux->hooks && mux->hooks->can_send(u)) {
+        u->mux_handler(r, u);
+
+        if (mux->hooks->is_done(u)) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http upstream mux: is_done #%uA r=%p dequeue",
+                           c->number, r);
+
+            ngx_http_upstream_mux_dequeue(u);
+
+            if (!ngx_queue_empty(&mux->send_queue)) {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                               "http upstream mux: post write #%uA "
+                               "(queue has waiters)",
+                               c->number);
+
+                ngx_post_event(c->write, &ngx_posted_events);
+
+            } else {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                               "http upstream mux: queue empty #%uA",
+                               c->number);
+            }
+
+        } else {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http upstream mux: not done #%uA r=%p "
+                           "(stay in queue)",
+                           c->number, r);
+        }
+
+    } else {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http upstream mux: can_send false #%uA r=%p rotate",
+                       c->number, r);
+
+        ngx_queue_remove(q);
+        ngx_queue_insert_tail(&mux->send_queue, q);
+    }
+}
+
+
 static void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
@@ -1651,7 +1813,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (r->connection->tcp_nopush == NGX_TCP_NOPUSH_DISABLED) {
         c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
     }
-
+    
     if (c->pool == NULL) {
 
         /* we need separate pool here to be able to cache SSL connections */
@@ -1668,6 +1830,17 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     c->pool->log = c->log;
     c->read->log = c->log;
     c->write->log = c->log;
+
+    if (u->http2) {
+        u->mux = ngx_http_upstream_mux_get(c);
+    } 
+
+    if (rc == NGX_OK || rc == NGX_AGAIN) {
+        if (u->peer.notify) {
+            u->peer.notify(&u->peer, u->peer.data,
+                           NGX_HTTP_UPSTREAM_NOTIFY_CONNECT);
+        }
+    }
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
 
@@ -1712,6 +1885,7 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         r->request_body->buf->tag = u->output.tag;
     }
 
+    u->request = r;
     u->request_sent = 0;
     u->request_body_sent = 0;
     u->request_body_blocked = 0;
@@ -1730,6 +1904,26 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
 #endif
+
+    if (u->mux != NULL) {
+
+        if (rc == NGX_DONE) {
+            ngx_uint_t was_empty = ngx_queue_empty(&u->mux->send_queue);
+
+            u->mux_handler = u->write_event_handler;
+            ngx_http_upstream_mux_enqueue(r, u);
+
+            if (was_empty)
+            {
+                ngx_http_upstream_mux_drive(c, u->mux);
+            }
+
+            return;
+        }
+
+        /* for new H2 conn (rc != DONE): u->mux assigned here at connect time;
+           enqueue/drive will be handled by later send/read paths */
+    }
 
     ngx_http_upstream_send_request(r, u, 1);
 }
@@ -2186,6 +2380,10 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     if (rc == NGX_AGAIN) {
+        if (u->mux) {
+            u->mux_handler = u->write_event_handler;
+        }
+
         if (!c->write->ready || u->request_body_blocked) {
             ngx_add_timer(c->write, u->conf->send_timeout);
 
@@ -2424,6 +2622,23 @@ ngx_http_upstream_send_request_handler(ngx_http_request_t *r,
     ngx_http_upstream_send_request(r, u, 1);
 }
 
+static void
+ngx_http_upstream_read_request_handler_delayed(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    ngx_connection_t  *c;
+
+    c = r->connection;
+
+    if (c->read->timedout) {
+        c->timedout = 1;
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
+
+    ngx_http_upstream_send_request(r, u, 0);
+}
+
 
 static void
 ngx_http_upstream_read_request_handler(ngx_http_request_t *r)
@@ -2440,6 +2655,19 @@ ngx_http_upstream_read_request_handler(ngx_http_request_t *r)
     if (c->read->timedout) {
         c->timedout = 1;
         ngx_http_upstream_finalize_request(r, u, NGX_HTTP_REQUEST_TIME_OUT);
+        return;
+    }
+
+    if (u->mux) {
+        ngx_uint_t  was_empty = ngx_queue_empty(&u->mux->send_queue);
+
+        u->mux_handler = ngx_http_upstream_read_request_handler_delayed;
+        ngx_http_upstream_mux_enqueue(r, u);
+
+        if (was_empty) {
+            ngx_http_upstream_mux_drive(u->peer.connection, u->mux);
+        }
+
         return;
     }
 
