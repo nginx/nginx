@@ -3509,6 +3509,16 @@ ngx_http_grpc_validate_header_value(ngx_http_request_t *r, ngx_str_t *s)
     u_char      ch;
     ngx_uint_t  i;
 
+    if (s->len == 0) {
+        return NGX_OK;
+    }
+
+    if (ngx_str_is_hws(s->data[0])
+        || ngx_str_is_hws(s->data[s->len - 1]))
+    {
+        return NGX_ERROR;
+    }
+
     for (i = 0; i < s->len; i++) {
         ch = s->data[i];
 
