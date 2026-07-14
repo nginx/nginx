@@ -49,7 +49,7 @@ typedef struct {
     ngx_http_proxy_headers_t       headers_cache;
 #endif
     ngx_array_t                   *headers_source;
-    ngx_uint_t                     host_set;
+    ngx_http_complex_value_t      *authority;
 
     ngx_array_t                   *proxy_lengths;
     ngx_array_t                   *proxy_values;
