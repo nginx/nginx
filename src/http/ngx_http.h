@@ -122,6 +122,13 @@ void ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri,
 ngx_int_t ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers);
 
+/* Check if name is a valid HTTP field name (token). */
+ngx_int_t ngx_http_valid_field_name(const ngx_str_t *name);
+/* Check if name is a valid HTTP field name (token)
+ * without uppercase ASCII letters. */
+ngx_int_t ngx_http_valid_lowercase_field_name(const ngx_str_t *name);
+/* Check if value is a valid HTTP field value. */
+ngx_int_t ngx_http_valid_field_value(const ngx_str_t *value);
 
 ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);
 ngx_int_t ngx_http_process_request_uri(ngx_http_request_t *r);
