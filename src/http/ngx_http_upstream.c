@@ -4556,7 +4556,7 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     } else {
         if (ngx_http_script_run(r, &path, u->conf->store_lengths->elts, 0,
-                                u->conf->store_values->elts)
+                                u->conf->store_values->elts, NULL)
             == NULL)
         {
             return;

@@ -1642,7 +1642,7 @@ ngx_http_variable_document_root(ngx_http_request_t *r,
 
     } else {
         if (ngx_http_script_run(r, &path, clcf->root_lengths->elts, 0,
-                                clcf->root_values->elts)
+                                clcf->root_values->elts, clcf->root_flushes)
             == NULL)
         {
             return NGX_ERROR;
@@ -1684,7 +1684,7 @@ ngx_http_variable_realpath_root(ngx_http_request_t *r,
 
     } else {
         if (ngx_http_script_run(r, &path, clcf->root_lengths->elts, 1,
-                                clcf->root_values->elts)
+                                clcf->root_values->elts, clcf->root_flushes)
             == NULL)
         {
             return NGX_ERROR;

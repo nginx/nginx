@@ -1985,7 +1985,7 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         }
 
         if (ngx_http_script_run(r, path, clcf->root_lengths->elts, reserved,
-                                clcf->root_values->elts)
+                                clcf->root_values->elts, clcf->root_flushes)
             == NULL)
         {
             return NULL;
@@ -3769,6 +3769,7 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->root = prev->root;
         conf->root_lengths = prev->root_lengths;
         conf->root_values = prev->root_values;
+        conf->root_flushes = prev->root_flushes;
 
         if (prev->root.data == NULL) {
             ngx_str_set(&conf->root, "html");
@@ -4683,6 +4684,7 @@ ngx_http_core_root(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         sc.source = &clcf->root;
         sc.lengths = &clcf->root_lengths;
         sc.values = &clcf->root_values;
+        sc.flushes = &clcf->root_flushes;
         sc.complete_lengths = 1;
         sc.complete_values = 1;
 

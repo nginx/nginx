@@ -630,7 +630,7 @@ ngx_http_grpc_eval(ngx_http_request_t *r, ngx_http_grpc_ctx_t *ctx,
     ngx_memzero(&url, sizeof(ngx_url_t));
 
     if (ngx_http_script_run(r, &url.url, glcf->grpc_lengths->elts, 0,
-                            glcf->grpc_values->elts)
+                            glcf->grpc_values->elts, NULL)
         == NULL)
     {
         return NGX_ERROR;

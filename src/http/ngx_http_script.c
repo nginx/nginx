@@ -615,22 +615,14 @@ invalid_variable:
 
 u_char *
 ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
-    void *code_lengths, size_t len, void *code_values)
+    void *code_lengths, size_t len, void *code_values,
+    ngx_array_t *flushes)
 {
-    ngx_uint_t                    i;
     ngx_http_script_code_pt       code;
     ngx_http_script_len_code_pt   lcode;
     ngx_http_script_engine_t      e;
-    ngx_http_core_main_conf_t    *cmcf;
 
-    cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-
-    for (i = 0; i < cmcf->variables.nelts; i++) {
-        if (r->variables[i].no_cacheable) {
-            r->variables[i].valid = 0;
-            r->variables[i].not_found = 0;
-        }
-    }
+    ngx_http_script_flush_no_cacheable_variables(r, flushes);
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 

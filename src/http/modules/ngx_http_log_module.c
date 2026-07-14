@@ -531,7 +531,7 @@ ngx_http_log_script_write(ngx_http_request_t *r, ngx_http_log_script_t *script,
     }
 
     if (ngx_http_script_run(r, &log, script->lengths->elts, 1,
-                            script->values->elts)
+                            script->values->elts, NULL)
         == NULL)
     {
         /* simulate successful logging */
