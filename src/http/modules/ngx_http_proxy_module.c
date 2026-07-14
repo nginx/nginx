@@ -3051,14 +3051,16 @@ ngx_http_proxy_parse_cookie(ngx_str_t *value, ngx_array_t *attrs)
             last = end;
         }
 
-        while (start < last && *start == ' ') { start++; }
+        while (start < last && (*start == ' ' || *start == '\t')) { start++; }
 
         for (p = start; p < last && *p != '='; p++) { /* void */ }
 
         name.data = start;
         name.len = p - start;
 
-        while (name.len && name.data[name.len - 1] == ' ') {
+        while (name.len && (name.data[name.len - 1] == ' '
+                            || name.data[name.len - 1] == '\t'))
+        {
             name.len--;
         }
 
@@ -3066,12 +3068,14 @@ ngx_http_proxy_parse_cookie(ngx_str_t *value, ngx_array_t *attrs)
 
             p++;
 
-            while (p < last && *p == ' ') { p++; }
+            while (p < last && (*p == ' ' || *p == '\t')) { p++; }
 
             val.data = p;
             val.len = last - val.data;
 
-            while (val.len && val.data[val.len - 1] == ' ') {
+            while (val.len && (val.data[val.len - 1] == ' '
+                               || val.data[val.len - 1] == '\t'))
+            {
                 val.len--;
             }
 

@@ -1210,7 +1210,7 @@ ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
 
     p = h->value.data + 6;
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p == '-') {
         return NGX_DECLINED;
