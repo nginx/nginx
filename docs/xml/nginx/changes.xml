@@ -5,6 +5,61 @@
 <change_log title="nginx">
 
 
+<changes ver="1.30.4" date="2026-07-15">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы map c регулярными выражениями
+могло произойти переполнение буфера в рабочем процессе, если
+map-переменная была указана в строковом выражении после выделения,
+модифицируемого этим блоком map; похожая проблема могла произойти
+при использовании некешируемой переменной в строковом выражении
+(CVE-2026-42533).<br/>
+Спасибо Mufeed VH из Winfunc Research и Максиму Дунину.
+</para>
+<para lang="en">
+heap buffer overflow might occur in a worker process when using the
+map directive with regex matching if the map variable was included
+in a string expression after a capture affected by this map;
+a similar issue might happen when using a non-cacheable variable in
+a string expression (CVE-2026-42533).<br/>
+Thanks to Mufeed VH of Winfunc Research and Maxim Dounin.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании неименованных выделений с директивой slice или
+фоновым обновлением кэша мог произойти доступ к неинициализированной
+памяти, что могло привести к отправке клиенту содержимого памяти
+рабочего процесса или вызвать segmentation fault в рабочем процессе
+(CVE-2026-60005).
+</para>
+<para lang="en">
+uninitialized memory access might occur when using unnamed regex
+captures with the "slice" directive or background cache update, which
+could result in worker process memory disclosure or worker process
+termination (CVE-2026-60005).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании ngx_http_ssi_filter_module специально созданный
+ответ от проксируемого бэкенда мог привести к обращению к ранее
+освобождённой памяти (CVE-2026-56434).<br/>
+Спасибо P4P3R-HAK.
+</para>
+<para lang="en">
+use-after-free might occur when processing a specially crafted proxied
+backend response with the ngx_http_ssi_filter_module (CVE-2026-56434).<br/>
+Thanks to P4P3R-HAK.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.30.3" date="2026-06-17">
 
 <change type="security">
