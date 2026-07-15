@@ -76,7 +76,7 @@ static ngx_atomic_t   ngx_stat_waiting0;
 ngx_atomic_t         *ngx_stat_waiting = &ngx_stat_waiting0;
 
 #endif
-
+ngx_pid_t     *ngx_active_workers_pids;
 
 
 static ngx_command_t  ngx_events_commands[] = {
@@ -566,6 +566,7 @@ ngx_event_module_init(ngx_cycle_t *cycle)
            + cl;         /* ngx_stat_waiting */
 
 #endif
+    size += ngx_min(NGX_MAX_PROCESSES * sizeof(ngx_pid_t), cl);
 
     shm.size = size;
     ngx_str_set(&shm.name, "nginx_shared_zone");
@@ -610,7 +611,10 @@ ngx_event_module_init(ngx_cycle_t *cycle)
     ngx_stat_reading = (ngx_atomic_t *) (shared + 7 * cl);
     ngx_stat_writing = (ngx_atomic_t *) (shared + 8 * cl);
     ngx_stat_waiting = (ngx_atomic_t *) (shared + 9 * cl);
-
+    
+    ngx_active_workers_pids = (ngx_pid_t *) (shared + 11 * cl);
+#else
+    ngx_active_workers_pids = (ngx_pid_t *) (shared + 3 * cl);
 #endif
 
     return NGX_OK;
