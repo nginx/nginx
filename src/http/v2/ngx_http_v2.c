@@ -1803,6 +1803,10 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
+    if (ngx_http_v2_construct_request_line(r) != NGX_OK) {
+        goto error;
+    }
+
     if (r->invalid_header) {
         cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
@@ -3303,6 +3307,13 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
     header->name.len--;
     header->name.data++;
 
+    if (r->request_line.len) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent out of order pseudo-headers");
+
+        return NGX_DECLINED;
+    }
+
     switch (header->name.len) {
     case 4:
         if (ngx_memcmp(header->name.data, "path", sizeof("path") - 1)
@@ -3576,6 +3587,10 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
     u_char  *p;
 
     static const u_char ending[] = " HTTP/2.0";
+
+    if (r->request_line.len) {
+        return NGX_OK;
+    }
 
     if (r->method_name.len == 0
         || r->schema.len == 0
