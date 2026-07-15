@@ -510,6 +510,7 @@ ngx_http_image_read(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (b->last_buf) {
             ctx->last = p;
+            ctx->length = p - ctx->image;
             return NGX_OK;
         }
     }
