@@ -26,7 +26,11 @@ static ngx_thread_value_t __stdcall ngx_worker_thread(void *data);
 static ngx_thread_value_t __stdcall ngx_cache_manager_thread(void *data);
 static void ngx_cache_manager_process_handler(void);
 static ngx_thread_value_t __stdcall ngx_cache_loader_thread(void *data);
+static ngx_thread_value_t __stdcall ngx_service_thread(void *data);
 
+/* TODO: ngx_service.h */
+
+ngx_int_t ngx_service(ngx_log_t *log);
 
 ngx_uint_t     ngx_process;
 ngx_uint_t     ngx_worker;
@@ -46,7 +50,7 @@ ngx_uint_t     ngx_exiting;
 HANDLE         ngx_master_process_event;
 char           ngx_master_process_event_name[NGX_PROCESS_SYNC_NAME];
 
-static HANDLE  ngx_stop_event;
+HANDLE  ngx_stop_event;
 static char    ngx_stop_event_name[NGX_PROCESS_SYNC_NAME];
 static HANDLE  ngx_quit_event;
 static char    ngx_quit_event_name[NGX_PROCESS_SYNC_NAME];
@@ -68,6 +72,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_int_t   n;
     ngx_msec_t  timer;
     ngx_uint_t  live;
+    ngx_tid_t   servicetid;
     HANDLE      events[MAXIMUM_WAIT_OBJECTS];
 
     ngx_sprintf((u_char *) ngx_master_process_event_name,
@@ -115,6 +120,14 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     events[3] = ngx_reload_event;
 
     ngx_close_listening_sockets(cycle);
+
+    if (cycle->service){
+        // Create only if this thread does not already exists ?
+        if (ngx_create_thread(&servicetid, ngx_service_thread, NULL, cycle->log) != 0) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, 0, "Creating ngx_service_thread failed");
+            exit(2);
+        }
+    }
 
     if (ngx_start_worker_processes(cycle, NGX_PROCESS_RESPAWN) == 0) {
         exit(2);
@@ -754,7 +767,6 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, char *mevn)
     ngx_worker_process_exit(cycle);
 
 failed:
-
     exit(2);
 }
 
@@ -981,6 +993,11 @@ ngx_cache_loader_thread(void *data)
     return 0;
 }
 
+static ngx_thread_value_t __stdcall
+ngx_service_thread(void *data)
+{
+    return ngx_service((ngx_log_t*)data);
+}
 
 void
 ngx_single_process_cycle(ngx_cycle_t *cycle)
