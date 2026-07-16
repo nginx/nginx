@@ -97,9 +97,18 @@ then
 fi
 
 
-# cpuset_setaffinity()
+# cpuset_setaffinity() / cpuset_getaffinity()
 
 if [ $version -ge 701000 ]; then
     echo " + cpuset_setaffinity() found"
+    echo " + cpuset_getaffinity() found"
     have=NGX_HAVE_CPUSET_SETAFFINITY . auto/have
+    have=NGX_HAVE_CPUSET_GETAFFINITY . auto/have
+fi
+
+# CPU_COUNT()
+
+if [ $version -ge 1002000 ]; then
+    echo " + CPU_COUNT() found"
+    have=NGX_HAVE_CPU_COUNT . auto/have
 fi
