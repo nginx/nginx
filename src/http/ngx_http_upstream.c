@@ -6416,7 +6416,12 @@ ngx_http_upstream_cache_age(ngx_http_request_t *r,
         age = 0;
     }
 
-    age += r->upstream->headers_in.age_n;
+    if (age > NGX_MAX_INT_T_VALUE - r->upstream->headers_in.age_n) {
+        age = NGX_MAX_INT_T_VALUE;
+
+    } else {
+        age += r->upstream->headers_in.age_n;
+    }
 
     v->len = ngx_sprintf(p, "%T", age) - p;
     v->valid = 1;
