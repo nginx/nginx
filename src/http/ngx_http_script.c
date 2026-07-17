@@ -62,6 +62,12 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
     ngx_http_script_code_pt       code;
     ngx_http_script_len_code_pt   lcode;
     ngx_http_script_engine_t      e;
+#if (NGX_PCRE)
+    ngx_uint_t                    save_ncaptures;
+    u_char                       *save_captures_data;
+    int                          *save_captures;
+    ngx_http_core_main_conf_t    *cmcf;
+#endif
 
     if (val->lengths == NULL) {
         *value = val->value;
@@ -69,6 +75,25 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
     }
 
     ngx_http_script_flush_complex_value(r, val);
+
+#if (NGX_PCRE)
+    save_ncaptures = r->ncaptures;
+    save_captures_data = r->captures_data;
+    save_captures = NULL;
+
+    if (r->ncaptures) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+        save_captures = ngx_palloc(r->pool,
+                                   cmcf->ncaptures * sizeof(int));
+        if (save_captures == NULL) {
+            return NGX_ERROR;
+        }
+
+        ngx_memcpy(save_captures, r->captures,
+                   cmcf->ncaptures * sizeof(int));
+    }
+#endif
 
     ngx_memzero(&e, sizeof(ngx_http_script_engine_t));
 
@@ -82,6 +107,18 @@ ngx_http_complex_value(ngx_http_request_t *r, ngx_http_complex_value_t *val,
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
         len += lcode(&e);
     }
+
+#if (NGX_PCRE)
+    r->ncaptures = save_ncaptures;
+    r->captures_data = save_captures_data;
+
+    if (save_captures) {
+        cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+        ngx_memcpy(r->captures, save_captures,
+                   cmcf->ncaptures * sizeof(int));
+    }
+#endif
 
     value->len = len;
     value->data = ngx_pnalloc(r->pool, len);
@@ -638,11 +675,41 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     e.request = r;
     e.flushed = 1;
 
+#if (NGX_PCRE)
+    ngx_uint_t  save_ncaptures;
+    u_char     *save_captures_data;
+    int        *save_captures;
+
+    save_ncaptures = r->ncaptures;
+    save_captures_data = r->captures_data;
+    save_captures = NULL;
+
+    if (r->ncaptures) {
+        save_captures = ngx_palloc(r->pool,
+                                   cmcf->ncaptures * sizeof(int));
+        if (save_captures == NULL) {
+            return NULL;
+        }
+
+        ngx_memcpy(save_captures, r->captures,
+                   cmcf->ncaptures * sizeof(int));
+    }
+#endif
+
     while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
         len += lcode(&e);
     }
 
+#if (NGX_PCRE)
+    r->ncaptures = save_ncaptures;
+    r->captures_data = save_captures_data;
+
+    if (save_captures) {
+        ngx_memcpy(r->captures, save_captures,
+                   cmcf->ncaptures * sizeof(int));
+    }
+#endif
 
     value->len = len;
     value->data = ngx_pnalloc(r->pool, len);
@@ -1170,12 +1237,55 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
         le.request = r;
         le.quote = code->redirect;
 
+#if (NGX_PCRE)
+        ngx_uint_t   save_ncaptures;
+        u_char      *save_captures_data;
+        int         *save_captures;
+
+        save_ncaptures = r->ncaptures;
+        save_captures_data = r->captures_data;
+
+        if (r->ncaptures) {
+            ngx_http_core_main_conf_t  *cmcf;
+
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+            save_captures = ngx_palloc(r->pool,
+                                       cmcf->ncaptures * sizeof(int));
+            if (save_captures == NULL) {
+                e->ip = ngx_http_script_exit;
+                e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                return;
+            }
+
+            ngx_memcpy(save_captures, r->captures,
+                       cmcf->ncaptures * sizeof(int));
+
+        } else {
+            save_captures = NULL;
+        }
+#endif
+
         len = 0;
 
         while (*(uintptr_t *) le.ip) {
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
             len += lcode(&le);
         }
+
+#if (NGX_PCRE)
+        r->ncaptures = save_ncaptures;
+        r->captures_data = save_captures_data;
+
+        if (save_captures) {
+            ngx_http_core_main_conf_t  *cmcf;
+
+            cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+
+            ngx_memcpy(r->captures, save_captures,
+                       cmcf->ncaptures * sizeof(int));
+        }
+#endif
 
         e->buf.len = len;
     }
