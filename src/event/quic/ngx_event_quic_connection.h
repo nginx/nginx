@@ -309,6 +309,8 @@ struct ngx_quic_connection_s {
 };
 
 
+void ngx_quic_set_error(ngx_connection_t *c, ngx_uint_t err,
+    const char *reason);
 ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
     ngx_quic_tp_t *ctp);
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
