@@ -621,6 +621,20 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
     static ngx_str_t cookie = ngx_string("cookie");
 
+    while (value->len
+        && (value->data[0] == ' ' || value->data[0] == '\t'))
+    {
+        value->data++;
+        value->len--;
+    }
+
+    while (value->len
+        && (value->data[value->len - 1] == ' '
+            || value->data[value->len - 1] == '\t'))
+    {
+        value->len--;
+    }
+
     len = name->len + value->len;
 
     if (len > r->v3_parse->header_limit) {
