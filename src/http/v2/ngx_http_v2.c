@@ -1745,6 +1745,21 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         header->value.len = h2c->state.field_end - h2c->state.field_start;
         header->value.data = h2c->state.field_start;
+
+        while (header->value.len
+            && (header->value.data[0] == ' '
+                || header->value.data[0] == '\t'))
+        {
+            header->value.data++;
+            header->value.len--;
+        }
+
+        while (header->value.len
+            && (header->value.data[header->value.len - 1] == ' '
+                || header->value.data[header->value.len - 1] == '\t'))
+        {
+            header->value.len--;
+        }
     }
 
     len = header->name.len + header->value.len;
