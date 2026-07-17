@@ -178,6 +178,11 @@ ngx_http_dav_handler(ngx_http_request_t *r)
 
         rc = ngx_http_read_client_request_body(r, ngx_http_dav_put_handler);
 
+        if (rc == NGX_HTTP_INTERNAL_SERVER_ERROR) {
+            return ngx_http_dav_error(NULL, ngx_errno, NGX_HTTP_CONFLICT,
+                                      NULL, NULL);
+        }
+
         if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
             return rc;
         }
@@ -210,6 +215,7 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
 {
     size_t                    root;
     time_t                    date;
+    ngx_int_t                 rc;
     ngx_str_t                *temp, path;
     ngx_uint_t                status;
     ngx_file_info_t           fi;
@@ -283,7 +289,8 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
     }
 
     if (ngx_ext_rename_file(temp, &path, &ext) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+        rc = ngx_http_dav_error(NULL, ngx_errno, NGX_HTTP_CONFLICT, NULL, NULL);
+        ngx_http_finalize_request(r, rc);
         return;
     }
 
@@ -1147,7 +1154,9 @@ ngx_http_dav_error(ngx_log_t *log, ngx_err_t err, ngx_int_t not_found,
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    ngx_log_error(level, log, err, "%s \"%s\" failed", failed, path);
+    if (log) {
+        ngx_log_error(level, log, err, "%s \"%s\" failed", failed, path);
+    }
 
     return rc;
 }
