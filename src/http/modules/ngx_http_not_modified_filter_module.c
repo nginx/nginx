@@ -190,11 +190,19 @@ ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http im:\"%V\" etag:%V", list, &etag);
 
-    if (weak
-        && etag.len > 2
-        && etag.data[0] == 'W'
-        && etag.data[1] == '/')
-    {
+    if (etag.len > 2 && etag.data[0] == 'W' && etag.data[1] == '/') {
+
+        /*
+         * RFC 9110, 8.8.3.2: strong comparison treats a weak entity-tag
+         * as never matching, so If-Match against a weak server ETag
+         * always fails.  For If-None-Match (weak comparison) strip the
+         * "W/" prefix and continue with the opaque-tag.
+         */
+
+        if (!weak) {
+            return 0;
+        }
+
         etag.len -= 2;
         etag.data += 2;
     }
