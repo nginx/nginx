@@ -286,8 +286,9 @@ static ngx_int_t
 ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r, ngx_str_t *passwd,
     ngx_str_t *realm)
 {
+    size_t      i, elen, plen;
+    u_char      ch, *encrypted;
     ngx_int_t   rc;
-    u_char     *encrypted;
 
     rc = ngx_crypt(r->pool, r->headers_in.passwd.data, passwd->data,
                    &encrypted);
@@ -300,7 +301,18 @@ ngx_http_auth_basic_crypt_handler(ngx_http_request_t *r, ngx_str_t *passwd,
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    if (ngx_strcmp(encrypted, passwd->data) == 0) {
+    /* constant time comparison */
+
+    elen = ngx_strlen(encrypted);
+    plen = ngx_strlen(passwd->data);
+
+    ch = (elen != plen);
+
+    for (i = 0; i < elen && i < plen; i++) {
+        ch |= encrypted[i] ^ passwd->data[i];
+    }
+
+    if (ch == 0) {
         return NGX_OK;
     }
 
