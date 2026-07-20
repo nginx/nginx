@@ -1033,6 +1033,29 @@ ngx_quic_bpf_add_worker_socket(ngx_cycle_t *cycle, ngx_quic_bpf_group_t *grp,
     }
 #endif
 
+#if (NGX_HAVE_INET6 && defined IPV6_V6ONLY)
+    if (ls->sockaddr->sa_family == AF_INET6) {
+
+        /*
+         * must mirror the listener, otherwise bind() enrolls the
+         * socket into the wrong SO_REUSEPORT group and
+         * bpf_sk_select_reuseport() rejects it with EBADFD
+         */
+
+        value = ls->ipv6only;
+
+        if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY,
+                       (const void *) &value, sizeof(int))
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
+                          "quic bpf setsockopt(IPV6_V6ONLY) "
+                          "worker socket failed");
+            goto failed;
+        }
+    }
+#endif
+
     if (bind(s, ls->sockaddr, ls->socklen) == -1) {
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_socket_errno,
                       "quic bpf bind() failed");
