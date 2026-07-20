@@ -5084,6 +5084,47 @@ ngx_http_upstream_process_set_cookie(ngx_http_request_t *r, ngx_table_elt_t *h,
 }
 
 
+#if (NGX_HTTP_CACHE)
+
+static u_char *
+ngx_http_upstream_cache_control(u_char *start, u_char *last, u_char *name,
+    size_t len)
+{
+    u_char  *p;
+
+    p = start;
+
+    for ( ;; ) {
+        p = ngx_strlcasestrn(p, last, name, len - 1);
+
+        if (p == NULL) {
+            return NULL;
+        }
+
+        /*
+         * a directive name must start at the beginning of the field value
+         * or right after a comma or whitespace separator, so that extension
+         * directives such as "x-max-age=" are not treated as the standard
+         * "max-age=" directive
+         */
+
+        if (p == start
+            || *(p - 1) == ',' || *(p - 1) == ' ' || *(p - 1) == '\t')
+        {
+            return p;
+        }
+
+        p += len;
+
+        if (p >= last) {
+            return NULL;
+        }
+    }
+}
+
+#endif
+
+
 static ngx_int_t
 ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
@@ -5119,19 +5160,22 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         goto extensions;
     }
 
-    if (ngx_strlcasestrn(start, last, (u_char *) "no-cache", 8 - 1) != NULL
-        || ngx_strlcasestrn(start, last, (u_char *) "no-store", 8 - 1) != NULL
-        || ngx_strlcasestrn(start, last, (u_char *) "private", 7 - 1) != NULL)
+    if (ngx_http_upstream_cache_control(start, last, (u_char *) "no-cache", 8)
+            != NULL
+        || ngx_http_upstream_cache_control(start, last, (u_char *) "no-store", 8)
+            != NULL
+        || ngx_http_upstream_cache_control(start, last, (u_char *) "private", 7)
+            != NULL)
     {
         u->headers_in.no_cache = 1;
         return NGX_OK;
     }
 
-    p = ngx_strlcasestrn(start, last, (u_char *) "s-maxage=", 9 - 1);
+    p = ngx_http_upstream_cache_control(start, last, (u_char *) "s-maxage=", 9);
     offset = 9;
 
     if (p == NULL) {
-        p = ngx_strlcasestrn(start, last, (u_char *) "max-age=", 8 - 1);
+        p = ngx_http_upstream_cache_control(start, last, (u_char *) "max-age=", 8);
         offset = 8;
     }
 
@@ -5155,8 +5199,8 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
 
 extensions:
 
-    p = ngx_strlcasestrn(start, last, (u_char *) "stale-while-revalidate=",
-                         23 - 1);
+    p = ngx_http_upstream_cache_control(start, last,
+                                        (u_char *) "stale-while-revalidate=", 23);
 
     if (p) {
         n = ngx_http_upstream_process_delta_seconds(p + 23, last);
@@ -5170,7 +5214,8 @@ extensions:
         r->cache->error_sec = n;
     }
 
-    p = ngx_strlcasestrn(start, last, (u_char *) "stale-if-error=", 15 - 1);
+    p = ngx_http_upstream_cache_control(start, last,
+                                        (u_char *) "stale-if-error=", 15);
 
     if (p) {
         n = ngx_http_upstream_process_delta_seconds(p + 15, last);
