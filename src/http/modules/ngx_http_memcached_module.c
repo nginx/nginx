@@ -421,6 +421,16 @@ found:
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
 
+        if (u->headers_in.content_length_n
+            > NGX_MAX_OFF_T_VALUE - (off_t) NGX_HTTP_MEMCACHED_END)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "memcached sent too long length in response \"%V\" "
+                          "for key \"%V\"",
+                          &line, &ctx->key);
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
         u->headers_in.status_n = 200;
         u->state->status = 200;
         u->buffer.pos = p + sizeof(CRLF) - 1;
