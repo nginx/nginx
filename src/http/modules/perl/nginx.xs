@@ -692,7 +692,7 @@ print(r, ...)
     if (items == 2) {
 
         /*
-         * do zero copy for prolate single SV:
+         * single read-only SV:
          *     $r->print("some text\n");
          */
 
@@ -702,7 +702,7 @@ print(r, ...)
             sv = SvRV(sv);
         }
 
-        if (SvPOK(sv)) {
+        if (SvREADONLY(sv) && SvPOK(sv)) {
 
             p = (u_char *) SvPV(sv, len);
 
@@ -728,7 +728,7 @@ print(r, ...)
             b->end = b->last;
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "$r->print: single SV: %z", len);
+                           "$r->print: read-only SV: %z", len);
 
             goto out;
         }
