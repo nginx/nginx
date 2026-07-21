@@ -3444,7 +3444,21 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         if (valid) {
             r->cache->date = now;
-            r->cache->body_start = (u_short) (u->buffer.pos - u->buffer.start);
+
+            if ((size_t) (u->buffer.pos - u->buffer.start) > 65535) {
+
+                /*
+                 * the offset does not fit into the u_short body_start field
+                 * of the cache file header; do not cache the response rather
+                 * than truncate the offset
+                 */
+
+                u->cacheable = 0;
+
+            } else {
+                r->cache->body_start =
+                                 (u_short) (u->buffer.pos - u->buffer.start);
+            }
 
             if (u->headers_in.status_n == NGX_HTTP_OK
                 || u->headers_in.status_n == NGX_HTTP_PARTIAL_CONTENT)
