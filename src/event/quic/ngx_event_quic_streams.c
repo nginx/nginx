@@ -1481,11 +1481,11 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
-    qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
-
     if (ngx_quic_control_flow(qs, f->final_size) != NGX_OK) {
         return NGX_ERROR;
     }
+
+    qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
 
     if (qs->recv_final_size != (uint64_t) -1
         && qs->recv_final_size != f->final_size)
