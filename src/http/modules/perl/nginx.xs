@@ -702,7 +702,7 @@ print(r, ...)
             sv = SvRV(sv);
         }
 
-        if (SvPOK(sv)) {
+        if (SvREADONLY(sv) && SvPOK(sv)) {
 
             p = (u_char *) SvPV(sv, len);
 
