@@ -1027,7 +1027,7 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         /* do not cache too big session */
 
-        if (len > NGX_SSL_MAX_SESSION_SIZE) {
+        if (len <= 0 || len > NGX_SSL_MAX_SESSION_SIZE) {
             return;
         }
 
