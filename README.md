@@ -228,5 +228,8 @@ See our [changelog](https://nginx.org/en/CHANGES) to keep track of updates.
 # License
 [2-clause BSD-like license](LICENSE)
 
+#code style
+see our [codestyle](https://nginx.org/en/docs/dev/development_guide.html#code_style)
+
 ---
 Additional documentation available at: https://nginx.org/en/docs
