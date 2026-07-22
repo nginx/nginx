@@ -79,8 +79,9 @@ ngx_mail_pop3_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 void
 ngx_mail_pop3_init_protocol(ngx_event_t *rev)
 {
-    ngx_connection_t    *c;
-    ngx_mail_session_t  *s;
+    ngx_connection_t          *c;
+    ngx_mail_session_t        *s;
+    ngx_mail_pop3_srv_conf_t  *pscf;
 
     c = rev->data;
 
@@ -103,7 +104,9 @@ ngx_mail_pop3_init_protocol(ngx_event_t *rev)
             return;
         }
 
-        s->buffer = ngx_create_temp_buf(c->pool, 128);
+        pscf = ngx_mail_get_module_srv_conf(s, ngx_mail_pop3_module);
+
+        s->buffer = ngx_create_temp_buf(c->pool, pscf->client_buffer_size);
         if (s->buffer == NULL) {
             ngx_mail_session_internal_server_error(s);
             return;
