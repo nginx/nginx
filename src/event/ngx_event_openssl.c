@@ -5251,7 +5251,7 @@ ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log)
     /* sync keys to the worker process memory */
 
     ngx_memcpy(keys->elts, cache->ticket_keys,
-               2 * sizeof(ngx_ssl_ticket_key_t));
+               keys->nelts * sizeof(ngx_ssl_ticket_key_t));
 
     ngx_shmtx_unlock(&shpool->mutex);
 
