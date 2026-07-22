@@ -359,6 +359,16 @@ ngx_http_upstream_update_chash(ngx_pool_t *pool,
     }
 
     peers = us->peer.data;
+
+    if (peers->total_weight
+        > NGX_MAX_SIZE_T_VALUE
+          / (160 * sizeof(ngx_http_upstream_chash_point_t)))
+    {
+        ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
+                      "upstream \"%V\" total weight is too large", &us->host);
+        return NGX_ERROR;
+    }
+
     npoints = peers->total_weight * 160;
 
     size = sizeof(ngx_http_upstream_chash_points_t)
