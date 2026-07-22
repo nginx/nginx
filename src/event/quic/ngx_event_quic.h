@@ -90,6 +90,9 @@ typedef struct {
     ngx_uint_t                     max_concurrent_streams_bidi;
     ngx_uint_t                     max_concurrent_streams_uni;
     ngx_uint_t                     active_connection_id_limit;
+    size_t                         max_udp_payload_size;
+    size_t                         initial_max_data;
+    size_t                         max_egress_udp_payload_size;
     ngx_int_t                      stream_close_code;
     ngx_int_t                      stream_reject_code_uni;
     ngx_int_t                      stream_reject_code_bidi;
@@ -141,5 +144,11 @@ ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,
     ngx_str_t *secret, ngx_str_t *salt, u_char *out, size_t len);
+
+#if (NGX_QUIC_BPF)
+ngx_uint_t ngx_quic_bpf_enabled(ngx_cycle_t *cycle);
+#else
+#define ngx_quic_bpf_enabled(c)  0
+#endif
 
 #endif /* _NGX_EVENT_QUIC_H_INCLUDED_ */

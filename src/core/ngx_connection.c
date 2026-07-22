@@ -8,6 +8,7 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_event.h>
+#include <ngx_event_quic.h>
 
 
 ngx_os_io_t  ngx_io;
@@ -1143,7 +1144,34 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_QUIC)
         if (ls[i].quic) {
-            continue;
+            if (!ngx_quic_bpf_enabled(cycle)) {
+#if (NGX_HAVE_REUSEPORT)
+                /*
+                 * during graceful shutdown, close QUIC reuseport sockets
+                 * not owned by this worker to remove them from the reuseport
+                 * group, preventing new connections from being routed to
+                 * shutting-down workers by the kernel or BPF program
+                 */
+                if (ls[i].reuseport
+                    && ngx_process == NGX_PROCESS_WORKER
+                    && ls[i].worker != ngx_worker)
+                {
+                    ngx_log_debug2(NGX_LOG_DEBUG_CORE, cycle->log, 0,
+                                   "quic close reuseport %V #%d",
+                                   &ls[i].addr_text, ls[i].fd);
+
+                    if (ngx_close_socket(ls[i].fd) == -1) {
+                        ngx_log_error(NGX_LOG_EMERG, cycle->log,
+                                      ngx_socket_errno,
+                                      ngx_close_socket_n " %V failed",
+                                      &ls[i].addr_text);
+                    }
+
+                    ls[i].fd = (ngx_socket_t) -1;
+                }
+#endif
+                continue;
+            }
         }
 #endif
 

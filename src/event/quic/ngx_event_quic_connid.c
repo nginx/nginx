@@ -9,12 +9,7 @@
 #include <ngx_event.h>
 #include <ngx_event_quic_connection.h>
 
-#define NGX_QUIC_MAX_SERVER_IDS   8
 
-
-#if (NGX_QUIC_BPF)
-static ngx_int_t ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id);
-#endif
 static ngx_int_t ngx_quic_retire_client_id(ngx_connection_t *c,
     ngx_quic_client_id_t *cid);
 static ngx_quic_client_id_t *ngx_quic_alloc_client_id(ngx_connection_t *c,
@@ -30,44 +25,8 @@ ngx_quic_create_server_id(ngx_connection_t *c, u_char *id)
         return NGX_ERROR;
     }
 
-#if (NGX_QUIC_BPF)
-    if (ngx_quic_bpf_attach_id(c, id) != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "quic bpf failed to generate socket key");
-        /* ignore error, things still may work */
-    }
-#endif
-
     return NGX_OK;
 }
-
-
-#if (NGX_QUIC_BPF)
-
-static ngx_int_t
-ngx_quic_bpf_attach_id(ngx_connection_t *c, u_char *id)
-{
-    int        fd;
-    uint64_t   cookie;
-    socklen_t  optlen;
-
-    fd = c->listening->fd;
-
-    optlen = sizeof(cookie);
-
-    if (getsockopt(fd, SOL_SOCKET, SO_COOKIE, &cookie, &optlen) == -1) {
-        ngx_log_error(NGX_LOG_ERR, c->log, ngx_socket_errno,
-                      "quic getsockopt(SO_COOKIE) failed");
-
-        return NGX_ERROR;
-    }
-
-    ngx_quic_dcid_encode_key(id, cookie);
-
-    return NGX_OK;
-}
-
-#endif
 
 
 ngx_int_t
