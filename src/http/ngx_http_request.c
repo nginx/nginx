@@ -2595,6 +2595,24 @@ ngx_http_request_handler(ngx_event_t *ev)
                    "http run request: \"%V?%V\"", &r->uri, &r->args);
 
     if (c->close) {
+
+#if (NGX_HTTP_V3)
+
+        /*
+         * a stream torn down by a peer-initiated connection close is
+         * terminated with rc = 0 and logged without a status; account
+         * it as a client abort, as with HTTP/2
+         */
+
+        if (c->quic
+            && c->error
+            && r->err_status == 0
+            && r->headers_out.status == 0)
+        {
+            r->err_status = NGX_HTTP_CLIENT_CLOSED_REQUEST;
+        }
+#endif
+
         r->main->count++;
         ngx_http_terminate_request(r, 0);
         ngx_http_run_posted_requests(c);
