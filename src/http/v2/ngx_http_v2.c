@@ -3250,6 +3250,38 @@ ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
 
 
 static ngx_int_t
+ngx_http_v2_validate_header_value(ngx_str_t *value)
+{
+    u_char     ch;
+    ngx_uint_t  i;
+
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
+    if (value->data[0] == ' ' || value->data[0] == '\t') {
+        return NGX_ERROR;
+    }
+
+    if (value->data[value->len - 1] == ' '
+        || value->data[value->len - 1] == '\t')
+    {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < value->len; i++) {
+        ch = value->data[i];
+
+        if (ch == '\0' || ch == CR || ch == LF) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 {
     u_char                     ch;
@@ -3284,17 +3316,13 @@ ngx_http_v2_validate_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
         r->invalid_header = 1;
     }
 
-    for (i = 0; i != header->value.len; i++) {
-        ch = header->value.data[i];
+    if (ngx_http_v2_validate_header_value(&header->value) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent header \"%V\" with "
+                      "invalid value: \"%V\"",
+                      &header->name, &header->value);
 
-        if (ch == '\0' || ch == LF || ch == CR) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent header \"%V\" with "
-                          "invalid value: \"%V\"",
-                          &header->name, &header->value);
-
-            return NGX_ERROR;
-        }
+        return NGX_ERROR;
     }
 
     return NGX_OK;

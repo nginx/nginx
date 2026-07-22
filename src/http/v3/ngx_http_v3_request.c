@@ -702,6 +702,55 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
 
 static ngx_int_t
+ngx_http_v3_validate_header_value(ngx_str_t *value)
+{
+    ngx_uint_t  i;
+
+    /* Table values: 0 - invalid, 1 - interior only (SP, HTAB), 2 - valid. */
+
+    static u_char  classes[256] = {
+     /*  0    1    2    3    4    5    6    7    8    9    A    B    C    D    E    F  */
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,   0,   0,   0,   0, /* 0x0X */
+        0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0, /* 0x1X */
+        1,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x2X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x3X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x4X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x5X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x6X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   0, /* 0x7X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x8X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0x9X */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0xAX */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0xBX */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0xCX */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0xDX */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2, /* 0xEX */
+        2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2  /* 0xFX */
+    };
+
+    if (value->len == 0) {
+        return NGX_OK;
+    }
+
+    if (classes[value->data[0]] != 2) {
+        return NGX_ERROR;
+    }
+
+    if (classes[value->data[value->len - 1]] != 2) {
+        return NGX_ERROR;
+    }
+
+    for (i = 1; i + 1 < value->len; i++) {
+        if (classes[value->data[i]] == 0) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_v3_validate_header(ngx_http_request_t *r, ngx_str_t *name,
     ngx_str_t *value)
 {
@@ -736,16 +785,12 @@ ngx_http_v3_validate_header(ngx_http_request_t *r, ngx_str_t *name,
         r->invalid_header = 1;
     }
 
-    for (i = 0; i != value->len; i++) {
-        ch = value->data[i];
+    if (ngx_http_v3_validate_header_value(value) != NGX_OK) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent header \"%V\" with "
+                      "invalid value: \"%V\"", name, value);
 
-        if (ch == '\0' || ch == LF || ch == CR) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent header \"%V\" with "
-                          "invalid value: \"%V\"", name, value);
-
-            return NGX_ERROR;
-        }
+        return NGX_ERROR;
     }
 
     return NGX_OK;
