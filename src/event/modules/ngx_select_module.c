@@ -146,6 +146,17 @@ ngx_select_add_event(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
+    /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x-10.x */
+
+    if ((event == NGX_READ_EVENT || event == NGX_WRITE_EVENT)
+        && (unsigned) c->fd >= FD_SETSIZE)
+    {
+        ngx_log_error(NGX_LOG_ERR, ev->log, 0,
+                      "maximum number of descriptors "
+                      "supported by select() is %ud", FD_SETSIZE);
+        return NGX_ERROR;
+    }
+
     if (event == NGX_READ_EVENT) {
         FD_SET(c->fd, &master_read_fd_set);
 
@@ -410,8 +421,6 @@ ngx_select_init_conf(ngx_cycle_t *cycle, void *conf)
     if (ecf->use != ngx_select_module.ctx_index) {
         return NGX_CONF_OK;
     }
-
-    /* disable warning: the default FD_SETSIZE is 1024U in FreeBSD 5.x */
 
     if (cycle->connection_n > FD_SETSIZE) {
         ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
