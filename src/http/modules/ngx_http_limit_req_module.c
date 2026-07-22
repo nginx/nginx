@@ -238,7 +238,17 @@ ngx_http_limit_req_handler(ngx_http_request_t *r)
                           "the value of the \"%V\" key "
                           "is more than 65535 bytes: \"%V\"",
                           &ctx->key.value, &key);
-            continue;
+
+            ngx_http_limit_req_unlock(limits, n);
+
+            if (lrcf->dry_run) {
+                r->main->limit_req_status = NGX_HTTP_LIMIT_REQ_REJECTED_DRY_RUN;
+                return NGX_DECLINED;
+            }
+
+            r->main->limit_req_status = NGX_HTTP_LIMIT_REQ_REJECTED;
+
+            return lrcf->status_code;
         }
 
         hash = ngx_crc32_short(key.data, key.len);

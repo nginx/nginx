@@ -214,7 +214,18 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
                           "the value of the \"%V\" key "
                           "is more than 255 bytes: \"%V\"",
                           &ctx->key.value, &key);
-            continue;
+
+            ngx_http_limit_conn_cleanup_all(r->pool);
+
+            if (lccf->dry_run) {
+                r->main->limit_conn_status =
+                                      NGX_HTTP_LIMIT_CONN_REJECTED_DRY_RUN;
+                return NGX_DECLINED;
+            }
+
+            r->main->limit_conn_status = NGX_HTTP_LIMIT_CONN_REJECTED;
+
+            return lccf->status_code;
         }
 
         r->main->limit_conn_status = NGX_HTTP_LIMIT_CONN_PASSED;
