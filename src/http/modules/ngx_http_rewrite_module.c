@@ -482,7 +482,7 @@ ngx_http_rewrite_return(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     } else {
 
-        if (ret->status > 999) {
+        if (ret->status > 999 || ret->status < NGX_HTTP_OK) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "invalid return code \"%V\"", &value[1]);
             return NGX_CONF_ERROR;
