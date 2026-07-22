@@ -1005,6 +1005,43 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         SSL_set_options(ssl_conn, SSL_OP_NO_RENEGOTIATION);
 #endif
 
+        /*
+         * Re-sync per-connection TLS 1.3 early data limit to match the
+         * SNI-selected server: SSL_new() copies max_early_data from the
+         * initial SSL_CTX and SSL_set_SSL_CTX() does not update it, so
+         * without this the server-level ssl_early_data setting is
+         * silently ignored (both directions: an "on" override never
+         * takes effect, and an "off" override fails to disable 0-RTT).
+         *
+         * The nginx-side try_early_data flag is intentionally not
+         * touched here: the SNI callback runs mid-handshake, and
+         * flipping the flag after ngx_ssl_handshake() has already
+         * chosen SSL_do_handshake() vs SSL_read_early_data() leads to
+         * "called a function you should not call" errors.
+         */
+
+#ifdef SSL_READ_EARLY_DATA_SUCCESS
+        {
+            uint32_t  max;
+
+            max = SSL_CTX_get_max_early_data(sscf->ssl.ctx);
+
+#if (NGX_HTTP_V3)
+            /*
+             * For QUIC, RFC 9001 requires max_early_data_size in the
+             * NewSessionTicket to be either 0 (disabled) or 0xFFFFFFFF
+             * (unlimited; QUIC's own flow control governs the actual
+             * amount). Any other value is a PROTOCOL_VIOLATION.
+             */
+            if (c->listening->quic && max != 0) {
+                max = 0xffffffff;
+            }
+#endif
+
+            SSL_set_max_early_data(ssl_conn, max);
+        }
+#endif
+
 #ifdef SSL_OP_ENABLE_MIDDLEBOX_COMPAT
 #if (NGX_HTTP_V3)
         if (c->listening->quic) {
