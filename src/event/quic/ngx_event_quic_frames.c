@@ -694,7 +694,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
     case NGX_QUIC_FT_ACK:
     case NGX_QUIC_FT_ACK_ECN:
 
-        p = ngx_slprintf(p, last, "ACK n:%ui delay:%uL ",
+        p = ngx_slprintf(p, last, "ACK n:%uL delay:%uL ",
                          f->u.ack.range_count, f->u.ack.delay);
 
         if (f->data) {
@@ -758,7 +758,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
     case NGX_QUIC_FT_CONNECTION_CLOSE:
     case NGX_QUIC_FT_CONNECTION_CLOSE_APP:
-        p = ngx_slprintf(p, last, "CONNECTION_CLOSE%s err:%ui",
+        p = ngx_slprintf(p, last, "CONNECTION_CLOSE%s err:%uL",
                          f->type == NGX_QUIC_FT_CONNECTION_CLOSE ? "" : "_APP",
                          f->u.close.error_code);
 
@@ -767,7 +767,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
         }
 
         if (f->type == NGX_QUIC_FT_CONNECTION_CLOSE) {
-            p = ngx_slprintf(p, last, " ft:%ui", f->u.close.frame_type);
+            p = ngx_slprintf(p, last, " ft:%uL", f->u.close.frame_type);
         }
 
         break;

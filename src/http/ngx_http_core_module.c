@@ -5456,7 +5456,7 @@ ngx_http_core_pool_size(ngx_conf_t *cf, void *post, void *data)
 
     if (*sp % NGX_POOL_ALIGNMENT) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "the pool size must be a multiple of %uz",
+                           "the pool size must be a multiple of %d",
                            NGX_POOL_ALIGNMENT);
         return NGX_CONF_ERROR;
     }
