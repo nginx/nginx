@@ -203,7 +203,7 @@ static ngx_int_t ngx_http_upstream_ssl_certificate(ngx_http_request_t *r,
 #endif
 
 
-static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
+ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 
     { ngx_string("Status"),
                  ngx_http_upstream_process_header_line,
