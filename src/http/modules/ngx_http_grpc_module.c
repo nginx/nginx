@@ -2047,7 +2047,10 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 }
 
                 if (ctx->end_stream) {
-                    u->headers_in.content_length_n = 0;
+
+                    if (u->headers_in.content_length_n == -1) {
+                        u->headers_in.content_length_n = 0;
+                    }
 
                     if (ctx->in == NULL
                         && ctx->out == NULL
