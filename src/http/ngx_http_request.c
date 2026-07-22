@@ -3656,6 +3656,7 @@ ngx_http_keepalive_handler(ngx_event_t *rev)
 
     c->sent = 0;
     c->destroyed = 0;
+    c->pipeline = 0;
 
     ngx_del_timer(rev);
 
