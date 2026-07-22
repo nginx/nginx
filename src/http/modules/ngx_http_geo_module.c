@@ -106,6 +106,13 @@ static char *ngx_http_geo_include(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *name);
 static ngx_int_t ngx_http_geo_include_binary_base(ngx_conf_t *cf,
     ngx_http_geo_conf_ctx_t *ctx, ngx_str_t *name);
+static ngx_int_t ngx_http_geo_validate_binary_base(ngx_conf_t *cf,
+    ngx_http_geo_conf_ctx_t *ctx, ngx_str_t *name, u_char *base, size_t size,
+    uint32_t *crc32, ngx_http_geo_range_t ***ranges);
+static void ngx_http_geo_relocate_binary_base(u_char *base, size_t size,
+    ngx_http_geo_range_t **ranges);
+static ngx_int_t ngx_http_geo_binary_search_offset(ngx_array_t *offsets,
+    uintptr_t offset);
 static void ngx_http_geo_create_binary_base(ngx_http_geo_conf_ctx_t *ctx);
 static u_char *ngx_http_geo_copy_values(u_char *base, u_char *p,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel);
@@ -1420,18 +1427,17 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
     ngx_str_t *name)
 {
     u_char                     *base, ch;
+    off_t                       file_size;
     time_t                      mtime;
-    size_t                      size, len;
+    size_t                      size;
     ssize_t                     n;
     uint32_t                    crc32;
     ngx_err_t                   err;
     ngx_int_t                   rc;
-    ngx_uint_t                  i;
     ngx_file_t                  file;
     ngx_file_info_t             fi;
-    ngx_http_geo_range_t       *range, **ranges;
+    ngx_http_geo_range_t      **ranges;
     ngx_http_geo_header_t      *header;
-    ngx_http_variable_value_t  *vv;
 
     ngx_memzero(&file, sizeof(ngx_file_t));
     file.name = *name;
@@ -1470,13 +1476,31 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
         goto failed;
     }
 
-    size = (size_t) ngx_file_size(&fi);
+    if (!ngx_is_file(&fi)) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "binary geo range base \"%s\" is not a file",
+                           name->data);
+        goto failed;
+    }
+
+    file_size = ngx_file_size(&fi);
+
+    if (file_size < (off_t) sizeof(ngx_http_geo_header_t)
+        || file_size > (off_t) NGX_MAX_SIZE_T_VALUE)
+    {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+             "incompatible binary geo range base \"%s\"", name->data);
+        goto failed;
+    }
+
+    size = (size_t) file_size;
     mtime = ngx_file_mtime(&fi);
 
     ch = name->data[name->len - 4];
     name->data[name->len - 4] = '\0';
 
     if (ngx_file_info(name->data, &fi) == NGX_FILE_ERROR) {
+        name->data[name->len - 4] = ch;
         ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
                            ngx_file_info_n " \"%s\" failed", name->data);
         goto failed;
@@ -1512,57 +1536,32 @@ ngx_http_geo_include_binary_base(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
 
     header = (ngx_http_geo_header_t *) base;
 
-    if (size < 16 || ngx_memcmp(&ngx_http_geo_header, header, 12) != 0) {
+    if (ngx_memcmp(&ngx_http_geo_header, header,
+                   sizeof(ngx_http_geo_header_t) - sizeof(uint32_t))
+        != 0)
+    {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
              "incompatible binary geo range base \"%s\"", name->data);
         goto failed;
     }
 
-    ngx_crc32_init(crc32);
-
-    vv = (ngx_http_variable_value_t *) (base + sizeof(ngx_http_geo_header_t));
-
-    while (vv->data) {
-        len = ngx_align(sizeof(ngx_http_variable_value_t) + vv->len,
-                        sizeof(void *));
-        ngx_crc32_update(&crc32, (u_char *) vv, len);
-        vv->data += (size_t) base;
-        vv = (ngx_http_variable_value_t *) ((u_char *) vv + len);
-    }
-    ngx_crc32_update(&crc32, (u_char *) vv, sizeof(ngx_http_variable_value_t));
-    vv++;
-
-    ranges = (ngx_http_geo_range_t **) vv;
-
-    for (i = 0; i < 0x10000; i++) {
-        ngx_crc32_update(&crc32, (u_char *) &ranges[i], sizeof(void *));
-        if (ranges[i]) {
-            ranges[i] = (ngx_http_geo_range_t *)
-                            ((u_char *) ranges[i] + (size_t) base);
-        }
+    rc = ngx_http_geo_validate_binary_base(cf, ctx, name, base, size, &crc32,
+                                           &ranges);
+    if (rc == NGX_ERROR) {
+        goto done;
     }
 
-    range = (ngx_http_geo_range_t *) &ranges[0x10000];
-
-    while ((u_char *) range < base + size) {
-        while (range->value) {
-            ngx_crc32_update(&crc32, (u_char *) range,
-                             sizeof(ngx_http_geo_range_t));
-            range->value = (ngx_http_variable_value_t *)
-                               ((u_char *) range->value + (size_t) base);
-            range++;
-        }
-        ngx_crc32_update(&crc32, (u_char *) range, sizeof(void *));
-        range = (ngx_http_geo_range_t *) ((u_char *) range + sizeof(void *));
+    if (rc != NGX_OK) {
+        goto failed;
     }
-
-    ngx_crc32_final(crc32);
 
     if (crc32 != header->crc32) {
         ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
                   "CRC32 mismatch in binary geo range base \"%s\"", name->data);
         goto failed;
     }
+
+    ngx_http_geo_relocate_binary_base(base, size, ranges);
 
     ngx_conf_log_error(NGX_LOG_NOTICE, cf, 0,
                        "using binary geo range base \"%s\"", name->data);
@@ -1586,6 +1585,285 @@ done:
     }
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_geo_validate_binary_base(ngx_conf_t *cf,
+    ngx_http_geo_conf_ctx_t *ctx, ngx_str_t *name, u_char *base, size_t size,
+    uint32_t *crc32, ngx_http_geo_range_t ***ranges)
+{
+    u_char                     *last, *p, *next, *range_base;
+    size_t                      len, table_size;
+    uintptr_t                   data, offset;
+    uintptr_t                  *entry;
+    ngx_uint_t                  i, n;
+    u_short                     previous;
+    ngx_array_t                *values, *range_starts;
+    ngx_http_geo_range_t       *range, **rs;
+    ngx_http_variable_value_t  *vv;
+
+    last = base + size;
+    p = base + sizeof(ngx_http_geo_header_t);
+
+    values = ngx_array_create(ctx->temp_pool, 16, sizeof(uintptr_t));
+    if (values == NULL) {
+        return NGX_ERROR;
+    }
+
+    range_starts = ngx_array_create(ctx->temp_pool, 1024,
+                                    sizeof(uintptr_t));
+    if (range_starts == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_crc32_init(*crc32);
+
+    for ( ;; ) {
+        if ((uintptr_t) p % sizeof(void *) != 0
+            || (size_t) (last - p) < sizeof(ngx_http_variable_value_t))
+        {
+            goto invalid;
+        }
+
+        vv = (ngx_http_variable_value_t *) p;
+
+        if (vv->data == NULL) {
+            if (vv->len || vv->valid || vv->no_cacheable
+                || vv->not_found || vv->escape)
+            {
+                goto invalid;
+            }
+
+            ngx_crc32_update(crc32, p, sizeof(ngx_http_variable_value_t));
+            p += sizeof(ngx_http_variable_value_t);
+            break;
+        }
+
+        if (vv->valid != 1 || vv->no_cacheable || vv->not_found
+            || vv->escape)
+        {
+            goto invalid;
+        }
+
+        if (vv->len > (size_t) (last - p)
+                      - sizeof(ngx_http_variable_value_t))
+        {
+            goto invalid;
+        }
+
+        data = (uintptr_t) vv->data;
+        offset = (uintptr_t) (p + sizeof(ngx_http_variable_value_t) - base);
+
+        if (data != offset) {
+            goto invalid;
+        }
+
+        next = ngx_align_ptr(p + sizeof(ngx_http_variable_value_t) + vv->len,
+                             sizeof(void *));
+        if (next > last) {
+            goto invalid;
+        }
+
+        entry = ngx_array_push(values);
+        if (entry == NULL) {
+            return NGX_ERROR;
+        }
+
+        *entry = (uintptr_t) (p - base);
+
+        len = (size_t) (next - p);
+        ngx_crc32_update(crc32, p, len);
+
+        p = next;
+    }
+
+    table_size = 0x10000 * sizeof(ngx_http_geo_range_t *);
+
+    if ((uintptr_t) p % sizeof(void *) != 0
+        || (size_t) (last - p) < table_size)
+    {
+        goto invalid;
+    }
+
+    rs = (ngx_http_geo_range_t **) p;
+    *ranges = rs;
+    range_base = p + table_size;
+
+    for (i = 0; i < 0x10000; i++) {
+        ngx_crc32_update(crc32, (u_char *) &rs[i], sizeof(void *));
+
+        offset = (uintptr_t) rs[i];
+
+        if (offset == 0) {
+            continue;
+        }
+
+        if (offset < (uintptr_t) (range_base - base)
+            || offset > size - sizeof(void *)
+            || offset % sizeof(void *) != 0)
+        {
+            goto invalid;
+        }
+    }
+
+    p = range_base;
+
+    while (p < last) {
+        if ((uintptr_t) p % sizeof(void *) != 0) {
+            goto invalid;
+        }
+
+        entry = ngx_array_push(range_starts);
+        if (entry == NULL) {
+            return NGX_ERROR;
+        }
+
+        *entry = (uintptr_t) (p - base);
+
+        n = 0;
+        previous = 0;
+
+        for ( ;; ) {
+            if ((size_t) (last - p) < sizeof(void *)) {
+                goto invalid;
+            }
+
+            range = (ngx_http_geo_range_t *) p;
+
+            if (range->value == NULL) {
+                if (n == 0) {
+                    goto invalid;
+                }
+
+                ngx_crc32_update(crc32, p, sizeof(void *));
+                p += sizeof(void *);
+                break;
+            }
+
+            if ((size_t) (last - p) < sizeof(ngx_http_geo_range_t)) {
+                goto invalid;
+            }
+
+            offset = (uintptr_t) range->value;
+
+            if (ngx_http_geo_binary_search_offset(values, offset) != NGX_OK) {
+                goto invalid;
+            }
+
+            if (range->start > range->end
+                || (n != 0 && range->start <= previous))
+            {
+                goto invalid;
+            }
+
+            previous = range->end;
+
+            ngx_crc32_update(crc32, p, sizeof(ngx_http_geo_range_t));
+            p += sizeof(ngx_http_geo_range_t);
+            n++;
+        }
+    }
+
+    if (p != last) {
+        goto invalid;
+    }
+
+    for (i = 0; i < 0x10000; i++) {
+        offset = (uintptr_t) rs[i];
+
+        if (offset == 0) {
+            continue;
+        }
+
+        if (ngx_http_geo_binary_search_offset(range_starts, offset)
+            != NGX_OK)
+        {
+            goto invalid;
+        }
+    }
+
+    ngx_crc32_final(*crc32);
+
+    return NGX_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "invalid binary geo range base \"%s\"", name->data);
+
+    return NGX_DECLINED;
+}
+
+
+static void
+ngx_http_geo_relocate_binary_base(u_char *base, size_t size,
+    ngx_http_geo_range_t **ranges)
+{
+    u_char                     *last;
+    size_t                      len;
+    ngx_uint_t                  i;
+    ngx_http_geo_range_t       *range;
+    ngx_http_variable_value_t  *vv;
+
+    last = base + size;
+
+    vv = (ngx_http_variable_value_t *) (base + sizeof(ngx_http_geo_header_t));
+
+    while (vv->data) {
+        len = ngx_align(sizeof(ngx_http_variable_value_t) + vv->len,
+                        sizeof(void *));
+        vv->data = (u_char *) ((uintptr_t) vv->data + (uintptr_t) base);
+        vv = (ngx_http_variable_value_t *) ((u_char *) vv + len);
+    }
+
+    for (i = 0; i < 0x10000; i++) {
+        if (ranges[i]) {
+            ranges[i] = (ngx_http_geo_range_t *)
+                            ((uintptr_t) ranges[i] + (uintptr_t) base);
+        }
+    }
+
+    range = (ngx_http_geo_range_t *) &ranges[0x10000];
+
+    while ((u_char *) range < last) {
+        while (range->value) {
+            range->value = (ngx_http_variable_value_t *)
+                               ((uintptr_t) range->value + (uintptr_t) base);
+            range++;
+        }
+
+        range = (ngx_http_geo_range_t *) ((u_char *) range + sizeof(void *));
+    }
+}
+
+
+static ngx_int_t
+ngx_http_geo_binary_search_offset(ngx_array_t *offsets, uintptr_t offset)
+{
+    ngx_uint_t   i, left, right;
+    uintptr_t   *elts;
+
+    elts = offsets->elts;
+    left = 0;
+    right = offsets->nelts;
+
+    while (left < right) {
+        i = left + (right - left) / 2;
+
+        if (offset == elts[i]) {
+            return NGX_OK;
+        }
+
+        if (offset < elts[i]) {
+            right = i;
+
+        } else {
+            left = i + 1;
+        }
+    }
+
+    return NGX_DECLINED;
 }
 
 
