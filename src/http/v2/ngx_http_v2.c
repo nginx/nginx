@@ -38,15 +38,14 @@
 #define NGX_HTTP_V2_SETTINGS_PARAM_SIZE          6
 
 /* settings fields */
-#define NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING    0x1
-#define NGX_HTTP_V2_ENABLE_PUSH_SETTING          0x2
-#define NGX_HTTP_V2_MAX_STREAMS_SETTING          0x3
-#define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING     0x4
-#define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING       0x5
+#define NGX_HTTP_V2_HEADER_TABLE_SIZE_SETTING      0x1
+#define NGX_HTTP_V2_ENABLE_PUSH_SETTING            0x2
+#define NGX_HTTP_V2_MAX_STREAMS_SETTING            0x3
+#define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING       0x4
+#define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING         0x5
+#define NGX_HTTP_V2_NO_RFC7540_PRIORITIES_SETTING  0x9
 
 #define NGX_HTTP_V2_FRAME_BUFFER_SIZE            24
-
-#define NGX_HTTP_V2_ROOT                         (void *) -1
 
 
 static void ngx_http_v2_read_handler(ngx_event_t *rev);
@@ -84,6 +83,8 @@ static u_char *ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c,
 static u_char *ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end, ngx_http_v2_handler_pt handler);
 static u_char *ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c,
+    u_char *pos, u_char *end);
+static u_char *ngx_http_v2_state_priority_update(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
 static u_char *ngx_http_v2_state_rst_stream(ngx_http_v2_connection_t *h2c,
     u_char *pos, u_char *end);
@@ -176,9 +177,6 @@ static void ngx_http_v2_finalize_connection(ngx_http_v2_connection_t *h2c,
 
 static ngx_int_t ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c,
     ssize_t delta);
-static void ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
-    ngx_http_v2_node_t *node, ngx_uint_t depend, ngx_uint_t exclusive);
-static void ngx_http_v2_node_children_update(ngx_http_v2_node_t *node);
 
 static void ngx_http_v2_pool_cleanup(void *data);
 
@@ -288,7 +286,6 @@ ngx_http_v2_init(ngx_event_t *rev)
     h2c->state.handler = ngx_http_v2_state_preface;
 
     ngx_queue_init(&h2c->waiting);
-    ngx_queue_init(&h2c->dependencies);
     ngx_queue_init(&h2c->closed);
 
     c->data = h2c;
@@ -906,6 +903,11 @@ ngx_http_v2_state_head(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end)
                    "http2 frame type:%ui f:%Xd l:%uz sid:%ui",
                    type, h2c->state.flags, h2c->state.length, h2c->state.sid);
 
+    /* RFC9218: Handle PRIORITY_UPDATE frame (type 0x10) */
+    if (type == NGX_HTTP_V2_PRIORITY_UPDATE_FRAME) {
+        return ngx_http_v2_state_priority_update(h2c, pos, end);
+    }
+
     if (type >= NGX_HTTP_V2_FRAME_STATES) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent frame with unknown type %ui", type);
@@ -1164,8 +1166,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
     size_t                     size;
-    ngx_uint_t                 padded, priority, depend, dependency, excl,
-                               weight;
+    ngx_uint_t                 padded, priority;
     ngx_uint_t                 status;
     ngx_http_v2_node_t        *node;
     ngx_http_v2_stream_t      *stream;
@@ -1230,37 +1231,18 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         h2c->state.length -= h2c->state.padding;
     }
 
-    depend = 0;
-    excl = 0;
-    weight = NGX_HTTP_V2_DEFAULT_WEIGHT;
-
     if (priority) {
-        dependency = ngx_http_v2_parse_uint32(pos);
-
-        depend = dependency & 0x7fffffff;
-        excl = dependency >> 31;
-        weight = pos[4] + 1;
-
+        /* Skip RFC7540 priority data; RFC9218 uses Priority header instead */
         pos += sizeof(uint32_t) + 1;
     }
 
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 HEADERS frame sid:%ui "
-                   "depends on %ui excl:%ui weight:%ui",
-                   h2c->state.sid, depend, excl, weight);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 HEADERS frame sid:%ui", h2c->state.sid);
 
     if (h2c->state.sid % 2 == 0 || h2c->state.sid <= h2c->last_sid) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent HEADERS frame with incorrect identifier "
                       "%ui, the last was %ui", h2c->state.sid, h2c->last_sid);
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
-    if (depend == h2c->state.sid) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent HEADERS frame for stream %ui "
-                      "with incorrect dependency", h2c->state.sid);
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
@@ -1315,11 +1297,6 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
-    if (node->parent) {
-        ngx_queue_remove(&node->reuse);
-        h2c->closed_nodes--;
-    }
-
     stream = ngx_http_v2_create_stream(h2c);
     if (stream == NULL) {
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
@@ -1337,9 +1314,34 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     node->stream = stream;
 
-    if (priority || node->parent == NULL) {
-        node->weight = weight;
-        ngx_http_v2_set_dependency(h2c, node, depend, excl);
+    /*
+     * RFC9218: Apply any pending priority updates for this stream.
+     * PRIORITY_UPDATE frames may arrive before HEADERS.
+     */
+    if (h2c->pending_priorities) {
+        ngx_uint_t                       i, n;
+        ngx_http_v2_pending_priority_t  *pp;
+
+        pp = h2c->pending_priorities->elts;
+        n = h2c->pending_priorities->nelts;
+
+        for (i = 0; i < n; i++) {
+            if (pp[i].sid == node->id) {
+                stream->priority = pp[i].priority;
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                               "http2 applied pending priority for stream %ui: "
+                               "u=%ui", node->id, stream->priority.urgency);
+
+                /* Remove entry: swap with last and decrement count */
+                n--;
+                if (i < n) {
+                    pp[i] = pp[n];
+                }
+                h2c->pending_priorities->nelts = n;
+                break;
+            }
+        }
     }
 
     clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
@@ -1720,6 +1722,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_core_main_conf_t  *cmcf;
 
     static ngx_str_t cookie = ngx_string("cookie");
+    static ngx_str_t priority_name = ngx_string("priority");
 
     header = &h2c->state.header;
 
@@ -1815,6 +1818,37 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
                           "client sent invalid header: \"%V\"", &header->name);
 
             return ngx_http_v2_state_header_complete(h2c, pos, end);
+        }
+    }
+
+    /*
+     * RFC9218: Handle Priority request header for extensible priorities.
+     * Parse and store the priority parameters in the stream, but continue
+     * normal header processing so the header is visible to variables and
+     * forwarding.
+     *
+     * Parse the Priority header for RFC9218 extensible priorities.
+     */
+    if (header->name.len == priority_name.len
+        && ngx_memcmp(header->name.data, priority_name.data,
+                      priority_name.len) == 0)
+    {
+        ngx_http_priority_t  tmp;
+
+        ngx_http_priority_parse(&header->value, &tmp);
+
+        /*
+         * Only apply if value is empty (explicit reset) or at least one
+         * parameter was recognized.  This prevents malformed values from
+         * clobbering valid priorities set via PRIORITY_UPDATE.
+         */
+        if (header->value.len == 0 || tmp.valid) {
+            h2c->state.stream->priority = tmp;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http2 priority header: u=%ui, i=%ui",
+                           h2c->state.stream->priority.urgency,
+                           h2c->state.stream->priority.incremental);
         }
     }
 
@@ -1990,8 +2024,7 @@ static u_char *
 ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
-    ngx_uint_t           depend, dependency, excl, weight;
-    ngx_http_v2_node_t  *node;
+    ngx_uint_t  depend;
 
     if (h2c->state.length != NGX_HTTP_V2_PRIORITY_SIZE) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -2001,30 +2034,18 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
     }
 
-    if (--h2c->priority_limit == 0) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent too many PRIORITY frames");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
-    }
-
     if (end - pos < NGX_HTTP_V2_PRIORITY_SIZE) {
         return ngx_http_v2_state_save(h2c, pos, end,
                                       ngx_http_v2_state_priority);
     }
 
-    dependency = ngx_http_v2_parse_uint32(pos);
-
-    depend = dependency & 0x7fffffff;
-    excl = dependency >> 31;
-    weight = pos[4] + 1;
+    depend = ngx_http_v2_parse_uint32(pos) & 0x7fffffff;
 
     pos += NGX_HTTP_V2_PRIORITY_SIZE;
 
-    ngx_log_debug4(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                   "http2 PRIORITY frame sid:%ui "
-                   "depends on %ui excl:%ui weight:%ui",
-                   h2c->state.sid, depend, excl, weight);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 PRIORITY frame sid:%ui ignored",
+                   h2c->state.sid);
 
     if (h2c->state.sid == 0) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -2041,27 +2062,184 @@ ngx_http_v2_state_priority(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
-    node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
-
-    if (node == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+    if (--h2c->priority_limit == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent too many PRIORITY frames");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
     }
 
-    node->weight = weight;
+    return ngx_http_v2_state_complete(h2c, pos, end);
+}
 
-    if (node->stream == NULL) {
-        if (node->parent == NULL) {
-            h2c->closed_nodes++;
 
-        } else {
-            ngx_queue_remove(&node->reuse);
+static u_char *
+ngx_http_v2_state_priority_update(ngx_http_v2_connection_t *h2c, u_char *pos,
+    u_char *end)
+{
+    size_t                           len;
+    ngx_str_t                        value;
+    ngx_uint_t                       i, sid;
+    ngx_http_v2_node_t              *node;
+    ngx_http_priority_t              priority;
+    ngx_http_v2_stream_t            *stream;
+    ngx_http_v2_srv_conf_t          *h2scf;
+    ngx_http_v2_pending_priority_t  *pp;
+
+    /*
+     * RFC9218: PRIORITY_UPDATE frame format:
+     *   - Prioritized Stream ID (31 bits)
+     *   - Priority Field Value (variable length)
+     *
+     * Must be sent on stream 0, for client-initiated streams only.
+     */
+
+    if (h2c->state.sid != 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE frame on non-zero stream");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    if (h2c->state.length < 4) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE frame too short");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    len = h2c->state.length;
+
+    if ((size_t) (end - pos) < len) {
+        /*
+         * Frame is fragmented.  Only buffer if it fits in state buffer,
+         * otherwise skip to avoid overflow.
+         */
+        if (len > NGX_HTTP_V2_STATE_BUFFER_SIZE) {
+            if (--h2c->priority_limit == 0) {
+                ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                              "client sent too many PRIORITY_UPDATE frames");
+                return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_ENHANCE_YOUR_CALM);
+            }
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2 PRIORITY_UPDATE frame too large to buffer: "
+                           "%uz", len);
+            return ngx_http_v2_state_skip(h2c, pos, end);
         }
 
-        ngx_queue_insert_tail(&h2c->closed, &node->reuse);
+        return ngx_http_v2_state_save(h2c, pos, end,
+                                      ngx_http_v2_state_priority_update);
     }
 
-    ngx_http_v2_set_dependency(h2c, node, depend, excl);
+    if (--h2c->priority_limit == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent too many PRIORITY_UPDATE frames");
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_ENHANCE_YOUR_CALM);
+    }
 
+    /* Parse Prioritized Stream ID (first 4 bytes, top bit reserved) */
+    sid = ngx_http_v2_parse_uint32(pos) & 0x7fffffff;
+    pos += 4;
+    len -= 4;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 PRIORITY_UPDATE frame for stream %ui, len=%uz",
+                   sid, len);
+
+    /* Must be odd (client-initiated) */
+    if (sid == 0 || (sid & 1) == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent PRIORITY_UPDATE for invalid stream %ui",
+                      sid);
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+    }
+
+    /* Parse Priority Field Value */
+    value.data = pos;
+    value.len = len;
+
+    ngx_http_priority_parse(&value, &priority);
+
+    /*
+     * Only apply if value is empty (explicit reset) or at least one
+     * parameter was recognized.  This prevents malformed values from
+     * clobbering previously set valid priorities.
+     */
+    if (value.len != 0 && !priority.valid) {
+        goto done;
+    }
+
+    node = ngx_http_v2_get_node_by_id(h2c, sid, 0);
+
+    if (node && node->stream) {
+        /* Stream exists, apply priority immediately */
+        stream = node->stream;
+        stream->priority = priority;
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 PRIORITY_UPDATE applied to stream %ui: "
+                       "u=%ui, i=%ui",
+                       sid, stream->priority.urgency,
+                       stream->priority.incremental);
+
+    } else if (sid > h2c->last_sid) {
+        /*
+         * Stream doesn't exist yet (sid > last_sid), buffer the priority.
+         * If sid <= last_sid, the stream already existed and is now closed,
+         * so there's no point buffering since it will never be created again.
+         */
+        h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                             ngx_http_v2_module);
+
+        if (h2c->pending_priorities == NULL) {
+            h2c->pending_priorities = ngx_array_create(h2c->pool, 4,
+                                        sizeof(ngx_http_v2_pending_priority_t));
+            if (h2c->pending_priorities == NULL) {
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+        }
+
+        /* Check if we already have a pending priority for this stream */
+        pp = h2c->pending_priorities->elts;
+        for (i = 0; i < h2c->pending_priorities->nelts; i++) {
+            if (pp[i].sid == sid) {
+                /* Update existing entry */
+                pp[i].priority = priority;
+
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                               "http2 PRIORITY_UPDATE updated pending for "
+                               "stream %ui: u=%ui",
+                               sid, pp[i].priority.urgency);
+                goto done;
+            }
+        }
+
+        /* Cap pending priorities at max_concurrent_streams */
+        if (h2c->pending_priorities->nelts >= h2scf->concurrent_streams) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2 PRIORITY_UPDATE ignored, pending limit "
+                           "reached for stream %ui", sid);
+            goto done;
+        }
+
+        /* Add new pending entry */
+        pp = ngx_array_push(h2c->pending_priorities);
+        if (pp == NULL) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
+        }
+
+        pp->sid = sid;
+        pp->priority = priority;
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                       "http2 PRIORITY_UPDATE buffered for stream "
+                       "%ui: u=%ui", sid, pp->priority.urgency);
+    }
+
+done:
+
+    pos += h2c->state.length - 4;
     return ngx_http_v2_state_complete(h2c, pos, end);
 }
 
@@ -2735,7 +2913,14 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
         return NGX_ERROR;
     }
 
-    len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 3;
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    /*
+     * Settings: MAX_STREAMS, INIT_WINDOW_SIZE, MAX_FRAME_SIZE,
+     * NO_RFC7540_PRIORITIES
+     */
+    len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 4;
 
     buf = ngx_create_temp_buf(h2c->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE + len);
     if (buf == NULL) {
@@ -2763,9 +2948,6 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     buf->last = ngx_http_v2_write_sid(buf->last, 0);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
-
     buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_MAX_STREAMS_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
@@ -2779,6 +2961,14 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
                                          NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
                                          NGX_HTTP_V2_MAX_FRAME_SIZE);
+
+    /* RFC9218: Signal that we use extensible priorities */
+    buf->last = ngx_http_v2_write_uint16(buf->last,
+                                NGX_HTTP_V2_NO_RFC7540_PRIORITIES_SETTING);
+    buf->last = ngx_http_v2_write_uint32(buf->last, 1);
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                   "http2 RFC9218 extensible priorities enabled");
 
     ngx_http_v2_queue_blocked_frame(h2c, frame);
 
@@ -3106,6 +3296,9 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
     stream->request = r;
     stream->connection = h2c;
 
+    /* RFC9218: Initialize with default priority */
+    ngx_http_priority_init(&stream->priority);
+
     h2scf = ngx_http_get_module_srv_conf(r, ngx_http_v2_module);
 
     stream->send_window = h2c->init_window;
@@ -3159,8 +3352,6 @@ ngx_http_v2_get_node_by_id(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
 
     node->id = sid;
 
-    ngx_queue_init(&node->children);
-
     node->index = h2c->streams_index[index];
     h2c->streams_index[index] = node;
 
@@ -3171,13 +3362,8 @@ ngx_http_v2_get_node_by_id(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
 static ngx_http_v2_node_t *
 ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
 {
-    ngx_uint_t               weight;
-    ngx_queue_t             *q, *children;
-    ngx_http_v2_node_t      *node, **next, *n, *parent, *child;
-    ngx_http_v2_srv_conf_t  *h2scf;
-
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
+    ngx_queue_t         *q;
+    ngx_http_v2_node_t  *node;
 
     h2c->closed_nodes--;
 
@@ -3186,62 +3372,6 @@ ngx_http_v2_get_closed_node(ngx_http_v2_connection_t *h2c)
     ngx_queue_remove(q);
 
     node = ngx_queue_data(q, ngx_http_v2_node_t, reuse);
-
-    next = &h2c->streams_index[ngx_http_v2_index(h2scf, node->id)];
-
-    for ( ;; ) {
-        n = *next;
-
-        if (n == node) {
-            *next = n->index;
-            break;
-        }
-
-        next = &n->index;
-    }
-
-    ngx_queue_remove(&node->queue);
-
-    weight = 0;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-        weight += child->weight;
-    }
-
-    parent = node->parent;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-        child->parent = parent;
-        child->weight = node->weight * child->weight / weight;
-
-        if (child->weight == 0) {
-            child->weight = 1;
-        }
-    }
-
-    if (parent == NGX_HTTP_V2_ROOT) {
-        node->rank = 0;
-        node->rel_weight = 1.0;
-
-        children = &h2c->dependencies;
-
-    } else {
-        node->rank = parent->rank;
-        node->rel_weight = parent->rel_weight;
-
-        children = &parent->children;
-    }
-
-    ngx_http_v2_node_children_update(node);
-    ngx_queue_add(children, &node->children);
 
     ngx_memzero(node, sizeof(ngx_http_v2_node_t));
 
@@ -4566,7 +4696,8 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     ngx_pool_t                *pool;
     ngx_event_t               *ev;
     ngx_connection_t          *fc;
-    ngx_http_v2_node_t        *node;
+    ngx_http_v2_node_t        *node, **next, *n;
+    ngx_http_v2_srv_conf_t    *h2scf;
     ngx_http_v2_connection_t  *h2c;
 
     h2c = stream->connection;
@@ -4610,6 +4741,23 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
     }
 
     node->stream = NULL;
+
+    /* Remove node from streams_index before adding to closed queue */
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    next = &h2c->streams_index[ngx_http_v2_index(h2scf, node->id)];
+
+    for ( ;; ) {
+        n = *next;
+
+        if (n == node) {
+            *next = n->index;
+            break;
+        }
+
+        next = &n->index;
+    }
 
     ngx_queue_insert_tail(&h2c->closed, &node->reuse);
     h2c->closed_nodes++;
@@ -4959,117 +5107,6 @@ ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c, ssize_t delta)
     }
 
     return NGX_OK;
-}
-
-
-static void
-ngx_http_v2_set_dependency(ngx_http_v2_connection_t *h2c,
-    ngx_http_v2_node_t *node, ngx_uint_t depend, ngx_uint_t exclusive)
-{
-    ngx_queue_t         *children, *q;
-    ngx_http_v2_node_t  *parent, *child, *next;
-
-    parent = depend ? ngx_http_v2_get_node_by_id(h2c, depend, 0) : NULL;
-
-    if (parent == NULL) {
-        parent = NGX_HTTP_V2_ROOT;
-
-        if (depend != 0) {
-            exclusive = 0;
-        }
-
-        node->rank = 1;
-        node->rel_weight = (1.0 / 256) * node->weight;
-
-        children = &h2c->dependencies;
-
-    } else {
-        if (node->parent != NULL) {
-
-            for (next = parent->parent;
-                 next != NGX_HTTP_V2_ROOT && next->rank >= node->rank;
-                 next = next->parent)
-            {
-                if (next != node) {
-                    continue;
-                }
-
-                ngx_queue_remove(&parent->queue);
-                ngx_queue_insert_after(&node->queue, &parent->queue);
-
-                parent->parent = node->parent;
-
-                if (node->parent == NGX_HTTP_V2_ROOT) {
-                    parent->rank = 1;
-                    parent->rel_weight = (1.0 / 256) * parent->weight;
-
-                } else {
-                    parent->rank = node->parent->rank + 1;
-                    parent->rel_weight = (node->parent->rel_weight / 256)
-                                         * parent->weight;
-                }
-
-                if (!exclusive) {
-                    ngx_http_v2_node_children_update(parent);
-                }
-
-                break;
-            }
-        }
-
-        node->rank = parent->rank + 1;
-        node->rel_weight = (parent->rel_weight / 256) * node->weight;
-
-        if (parent->stream == NULL) {
-            ngx_queue_remove(&parent->reuse);
-            ngx_queue_insert_tail(&h2c->closed, &parent->reuse);
-        }
-
-        children = &parent->children;
-    }
-
-    if (exclusive) {
-        for (q = ngx_queue_head(children);
-             q != ngx_queue_sentinel(children);
-             q = ngx_queue_next(q))
-        {
-            child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-            child->parent = node;
-        }
-
-        ngx_queue_add(&node->children, children);
-        ngx_queue_init(children);
-    }
-
-    if (node->parent != NULL) {
-        ngx_queue_remove(&node->queue);
-    }
-
-    ngx_queue_insert_tail(children, &node->queue);
-
-    node->parent = parent;
-
-    ngx_http_v2_node_children_update(node);
-}
-
-
-static void
-ngx_http_v2_node_children_update(ngx_http_v2_node_t *node)
-{
-    ngx_queue_t         *q;
-    ngx_http_v2_node_t  *child;
-
-    for (q = ngx_queue_head(&node->children);
-         q != ngx_queue_sentinel(&node->children);
-         q = ngx_queue_next(q))
-    {
-        child = ngx_queue_data(q, ngx_http_v2_node_t, queue);
-
-        child->rank = node->rank + 1;
-        child->rel_weight = (node->rel_weight / 256) * child->weight;
-
-        ngx_http_v2_node_children_update(child);
-    }
 }
 
 
