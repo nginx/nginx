@@ -2047,7 +2047,13 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 }
 
                 if (ctx->end_stream) {
-                    u->headers_in.content_length_n = 0;
+                    if (u->headers_in.content_length == NULL) {
+                        u->headers_in.content_length_n = 0;
+                    } else if (u->headers_in.content_length_n > 0) {
+                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                      "upstream prematurely closed stream");
+                        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                    }
 
                     if (ctx->in == NULL
                         && ctx->out == NULL
