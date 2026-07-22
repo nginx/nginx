@@ -1605,7 +1605,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
-                    if (status < NGX_HTTP_OK && status != NGX_HTTP_EARLY_HINTS)
+                    if (status < 100 || status == NGX_HTTP_SWITCHING_PROTOCOLS)
                     {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream sent unexpected :status \"%V\"",
@@ -1639,7 +1639,10 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 h->lowcase_key = h->key.data;
                 h->hash = ngx_hash_key(h->key.data, h->key.len);
 
-                if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+                if (r->upstream->headers_in.status_n < NGX_HTTP_OK
+                    && (r->upstream->headers_in.status_n
+                        != NGX_HTTP_SWITCHING_PROTOCOLS))
+                {
                     continue;
                 }
 
@@ -1664,7 +1667,11 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "http proxy header done");
 
-                if (u->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
+                if (u->headers_in.status_n >= 100
+                    && u->headers_in.status_n < NGX_HTTP_OK
+                    && (r->upstream->headers_in.status_n
+                        != NGX_HTTP_SWITCHING_PROTOCOLS))
+                {
                     if (ctx->end_stream) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream prematurely closed stream");
@@ -1723,7 +1730,8 @@ ngx_http_proxy_v2_filter_init(void *data)
         return NGX_ERROR;
     }
 
-    if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
+    if (u->headers_in.status_n < NGX_HTTP_OK
+        || u->headers_in.status_n == NGX_HTTP_NO_CONTENT
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
         || ctx->ctx.head)
     {

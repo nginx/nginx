@@ -595,12 +595,17 @@ static ngx_int_t
 ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
 {
     size_t                  len, n;
+    u_char                  status_buf[3];
     ngx_buf_t              *b;
-    ngx_uint_t              i;
+    ngx_str_t               status_key, status_value;
+    ngx_uint_t              i, status;
     ngx_chain_t            *out, *hl, *cl;
     ngx_list_part_t        *part;
     ngx_table_elt_t        *header;
+    ngx_http_upstream_t    *u;
     ngx_http_v3_session_t  *h3c;
+
+    u = r->upstream;
 
     if (r->http_version != NGX_HTTP_VERSION_30) {
         return ngx_http_next_early_hints_filter(r);
@@ -641,7 +646,16 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
 
     len += ngx_http_v3_encode_field_section_prefix(NULL, 0, 0, 0);
 
-    len += ngx_http_v3_encode_field_ri(NULL, 0, NGX_HTTP_V3_HEADER_STATUS_103);
+    status = u->headers_in.status_n;
+    if (status == NGX_HTTP_EARLY_HINTS) {
+        len += ngx_http_v3_encode_field_ri(NULL, 0, NGX_HTTP_V3_HEADER_STATUS_103);
+    } else {
+        ngx_sprintf(status_buf, "%03ui", status);
+        status_key = (ngx_str_t)ngx_string(":status");
+        status_value.len = 3;
+        status_value.data = status_buf;
+        len += ngx_http_v3_encode_field_l(NULL, &status_key, &status_value);
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 header len:%uz", len);
@@ -656,10 +670,15 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http3 output header: \":status: %03ui\"",
-                   (ngx_uint_t) NGX_HTTP_EARLY_HINTS);
+                   (ngx_uint_t) status);
 
-    b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
+    if (status == NGX_HTTP_EARLY_HINTS) {
+        b->last = (u_char *) ngx_http_v3_encode_field_ri(b->last, 0,
                                                 NGX_HTTP_V3_HEADER_STATUS_103);
+    } else {
+        b->last = (u_char *) ngx_http_v3_encode_field_l(b->last, &status_key,
+                                                        &status_value);
+    }
 
     part = &r->headers_out.headers.part;
     header = part->elts;
