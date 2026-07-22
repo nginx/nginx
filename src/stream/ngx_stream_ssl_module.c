@@ -80,6 +80,7 @@ static ngx_conf_enum_t  ngx_stream_ssl_verify[] = {
     { ngx_string("on"), 1 },
     { ngx_string("optional"), 2 },
     { ngx_string("optional_no_ca"), 3 },
+    { ngx_string("partial_chain"), 4 },
     { ngx_null_string, 0 }
 };
 
@@ -477,7 +478,7 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
             return NGX_ERROR;
         }
 
-        if (sscf->verify == 1) {
+        if (sscf->verify == 1 || sscf->verify == 4) {
             cert = SSL_get_peer_certificate(c->ssl->connection);
 
             if (cert == NULL) {
@@ -1103,6 +1104,7 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->verify) {
 
         if (conf->verify != 3
+            && conf->verify != 4
             && conf->client_certificate.len == 0
             && conf->trusted_certificate.len == 0)
         {
@@ -1127,6 +1129,12 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         != NGX_OK)
     {
         return NGX_CONF_ERROR;
+    }
+
+    if (conf->verify == 4) {
+        if (ngx_ssl_partial_chain(cf, &conf->ssl) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {

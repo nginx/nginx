@@ -104,6 +104,19 @@ Thanks to kodareef5.
 </para>
 </change>
 
+<change type="feature">
+<para lang="ru">
+параметр "partial_chain" директивы "ssl_verify_client"
+для проверки сертификата клиента по промежуточному сертификату
+без восстановления полной цепочки доверия.
+</para>
+<para lang="en">
+the "partial_chain" parameter of the "ssl_verify_client" directive
+to verify client certificates against an intermediate CA
+without requiring a full chain of trust to a root certificate.
+</para>
+</change>
+
 </changes>
 
 

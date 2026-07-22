@@ -2155,7 +2155,7 @@ ngx_http_process_request(ngx_http_request_t *r)
                 return;
             }
 
-            if (sscf->verify == 1) {
+            if (sscf->verify == 1 || sscf->verify == 4) {
                 cert = SSL_get_peer_certificate(c->ssl->connection);
 
                 if (cert == NULL) {

@@ -421,7 +421,7 @@ ngx_mail_verify_cert(ngx_mail_session_t *s, ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (sslcf->verify == 1) {
+    if (sslcf->verify == 1 || sslcf->verify == 4) {
         cert = SSL_get_peer_certificate(c->ssl->connection);
 
         if (cert == NULL) {
