@@ -1730,7 +1730,7 @@ ngx_ssl_ech_files(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *filenames)
 
     if (OSSL_ECHSTORE_num_keys(es, &numkeys) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "OSSL_ECHSTORE_num_keys(%s) failed");
+                      "OSSL_ECHSTORE_num_keys() failed");
         goto cleanup;
     }
 
