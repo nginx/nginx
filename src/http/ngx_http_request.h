@@ -43,6 +43,7 @@
 #define NGX_HTTP_PATCH                     0x00004000
 #define NGX_HTTP_TRACE                     0x00008000
 #define NGX_HTTP_CONNECT                   0x00010000
+#define NGX_HTTP_QUERY                     0x00020000
 
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2

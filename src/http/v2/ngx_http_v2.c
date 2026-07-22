@@ -3403,11 +3403,6 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
     ngx_uint_t     n;
     const u_char  *p, *m;
 
-    /*
-     * This array takes less than 256 sequential bytes,
-     * and if typical CPU cache line size is 64 bytes,
-     * it is prefetched for 4 load operations.
-     */
     static const struct {
         u_char            len;
         const u_char      method[11];
@@ -3428,7 +3423,8 @@ ngx_http_v2_parse_method(ngx_http_request_t *r, ngx_str_t *value)
         { 6, "UNLOCK",    NGX_HTTP_UNLOCK },
         { 5, "PATCH",     NGX_HTTP_PATCH },
         { 5, "TRACE",     NGX_HTTP_TRACE },
-        { 7, "CONNECT",   NGX_HTTP_CONNECT }
+        { 7, "CONNECT",   NGX_HTTP_CONNECT },
+        { 5, "QUERY",     NGX_HTTP_QUERY }
     }, *test;
 
     if (r->method_name.len) {
