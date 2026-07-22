@@ -133,6 +133,7 @@ static ngx_int_t ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+static ngx_uint_t ngx_http_proxy_v2_connection_specific(ngx_str_t *name);
 static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
     ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
@@ -1626,6 +1627,29 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 } else if (!ctx->status) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "upstream sent no :status header");
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
+                /*
+                 * RFC 9113, 8.2.2: an HTTP/2 message that contains
+                 * connection-specific header fields is malformed.
+                 * RFC 9110, 7.6.1 lists Connection, Proxy-Connection,
+                 * Keep-Alive, TE, Transfer-Encoding, and Upgrade.  On the
+                 * HTTP/2 wire all of these are malformed regardless of the
+                 * response, so all are rejected; Upgrade in particular is
+                 * defined for 101 and 426 responses but still may not
+                 * appear over HTTP/2.  TE is request-only (RFC 9110,
+                 * 10.1.4), so the "TE: trailers" request allowance does
+                 * not apply here.  Header names on the wire are lowercase
+                 * and have already been validated as such by
+                 * ngx_http_proxy_v2_validate_header_name().
+                 */
+
+                if (ngx_http_proxy_v2_connection_specific(&ctx->name)) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent connection-specific "
+                                  "header \"%V: %V\"",
+                                  &ctx->name, &ctx->value);
                     return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                 }
 
@@ -3362,6 +3386,33 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
     }
 
     return NGX_DONE;
+}
+
+
+static ngx_uint_t
+ngx_http_proxy_v2_connection_specific(ngx_str_t *name)
+{
+    ngx_uint_t  i;
+
+    static ngx_str_t  headers[] = {
+        ngx_string("connection"),
+        ngx_string("proxy-connection"),
+        ngx_string("keep-alive"),
+        ngx_string("te"),
+        ngx_string("transfer-encoding"),
+        ngx_string("upgrade"),
+        ngx_null_string
+    };
+
+    for (i = 0; headers[i].len; i++) {
+        if (name->len == headers[i].len
+            && ngx_strncmp(name->data, headers[i].data, headers[i].len) == 0)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 
