@@ -57,6 +57,7 @@ typedef struct {
     ngx_http_complex_value_t    *shcv;
 
     size_t                       buffer_size;
+    ngx_int_t                    max_pixels;
 } ngx_http_image_filter_conf_t;
 
 
@@ -168,6 +169,13 @@ static ngx_command_t  ngx_http_image_filter_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_image_filter_conf_t, buffer_size),
+      NULL },
+
+    { ngx_string("image_filter_max_pixels"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_image_filter_conf_t, max_pixels),
       NULL },
 
       ngx_null_command
@@ -747,8 +755,10 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             return NGX_DECLINED;
         }
 
-        width = p[18] * 256 + p[19];
-        height = p[22] * 256 + p[23];
+        width = (ngx_uint_t) p[16] * 16777216 + p[17] * 65536
+                + p[18] * 256 + p[19];
+        height = (ngx_uint_t) p[20] * 16777216 + p[21] * 65536
+                 + p[22] * 256 + p[23];
 
         break;
 
@@ -830,6 +840,18 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     ngx_pool_cleanup_t            *cln;
     ngx_http_image_filter_conf_t  *conf;
 
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
+
+    if (conf->max_pixels
+        && ctx->height
+        && ctx->width > (ngx_uint_t) conf->max_pixels / ctx->height)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "image filter: source dimensions out of range: "
+                      "%ui x %ui", ctx->width, ctx->height);
+        return NULL;
+    }
+
     src = ngx_http_image_source(r, ctx);
 
     if (src == NULL) {
@@ -838,8 +860,6 @@ ngx_http_image_resize(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 
     sx = gdImageSX(src);
     sy = gdImageSY(src);
-
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
 
     if (!ctx->force
         && ctx->angle == 0
@@ -1139,7 +1159,19 @@ ngx_http_image_source(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
 static gdImagePtr
 ngx_http_image_new(ngx_http_request_t *r, int w, int h, int colors)
 {
-    gdImagePtr  img;
+    gdImagePtr                     img;
+    ngx_http_image_filter_conf_t  *conf;
+
+    conf = ngx_http_get_module_loc_conf(r, ngx_http_image_filter_module);
+
+    if (w <= 0 || h <= 0
+        || (conf->max_pixels
+            && (ngx_uint_t) w > (ngx_uint_t) conf->max_pixels / (ngx_uint_t) h))
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "image filter: dimensions out of range: %d x %d", w, h);
+        return NULL;
+    }
 
     if (colors == 0) {
         img = gdImageCreateTrueColor(w, h);
@@ -1303,6 +1335,7 @@ ngx_http_image_filter_create_conf(ngx_conf_t *cf)
     conf->transparency = NGX_CONF_UNSET;
     conf->interlace = NGX_CONF_UNSET;
     conf->buffer_size = NGX_CONF_UNSET_SIZE;
+    conf->max_pixels = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1364,6 +1397,8 @@ ngx_http_image_filter_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               1 * 1024 * 1024);
+
+    ngx_conf_merge_value(conf->max_pixels, prev->max_pixels, 20 * 1000 * 1000);
 
     return NGX_CONF_OK;
 }
