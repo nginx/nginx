@@ -59,7 +59,6 @@ static ngx_conf_enum_t  ngx_mail_ssl_verify[] = {
     { ngx_string("on"), 1 },
     { ngx_string("optional"), 2 },
     { ngx_string("optional_no_ca"), 3 },
-    { ngx_string("partial_chain"), 4 },
     { ngx_null_string, 0 }
 };
 
@@ -174,6 +173,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_ssl_conf_t, verify),
       &ngx_mail_ssl_verify },
+
+    { ngx_string("ssl_verify_partial_chain"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, verify_partial_chain),
+      NULL },
 
     { ngx_string("ssl_verify_depth"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
@@ -325,6 +331,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
     scf->certificate_compression = NGX_CONF_UNSET;
     scf->verify = NGX_CONF_UNSET_UINT;
     scf->verify_depth = NGX_CONF_UNSET_UINT;
+    scf->verify_partial_chain = NGX_CONF_UNSET;
     scf->builtin_session_cache = NGX_CONF_UNSET;
     scf->session_timeout = NGX_CONF_UNSET;
     scf->session_tickets = NGX_CONF_UNSET;
@@ -360,6 +367,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
     ngx_conf_merge_uint_value(conf->verify_depth, prev->verify_depth, 1);
+    ngx_conf_merge_value(conf->verify_partial_chain,
+                         prev->verify_partial_chain, 0);
 
     ngx_conf_merge_ptr_value(conf->certificates, prev->certificates, NULL);
     ngx_conf_merge_ptr_value(conf->certificate_keys, prev->certificate_keys,
@@ -484,24 +493,51 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         {
             return NGX_CONF_ERROR;
         }
+    }
 
-        if (ngx_ssl_trusted_certificate(cf, &conf->ssl,
-                                        &conf->trusted_certificate,
-                                        conf->verify_depth)
-            != NGX_OK)
+    if (conf->verify_partial_chain) {
+
+        if (conf->verify == 0) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "\"ssl_verify_partial_chain\" requires "
+                          "\"ssl_verify_client\" to be enabled");
+            return NGX_CONF_ERROR;
+        }
+
+        if (conf->verify == 3) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "\"ssl_verify_partial_chain\" is incompatible "
+                          "with \"ssl_verify_client optional_no_ca\"");
+            return NGX_CONF_ERROR;
+        }
+
+        if (conf->client_certificate.len == 0
+            && conf->trusted_certificate.len == 0)
         {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                          "no ssl_client_certificate or "
+                          "ssl_trusted_certificate for "
+                          "ssl_verify_partial_chain");
             return NGX_CONF_ERROR;
         }
+    }
 
-        if (conf->verify == 4) {
-            if (ngx_ssl_partial_chain(cf, &conf->ssl) != NGX_OK) {
-                return NGX_CONF_ERROR;
-            }
-        }
+    if (ngx_ssl_trusted_certificate(cf, &conf->ssl,
+                                    &conf->trusted_certificate,
+                                    conf->verify_depth)
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
 
-        if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
+    if (conf->verify_partial_chain) {
+        if (ngx_ssl_partial_chain(cf, &conf->ssl) != NGX_OK) {
             return NGX_CONF_ERROR;
         }
+    }
+
+    if (ngx_ssl_crl(cf, &conf->ssl, &conf->crl) != NGX_OK) {
+        return NGX_CONF_ERROR;
     }
 
     if (ngx_ssl_dhparam(cf, &conf->ssl, &conf->dhparam) != NGX_OK) {
