@@ -1861,6 +1861,8 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
                            st->type, st->length);
 
             if (st->type != NGX_HTTP_V3_FRAME_DATA && st->length > 0) {
+                st->skip = st->length;
+                st->length = 0;
                 st->state = sw_skip;
                 break;
             }
@@ -1870,7 +1872,7 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
 
         case sw_skip:
 
-            rc = ngx_http_v3_parse_skip(b, &st->length);
+            rc = ngx_http_v3_parse_skip(b, &st->skip);
             if (rc != NGX_DONE) {
                 return rc;
             }
