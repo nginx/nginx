@@ -1392,6 +1392,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 r->args_start = p;
                 goto args;
             case '#':
+                *--p = '\0';
+                r->uri_end = p;
                 goto done;
             case '.':
                 r->uri_ext = u + 1;
@@ -1439,6 +1441,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 r->args_start = p;
                 goto args;
             case '#':
+                *--p = '\0';
+                r->uri_end = p;
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -1483,6 +1487,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 goto args;
             case '#':
                 u--;
+                *--p = '\0';
+                r->uri_end = p;
                 goto done;
             case '+':
                 r->plus_in_uri = 1;
@@ -1528,6 +1534,8 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                     goto args;
                 }
                 if (ch == '#') {
+                    *--p = '\0';
+                    r->uri_end = p;
                     goto done;
                 }
                 state = sw_slash;
@@ -1652,7 +1660,9 @@ args:
             continue;
         }
 
-        r->args.len = p - 1 - r->args_start;
+        *--p = '\0';
+        r->uri_end = p;
+        r->args.len = p - r->args_start;
         r->args.data = r->args_start;
         r->args_start = NULL;
 
