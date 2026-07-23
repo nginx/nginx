@@ -318,6 +318,18 @@ Thanks to kodareef5.
 </para>
 </change>
 
+<change type="feature">
+<para lang="ru">
+директива "ssl_verify_partial_chain" для проверки сертификата клиента
+по промежуточному сертификату без восстановления полной цепочки доверия.
+</para>
+<para lang="en">
+the "ssl_verify_partial_chain" directive to verify client certificates
+against an intermediate CA without requiring a full chain of trust
+to a root certificate.
+</para>
+</change>
+
 </changes>
 
 

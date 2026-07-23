@@ -1168,6 +1168,32 @@ ngx_ssl_crl(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *crl)
 }
 
 
+ngx_int_t
+ngx_ssl_partial_chain(ngx_conf_t *cf, ngx_ssl_t *ssl)
+{
+#ifdef X509_V_FLAG_PARTIAL_CHAIN
+    X509_STORE  *store;
+
+    store = SSL_CTX_get_cert_store(ssl->ctx);
+
+    if (store == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_get_cert_store() failed");
+        return NGX_ERROR;
+    }
+
+    X509_STORE_set_flags(store, X509_V_FLAG_PARTIAL_CHAIN);
+
+    return NGX_OK;
+#else
+    ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
+                  "\"ssl_verify_partial_chain\" is not supported "
+                  "on this platform");
+    return NGX_ERROR;
+#endif
+}
+
+
 static ngx_inline ngx_int_t
 ngx_ssl_cert_already_in_hash(void)
 {
