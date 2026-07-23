@@ -190,11 +190,18 @@ ngx_http_test_if_match(ngx_http_request_t *r, ngx_table_elt_t *header,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http im:\"%V\" etag:%V", list, &etag);
 
-    if (weak
-        && etag.len > 2
+    if (etag.len > 2
         && etag.data[0] == 'W'
         && etag.data[1] == '/')
     {
+        if (!weak) {
+            /*
+             * RFC 9110, section 8.8.3.2: a weak entity tag can never
+             * strong-match
+             */
+            return 0;
+        }
+
         etag.len -= 2;
         etag.data += 2;
     }
