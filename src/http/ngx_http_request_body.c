@@ -79,7 +79,56 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
 
     r->request_body = rb;
 
-    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked) {
+    if (r->upstream && r->upstream->upgrade) {
+
+#if (NGX_HTTP_V2)
+
+        /*
+         * Upgraded DATA is consumed by ngx_http_upstream_process_upgraded()
+         * only while r->reading_body is set.  Do not wait for stream FIN.
+         */
+
+        if (r->stream && !r->stream->in_closed) {
+            r->request_body_no_buffering = 1;
+        }
+
+#endif
+
+#if (NGX_HTTP_V3)
+
+        /*
+         * Keep later DATA flowing through ngx_http_upstream_process_upgraded(),
+         * otherwise unread QUIC buffers may grow connection memory.
+         */
+
+        if (r->http_version == NGX_HTTP_VERSION_30
+            && !r->connection->read->eof)
+        {
+            r->request_body_no_buffering = 1;
+        }
+
+#endif
+
+    }
+
+    if (r->headers_in.content_length_n < 0 && !r->headers_in.chunked
+
+#if (NGX_HTTP_V2)
+
+        /* do not let the no-body shortcut disable the open body reader */
+        && !(r->stream && !r->stream->in_closed
+             && r->request_body_no_buffering)
+#endif
+
+#if (NGX_HTTP_V3)
+
+        /* later DATA must remain attached to the unbuffered body reader */
+        && !(r->http_version == NGX_HTTP_VERSION_30
+             && !r->connection->read->eof
+             && r->request_body_no_buffering)
+#endif
+       )
+    {
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;

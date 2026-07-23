@@ -211,6 +211,8 @@ ngx_http_tunnel_handler(ngx_http_request_t *r)
     u->abort_request = ngx_http_tunnel_abort_request;
     u->finalize_request = ngx_http_tunnel_finalize_request;
 
+    u->upgrade = 1;
+
     rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -300,7 +302,6 @@ ngx_http_tunnel_process_header(ngx_http_request_t *r)
 
     r->keepalive = 0;
     u->keepalive = 0;
-    u->upgrade = 1;
 
     return NGX_OK;
 }
