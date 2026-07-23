@@ -56,6 +56,8 @@ static ngx_int_t ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx,
 static ngx_int_t ngx_http_dav_copy_tree_file(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
 
+static ngx_int_t ngx_http_dav_check_unmodified(ngx_http_request_t *r,
+    ngx_file_info_t *fi);
 static ngx_int_t ngx_http_dav_depth(ngx_http_request_t *r, ngx_int_t dflt);
 static ngx_int_t ngx_http_dav_error(ngx_log_t *log, ngx_err_t err,
     ngx_int_t not_found, char *failed, u_char *path);
@@ -261,6 +263,18 @@ ngx_http_dav_put_handler(ngx_http_request_t *r)
             ngx_http_finalize_request(r, NGX_HTTP_CONFLICT);
             return;
         }
+
+        if (ngx_http_dav_check_unmodified(r, &fi) != NGX_OK) {
+
+            if (ngx_delete_file(temp->data) == NGX_FILE_ERROR) {
+                ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
+                              ngx_delete_file_n " \"%s\" failed",
+                              temp->data);
+            }
+
+            ngx_http_finalize_request(r, NGX_HTTP_PRECONDITION_FAILED);
+            return;
+        }
     }
 
     dlcf = ngx_http_get_module_loc_conf(r, ngx_http_dav_module);
@@ -393,6 +407,11 @@ ok:
         }
 
         dir = 0;
+    }
+
+    rc = ngx_http_dav_check_unmodified(r, &fi);
+    if (rc != NGX_OK) {
+        return rc;
     }
 
     rc = ngx_http_dav_delete_path(r, &path, dir);
@@ -770,6 +789,10 @@ overwrite_done:
             return NGX_HTTP_CONFLICT;
         }
 
+        if (ngx_http_dav_check_unmodified(r, &fi) != NGX_OK) {
+            return NGX_HTTP_PRECONDITION_FAILED;
+        }
+
         if (!overwrite) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_EEXIST,
                           "\"%s\" could not be created", copy.path.data);
@@ -1076,6 +1099,28 @@ ngx_http_dav_copy_tree_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     (void) ngx_copy_file(path->data, file, &cf);
 
     ngx_free(file);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_dav_check_unmodified(ngx_http_request_t *r, ngx_file_info_t *fi)
+{
+    time_t  date;
+
+    if (r->headers_in.if_unmodified_since) {
+        date = ngx_parse_http_time(r->headers_in.if_unmodified_since->value.data,
+                                   r->headers_in.if_unmodified_since->value.len);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http dav iums:%T mtime:%T",
+                       date, ngx_file_mtime(fi));
+
+        if (date != NGX_ERROR && ngx_file_mtime(fi) > date) {
+            return NGX_HTTP_PRECONDITION_FAILED;
+        }
+    }
 
     return NGX_OK;
 }
