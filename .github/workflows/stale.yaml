@@ -9,6 +9,7 @@ env:
 
 jobs:
   mark_stale:
+    if: ${{ github.repository == 'nginx/nginx' }}
     runs-on: ubuntu-24.04
     permissions:
       actions: write
