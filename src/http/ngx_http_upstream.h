@@ -76,6 +76,7 @@ typedef struct {
 
 typedef struct {
     ngx_hash_t                       headers_in_hash;
+    ngx_hash_t                       early_hints_hide_headers_hash;
     ngx_array_t                      upstreams;
                                              /* ngx_http_upstream_srv_conf_t */
 } ngx_http_upstream_main_conf_t;
