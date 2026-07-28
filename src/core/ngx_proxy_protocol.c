@@ -291,6 +291,11 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
         return NULL;
     }
 
+    if (c->sockaddr->sa_family != c->local_sockaddr->sa_family) {
+        return ngx_cpymem(buf, "PROXY UNKNOWN" CRLF,
+                          sizeof("PROXY UNKNOWN" CRLF) - 1);
+    }
+
     switch (c->sockaddr->sa_family) {
 
     case AF_INET:
