@@ -809,7 +809,7 @@ ngx_quic_log_frame(ngx_log_t *log, ngx_quic_frame_t *f, ngx_uint_t tx)
 
     case NGX_QUIC_FT_RESET_STREAM:
         p = ngx_slprintf(p, last, "RESET_STREAM"
-                        " id:0x%xL error_code:0x%xL final_size:0x%xL",
+                        " id:0x%xL error_code:0x%xL final_size:%uL",
                         f->u.reset_stream.id, f->u.reset_stream.error_code,
                         f->u.reset_stream.final_size);
         break;
