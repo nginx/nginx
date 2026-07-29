@@ -645,7 +645,7 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     e.request = r;
     e.flushed = 1;
 
-    n = len;
+    n = 0;
 
     while (*(uintptr_t *) e.ip) {
         lcode = *(ngx_http_script_len_code_pt *) e.ip;
@@ -653,8 +653,8 @@ ngx_http_script_run(ngx_http_request_t *r, ngx_str_t *value,
     }
 
 
-    value->len = n;
-    value->data = ngx_pnalloc(r->pool, n);
+    value->len = n + len;
+    value->data = ngx_pnalloc(r->pool, n + len);
     if (value->data == NULL) {
         return NULL;
     }
