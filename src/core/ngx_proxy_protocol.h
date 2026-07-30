@@ -22,6 +22,7 @@ struct ngx_proxy_protocol_s {
     ngx_str_t           dst_addr;
     in_port_t           src_port;
     in_port_t           dst_port;
+    ngx_uint_t          family;
     ngx_str_t           tlvs;
 };
 
