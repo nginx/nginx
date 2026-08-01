@@ -906,7 +906,7 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     /* RFC 9438, 4.7. Fast Convergence */
     cg->w_max = (cg->window < cg->w_max)
                 ? cg->window * (10 + NGX_QUIC_CUBIC_BETA) / 20 : cg->window;
-    cg->ssthresh = cg->in_flight * NGX_QUIC_CUBIC_BETA / 10;
+    cg->ssthresh = cg->w_prior * NGX_QUIC_CUBIC_BETA / 10;
     cg->window = ngx_max(cg->ssthresh, cg->mtu * 2);
     cg->w_est = cg->window;
     cg->k = now + ngx_quic_congestion_cubic_time(c);
