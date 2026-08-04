@@ -304,6 +304,12 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
                 return rc;
             }
 
+            /* a frame length exceeding ngx_uint_t would be truncated */
+
+            if (st->vlint.value > (uint64_t) NGX_MAX_INT_T_VALUE) {
+                return NGX_HTTP_V3_ERR_FRAME_ERROR;
+            }
+
             st->length = st->vlint.value;
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
@@ -1251,6 +1257,12 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
                            "http3 parse frame len:%uL", st->vlint.value);
 
+            /* a frame length exceeding ngx_uint_t would be truncated */
+
+            if (st->vlint.value > (uint64_t) NGX_MAX_INT_T_VALUE) {
+                return NGX_HTTP_V3_ERR_FRAME_ERROR;
+            }
+
             st->length = st->vlint.value;
             if (st->length == 0) {
                 st->state = sw_type;
@@ -1852,6 +1864,12 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
             rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, b);
             if (rc != NGX_DONE) {
                 return rc;
+            }
+
+            /* a frame length exceeding ngx_uint_t would be truncated */
+
+            if (st->vlint.value > (uint64_t) NGX_MAX_INT_T_VALUE) {
+                return NGX_HTTP_V3_ERR_FRAME_ERROR;
             }
 
             st->length = st->vlint.value;
