@@ -3690,6 +3690,12 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy window update: %ui", ctx->window_update);
 
+    if (ctx->window_update == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent zero window update");
+        return NGX_ERROR;
+    }
+
     if (ctx->stream_id) {
 
         if (ctx->window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
