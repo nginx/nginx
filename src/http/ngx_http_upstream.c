@@ -5480,6 +5480,9 @@ ngx_http_upstream_process_charset(ngx_http_request_t *r, ngx_table_elt_t *h,
 }
 
 
+static ngx_str_t  ngx_http_upstream_close = ngx_string("close");
+
+
 static ngx_int_t
 ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
@@ -5495,8 +5498,8 @@ ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     *ph = h;
     h->next = NULL;
 
-    if (ngx_strlcasestrn(h->value.data, h->value.data + h->value.len,
-                         (u_char *) "close", 5 - 1)
+    if (ngx_http_parse_multi_header_lines(r, h, &ngx_http_upstream_close,
+                                          NULL)
         != NULL)
     {
         u->headers_in.connection_close = 1;
