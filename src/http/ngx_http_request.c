@@ -1914,6 +1914,10 @@ ngx_http_process_host(ngx_http_request_t *r, ngx_table_elt_t *h,
 }
 
 
+static ngx_str_t  ngx_http_connection_close = ngx_string("close");
+static ngx_str_t  ngx_http_connection_keep_alive = ngx_string("keep-alive");
+
+
 static ngx_int_t
 ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
@@ -1922,10 +1926,17 @@ ngx_http_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
         return NGX_ERROR;
     }
 
-    if (ngx_strcasestrn(h->value.data, "close", 5 - 1)) {
+    if (ngx_http_parse_multi_header_lines(r, h, &ngx_http_connection_close,
+                                          NULL)
+        != NULL)
+    {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_CLOSE;
 
-    } else if (ngx_strcasestrn(h->value.data, "keep-alive", 10 - 1)) {
+    } else if (ngx_http_parse_multi_header_lines(r, h,
+                                                &ngx_http_connection_keep_alive,
+                                                NULL)
+               != NULL)
+    {
         r->headers_in.connection_type = NGX_HTTP_CONNECTION_KEEP_ALIVE;
     }
 
