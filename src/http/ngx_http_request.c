@@ -1560,6 +1560,21 @@ ngx_http_process_request_headers(ngx_event_t *rev)
 
             r->request_length += r->header_in->pos - r->header_name_start;
 
+            /*
+             * the host header could have changed the server configuration
+             * context; recheck the total header count against the
+             * selected virtual server's max_headers
+             */
+
+            if (r->headers_in.count > cscf->max_headers) {
+                r->lingering_close = 1;
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent too many header lines");
+                ngx_http_finalize_request(r,
+                                          NGX_HTTP_REQUEST_HEADER_TOO_LARGE);
+                break;
+            }
+
             r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
             rc = ngx_http_process_request_header(r);
