@@ -2420,7 +2420,7 @@ data:
     ctx->state = state;
     b->pos = pos;
 
-    if (ctx->size > NGX_MAX_OFF_T_VALUE - 5) {
+    if (ctx->size > NGX_MAX_OFF_T_VALUE - 9) {
         goto invalid;
     }
 
