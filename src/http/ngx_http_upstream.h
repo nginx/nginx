@@ -71,6 +71,9 @@ typedef struct {
     off_t                            bytes_sent;
 
     ngx_str_t                       *peer;
+
+    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_END
 } ngx_http_upstream_state_t;
 
 
