@@ -117,6 +117,12 @@ ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,
 
 #if (NGX_HTTP_V2)
 ngx_int_t ngx_http_proxy_v2_handler(ngx_http_request_t *r);
+ngx_int_t ngx_http_proxy_v2_event_pipe_read_prepare(ngx_event_pipe_t *p);
+ngx_int_t ngx_http_proxy_v2_event_pipe_read_complete(ngx_event_pipe_t *p);
+ngx_int_t ngx_http_proxy_v2_event_pipe_write_to_downstream(
+    ngx_event_pipe_t *p);
+ngx_int_t ngx_http_proxy_v2_upstream_create(ngx_http_request_t *r);
+void ngx_http_proxy_v2_upstream_init(ngx_http_request_t *r);
 #endif
 
 
