@@ -2279,7 +2279,11 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
             return NGX_DECLINED;
         }
 
-        if (p == start || (*(p - 1) == ',' || *(p - 1) == ' ')) {
+        if (p == start
+            || *(p - 1) == ','
+            || *(p - 1) == ' '
+            || *(p - 1) == '\t')
+        {
             break;
         }
 
@@ -2295,6 +2299,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
         case ';':
             goto quantity;
         case ' ':
+        case '\t':
             continue;
         default:
             return NGX_DECLINED;
@@ -2311,6 +2316,7 @@ quantity:
         case 'Q':
             goto equal;
         case ' ':
+        case '\t':
             continue;
         default:
             return NGX_DECLINED;
@@ -2353,7 +2359,7 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
 
     c = *p++;
 
-    if (c == ',' || c == ' ') {
+    if (c == ',' || c == ' ' || c == '\t') {
         return q;
     }
 
@@ -2366,7 +2372,7 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
     while (p < last) {
         c = *p++;
 
-        if (c == ',' || c == ' ') {
+        if (c == ',' || c == ' ' || c == '\t') {
             break;
         }
 
