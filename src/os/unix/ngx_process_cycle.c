@@ -749,6 +749,41 @@ ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 }
 
 
+#if (NGX_HAVE_PR_SET_DUMPABLE)
+
+static ngx_int_t
+ngx_core_pattern_is_pipe(void)
+{
+    u_char    c;
+    ssize_t   n;
+    ngx_fd_t  fd;
+
+    /*
+     * A core_pattern starting with '|' pipes the dump to a handler, and
+     * the kernel applies no RLIMIT_CORE on that path: coredump_pipe()
+     * sets the limit to RLIM_INFINITY, and the limit is consulted only
+     * when dumping to a file.  There the dumpable flag alone decides
+     * whether a crash is captured, so it must be left set whatever the
+     * limit says.  If the value cannot be read, keep the old behaviour.
+     */
+
+    fd = ngx_open_file("/proc/sys/kernel/core_pattern", NGX_FILE_RDONLY,
+                       NGX_FILE_OPEN, 0);
+
+    if (fd == NGX_INVALID_FILE) {
+        return 1;
+    }
+
+    n = ngx_read_fd(fd, &c, 1);
+
+    ngx_close_file(fd);
+
+    return (n == 1 && c == '|');
+}
+
+#endif
+
+
 static void
 ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 {
@@ -860,11 +895,27 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
 
 #if (NGX_HAVE_PR_SET_DUMPABLE)
 
-    /* allow coredump after setuid() in Linux 2.4.x */
+    /*
+     * Allow coredump after setuid() in Linux 2.4.x, but only when a core
+     * dump can actually be written.  A dumpable process is attachable
+     * with ptrace(2) and its /proc/<pid>/mem is readable by any process
+     * running under the worker's user, which the kernel prevents at
+     * setuid() by clearing the flag.
+     *
+     * The effective RLIMIT_CORE is the condition, rather than whether
+     * worker_rlimit_core was configured: nginx leaves RLIMIT_CORE alone
+     * when the directive is absent, so an inherited limit governs.  A
+     * failing getrlimit() preserves the previous behaviour.
+     */
 
-    if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                      "prctl(PR_SET_DUMPABLE) failed");
+    if (ngx_core_pattern_is_pipe()
+        || getrlimit(RLIMIT_CORE, &rlmt) == -1
+        || rlmt.rlim_cur != 0)
+    {
+        if (prctl(PR_SET_DUMPABLE, 1, 0, 0, 0) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "prctl(PR_SET_DUMPABLE) failed");
+        }
     }
 
 #endif
