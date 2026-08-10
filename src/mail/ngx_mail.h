@@ -181,7 +181,7 @@ typedef enum {
 typedef struct {
     ngx_peer_connection_t   upstream;
     ngx_buf_t              *buffer;
-    ngx_uint_t              proxy_protocol;  /* unsigned  proxy_protocol:1; */
+    ngx_uint_t              proxy_protocol;  /* unsigned  proxy_protocol:2; */
 } ngx_mail_proxy_ctx_t;
 
 
