@@ -1226,6 +1226,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
     host.len = 0;
+#if (NGX_SUPPRESS_WARN)
+    host.data = NULL;
+#endif
 
     if (plcf->host_value
         && ngx_http_complex_value(r, plcf->host_value, &host) != NGX_OK)

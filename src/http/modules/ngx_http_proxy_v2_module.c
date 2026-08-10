@@ -446,6 +446,9 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     /* :authority header */
 
     host.len = 0;
+#if (NGX_SUPPRESS_WARN)
+    host.data = NULL;
+#endif
 
     if (plcf->host_value
         && ngx_http_complex_value(r, plcf->host_value, &host) != NGX_OK)
