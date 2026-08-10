@@ -811,6 +811,9 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
     /* :authority header */
 
     host.len = 0;
+#if (NGX_SUPPRESS_WARN)
+    host.data = NULL;
+#endif
 
     if (glcf->host_value
         && ngx_http_complex_value(r, glcf->host_value, &host) != NGX_OK)
