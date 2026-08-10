@@ -150,7 +150,7 @@ typedef struct {
     ngx_stream_upstream_resolved_t    *resolved;
     ngx_stream_upstream_state_t       *state;
     unsigned                           connected:1;
-    unsigned                           proxy_protocol:1;
+    unsigned                           proxy_protocol:2;
     unsigned                           half_closed:1;
 } ngx_stream_upstream_t;
 
