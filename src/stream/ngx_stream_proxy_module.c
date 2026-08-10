@@ -1080,7 +1080,7 @@ ngx_stream_proxy_send_proxy_protocol(ngx_stream_session_t *s)
     } else {
       p = ngx_proxy_protocol_write(c, buf,
                                   buf + NGX_PROXY_PROTOCOL_V1_MAX_HEADER);
-   
+    }
     if (p == NULL) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return NGX_ERROR;
