@@ -219,6 +219,20 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.socket_keepalive),
       NULL },
 
+    { ngx_string("uwsgi_socket_rcvbuf"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.socket_rcvbuf),
+      NULL },
+
+    { ngx_string("uwsgi_socket_sndbuf"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_uwsgi_loc_conf_t, upstream.socket_sndbuf),
+      NULL },
+
     { ngx_string("uwsgi_connect_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -866,7 +880,7 @@ static ngx_int_t
 ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 {
     u_char                        ch, sep, *lowcase_key;
-    size_t                        key_len, val_len, len, allocated;
+    size_t                        key_len, val_len, len, params_len, allocated;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
@@ -879,6 +893,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
     ngx_http_script_len_code_pt   lcode;
 
     len = 0;
+    params_len = 0;
     header_params = 0;
     ignored = NULL;
 
@@ -916,8 +931,10 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-            len += 2 + key_len + 2 + val_len;
+            params_len += 2 + key_len + 2 + val_len;
         }
+
+        len += params_len;
     }
 
     if (uwcf->upstream.pass_request_headers) {
@@ -1049,6 +1066,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
 
         e.ip = params->values->elts;
         e.pos = b->last;
+        e.end = b->last + params_len;
         e.request = r;
         e.flushed = 1;
 
@@ -1081,11 +1099,23 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_script_check_length(&e, 2) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
             *e.pos++ = (u_char) (key_len & 0xff);
             *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
 
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
+
+            if (e.status) {
+                return NGX_ERROR;
+            }
+
+            if (ngx_http_script_check_length(&e, 2) != NGX_OK) {
+                return NGX_ERROR;
+            }
 
             *e.pos++ = (u_char) (val_len & 0xff);
             *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
@@ -1095,12 +1125,22 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 code((ngx_http_script_engine_t *) &e);
             }
 
+            if (e.status) {
+                return NGX_ERROR;
+            }
+
             e.ip += sizeof(uintptr_t);
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "uwsgi param: \"%*s: %*s\"",
                            key_len, e.pos - (key_len + 2 + val_len),
                            val_len, e.pos - val_len);
+        }
+
+        if (e.pos != e.end) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                          "uwsgi request length mismatch");
+            return NGX_ERROR;
         }
 
         b->last = e.pos;
@@ -1275,6 +1315,8 @@ ngx_http_uwsgi_process_status_line(ngx_http_request_t *r)
 
     if (rc == NGX_ERROR) {
         u->process_header = ngx_http_uwsgi_process_header;
+        u->buffer.pos = status->line_start;
+        r->state = 0;
         return ngx_http_uwsgi_process_header(r);
     }
 
@@ -1564,6 +1606,8 @@ ngx_http_uwsgi_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.local = NGX_CONF_UNSET_PTR;
     conf->upstream.socket_keepalive = NGX_CONF_UNSET;
+    conf->upstream.socket_rcvbuf = NGX_CONF_UNSET_SIZE;
+    conf->upstream.socket_sndbuf = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
@@ -1677,6 +1721,12 @@ ngx_http_uwsgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.socket_keepalive,
                               prev->upstream.socket_keepalive, 0);
+
+    ngx_conf_merge_size_value(conf->upstream.socket_rcvbuf,
+                              prev->upstream.socket_rcvbuf, 0);
+
+    ngx_conf_merge_size_value(conf->upstream.socket_sndbuf,
+                              prev->upstream.socket_sndbuf, 0);
 
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
                               prev->upstream.connect_timeout, 60000);

@@ -35,6 +35,8 @@ typedef struct {
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
     ngx_array_t                     *pp2_tlvs; 
+    size_t                           socket_rcvbuf;
+    size_t                           socket_sndbuf;
 
 #if (NGX_STREAM_SSL)
     ngx_flag_t                       ssl_enable;
@@ -167,6 +169,20 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, socket_keepalive),
+      NULL },
+
+    { ngx_string("proxy_socket_rcvbuf"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, socket_rcvbuf),
+      NULL },
+
+    { ngx_string("proxy_socket_sndbuf"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_proxy_srv_conf_t, socket_sndbuf),
       NULL },
 
     { ngx_string("proxy_connect_timeout"),
@@ -512,6 +528,14 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
 
     if (pscf->socket_keepalive) {
         u->peer.so_keepalive = 1;
+    }
+
+    if (pscf->socket_rcvbuf) {
+        u->peer.rcvbuf = (int) pscf->socket_rcvbuf;
+    }
+
+    if (pscf->socket_sndbuf) {
+        u->peer.sndbuf = (int) pscf->socket_sndbuf;
     }
 
     u->peer.type = c->type;
@@ -1560,8 +1584,9 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
 
     size_t                        len;
     u_char                       *p, *buf;
-    ngx_str_t                     proto;
+    ngx_str_t                     proto, *value;
     ngx_uint_t                    i;
+    ngx_array_t                  *values;
     ngx_connection_t             *c;
     ngx_stream_upstream_t        *u;
     ngx_stream_complex_value_t   *cv;
@@ -1572,6 +1597,7 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     u = s->upstream;
     c = u->peer.connection;
 
+    values = NULL;
     len = 0;
 
     cv = pscf->ssl_alpn->elts;
@@ -1586,6 +1612,20 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
             continue;
         }
 
+        if (values == NULL) {
+            values = ngx_array_create(c->pool, 1, sizeof(ngx_str_t));
+            if (values == NULL) {
+                return NGX_ERROR;
+            }
+        }
+
+        value = ngx_array_push(values);
+        if (value == NULL) {
+            return NGX_ERROR;
+        }
+
+        *value = proto;
+
         len += 1 + proto.len;
     }
 
@@ -1599,22 +1639,15 @@ ngx_stream_proxy_ssl_alpn(ngx_stream_session_t *s)
     }
 
     p = buf;
+    value = values->elts;
 
-    for (i = 0; i < pscf->ssl_alpn->nelts; i++) {
-
-        if (ngx_stream_complex_value(s, &cv[i], &proto) != NGX_OK) {
-            return NGX_ERROR;
-        }
-
-        if (proto.len == 0 || proto.len > 255) {
-            continue;
-        }
+    for (i = 0; i < values->nelts; i++) {
 
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                       "upstream SSL ALPN: \"%V\"", &proto);
+                       "upstream SSL ALPN: \"%V\"", &value[i]);
 
-        *p++ = proto.len;
-        p = ngx_cpymem(p, proto.data, proto.len);
+        *p++ = value[i].len;
+        p = ngx_cpymem(p, value[i].data, value[i].len);
     }
 
     if (SSL_set_alpn_protos(c->ssl->connection, buf, p - buf) != 0) {
@@ -2078,6 +2111,11 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
                     if (u->state->first_byte_time == (ngx_msec_t) -1) {
                         u->state->first_byte_time = ngx_current_msec
                                                     - u->start_time;
+
+                        if (u->peer.notify) {
+                            u->peer.notify(&u->peer, u->peer.data,
+                                       NGX_STREAM_UPSTREAM_NOTIFY_FIRST_BYTE);
+                        }
                     }
                 }
 
@@ -2449,6 +2487,8 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->protocol_version = NGX_CONF_UNSET_UINT;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
+    conf->socket_rcvbuf = NGX_CONF_UNSET_SIZE;
+    conf->socket_sndbuf = NGX_CONF_UNSET_SIZE;
     conf->half_close = NGX_CONF_UNSET;
     conf->pp2_tlvs = NULL;
 
@@ -2514,6 +2554,10 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->socket_keepalive,
                               prev->socket_keepalive, 0);
+
+    ngx_conf_merge_size_value(conf->socket_rcvbuf, prev->socket_rcvbuf, 0);
+
+    ngx_conf_merge_size_value(conf->socket_sndbuf, prev->socket_sndbuf, 0);
 
     ngx_conf_merge_value(conf->half_close, prev->half_close, 0);
 

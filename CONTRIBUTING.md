@@ -61,8 +61,7 @@ locally and breaking changes logically into commits before submitting a PR
 - Each commit message should have a single-line subject line followed by verbose
 description after an empty line
 
-- Limit the subject line to 67 characters, and the rest of the commit message
-to 76 characters
+- Limit the subject and commit message body lines to 72 characters
 
 - Use subject line prefixes for commits that affect a specific portion of the
 code; examples include "Upstream:", "QUIC:", or "Core:"; see the commit history

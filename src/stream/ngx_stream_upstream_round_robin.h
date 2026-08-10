@@ -73,7 +73,17 @@ struct ngx_stream_upstream_rr_peer_s {
 
     ngx_stream_upstream_rr_peer_t   *next;
 
-    NGX_COMPAT_BEGIN(14)
+#if (NGX_STREAM_UPSTREAM_LEAST_TIME || NGX_COMPAT)
+    ngx_msec_t                       connect_time;
+    ngx_msec_t                       first_byte_time;
+    ngx_msec_t                       response_time;
+    ngx_msec_t                       inflight_time;
+    ngx_msec_t                       inflight_last;
+    ngx_msec_t                       inflight_reqs_changed;
+    ngx_uint_t                       inflight_reqs;
+#endif
+
+    NGX_COMPAT_BEGIN(7)
     NGX_COMPAT_END
 };
 
@@ -217,6 +227,12 @@ typedef struct {
 } ngx_stream_upstream_rr_peer_data_t;
 
 
+/* exponential moving average + rounding */
+#define ngx_stream_upstream_response_time_avg(avg, v)                          \
+    *(avg) = (*(avg) ? (0.5 + ((double) (v) * 0.05 + (double) (*(avg)) * 0.95))\
+                     : (v))
+
+
 ngx_int_t ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_stream_upstream_srv_conf_t *us);
 ngx_int_t ngx_stream_upstream_init_round_robin_peer(ngx_stream_session_t *s,
@@ -227,6 +243,10 @@ ngx_int_t ngx_stream_upstream_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 void ngx_stream_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t state);
+void ngx_stream_upstream_free_round_robin_peer_locked(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t state);
+void ngx_stream_upstream_notify_round_robin_peer_locked(
+    ngx_peer_connection_t *pc, void *data, ngx_uint_t type);
 
 
 #endif /* _NGX_STREAM_UPSTREAM_ROUND_ROBIN_H_INCLUDED_ */

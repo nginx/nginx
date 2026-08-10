@@ -964,7 +964,7 @@ ngx_http_geo_add_range(ngx_conf_t *cf, ngx_http_geo_conf_ctx_t *ctx,
             e = (ngx_uint_t) range[i].end;
 
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                         "range \"%V\" overlaps \"%d.%d.%d.%d-%d.%d.%d.%d\"",
+                         "range \"%V\" overlaps \"%i.%i.%i.%i-%i.%i.%i.%i\"",
                          ctx->net,
                          h >> 8, h & 0xff, s >> 8, s & 0xff,
                          h >> 8, h & 0xff, e >> 8, e & 0xff);

@@ -48,6 +48,7 @@ ngx_mail_imap_init_session(ngx_mail_session_t *s, ngx_connection_t *c)
 
     if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
+        return;
     }
 
     ngx_mail_send(c->write);

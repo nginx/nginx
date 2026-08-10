@@ -1260,6 +1260,19 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
+    if (qs->recv_final_size != (uint64_t) -1
+        && (qs->recv_final_size < last
+            || (qs->recv_final_size > last && f->fin)))
+    {
+        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        return NGX_ERROR;
+    }
+
+    if (qs->recv_last > last && f->fin) {
+        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
+        return NGX_ERROR;
+    }
+
     if (qs->recv_state != NGX_QUIC_STREAM_RECV_RECV
         && qs->recv_state != NGX_QUIC_STREAM_RECV_SIZE_KNOWN)
     {
@@ -1270,27 +1283,11 @@ ngx_quic_handle_stream_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_ERROR;
     }
 
-    if (qs->recv_final_size != (uint64_t) -1 && last > qs->recv_final_size) {
-        qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
-        return NGX_ERROR;
-    }
-
     if (last < qs->recv_offset) {
         return NGX_OK;
     }
 
     if (f->fin) {
-        if (qs->recv_final_size != (uint64_t) -1 && qs->recv_final_size != last)
-        {
-            qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
-            return NGX_ERROR;
-        }
-
-        if (qs->recv_last > last) {
-            qc->error = NGX_QUIC_ERR_FINAL_SIZE_ERROR;
-            return NGX_ERROR;
-        }
-
         qs->recv_final_size = last;
         qs->recv_state = NGX_QUIC_STREAM_RECV_SIZE_KNOWN;
     }
@@ -1475,18 +1472,6 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_OK;
     }
 
-    if (qs->recv_state == NGX_QUIC_STREAM_RECV_RESET_RECVD
-        || qs->recv_state == NGX_QUIC_STREAM_RECV_RESET_READ)
-    {
-        return NGX_OK;
-    }
-
-    qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
-
-    if (ngx_quic_control_flow(qs, f->final_size) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
     if (qs->recv_final_size != (uint64_t) -1
         && qs->recv_final_size != f->final_size)
     {
@@ -1499,7 +1484,18 @@ ngx_quic_handle_reset_stream_frame(ngx_connection_t *c,
         return NGX_ERROR;
     }
 
+    if (qs->recv_state == NGX_QUIC_STREAM_RECV_RESET_RECVD
+        || qs->recv_state == NGX_QUIC_STREAM_RECV_RESET_READ)
+    {
+        return NGX_OK;
+    }
+
+    if (ngx_quic_control_flow(qs, f->final_size) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     qs->recv_final_size = f->final_size;
+    qs->recv_state = NGX_QUIC_STREAM_RECV_RESET_RECVD;
 
     if (ngx_quic_update_flow(qs, qs->recv_final_size) != NGX_OK) {
         return NGX_ERROR;

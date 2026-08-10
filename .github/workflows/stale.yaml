@@ -1,0 +1,28 @@
+name: Mark Stale
+
+on:
+  schedule:
+    - cron: '22 2 * * *'  # Run every day at 02:22
+
+env:
+  STALE_DAYS: 365
+
+jobs:
+  mark_stale:
+    if: ${{ github.repository == 'nginx/nginx' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      issues: write
+
+    name: Mark stale
+    steps:
+      - uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10
+        with:
+          stale-issue-message: "This issue has been automatically marked 'stale' because it has been inactive for **${{ env.STALE_DAYS }}** days.
+
+If you feel this issue still needs addressing, please leave an (optional) comment and remove the 'stale' label, otherwise please close it if it is no longer valid. Thank you."
+          days-before-stale: ${{ env.STALE_DAYS }}
+          days-before-pr-stale: -1
+          days-before-close: -1
+          stale-issue-label: stale

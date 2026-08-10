@@ -792,6 +792,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_TUNNEL = YES ]; then
+        ngx_module_name=ngx_http_tunnel_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_tunnel_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_TUNNEL
+
+        . auto/module
+    fi
+
     if [ $HTTP_PERL != NO ]; then
         ngx_module_name=ngx_http_perl_module
         ngx_module_incs=src/http/modules/perl
@@ -911,6 +922,19 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_upstream_least_conn_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_UPSTREAM_LEAST_CONN
+
+        . auto/module
+    fi
+
+    if [ $HTTP_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_HTTP_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_http_upstream_least_time_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_LEAST_TIME
 
         . auto/module
     fi
@@ -1227,6 +1251,18 @@ if [ $STREAM != NO ]; then
         ngx_module_srcs=src/stream/ngx_stream_upstream_least_conn_module.c
         ngx_module_libs=
         ngx_module_link=$STREAM_UPSTREAM_LEAST_CONN
+
+        . auto/module
+    fi
+
+    if [ $STREAM_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_STREAM_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_stream_upstream_least_time_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_LEAST_TIME
 
         . auto/module
     fi

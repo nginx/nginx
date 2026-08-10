@@ -47,6 +47,9 @@ static ngx_int_t ngx_http_dav_mkcol_handler(ngx_http_request_t *r,
     ngx_http_dav_loc_conf_t *dlcf);
 
 static ngx_int_t ngx_http_dav_copy_move_handler(ngx_http_request_t *r);
+static void ngx_http_dav_merge_slashes(ngx_str_t *path);
+static ngx_int_t ngx_http_dav_validate_paths(ngx_http_request_t *r,
+    ngx_str_t *src, ngx_str_t *dst, ngx_uint_t slash, ngx_table_elt_t *dest);
 static ngx_int_t ngx_http_dav_copy_dir(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_dav_copy_dir_time(ngx_tree_ctx_t *ctx,
     ngx_str_t *path);
@@ -719,6 +722,9 @@ overwrite_done:
 
     r->uri = uri;
 
+    ngx_http_dav_merge_slashes(&path);
+    ngx_http_dav_merge_slashes(&copy.path);
+
     copy.path.len--;  /* omit "\0" */
 
     if (copy.path.data[copy.path.len - 1] == '/') {
@@ -732,6 +738,12 @@ overwrite_done:
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http copy to: \"%s\"", copy.path.data);
+
+    if (ngx_http_dav_validate_paths(r, &path, &copy.path, slash, dest)
+        != NGX_OK)
+    {
+        return NGX_HTTP_FORBIDDEN;
+    }
 
     if (ngx_link_info(copy.path.data, &fi) == NGX_FILE_ERROR) {
         err = ngx_errno;
@@ -867,6 +879,65 @@ overwrite_done:
     }
 
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
+}
+
+
+static void
+ngx_http_dav_merge_slashes(ngx_str_t *path)
+{
+    u_char  *p, *q;
+
+    p = path->data;
+    q = path->data;
+
+    while (*p) {
+        *q++ = *p;
+
+        if (*p++ == '/') {
+            while (*p == '/') {
+                p++;
+            }
+        }
+    }
+
+    *q++ = '\0';
+    path->len = q - path->data;
+}
+
+
+static ngx_int_t
+ngx_http_dav_validate_paths(ngx_http_request_t *r, ngx_str_t *src,
+    ngx_str_t *dst, ngx_uint_t slash, ngx_table_elt_t *dest)
+{
+    size_t  len;
+
+    len = src->len - 1;
+
+    if (len > 0 && src->data[len - 1] == '/') {
+        len--;
+    }
+
+    if (len == dst->len && ngx_strncmp(src->data, dst->data, len) == 0) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "both URI \"%V\" and \"Destination\" URI \"%V\" "
+                      "point to the same location",
+                      &r->uri, &dest->value);
+        return NGX_HTTP_FORBIDDEN;
+    }
+
+    if (slash
+        && ngx_strncmp(src->data, dst->data, ngx_min(len, dst->len)) == 0
+        && (len < dst->len
+            ? dst->data[len] == '/'
+            : src->data[dst->len] == '/'))
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "\"%V\" could not be %Ved to collection \"%V\"",
+                      &r->uri, &r->method_name, &dest->value);
+        return NGX_HTTP_FORBIDDEN;
+    }
+
+    return NGX_OK;
 }
 
 

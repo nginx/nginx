@@ -2094,13 +2094,20 @@ ngx_http_process_request_header(ngx_http_request_t *r)
 
     cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
 
-    if (r->method == NGX_HTTP_CONNECT
-        && (r->http_version != NGX_HTTP_VERSION_11 || !cscf->allow_connect))
-    {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
+    if (r->method == NGX_HTTP_CONNECT) {
+        if (r->http_version != NGX_HTTP_VERSION_11 || !cscf->allow_connect) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT method");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            return NGX_ERROR;
+        }
+
+        if (r->headers_in.content_length_n > 0 || r->headers_in.chunked) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT request with body");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
     }
 
     if (r->method == NGX_HTTP_TRACE) {
@@ -2648,6 +2655,14 @@ ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
 {
     ngx_http_posted_request_t  **p;
 
+    for (p = &r->main->posted_requests; *p; p = &(*p)->next) {
+        if ((*p)->request == r) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http request already posted");
+            return NGX_OK;
+        }
+    }
+
     if (pr == NULL) {
         pr = ngx_palloc(r->pool, sizeof(ngx_http_posted_request_t));
         if (pr == NULL) {
@@ -2657,8 +2672,6 @@ ngx_http_post_request(ngx_http_request_t *r, ngx_http_posted_request_t *pr)
 
     pr->request = r;
     pr->next = NULL;
-
-    for (p = &r->main->posted_requests; *p; p = &(*p)->next) { /* void */ }
 
     *p = pr;
 
@@ -2778,6 +2791,8 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
             }
 
             r->main->count--;
+
+            r->write_event_handler = ngx_http_request_empty_handler;
 
             if (pr->postponed && pr->postponed->request == r) {
                 pr->postponed = pr->postponed->next;

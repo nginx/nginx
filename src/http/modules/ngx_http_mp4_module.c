@@ -1063,7 +1063,9 @@ ngx_http_mp4_read(ngx_http_mp4_file_t *mp4, size_t size)
 {
     ssize_t  n;
 
-    if (mp4->buffer_pos + size <= mp4->buffer_end) {
+    if (mp4->buffer_pos && mp4->buffer_end
+        && mp4->buffer_pos + size <= mp4->buffer_end)
+    {
         return NGX_OK;
     }
 

@@ -78,7 +78,7 @@ ngx_module_t  ngx_http_try_files_module = {
 static ngx_int_t
 ngx_http_try_files_handler(ngx_http_request_t *r)
 {
-    size_t                          len, root, alias, reserve, allocated;
+    size_t                          len, root, alias, reserve, allocated, n;
     u_char                         *p, *name;
     ngx_str_t                       path, args;
     ngx_uint_t                      test_dir;
@@ -162,13 +162,28 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
             path.len = (name + tf->name.len - 1) - path.data;
 
         } else {
+            n = allocated;
+
+            if (alias != NGX_MAX_SIZE_T_VALUE) {
+                n += (r->uri.len - alias);
+            }
+
             e.ip = tf->values->elts;
             e.pos = name;
+            e.end = name + n;
             e.flushed = 1;
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) &e);
+            }
+
+            if (e.status) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            if (ngx_http_script_check_length(&e, 1) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             path.len = e.pos - path.data;

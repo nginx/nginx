@@ -689,7 +689,6 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
     u_char        c, *p, *src, *dst, *saved, **table;
     uint32_t      n;
     ngx_buf_t    *b;
-    ngx_uint_t    i;
     ngx_chain_t  *out, *cl, **ll;
 
     src = buf->pos;
@@ -783,18 +782,12 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0,
                    "http charset utf saved: %z", ctx->saved_len);
 
-    p = src;
-
-    for (i = ctx->saved_len; i < NGX_UTF_LEN; i++) {
-        ctx->saved[i] = *p++;
-
-        if (p == buf->last) {
-            break;
-        }
-    }
+    len = ngx_min(NGX_UTF_LEN - ctx->saved_len, (size_t) (buf->last - src));
+    ngx_memcpy(&ctx->saved[ctx->saved_len], src, len);
+    len += ctx->saved_len;
 
     saved = ctx->saved;
-    n = ngx_utf8_decode(&saved, i);
+    n = ngx_utf8_decode(&saved, len);
 
     c = '\0';
 
@@ -810,7 +803,7 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
 
         /* incomplete UTF-8 symbol */
 
-        if (i < NGX_UTF_LEN) {
+        if (len < NGX_UTF_LEN) {
             out = ngx_http_charset_get_buf(pool, ctx);
             if (out == NULL) {
                 return NULL;
@@ -823,8 +816,7 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
             b->sync = 1;
             b->shadow = buf;
 
-            ngx_memcpy(&ctx->saved[ctx->saved_len], src, i);
-            ctx->saved_len += i;
+            ctx->saved_len = len;
 
             return out;
         }
@@ -862,6 +854,10 @@ ngx_http_charset_recode_from_utf8(ngx_pool_t *pool, ngx_buf_t *buf,
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pool->log, 0,
                        "http charset invalid utf 1");
+
+        if (saved < &ctx->saved[ctx->saved_len]) {
+            saved = &ctx->saved[ctx->saved_len];
+        }
 
     } else {
         dst = ngx_sprintf(dst, "&#%uD;", n);
@@ -1198,6 +1194,13 @@ ngx_http_charset_map_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "\"charset_map\" between the same charsets "
                            "\"%V\" and \"%V\"", &value[1], &value[2]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_strcasecmp(value[1].data, (u_char *) "utf-8") == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "\"charset_map\" with \"utf-8\" charset "
+                           "should be given in the second column");
         return NGX_CONF_ERROR;
     }
 

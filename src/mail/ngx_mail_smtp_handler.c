@@ -340,6 +340,7 @@ ngx_mail_smtp_greeting(ngx_mail_session_t *s, ngx_connection_t *c)
 
     if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
         ngx_mail_close_connection(c);
+        return;
     }
 
     if (c->read->ready) {
@@ -347,8 +348,8 @@ ngx_mail_smtp_greeting(ngx_mail_session_t *s, ngx_connection_t *c)
     }
 
     if (sscf->greeting_delay) {
-         c->read->handler = ngx_mail_smtp_invalid_pipelining;
-         return;
+        c->read->handler = ngx_mail_smtp_invalid_pipelining;
+        return;
     }
 
     c->read->handler = ngx_mail_smtp_init_protocol;

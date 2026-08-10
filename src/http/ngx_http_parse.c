@@ -120,6 +120,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_host,
         sw_host_end,
         sw_host_ip_literal,
+        sw_port_start,
         sw_port,
         sw_after_slash_in_uri,
         sw_check_uri,
@@ -388,7 +389,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_host_end:
 
             if (ch == ':') {
-                state = sw_port;
+                state = sw_port_start;
                 break;
             }
 
@@ -463,6 +464,19 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
+
+        case sw_port_start:
+            state = sw_port;
+
+            if (ch >= '0' && ch <= '9') {
+                break;
+            }
+
+            if (r->method == NGX_HTTP_CONNECT) {
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+
+            /* fall through */
 
         case sw_port:
             if (ch >= '0' && ch <= '9') {
@@ -1689,6 +1703,8 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* "HTTP/" */
         case sw_start:
+            status->line_start = p;
+
             switch (ch) {
             case 'H':
                 state = sw_H;
@@ -2404,7 +2420,7 @@ data:
     ctx->state = state;
     b->pos = pos;
 
-    if (ctx->size > NGX_MAX_OFF_T_VALUE - 5) {
+    if (ctx->size > NGX_MAX_OFF_T_VALUE - 9) {
         goto invalid;
     }
 
