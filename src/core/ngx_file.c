@@ -382,6 +382,10 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     path->name = value[1];
 
+    if (path->name.len == 0) {
+        return "invalid value";
+    }
+
     if (path->name.data[path->name.len - 1] == '/') {
         path->name.len--;
     }
