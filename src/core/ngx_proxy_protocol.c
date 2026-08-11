@@ -9,8 +9,27 @@
 #include <ngx_core.h>
 
 
+#define NGX_PROXY_PROTOCOL_CMD_LOCAL        0
+#define NGX_PROXY_PROTOCOL_CMD_PROXY        1
+
 #define NGX_PROXY_PROTOCOL_AF_INET          1
 #define NGX_PROXY_PROTOCOL_AF_INET6         2
+
+#define NGX_PROXY_PROTOCOL_TYPE_UNSPEC      0
+#define NGX_PROXY_PROTOCOL_TYPE_STREAM      1
+#define NGX_PROXY_PROTOCOL_TYPE_DGRAM       2
+
+#define NGX_PROXY_PROTOCOL_TLV_ALPN         0x01
+#define NGX_PROXY_PROTOCOL_TLV_AUTHORITY    0x02
+#define NGX_PROXY_PROTOCOL_TLV_CRC32C       0x03
+#define NGX_PROXY_PROTOCOL_TLV_UNIQUE_ID    0x05
+#define NGX_PROXY_PROTOCOL_TLV_SSL          0x20
+#define NGX_PROXY_PROTOCOL_TLV_SSL_VERSION  0x21
+#define NGX_PROXY_PROTOCOL_TLV_SSL_CN       0x22
+#define NGX_PROXY_PROTOCOL_TLV_SSL_CIPHER   0x23
+#define NGX_PROXY_PROTOCOL_TLV_SSL_SIG_ALG  0x24
+#define NGX_PROXY_PROTOCOL_TLV_SSL_KEY_ALG  0x25
+#define NGX_PROXY_PROTOCOL_TLV_NETNS        0x30
 
 
 #define ngx_proxy_protocol_parse_uint16(p)                                    \
@@ -77,21 +96,21 @@ static ngx_int_t ngx_proxy_protocol_lookup_tlv(ngx_connection_t *c,
 
 
 static ngx_proxy_protocol_tlv_entry_t  ngx_proxy_protocol_tlv_entries[] = {
-    { ngx_string("alpn"),       0x01 },
-    { ngx_string("authority"),  0x02 },
-    { ngx_string("unique_id"),  0x05 },
-    { ngx_string("ssl"),        0x20 },
-    { ngx_string("netns"),      0x30 },
+    { ngx_string("alpn"),       NGX_PROXY_PROTOCOL_TLV_ALPN },
+    { ngx_string("authority"),  NGX_PROXY_PROTOCOL_TLV_AUTHORITY },
+    { ngx_string("unique_id"),  NGX_PROXY_PROTOCOL_TLV_UNIQUE_ID },
+    { ngx_string("ssl"),        NGX_PROXY_PROTOCOL_TLV_SSL },
+    { ngx_string("netns"),      NGX_PROXY_PROTOCOL_TLV_NETNS },
     { ngx_null_string,          0x00 }
 };
 
 
 static ngx_proxy_protocol_tlv_entry_t  ngx_proxy_protocol_tlv_ssl_entries[] = {
-    { ngx_string("version"),    0x21 },
-    { ngx_string("cn"),         0x22 },
-    { ngx_string("cipher"),     0x23 },
-    { ngx_string("sig_alg"),    0x24 },
-    { ngx_string("key_alg"),    0x25 },
+    { ngx_string("version"),    NGX_PROXY_PROTOCOL_TLV_SSL_VERSION },
+    { ngx_string("cn"),         NGX_PROXY_PROTOCOL_TLV_SSL_CN },
+    { ngx_string("cipher"),     NGX_PROXY_PROTOCOL_TLV_SSL_CIPHER },
+    { ngx_string("sig_alg"),    NGX_PROXY_PROTOCOL_TLV_SSL_SIG_ALG },
+    { ngx_string("key_alg"),    NGX_PROXY_PROTOCOL_TLV_SSL_KEY_ALG },
     { ngx_null_string,          0x00 }
 };
 
@@ -361,7 +380,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     command = header->version_command & 0x0f;
 
     /* only PROXY is supported */
-    if (command != 1) {
+    if (command != NGX_PROXY_PROTOCOL_CMD_PROXY) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "PROXY protocol v2 unsupported command %ui", command);
         return end;
@@ -370,7 +389,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
     transport = header->family_transport & 0x0f;
 
     /* only STREAM is supported */
-    if (transport != 1) {
+    if (transport != NGX_PROXY_PROTOCOL_TYPE_STREAM) {
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, c->log, 0,
                        "PROXY protocol v2 unsupported transport %ui",
                        transport);
@@ -510,7 +529,8 @@ ngx_proxy_protocol_get_tlv(ngx_connection_t *c, ngx_str_t *name,
 
     if (n >= 4 && p[0] == 's' && p[1] == 's' && p[2] == 'l' && p[3] == '_') {
 
-        rc = ngx_proxy_protocol_lookup_tlv(c, tlvs, 0x20, &ssl);
+        rc = ngx_proxy_protocol_lookup_tlv(c, tlvs,
+                                           NGX_PROXY_PROTOCOL_TLV_SSL, &ssl);
         if (rc != NGX_OK) {
             return rc;
         }
