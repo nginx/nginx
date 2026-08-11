@@ -428,6 +428,10 @@ ngx_http_slice_range_variable(ngx_http_request_t *r,
 
         ctx->start = slcf->size * (ngx_http_slice_get_start(r) / slcf->size);
 
+        if (ctx->start > NGX_MAX_OFF_T_VALUE - (off_t) slcf->size) {
+            ctx->start = 0;
+        }
+
         ctx->range.data = p;
         ctx->range.len = ngx_sprintf(p, "bytes=%O-%O", ctx->start,
                                      ctx->start + (off_t) slcf->size - 1)
