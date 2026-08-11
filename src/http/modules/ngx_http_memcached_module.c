@@ -413,7 +413,11 @@ found:
         p = line.data + line.len;
 
         u->headers_in.content_length_n = ngx_atoof(start, p - start);
-        if (u->headers_in.content_length_n == NGX_ERROR) {
+
+        if (u->headers_in.content_length_n == NGX_ERROR
+            || u->headers_in.content_length_n
+               > NGX_MAX_OFF_T_VALUE - (off_t) NGX_HTTP_MEMCACHED_END)
+        {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "memcached sent invalid length in response \"%V\" "
                           "for key \"%V\"",
