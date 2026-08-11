@@ -5,6 +5,90 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.4" date="2026-08-19">
+
+<change type="feature">
+<para lang="ru">
+директива proxy_protocol в модулях stream и mail
+теперь поддерживает протокол PROXY версии 2.
+</para>
+<para lang="en">
+the "proxy_protocol" directive in the stream and mail modules
+now supports the PROXY protocol version 2.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь запросы к HTTP/2 и gRPC-бэкендам всегда отправляются
+с псевдо-заголовком ":authority",
+а запросы к HTTP/1.1-бэкендам - с заголовком "Host".
+</para>
+<para lang="en">
+now HTTP/2 and gRPC requests to backends are always sent
+with the ":authority" pseudo-header,
+and HTTP/1.1 requests - with the "Host" header.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если использовался метод select.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the "select" method was used.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+неполные gRPC-ответы с ненулевым заголовком "Content-Length"
+теперь считаются некорректными.
+</para>
+<para lang="en">
+incomplete gRPC responses with a non-zero "Content-Length" header line
+are now treated as malformed.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в бинарной совместимости со сторонними модулями, использующими script codes;
+ошибка появилась в 1.31.3.
+</para>
+<para lang="en">
+in binary compatibility with third-party modules using script codes;
+the bug had appeared in 1.31.3.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в модуле ngx_http_perl_module.<br/>
+Спасибо David Carlier.
+</para>
+<para lang="en">
+in the ngx_http_perl_module.<br/>
+Thanks to David Carlier.
+</para>
+</change>
+
+<change>
+<para lang="ru">
+Исправления в HTTP/2, HTTP/3, ngx_http_image_filter_module
+и ngx_http_grpc_module.
+</para>
+<para lang="en">
+Bugfixes in HTTP/2, HTTP/3, ngx_http_image_filter_module,
+and ngx_http_grpc_module.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.3" date="2026-07-15">
 
 <change type="security">
