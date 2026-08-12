@@ -638,6 +638,15 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
         return NGX_OK;
     }
 
+    if (c->ssl->handshaked) {
+        /* QUIC doesn't define post-handshake messages for a client */
+
+        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_UNEXPECTED_MESSAGE);
+        qc->error_reason = "unexpected CRYPTO frame";
+
+        return NGX_ERROR;
+    }
+
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
     f = &frame->u.crypto;
 
