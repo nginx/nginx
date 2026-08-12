@@ -103,35 +103,9 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
                 break;
             }
 
-            if (*p == '{') {
-                rc = ngx_json_push_state(ctx, ngx_json_ctx_object);
-                if (rc != NGX_OK) {
-                    return rc;
-                }
-
-                if (ngx_json_emit(ctx, NGX_JSON_OBJECT_OPEN, p, 1) != NGX_OK) {
-                    return NGX_ERROR;
-                }
-
-                state = ngx_json_object;
-                break;
-            }
-
-            if (*p == '[') {
-                rc = ngx_json_push_state(ctx, ngx_json_ctx_array);
-                if (rc != NGX_OK) {
-                    return rc;
-                }
-
-                if (ngx_json_emit(ctx, NGX_JSON_ARRAY_OPEN, p, 1) != NGX_OK) {
-                    return NGX_ERROR;
-                }
-
-                state = ngx_json_array;
-                break;
-            }
-
-            return NGX_DECLINED;
+            p--;
+            state = ngx_json_value;
+            break;
 
         case ngx_json_object:
             if (ngx_json_ws(*p)) {
@@ -663,6 +637,22 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
         }
 
         skip_depth = ctx->skip_until_depth;
+    }
+
+    /* a bare top-level number is not self-delimited; emit it at end of input */
+
+    if (ctx->depth == 0
+        && (state == ngx_json_number_int_zero
+            || state == ngx_json_number_int
+            || state == ngx_json_number_frac_digit
+            || state == ngx_json_number_exp_digit))
+    {
+        rc = ngx_json_emit(ctx, NGX_JSON_VALUE_NUMBER, start, last - start);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+
+        state = ngx_json_done;
     }
 
     ctx->state = state;
