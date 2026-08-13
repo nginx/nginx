@@ -243,7 +243,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_core_srv_conf_t, client_header_buffer_size),
-      NULL },
+      &ngx_conf_size_nonzero_post },
 
     { ngx_string("large_client_header_buffers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE2,
@@ -364,7 +364,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, client_body_buffer_size),
-      NULL },
+      &ngx_conf_size_nonzero_post },
 
     { ngx_string("client_body_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -421,7 +421,7 @@ static ngx_command_t  ngx_http_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_core_loc_conf_t, subrequest_output_buffer_size),
-      NULL },
+      &ngx_conf_size_nonzero_post },
 
     { ngx_string("aio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
