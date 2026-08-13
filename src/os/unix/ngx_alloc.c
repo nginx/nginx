@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 
 
-ngx_uint_t  ngx_pagesize;
+ngx_uint_t  ngx_pagesize = NGX_MAX_UINT32_VALUE;
 ngx_uint_t  ngx_pagesize_shift;
 ngx_uint_t  ngx_cacheline_size;
 
