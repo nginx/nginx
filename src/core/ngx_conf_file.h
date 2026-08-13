@@ -171,6 +171,10 @@ typedef struct {
 
 char * ngx_conf_deprecated(ngx_conf_t *cf, void *post, void *data);
 char *ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data);
+char *ngx_conf_check_size_nonzero(ngx_conf_t *cf, void *post, void *data);
+
+
+extern ngx_conf_post_t  ngx_conf_size_nonzero_post;
 
 
 #define ngx_get_conf(conf_ctx, module)  conf_ctx[module.index]
