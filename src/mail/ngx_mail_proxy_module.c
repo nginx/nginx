@@ -38,6 +38,11 @@ static void ngx_mail_proxy_close_session(ngx_mail_session_t *s);
 static void *ngx_mail_proxy_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static char *ngx_mail_proxy_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
+
+static ngx_conf_post_t  ngx_mail_proxy_buffer_size_post =
+    { ngx_mail_proxy_buffer_size_check };
 
 
 static ngx_command_t  ngx_mail_proxy_commands[] = {
@@ -54,7 +59,7 @@ static ngx_command_t  ngx_mail_proxy_commands[] = {
       ngx_conf_set_size_slot,
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_proxy_conf_t, buffer_size),
-      NULL },
+      &ngx_mail_proxy_buffer_size_post },
 
     { ngx_string("proxy_timeout"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
@@ -1406,6 +1411,19 @@ ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 24 * 60 * 60000);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_proxy_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
+    }
 
     return NGX_CONF_OK;
 }

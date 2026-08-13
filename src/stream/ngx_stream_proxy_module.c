@@ -92,6 +92,8 @@ static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_proxy_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
 
 #if (NGX_STREAM_SSL)
 
@@ -142,6 +144,8 @@ static ngx_conf_deprecated_t  ngx_conf_deprecated_proxy_upstream_buffer = {
     ngx_conf_deprecated, "proxy_upstream_buffer", "proxy_buffer_size"
 };
 
+static ngx_conf_post_t  ngx_stream_proxy_buffer_size_post =
+    { ngx_stream_proxy_buffer_size_check };
 
 static ngx_command_t  ngx_stream_proxy_commands[] = {
 
@@ -185,7 +189,7 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_proxy_srv_conf_t, buffer_size),
-      NULL },
+      &ngx_stream_proxy_buffer_size_post },
 
     { ngx_string("proxy_downstream_buffer"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
@@ -2843,6 +2847,19 @@ ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                                "invalid parameter \"%V\"", &value[2]);
             return NGX_CONF_ERROR;
         }
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_proxy_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
     }
 
     return NGX_CONF_OK;

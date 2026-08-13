@@ -39,6 +39,11 @@ static char *ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf,
 
 static char *ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_memcached_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
+
+static ngx_conf_post_t  ngx_http_memcached_buffer_size_post =
+    { ngx_http_memcached_buffer_size_check };
 
 
 static ngx_conf_bitmask_t  ngx_http_memcached_next_upstream_masks[] = {
@@ -93,7 +98,7 @@ static ngx_command_t  ngx_http_memcached_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_memcached_loc_conf_t, upstream.buffer_size),
-      NULL },
+      &ngx_http_memcached_buffer_size_post },
 
     { ngx_string("memcached_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -730,6 +735,19 @@ ngx_http_memcached_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (mlcf->index == NGX_ERROR) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_memcached_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
     }
 
     return NGX_CONF_OK;

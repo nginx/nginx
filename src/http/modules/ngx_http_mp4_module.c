@@ -358,6 +358,11 @@ static void ngx_http_mp4_adjust_co64_atom(ngx_http_mp4_file_t *mp4,
 static char *ngx_http_mp4(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static void *ngx_http_mp4_create_conf(ngx_conf_t *cf);
 static char *ngx_http_mp4_merge_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *ngx_http_mp4_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
+
+static ngx_conf_post_t  ngx_http_mp4_buffer_size_post =
+    { ngx_http_mp4_buffer_size_check };
 
 
 static ngx_command_t  ngx_http_mp4_commands[] = {
@@ -374,14 +379,14 @@ static ngx_command_t  ngx_http_mp4_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_mp4_conf_t, buffer_size),
-      NULL },
+      &ngx_http_mp4_buffer_size_post },
 
     { ngx_string("mp4_max_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_mp4_conf_t, max_buffer_size),
-      NULL },
+      &ngx_http_mp4_buffer_size_post },
 
     { ngx_string("mp4_start_key_frame"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -3982,6 +3987,19 @@ ngx_http_mp4_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->max_buffer_size, prev->max_buffer_size,
                               10 * 1024 * 1024);
     ngx_conf_merge_value(conf->start_key_frame, prev->start_key_frame, 0);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_mp4_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
+    }
 
     return NGX_CONF_OK;
 }
