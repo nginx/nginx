@@ -48,7 +48,7 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.stream_buffer_size),
-      NULL },
+      &ngx_conf_size_nonzero_post },
 
     { ngx_string("quic_retry"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
