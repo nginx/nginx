@@ -20,6 +20,14 @@ static char *ngx_http_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
 
+static ngx_conf_enum_t  ngx_http_v3_extended_connect[] = {
+    { ngx_string("off"), NGX_HTTP_V3_EXTENDED_CONNECT_OFF },
+    { ngx_string("on"), NGX_HTTP_V3_EXTENDED_CONNECT_ON },
+    { ngx_string("advertise"), NGX_HTTP_V3_EXTENDED_CONNECT_ADVERTISE },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_v3_commands[] = {
 
     { ngx_string("http3"),
@@ -42,6 +50,13 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, max_concurrent_streams),
       NULL },
+
+    { ngx_string("http3_extended_connect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, extended_connect),
+      &ngx_http_v3_extended_connect },
 
     { ngx_string("http3_stream_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -200,6 +215,7 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->enable_hq = NGX_CONF_UNSET;
     h3scf->max_table_capacity = NGX_HTTP_V3_MAX_TABLE_CAPACITY;
     h3scf->max_concurrent_streams = NGX_CONF_UNSET_UINT;
+    h3scf->extended_connect = NGX_CONF_UNSET_UINT;
 
     h3scf->quic.stream_buffer_size = NGX_CONF_UNSET_SIZE;
     h3scf->quic.max_concurrent_streams_bidi = NGX_CONF_UNSET_UINT;
@@ -234,6 +250,9 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->max_concurrent_streams, 128);
 
     conf->max_blocked_streams = conf->max_concurrent_streams;
+
+    ngx_conf_merge_uint_value(conf->extended_connect, prev->extended_connect,
+                              NGX_HTTP_V3_EXTENDED_CONNECT_ON);
 
     ngx_conf_merge_size_value(conf->quic.stream_buffer_size,
                               prev->quic.stream_buffer_size,

@@ -20,6 +20,10 @@
 #define NGX_HTTP_V2_DEFAULT_FRAME_SIZE   (1 << 14)
 #define NGX_HTTP_V2_MAX_FRAME_SIZE       ((1 << 24) - 1)
 
+#define NGX_HTTP_V2_EXTENDED_CONNECT_OFF        0
+#define NGX_HTTP_V2_EXTENDED_CONNECT_ON         1
+#define NGX_HTTP_V2_EXTENDED_CONNECT_ADVERTISE  2
+
 #define NGX_HTTP_V2_INT_OCTETS           4
 #define NGX_HTTP_V2_MAX_FIELD                                                 \
     (127 + (1 << (NGX_HTTP_V2_INT_OCTETS - 1) * 7) - 1)
@@ -65,6 +69,7 @@ typedef struct {
     ngx_flag_t                       enable;
     size_t                           pool_size;
     ngx_uint_t                       concurrent_streams;
+    ngx_uint_t                       extended_connect;
     size_t                           preread_size;
     ngx_uint_t                       streams_index_mask;
 } ngx_http_v2_srv_conf_t;
