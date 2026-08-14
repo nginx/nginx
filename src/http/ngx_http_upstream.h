@@ -456,6 +456,8 @@ ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
 ngx_int_t ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
     ngx_http_upstream_conf_t *conf, ngx_http_upstream_conf_t *prev);
 #endif
+ngx_int_t ngx_http_upstream_keepalive_init(ngx_conf_t *cf,
+    ngx_http_upstream_srv_conf_t *uscf);
 
 
 #define ngx_http_conf_upstream_srv_conf(uscf, module)                         \
