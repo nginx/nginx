@@ -458,6 +458,7 @@ ngx_int_t ngx_http_upstream_merge_ssl_passwords(ngx_conf_t *cf,
 #endif
 ngx_int_t ngx_http_upstream_keepalive_init(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *uscf);
+void ngx_http_upstream_keepalive_drain(ngx_http_upstream_srv_conf_t *uscf);
 
 
 #define ngx_http_conf_upstream_srv_conf(uscf, module)                         \
