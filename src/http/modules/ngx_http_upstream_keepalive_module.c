@@ -22,6 +22,7 @@ typedef struct {
     ngx_http_upstream_init_peer_pt     original_init_peer;
 
     ngx_uint_t                         local; /* unsigned  local:1; */
+    ngx_uint_t                         draining; /* unsigned  draining:1; */
 
 } ngx_http_upstream_keepalive_srv_conf_t;
 
@@ -293,6 +294,16 @@ ngx_http_upstream_free_keepalive_peer(ngx_peer_connection_t *pc, void *data,
     u = kp->upstream;
     c = pc->connection;
 
+    /*
+     * Do not cache connections in an upstream being drained: the cache
+     * items, and the upstream itself, may be gone by the time such a
+     * connection is closed.
+     */
+
+    if (kp->conf->draining) {
+        goto invalid;
+    }
+
     if (state & NGX_PEER_FAILED
         || c == NULL
         || c->read->eof
@@ -507,6 +518,7 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
      *
      *     conf->original_init_peer = NULL;
      *     conf->local = 0;
+     *     conf->draining = 0;
      */
 
     conf->time = NGX_CONF_UNSET_MSEC;
@@ -586,6 +598,60 @@ ngx_http_upstream_keepalive_init(ngx_conf_t *cf,
     uscf->peer.init = ngx_http_upstream_init_keepalive_peer;
 
     return NGX_OK;
+}
+
+
+/*
+ * Drains the keepalive cache of a single upstream.  To be used by modules
+ * which delete upstreams at runtime, before the memory backing the upstream
+ * is released.
+ *
+ * The upstream is first marked as draining, so that connections still held
+ * by active requests are closed instead of being cached once these requests
+ * complete, and then all currently cached connections are closed.
+ *
+ * Connections are closed with ngx_http_upstream_keepalive_close(), which
+ * destroys the connection pool, and hence runs the cleanup handlers
+ * registered in it.
+ */
+
+void
+ngx_http_upstream_keepalive_drain(ngx_http_upstream_srv_conf_t *uscf)
+{
+    ngx_queue_t                             *q;
+    ngx_http_upstream_keepalive_cache_t     *item;
+    ngx_http_upstream_keepalive_srv_conf_t  *kcf;
+
+    if (uscf->srv_conf == NULL) {
+        return;
+    }
+
+    kcf = ngx_http_conf_upstream_srv_conf(uscf,
+                                          ngx_http_upstream_keepalive_module);
+
+    /*
+     * Keepalive was never initialized for this upstream, and the cache
+     * queues were never initialized either, so there is nothing to close
+     * and nothing safe to iterate.
+     */
+
+    if (kcf->original_init_peer == NULL) {
+        return;
+    }
+
+    kcf->draining = 1;
+
+    while (!ngx_queue_empty(&kcf->cache)) {
+
+        q = ngx_queue_head(&kcf->cache);
+        ngx_queue_remove(q);
+
+        item = ngx_queue_data(q, ngx_http_upstream_keepalive_cache_t, queue);
+
+        ngx_http_upstream_keepalive_close(item->connection);
+
+        ngx_queue_insert_head(&kcf->free, q);
+    }
 }
 
 
