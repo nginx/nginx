@@ -518,14 +518,83 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
 }
 
 
+/*
+ * Initializes keepalive for a single upstream.  Called for each upstream
+ * from init_main_conf(), and can also be called by modules which create
+ * upstreams after configuration parsing, once such an upstream has been
+ * initialized by its balancer.
+ *
+ * Does nothing if the upstream is already initialized, and leaves the
+ * upstream untouched if initialization fails, so that a failed call cannot
+ * leave peer.init pointing to a keepalive cache which was never built.
+ */
+
+ngx_int_t
+ngx_http_upstream_keepalive_init(ngx_conf_t *cf,
+    ngx_http_upstream_srv_conf_t *uscf)
+{
+    ngx_uint_t                               i;
+    ngx_http_upstream_keepalive_cache_t     *cached;
+    ngx_http_upstream_keepalive_srv_conf_t  *kcf;
+
+    /* skip implicit upstreams */
+    if (uscf->srv_conf == NULL) {
+        return NGX_OK;
+    }
+
+    kcf = ngx_http_conf_upstream_srv_conf(uscf,
+                                          ngx_http_upstream_keepalive_module);
+
+    if (kcf->max_cached == 0) {
+        return NGX_OK;
+    }
+
+    /* keepalive is already initialized for this upstream */
+    if (kcf->original_init_peer != NULL) {
+        return NGX_OK;
+    }
+
+    ngx_conf_init_msec_value(kcf->time, 3600000);
+    ngx_conf_init_msec_value(kcf->timeout, 60000);
+    ngx_conf_init_uint_value(kcf->requests, 1000);
+
+    if (kcf->max_cached == NGX_CONF_UNSET_UINT) {
+        kcf->local = 1;
+        kcf->max_cached = 32;
+    }
+
+    /* allocate cache items and add to free queue */
+
+    cached = ngx_pcalloc(cf->pool,
+                 sizeof(ngx_http_upstream_keepalive_cache_t) * kcf->max_cached);
+    if (cached == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_queue_init(&kcf->cache);
+    ngx_queue_init(&kcf->free);
+
+    for (i = 0; i < kcf->max_cached; i++) {
+        ngx_queue_insert_head(&kcf->free, &cached[i].queue);
+        cached[i].conf = kcf;
+    }
+
+    /* the upstream is wired only once the cache is ready */
+
+    kcf->original_init_peer = uscf->peer.init;
+
+    uscf->peer.init = ngx_http_upstream_init_keepalive_peer;
+
+    return NGX_OK;
+}
+
+
 static char *
 ngx_http_upstream_keepalive_init_main_conf(ngx_conf_t *cf, void *conf)
 {
-    ngx_uint_t                                i, j;
-    ngx_http_upstream_srv_conf_t            **uscfp;
-    ngx_http_upstream_main_conf_t            *umcf;
-    ngx_http_upstream_keepalive_cache_t      *cached;
-    ngx_http_upstream_keepalive_srv_conf_t   *kcf;
+    ngx_uint_t                      i;
+    ngx_http_upstream_srv_conf_t  **uscfp;
+    ngx_http_upstream_main_conf_t  *umcf;
 
     umcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_upstream_module);
 
@@ -533,45 +602,8 @@ ngx_http_upstream_keepalive_init_main_conf(ngx_conf_t *cf, void *conf)
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
 
-        /* skip implicit upstreams */
-        if (uscfp[i]->srv_conf == NULL) {
-            continue;
-        }
-
-        kcf = ngx_http_conf_upstream_srv_conf(uscfp[i],
-                                            ngx_http_upstream_keepalive_module);
-
-        if (kcf->max_cached == 0) {
-            continue;
-        }
-
-        ngx_conf_init_msec_value(kcf->time, 3600000);
-        ngx_conf_init_msec_value(kcf->timeout, 60000);
-        ngx_conf_init_uint_value(kcf->requests, 1000);
-
-        if (kcf->max_cached == NGX_CONF_UNSET_UINT) {
-            kcf->local = 1;
-            kcf->max_cached = 32;
-        }
-
-        kcf->original_init_peer = uscfp[i]->peer.init;
-
-        uscfp[i]->peer.init = ngx_http_upstream_init_keepalive_peer;
-
-        /* allocate cache items and add to free queue */
-
-        cached = ngx_pcalloc(cf->pool,
-                 sizeof(ngx_http_upstream_keepalive_cache_t) * kcf->max_cached);
-        if (cached == NULL) {
+        if (ngx_http_upstream_keepalive_init(cf, uscfp[i]) != NGX_OK) {
             return NGX_CONF_ERROR;
-        }
-
-        ngx_queue_init(&kcf->cache);
-        ngx_queue_init(&kcf->free);
-
-        for (j = 0; j < kcf->max_cached; j++) {
-            ngx_queue_insert_head(&kcf->free, &cached[j].queue);
-            cached[j].conf = kcf;
         }
     }
 
