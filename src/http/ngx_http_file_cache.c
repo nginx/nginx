@@ -2560,11 +2560,41 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             s.len = value[i].len - 9;
             s.data = value[i].data + 9;
 
-            min_free = ngx_parse_offset(&s);
-            if (min_free < 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "invalid min_free value \"%V\"", &value[i]);
-                return NGX_CONF_ERROR;
+            ngx_uint_t percent;
+            off_t      total;
+
+            if (s.len >= 2 && s.len <= 4 && s.data[s.len - 1] == '%') {
+
+                percent = ngx_atoi(s.data, s.len - 1);
+
+                if (percent == (ngx_uint_t) NGX_ERROR || percent > 100) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "invalid min_free value \"%V\"",
+                                       &value[i]);
+                    return NGX_CONF_ERROR;
+                }
+
+                total = ngx_fs_size(cache->path->name.data);
+
+                if (total == NGX_MAX_OFF_T_VALUE) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "failed to determine filesystem size "
+                                       "for \"%V\"", &cache->path->name);
+                    return NGX_CONF_ERROR;
+                }
+
+                min_free = (total / 100) * percent;
+
+            } else {
+
+                min_free = ngx_parse_offset(&s);
+
+                if (min_free < 0) {
+                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                       "invalid min_free value \"%V\"",
+                                       &value[i]);
+                    return NGX_CONF_ERROR;
+                }
             }
 
 #else
