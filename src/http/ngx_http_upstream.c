@@ -5604,9 +5604,8 @@ static ngx_int_t
 ngx_http_upstream_process_priority(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-#if (NGX_HTTP_V2)
-    ngx_http_priority_t    server_priority;
-    ngx_http_v2_stream_t  *stream;
+    ngx_http_priority_state_t  *ps;
+    ngx_http_priority_t         server_priority;
 
     /*
      * RFC9218 Section 8: Intermediaries can combine server priority hints
@@ -5618,36 +5617,63 @@ ngx_http_upstream_process_priority(ngx_http_request_t *r,
      * PRIORITY_UPDATE does not discard this server hint.
      */
 
-    stream = r->stream;
+    ps = NULL;
 
-    if (stream != NULL) {
-        if (ngx_http_priority_parse(&h->value, &server_priority) == NGX_OK
-            && server_priority.valid)
-        {
-            stream->priority.server = server_priority;
-            ngx_http_priority_state_update(&stream->priority);
-
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http2 upstream priority merged: u=%ui i=%ui",
-                           stream->priority.effective.urgency,
-                           stream->priority.effective.incremental);
-
-            /*
-             * Update header value to reflect merged priority.
-             * Buffer needs space for "u=N, i" (max 6 bytes) plus NUL.
-             */
-            h->value.data = ngx_pnalloc(r->pool, 7);
-            if (h->value.data == NULL) {
-                return NGX_ERROR;
-            }
-
-            h->value.len = ngx_http_priority_format(h->value.data,
-                                                    &stream->priority.effective)
-                           - h->value.data;
-            h->value.data[h->value.len] = '\0';
-        }
+#if (NGX_HTTP_V2)
+    if (r->stream != NULL) {
+        ps = &r->stream->priority;
     }
 #endif
+
+#if (NGX_HTTP_V3)
+    /*
+     * Subrequests are zero-initialized and do not carry their own v3_parse;
+     * the HTTP/2 path inherits r->stream via ngx_http_subrequest() but there
+     * is no equivalent copy for v3_parse.  Use the main request's parse
+     * context so upstream responses produced through subrequests merge the
+     * upstream priority hint exactly as the HTTP/2 path does.
+     */
+    if (r->connection->quic != NULL && r->main->v3_parse != NULL) {
+        ps = &r->main->v3_parse->priority;
+    }
+#endif
+
+    if (ps == NULL) {
+        return NGX_OK;
+    }
+
+    if (ngx_http_priority_parse(&h->value, &server_priority) != NGX_OK
+        || !server_priority.valid)
+    {
+        return NGX_OK;
+    }
+
+    ps->server = server_priority;
+    ngx_http_priority_state_update(ps);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "upstream priority merged: u=%ui i=%ui",
+                   ps->effective.urgency, ps->effective.incremental);
+
+#if (NGX_HTTP_V3)
+    if (r->connection->quic != NULL) {
+        ngx_quic_set_stream_priority(r->connection, ps->effective.urgency,
+                                     ps->effective.incremental);
+    }
+#endif
+
+    /*
+     * Update header value to reflect merged priority.
+     * Buffer needs space for "u=N, i" (max 6 bytes) plus NUL.
+     */
+    h->value.data = ngx_pnalloc(r->pool, 7);
+    if (h->value.data == NULL) {
+        return NGX_ERROR;
+    }
+
+    h->value.len = ngx_http_priority_format(h->value.data, &ps->effective)
+                   - h->value.data;
+    h->value.data[h->value.len] = '\0';
 
     return NGX_OK;
 }
