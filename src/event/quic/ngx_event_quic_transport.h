@@ -268,6 +268,15 @@ struct ngx_quic_frame_s {
     size_t                                      plen;
     ngx_msec_t                                  send_time;
     ssize_t                                     len;
+
+    /*
+     * RFC 9218 priority, copied from the owning stream when a STREAM frame
+     * is created, so ngx_quic_queue_frame() can order frames on the wire
+     * without dereferencing the stream.  Only meaningful for STREAM frames.
+     */
+    ngx_uint_t                                  urgency;
+
+    unsigned                                    incremental:1;
     unsigned                                    need_ack:1;
     unsigned                                    pkt_need_ack:1;
     unsigned                                    ignore_congestion:1;
