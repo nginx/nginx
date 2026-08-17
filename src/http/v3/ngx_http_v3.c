@@ -17,9 +17,10 @@ static void ngx_http_v3_cleanup_session(void *data);
 ngx_int_t
 ngx_http_v3_init_session(ngx_connection_t *c)
 {
-    ngx_pool_cleanup_t     *cln;
-    ngx_http_connection_t  *hc;
-    ngx_http_v3_session_t  *h3c;
+    ngx_pool_cleanup_t      *cln;
+    ngx_http_connection_t   *hc;
+    ngx_http_v3_session_t   *h3c;
+    ngx_http_v3_srv_conf_t  *h3scf;
 
     hc = c->data;
 
@@ -31,6 +32,10 @@ ngx_http_v3_init_session(ngx_connection_t *c)
     }
 
     h3c->http_connection = hc;
+
+    h3scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v3_module);
+
+    h3c->priority_limit = ngx_max(h3scf->max_concurrent_streams, 100);
 
     ngx_queue_init(&h3c->blocked);
 
