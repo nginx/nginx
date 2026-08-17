@@ -32,6 +32,7 @@ static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
 static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
 static ngx_int_t ngx_quic_stream_flush(ngx_quic_stream_t *qs);
+static void ngx_quic_restamp_stream_priority(ngx_quic_stream_t *qs);
 static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_int_t ngx_quic_close_stream(ngx_quic_stream_t *qs);
 static ngx_int_t ngx_quic_can_shutdown(ngx_connection_t *c);
@@ -167,6 +168,150 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, uint64_t id)
     }
 
     return NULL;
+}
+
+
+ngx_connection_t *
+ngx_quic_find_stream_connection(ngx_connection_t *pc, uint64_t id)
+{
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(pc);
+
+    qs = ngx_quic_find_stream(&qc->streams.tree, id);
+    if (qs == NULL) {
+        return NULL;
+    }
+
+    return qs->connection;
+}
+
+
+ngx_int_t
+ngx_quic_client_bidi_stream_id_allowed(ngx_connection_t *pc, uint64_t id)
+{
+    ngx_quic_connection_t  *qc;
+
+    /*
+     * RFC 9000, 4.6: a client-initiated bidirectional stream id is only
+     * permitted once its stream number is below the limit the server has
+     * advertised via MAX_STREAMS.  An id at or above the current limit
+     * identifies a stream the client is not yet allowed to open.
+     */
+
+    qc = ngx_quic_get_connection(pc);
+
+    return (id >> 2) < qc->streams.client_max_streams_bidi;
+}
+
+
+void
+ngx_quic_set_stream_app_ready(ngx_connection_t *c)
+{
+    ngx_quic_stream_t  *qs;
+
+    /*
+     * The application layer marks a stream ready once it has attached its
+     * per-stream object to c->data.  Kept behind this setter so the HTTP
+     * layer does not reach into the QUIC stream representation directly.
+     */
+
+    qs = c->quic;
+
+    if (qs == NULL) {
+        return;
+    }
+
+    qs->app_ready = 1;
+}
+
+
+ngx_int_t
+ngx_quic_stream_app_ready(ngx_connection_t *c)
+{
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    return qs != NULL && qs->app_ready;
+}
+
+
+void
+ngx_quic_set_stream_priority(ngx_connection_t *c, ngx_uint_t urgency,
+    ngx_uint_t incremental)
+{
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    if (qs == NULL) {
+        return;
+    }
+
+    incremental = incremental ? 1 : 0;
+
+    if (qs->urgency == urgency && qs->incremental == incremental) {
+        return;
+    }
+
+    qs->urgency = urgency;
+    qs->incremental = incremental;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id:0x%xL priority u=%ui i=%ui",
+                   qs->id, qs->urgency, (ngx_uint_t) qs->incremental);
+
+    /*
+     * A PRIORITY_UPDATE (or upstream Priority merge) can change the priority
+     * of a stream whose response is already in flight.  STREAM frames that
+     * were queued under the old urgency are still waiting in the application
+     * send context ordered by that stale value, so re-stamp and re-insert
+     * them to restore the by-urgency wire order for this stream.
+     */
+
+    ngx_quic_restamp_stream_priority(qs);
+}
+
+
+static void
+ngx_quic_restamp_stream_priority(ngx_quic_stream_t *qs)
+{
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(qs->parent);
+
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+
+    q = ngx_queue_head(&ctx->frames);
+
+    while (q != ngx_queue_sentinel(&ctx->frames)) {
+
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        q = ngx_queue_next(q);
+
+        if (f->type != NGX_QUIC_FT_STREAM
+            || f->u.stream.stream_id != qs->id)
+        {
+            continue;
+        }
+
+        if (f->urgency == qs->urgency
+            && (ngx_uint_t) f->incremental == qs->incremental)
+        {
+            continue;
+        }
+
+        f->urgency = qs->urgency;
+        f->incremental = qs->incremental;
+
+        ngx_queue_remove(&f->queue);
+        ngx_quic_queue_stream_frame(ctx, f);
+    }
 }
 
 
@@ -689,6 +834,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     qs->id = id;
     qs->send_final_size = (uint64_t) -1;
     qs->recv_final_size = (uint64_t) -1;
+    qs->urgency = NGX_QUIC_STREAM_DEFAULT_URGENCY;
 
     pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
     if (pool == NULL) {
@@ -1065,6 +1211,9 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
     frame->type = NGX_QUIC_FT_STREAM;
     frame->data = out;
+
+    frame->urgency = qs->urgency;
+    frame->incremental = qs->incremental;
 
     frame->u.stream.off = 1;
     frame->u.stream.len = 1;

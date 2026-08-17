@@ -295,6 +295,159 @@ ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames)
 }
 
 
+#define ngx_quic_stream_frame_prioritized(f)                                  \
+    ((f)->type == NGX_QUIC_FT_STREAM                                           \
+     && !((f)->u.stream.stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL))
+
+/*
+ * Frame types a prioritized request STREAM frame may safely be reordered
+ * ahead of.  PADDING and PING carry no ordering dependency on STREAM data
+ * and no transport state that a peer waits on, so delaying them is harmless.
+ *
+ * ACK/ACK_ECN are deliberately NOT reorderable: although an ACK carries no
+ * dependency on STREAM data, moving request frames ahead of it repeatedly
+ * would let a sustained run of newly queued, more-urgent STREAM frames keep
+ * inserting themselves before a queued ACK, delaying that ACK by an unbounded
+ * frame prefix rather than a single frame and risking a max_ack_delay
+ * violation.  Treating ACK as a barrier bounds acknowledgement latency;
+ * priority reordering still applies freely within each run of STREAM frames.
+ *
+ * Everything else -- flow-control grants (MAX_DATA, MAX_STREAM_DATA,
+ * MAX_STREAMS), path validation (PATH_CHALLENGE, PATH_RESPONSE),
+ * HANDSHAKE_DONE, connection-id and stream-state control, CONNECTION_CLOSE,
+ * and unidirectional STREAM (HTTP/3 control/QPACK) -- is likewise a barrier
+ * so it is never starved behind a growing stream prefix.
+ */
+#define ngx_quic_frame_reorderable(f)                                         \
+    ((f)->type == NGX_QUIC_FT_PADDING                                         \
+     || (f)->type == NGX_QUIC_FT_PING)
+
+
+void
+ngx_quic_queue_stream_frame(ngx_quic_send_ctx_t *ctx, ngx_quic_frame_t *frame)
+{
+    ngx_queue_t       *q;
+    ngx_quic_frame_t  *f;
+
+    /*
+     * RFC 9218: order request (client-initiated bidirectional) STREAM frames
+     * on the wire by urgency (lower value is more urgent).
+     *
+     * A prioritized frame is walked from the tail towards the head and
+     * stopped as soon as we find a frame f that must remain ahead of it.
+     * The queue holds frames of a single encryption level, so only these
+     * frame kinds are relevant:
+     *
+     *   - PING and PADDING carry no ordering dependency on STREAM data and no
+     *     transport state the peer waits on, so a request frame may be
+     *     prioritized past them.  They are skipped rather than treated as
+     *     barriers.
+     *
+     *   - ACK/ACK_ECN are treated as barriers.  Skipping them would let a
+     *     sustained run of newly queued, more-urgent request frames keep
+     *     inserting themselves ahead of a queued ACK, delaying it by an
+     *     unbounded frame prefix and risking a max_ack_delay violation;
+     *     bounding acknowledgement latency takes precedence over reordering
+     *     request data past an ACK.
+     *
+     *   - Every other non-request frame is a barrier.  Unidirectional STREAM
+     *     frames carry HTTP/3 control and QPACK data that must not be
+     *     reordered relative to request data.  Transport control frames --
+     *     flow-control grants (MAX_DATA, MAX_STREAM_DATA, MAX_STREAMS), path
+     *     validation (PATH_CHALLENGE, PATH_RESPONSE), HANDSHAKE_DONE,
+     *     connection-id and stream-state control, CONNECTION_CLOSE -- must not
+     *     be starved behind a growing stream prefix under sustained output.
+     *     Request frames are never moved ahead of any of these.  (CRYPTO lives
+     *     at a different encryption level and never shares this queue.)
+     *
+     *   - Same-stream request STREAM frames must stay in ascending offset
+     *     order for correct reassembly, and this depends ONLY on the offset
+     *     -- never on urgency (both frames share the same stream priority, so
+     *     an urgency comparison here is meaningless and must not be used).
+     *     f stays ahead iff its offset is not greater than ours; a
+     *     higher-offset frame of the same stream is walked past so a
+     *     reprioritized or retransmitted earlier frame is not left stranded
+     *     behind its own later data.
+     *
+     *   - Different-stream request STREAM frames are ordered by RFC 9218
+     *     priority, matching the scheduler's (urgency, then
+     *     non-incremental-before-incremental) ordering.  f stays ahead iff it
+     *     is more urgent, or equally urgent and not less preferred (f
+     *     non-incremental, or our frame incremental).
+     *
+     * The walk stops at the first frame that must stay ahead of the new
+     * frame -- a control frame, a unidirectional STREAM barrier, a same-stream
+     * frame at or before our offset, or a different-stream request frame that
+     * is more urgent or equally urgent and not less preferred -- and the new
+     * frame is inserted right after it.  A request frame therefore only ever
+     * moves ahead of strictly-less-urgent request traffic and reorderable
+     * PING/PADDING frames, and never past an ACK, a control frame, or a
+     * unidirectional STREAM barrier.
+     */
+
+    if (!ngx_quic_stream_frame_prioritized(frame)) {
+        ngx_queue_insert_tail(&ctx->frames, &frame->queue);
+        return;
+    }
+
+    for (q = ngx_queue_last(&ctx->frames);
+         q != ngx_queue_sentinel(&ctx->frames);
+         q = ngx_queue_prev(q))
+    {
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+
+        if (ngx_quic_frame_reorderable(f)) {
+            /*
+             * PING/PADDING: no ordering dependency on STREAM data and no
+             * transport state the peer waits on, so a request frame may be
+             * prioritized past it.
+             */
+            continue;
+        }
+
+        if (f->type != NGX_QUIC_FT_STREAM) {
+            /*
+             * Transport control frame (flow-control grant, path validation,
+             * HANDSHAKE_DONE, connection-id/stream-state control,
+             * CONNECTION_CLOSE): a barrier, so it is never starved behind a
+             * growing stream prefix.
+             */
+            ngx_queue_insert_after(q, &frame->queue);
+            return;
+        }
+
+        if (f->u.stream.stream_id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            /* HTTP/3 control/QPACK: hard barrier, never reordered */
+            ngx_queue_insert_after(q, &frame->queue);
+            return;
+        }
+
+        if (f->u.stream.stream_id == frame->u.stream.stream_id) {
+            /* same stream: ordering is by offset only, priority is equal */
+
+            if (f->u.stream.offset <= frame->u.stream.offset) {
+                ngx_queue_insert_after(q, &frame->queue);
+                return;
+            }
+
+            continue;
+        }
+
+        /* different streams: compare full RFC 9218 priority */
+
+        if (f->urgency < frame->urgency
+            || (f->urgency == frame->urgency
+                && (!f->incremental || frame->incremental)))
+        {
+            ngx_queue_insert_after(q, &frame->queue);
+            return;
+        }
+    }
+
+    ngx_queue_insert_head(&ctx->frames, &frame->queue);
+}
+
+
 void
 ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
 {
@@ -302,7 +455,12 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
 
     ctx = ngx_quic_get_send_ctx(qc, frame->level);
 
-    ngx_queue_insert_tail(&ctx->frames, &frame->queue);
+    if (frame->type == NGX_QUIC_FT_STREAM) {
+        ngx_quic_queue_stream_frame(ctx, frame);
+
+    } else {
+        ngx_queue_insert_tail(&ctx->frames, &frame->queue);
+    }
 
     frame->len = ngx_quic_create_frame(NULL, frame);
     /* always succeeds */

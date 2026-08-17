@@ -273,6 +273,14 @@ struct ngx_quic_frame_s {
     unsigned                                    ignore_congestion:1;
     unsigned                                    ignore_loss:1;
 
+    /*
+     * RFC 9218 priority, copied from the owning stream when a STREAM frame
+     * is created, so ngx_quic_queue_frame() can order frames on the wire
+     * without dereferencing the stream.  Only meaningful for STREAM frames.
+     */
+    ngx_uint_t                                  urgency;
+    unsigned                                    incremental:1;
+
     ngx_chain_t                                *data;
     union {
         ngx_quic_ack_frame_t                    ack;
