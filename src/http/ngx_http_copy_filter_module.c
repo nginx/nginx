@@ -87,6 +87,13 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_output_chain_ctx_t       *ctx;
     ngx_http_core_loc_conf_t     *clcf;
     ngx_http_copy_filter_conf_t  *conf;
+#if (NGX_HAVE_FILE_AIO)
+    ngx_output_chain_aio_pt       aio_handler;
+#endif
+#if (NGX_THREADS)
+    ngx_int_t                   (*thread_handler)(ngx_thread_task_t *task,
+                                                  ngx_file_t *file);
+#endif
 
     c = r->connection;
 
@@ -140,9 +147,38 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
 #if (NGX_HAVE_FILE_AIO || NGX_THREADS)
     ctx->aio = r->aio;
+
+#if (NGX_HAVE_FILE_AIO)
+    aio_handler = ctx->aio_handler;
+#endif
+#if (NGX_THREADS)
+    thread_handler = ctx->thread_handler;
+#endif
+
+    /*
+     * each pending operation holds a reference in r->main->blocked;
+     * with the counter close to its limit the file is read
+     * synchronously instead, so that it cannot overflow
+     */
+
+    if (r->main->blocked >= NGX_HTTP_MAX_BLOCKED) {
+#if (NGX_HAVE_FILE_AIO)
+        ctx->aio_handler = NULL;
+#endif
+#if (NGX_THREADS)
+        ctx->thread_handler = NULL;
+#endif
+    }
 #endif
 
     rc = ngx_output_chain(ctx, in);
+
+#if (NGX_HAVE_FILE_AIO)
+    ctx->aio_handler = aio_handler;
+#endif
+#if (NGX_THREADS)
+    ctx->thread_handler = thread_handler;
+#endif
 
     if (ctx->in == NULL) {
         r->buffered &= ~NGX_HTTP_COPY_BUFFERED;
