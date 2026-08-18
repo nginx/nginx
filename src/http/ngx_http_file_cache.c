@@ -2051,6 +2051,20 @@ ngx_http_file_cache_manager(void *data)
                        "http file cache size: %O c:%ui w:%i",
                        size, count, (ngx_int_t) watermark);
 
+        if (cache->min_free_percent >= 0) {
+          cache->total_fs_size = ngx_fs_size(cache->path->name.data);
+
+          if (cache->total_fs_size == NGX_MAX_OFF_T_VALUE) {
+            ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
+                               "failed to determine filesystem size "
+                               "for \"%V\"",
+                               &cache->path->name);
+            break;
+          }
+
+          cache->min_free = (cache->total_fs_size / 100) * cache->min_free_percent;
+        }
+
         if (size < cache->max_size && count < watermark) {
 
             if (!cache->min_free) {
@@ -2385,7 +2399,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     time_t                  inactive;
     ssize_t                 size;
     ngx_str_t               s, name, *value;
-    ngx_int_t               loader_files, manager_files;
+    ngx_int_t               loader_files, manager_files, percent;
     ngx_msec_t              loader_sleep, manager_sleep, loader_threshold,
                             manager_threshold;
     ngx_uint_t              i, n, use_temp_path;
@@ -2418,6 +2432,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     size = 0;
     max_size = NGX_MAX_OFF_T_VALUE;
     min_free = 0;
+    percent = -1;
 
     value = cf->args->elts;
 
@@ -2560,30 +2575,16 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             s.len = value[i].len - 9;
             s.data = value[i].data + 9;
 
-            ngx_uint_t percent;
-            off_t      total;
-
             if (s.len >= 2 && s.len <= 4 && s.data[s.len - 1] == '%') {
 
                 percent = ngx_atoi(s.data, s.len - 1);
 
-                if (percent == (ngx_uint_t) NGX_ERROR || percent > 100) {
+                if (percent == (ngx_int_t) NGX_ERROR || percent > 100) {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "invalid min_free value \"%V\"",
                                        &value[i]);
                     return NGX_CONF_ERROR;
                 }
-
-                total = ngx_fs_size(cache->path->name.data);
-
-                if (total == NGX_MAX_OFF_T_VALUE) {
-                    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                       "failed to determine filesystem size "
-                                       "for \"%V\"", &cache->path->name);
-                    return NGX_CONF_ERROR;
-                }
-
-                min_free = (total / 100) * percent;
 
             } else {
 
@@ -2738,6 +2739,7 @@ ngx_http_file_cache_set_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cache->inactive = inactive;
     cache->max_size = max_size;
     cache->min_free = min_free;
+    cache->min_free_percent = percent;
 
     caches = (ngx_array_t *) (confp + cmd->offset);
 
