@@ -48,6 +48,12 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         return NGX_OK;
     }
 
+    if (r->stream_connect && !(r->upstream && r->upstream->upgrade)) {
+        r->request_body_no_buffering = 0;
+        post_handler(r);
+        return NGX_OK;
+    }
+
     if (ngx_http_test_expect(r) != NGX_OK) {
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto done;

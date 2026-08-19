@@ -159,6 +159,7 @@ void ngx_http_v3_shutdown(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
+ngx_int_t ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in);
 
 
 extern ngx_module_t  ngx_http_v3_module;
