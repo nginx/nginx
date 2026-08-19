@@ -915,7 +915,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-            params_len += 1 + key_len + ((val_len > 127) ? 4 : 1) + val_len;
+            params_len += ((key_len > 127) ? 4 : 1) + key_len
+                          + ((val_len > 127) ? 4 : 1) + val_len;
         }
 
         len += params_len;
@@ -1083,7 +1084,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
         while (*(uintptr_t *) le.ip) {
 
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
-            key_len = (u_char) lcode(&le);
+            key_len = lcode(&le);
 
             lcode = *(ngx_http_script_len_code_pt *) le.ip;
             skip_empty = lcode(&le);
@@ -1107,13 +1108,23 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-            if (ngx_http_script_check_length(&e, 1 + ((val_len > 127) ? 4 : 1))
+            if (ngx_http_script_check_length(&e,
+                                             ((key_len > 127) ? 4 : 1)
+                                             + ((val_len > 127) ? 4 : 1))
                 != NGX_OK)
             {
                 return NGX_ERROR;
             }
 
-            *e.pos++ = (u_char) key_len;
+            if (key_len > 127) {
+                *e.pos++ = (u_char) (((key_len >> 24) & 0x7f) | 0x80);
+                *e.pos++ = (u_char) ((key_len >> 16) & 0xff);
+                *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
+                *e.pos++ = (u_char) (key_len & 0xff);
+
+            } else {
+                *e.pos++ = (u_char) key_len;
+            }
 
             if (val_len > 127) {
                 *e.pos++ = (u_char) (((val_len >> 24) & 0x7f) | 0x80);
