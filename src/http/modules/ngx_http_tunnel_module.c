@@ -189,6 +189,10 @@ ngx_http_tunnel_handler(ngx_http_request_t *r)
         return NGX_HTTP_NOT_ALLOWED;
     }
 
+    if (r->stream_connect && r->stream_connect != NGX_HTTP_PROTOCOL_TUNNEL) {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+
     if (ngx_http_upstream_create(r) != NGX_OK) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
@@ -210,6 +214,10 @@ ngx_http_tunnel_handler(ngx_http_request_t *r)
     u->process_header = ngx_http_tunnel_process_header;
     u->abort_request = ngx_http_tunnel_abort_request;
     u->finalize_request = ngx_http_tunnel_finalize_request;
+
+    if (r->stream_connect == NGX_HTTP_PROTOCOL_TUNNEL) {
+        u->allow_stream_connect = 1;
+    }
 
     rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init);
 
