@@ -163,6 +163,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         r->header_only = 1;
     }
 
+    if (r->headers_out.status == NGX_HTTP_SWITCHING_PROTOCOLS
+        && r->stream_connect == NGX_HTTP_PROTOCOL_WEBSOCKET
+        && r->upstream && r->upstream->upgrade)
+    {
+        r->headers_out.status = NGX_HTTP_OK;
+        ngx_str_null(&r->headers_out.status_line);
+    }
+
     switch (r->headers_out.status) {
 
     case NGX_HTTP_OK:

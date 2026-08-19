@@ -155,6 +155,8 @@ static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
     ngx_str_t *value);
+static ngx_int_t ngx_http_v2_parse_protocol(ngx_http_request_t *r,
+    ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
@@ -3350,6 +3352,13 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
         break;
 
+    case 8:
+        if (ngx_memcmp(header->name.data, "protocol", 8) == 0) {
+            return ngx_http_v2_parse_protocol(r, &header->value);
+        }
+
+        break;
+
     case 9:
         if (ngx_memcmp(header->name.data, "authority", sizeof("authority") - 1)
             == 0)
@@ -3589,6 +3598,35 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
     r->port = port;
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v2_parse_protocol(ngx_http_request_t *r, ngx_str_t *value)
+{
+    if (r->stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 9 && ngx_memcmp(value->data, "websocket", 9) == 0) {
+        r->stream_connect = NGX_HTTP_PROTOCOL_WEBSOCKET;
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "client sent unsupported :protocol header: \"%V\"", value);
+
+    return NGX_DECLINED;
 }
 
 
@@ -3950,8 +3988,39 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     }
 
     if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        if (!r->stream_connect) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT method");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            goto failed;
+        }
+
+        if (r->stream_connect >= NGX_HTTP_PROTOCOL_WEBSOCKET
+            && h2scf->extended_connect == NGX_HTTP_V2_EXTENDED_CONNECT_OFF)
+        {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT method with :protocol header");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            goto failed;
+        }
+
+        if (r->headers_in.content_length_n > 0) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT request with body");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            goto failed;
+        }
+
+        if (r->headers_in.content_length_n == 0) {
+            r->headers_in.content_length_n = -1;
+            r->headers_in.chunked = !r->stream->in_closed;
+        }
+
+    } else if (r->stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent %V with :protocol header",
+                      &r->method_name);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto failed;
     }
 
@@ -4288,6 +4357,9 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
 
                 return NGX_HTTP_BAD_REQUEST;
             }
+
+        } else if (r->stream_connect && r->upstream && r->upstream->upgrade) {
+            /* skip client_max_body_size */
 
         } else {
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
