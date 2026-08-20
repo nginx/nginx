@@ -9,6 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+static ngx_int_t ngx_forbidden_uri_char(u_char ch);
 
 static ngx_table_elt_t *ngx_http_parse_multi_header_lines_internal(
     ngx_http_request_t *r, ngx_table_elt_t *headers, ngx_str_t *name,
@@ -563,15 +564,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
-            case '#':
-                r->complex_uri = 1;
-                state = sw_uri;
-                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ngx_forbidden_uri_char(ch)) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 state = sw_check_uri;
@@ -628,15 +625,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
-            case '#':
-                r->complex_uri = 1;
-                state = sw_uri;
-                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ngx_forbidden_uri_char(ch)) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 break;
@@ -664,11 +657,8 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 r->uri_end = p;
                 r->http_minor = 9;
                 goto done;
-            case '#':
-                r->complex_uri = 1;
-                break;
             default:
-                if (ch < 0x20 || ch == 0x7f) {
+                if (ngx_forbidden_uri_char(ch)) {
                     return NGX_HTTP_PARSE_INVALID_REQUEST;
                 }
                 break;
@@ -1204,15 +1194,11 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
-            case '#':
-                r->complex_uri = 1;
-                state = sw_uri;
-                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f) {
+                if (ngx_forbidden_uri_char(ch)) {
                     return NGX_ERROR;
                 }
                 state = sw_check_uri;
@@ -1256,15 +1242,11 @@ ngx_http_parse_uri(ngx_http_request_t *r)
                 r->args_start = p + 1;
                 state = sw_uri;
                 break;
-            case '#':
-                r->complex_uri = 1;
-                state = sw_uri;
-                break;
             case '+':
                 r->plus_in_uri = 1;
                 break;
             default:
-                if (ch <= 0x20 || ch == 0x7f) {
+                if (ngx_forbidden_uri_char(ch)) {
                     return NGX_ERROR;
                 }
                 break;
@@ -1273,20 +1255,8 @@ ngx_http_parse_uri(ngx_http_request_t *r)
 
         /* URI */
         case sw_uri:
-
-            if (usual[ch >> 5] & (1U << (ch & 0x1f))) {
-                break;
-            }
-
-            switch (ch) {
-            case '#':
-                r->complex_uri = 1;
-                break;
-            default:
-                if (ch <= 0x20 || ch == 0x7f) {
-                    return NGX_ERROR;
-                }
-                break;
+	    if (ngx_forbidden_uri_char(ch)) {
+                return NGX_ERROR;
             }
             break;
         }
@@ -1391,8 +1361,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '?':
                 r->args_start = p;
                 goto args;
-            case '#':
-                goto done;
             case '.':
                 r->uri_ext = u + 1;
                 *u++ = ch;
@@ -1438,8 +1406,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
             case '?':
                 r->args_start = p;
                 goto args;
-            case '#':
-                goto done;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1481,9 +1447,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 u--;
                 r->args_start = p;
                 goto args;
-            case '#':
-                u--;
-                goto done;
             case '+':
                 r->plus_in_uri = 1;
                 /* fall through */
@@ -1511,7 +1474,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
 #endif
             case '/':
             case '?':
-            case '#':
                 u -= 4;
                 for ( ;; ) {
                     if (u < r->uri.data) {
@@ -1526,9 +1488,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
                 if (ch == '?') {
                     r->args_start = p;
                     goto args;
-                }
-                if (ch == '#') {
-                    goto done;
                 }
                 state = sw_slash;
                 break;
@@ -1632,8 +1591,6 @@ ngx_http_parse_complex_uri(ngx_http_request_t *r, ngx_uint_t merge_slashes)
         }
     }
 
-done:
-
     r->uri.len = u - r->uri.data;
 
     if (r->uri_ext) {
@@ -1647,18 +1604,6 @@ done:
 
 args:
 
-    while (p < r->uri_end) {
-        if (*p++ != '#') {
-            continue;
-        }
-
-        r->args.len = p - 1 - r->args_start;
-        r->args.data = r->args_start;
-        r->args_start = NULL;
-
-        break;
-    }
-
     r->uri.len = u - r->uri.data;
 
     if (r->uri_ext) {
@@ -1669,6 +1614,13 @@ args:
     r->uri_ext = NULL;
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_forbidden_uri_char(u_char ch)
+{
+    return ch <= 0x20 || ch == 0x7F || ch == '#' ? NGX_ERROR : NGX_OK;
 }
 
 
