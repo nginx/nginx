@@ -1166,6 +1166,10 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                 }
             }
 
+            if (c->read->timer_set) {
+                ngx_del_timer(c->read);
+            }
+
             ngx_free_connection(c);
 
             c->fd = (ngx_socket_t) -1;
