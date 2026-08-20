@@ -1194,16 +1194,19 @@ ngx_http_variable_content_length(ngx_http_request_t *r,
 {
     u_char  *p;
 
-    if (r->headers_in.content_length) {
+    if (r->reading_body && r->headers_in.content_length) {
         v->len = r->headers_in.content_length->value.len;
         v->data = r->headers_in.content_length->value.data;
         v->valid = 1;
-        v->no_cacheable = 0;
+        v->no_cacheable = 1;
         v->not_found = 0;
 
     } else if (r->reading_body) {
         v->not_found = 1;
         v->no_cacheable = 1;
+
+    } else if (r->discard_body) {
+        v->not_found = 1;
 
     } else if (r->headers_in.content_length_n >= 0) {
         p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
@@ -1214,7 +1217,7 @@ ngx_http_variable_content_length(ngx_http_request_t *r,
         v->len = ngx_sprintf(p, "%O", r->headers_in.content_length_n) - p;
         v->data = p;
         v->valid = 1;
-        v->no_cacheable = 0;
+        v->no_cacheable = 1;
         v->not_found = 0;
 
     } else if (r->headers_in.chunked) {
