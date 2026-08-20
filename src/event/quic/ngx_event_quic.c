@@ -9,6 +9,7 @@
 #include <ngx_event.h>
 #include <ngx_sha1.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_event_quic_qlog.h>
 
 
 static ngx_quic_connection_t *ngx_quic_new_connection(ngx_connection_t *c,
@@ -347,6 +348,15 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     c->idle = 1;
     ngx_reusable_connection(c, 1);
 
+    if (ngx_quic_qlog_init(c, qc) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_WARN, c->log, 0,
+                      "quic qlog init failed, continuing without qlog");
+    }
+
+    ngx_quic_qlog_connection_started(c, qc);
+    ngx_quic_qlog_transport_parameters_set(c, qc, &qc->tp,
+                                           NGX_QUIC_QLOG_SIDE_LOCAL);
+
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic connection created");
 
@@ -588,6 +598,9 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     if (qc->close.posted) {
         ngx_delete_posted_event(&qc->close);
     }
+
+    ngx_quic_qlog_connection_closed(c, qc);
+    ngx_quic_qlog_close(qc);
 
     ngx_quic_close_sockets(c);
 
@@ -1067,12 +1080,12 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     c->log->action = "handling payload";
 
-    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION) {
-        return ngx_quic_handle_frames(c, pkt);
-    }
+    ngx_quic_qlog_pkt_received_start(c, qc);
 
-    if (!pkt->key_update) {
-        return ngx_quic_handle_frames(c, pkt);
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION || !pkt->key_update) {
+        rc = ngx_quic_handle_frames(c, pkt);
+        ngx_quic_qlog_pkt_received_end(c, qc, pkt);
+        return rc;
     }
 
     /* switch keys and generate next on Key Phase change */
@@ -1081,6 +1094,8 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_keys_switch(c, qc->keys);
 
     rc = ngx_quic_handle_frames(c, pkt);
+    ngx_quic_qlog_pkt_received_end(c, qc, pkt);
+
     if (rc != NGX_OK) {
         return rc;
     }
@@ -1210,6 +1225,7 @@ ngx_quic_handle_frames(ngx_connection_t *c, ngx_quic_header_t *pkt)
         }
 
         ngx_quic_log_frame(c->log, &frame, 0);
+        ngx_quic_qlog_write_frame(qc, &frame);
 
         c->log->action = "handling frames";
 

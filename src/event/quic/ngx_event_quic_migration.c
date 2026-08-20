@@ -8,6 +8,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 #include <ngx_event_quic_connection.h>
+#include <ngx_event_quic_qlog.h>
 
 
 #define NGX_QUIC_PATH_MTU_DELAY       100
@@ -190,6 +191,8 @@ valid:
         qc->congestion.recovery_start = ngx_current_msec - 1;
 
         ngx_quic_init_rtt(qc);
+
+        ngx_quic_qlog_metrics_updated(c, qc);
     }
 
     path->validated = 1;
