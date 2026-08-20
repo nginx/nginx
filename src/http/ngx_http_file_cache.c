@@ -301,11 +301,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http file cache exists: %i e:%d", rc, c->exists);
 
-    if (rc == NGX_ERROR) {
-        return rc;
-    }
-
-    if (rc == NGX_AGAIN) {
+    if (rc == NGX_AGAIN || rc == NGX_ERROR) {
         return NGX_HTTP_CACHE_SCARCE;
     }
 
