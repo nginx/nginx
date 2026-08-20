@@ -158,4 +158,6 @@ ngx_shm_free(ngx_shm_t *shm)
                       "CloseHandle() of file mapping \"%V\" failed",
                       &shm->name);
     }
+
+    shm->addr = NULL;
 }
