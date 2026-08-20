@@ -2861,8 +2861,9 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
         && u->cache_status == NGX_HTTP_CACHE_EXPIRED
         && u->conf->cache_revalidate)
     {
-        time_t     now, valid, updating, error;
-        ngx_int_t  rc;
+        time_t      now, valid, updating, error;
+        ngx_int_t   rc;
+        ngx_msec_t  valid_ms;
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream not modified");
@@ -2898,10 +2899,11 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
         }
 
         if (valid == 0) {
-            valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                              u->headers_in.status_n);
-            if (valid) {
-                valid = now + valid;
+            valid_ms = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                                 u->headers_in.status_n);
+            if (valid_ms) {
+                valid = now + valid_ms / 1000;
+                r->cache->valid_msec = valid_ms % 1000;
             }
         }
 
@@ -2991,15 +2993,18 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
                 }
 
                 if (u->cacheable) {
-                    time_t  valid;
+                    time_t      valid;
+                    ngx_msec_t  valid_ms;
 
                     valid = r->cache->valid_sec;
 
                     if (valid == 0) {
-                        valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                                          status);
-                        if (valid) {
-                            r->cache->valid_sec = ngx_time() + valid;
+                        valid_ms = ngx_http_file_cache_valid(
+                                       u->conf->cache_valid, status);
+                        if (valid_ms) {
+                            r->cache->valid_sec = ngx_time() + valid_ms / 1000;
+                            r->cache->valid_msec = valid_ms % 1000;
+                            valid = r->cache->valid_sec;
                         }
                     }
 
@@ -3428,17 +3433,20 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (u->cacheable) {
-        time_t  now, valid;
+        time_t      now, valid;
+        ngx_msec_t  valid_ms;
 
         now = ngx_time();
 
         valid = r->cache->valid_sec;
 
         if (valid == 0) {
-            valid = ngx_http_file_cache_valid(u->conf->cache_valid,
-                                              u->headers_in.status_n);
-            if (valid) {
-                r->cache->valid_sec = now + valid;
+            valid_ms = ngx_http_file_cache_valid(u->conf->cache_valid,
+                                                 u->headers_in.status_n);
+            if (valid_ms) {
+                r->cache->valid_sec = now + valid_ms / 1000;
+                r->cache->valid_msec = valid_ms % 1000;
+                valid = r->cache->valid_sec;
             }
         }
 
@@ -4877,12 +4885,13 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
         if (u->cacheable) {
 
             if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
-                time_t  valid;
+                ngx_msec_t  valid_ms;
 
-                valid = ngx_http_file_cache_valid(u->conf->cache_valid, rc);
+                valid_ms = ngx_http_file_cache_valid(u->conf->cache_valid, rc);
 
-                if (valid) {
-                    r->cache->valid_sec = ngx_time() + valid;
+                if (valid_ms) {
+                    r->cache->valid_sec = ngx_time() + valid_ms / 1000;
+                    r->cache->valid_msec = valid_ms % 1000;
                     r->cache->error = rc;
                 }
             }
