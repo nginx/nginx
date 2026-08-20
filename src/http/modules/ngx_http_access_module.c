@@ -14,6 +14,7 @@ typedef struct {
     in_addr_t         mask;
     in_addr_t         addr;
     ngx_uint_t        deny;      /* unsigned  deny:1; */
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule_t;
 
 #if (NGX_HAVE_INET6)
@@ -22,6 +23,7 @@ typedef struct {
     struct in6_addr   addr;
     struct in6_addr   mask;
     ngx_uint_t        deny;      /* unsigned  deny:1; */
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule6_t;
 
 #endif
@@ -30,6 +32,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t        deny;      /* unsigned  deny:1; */
+    ngx_int_t         deny_status_code;
 } ngx_http_access_rule_un_t;
 
 #endif
@@ -56,7 +59,8 @@ static ngx_int_t ngx_http_access_inet6(ngx_http_request_t *r,
 static ngx_int_t ngx_http_access_unix(ngx_http_request_t *r,
     ngx_http_access_loc_conf_t *alcf);
 #endif
-static ngx_int_t ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny);
+static ngx_int_t ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny,
+    ngx_int_t deny_status_code);
 static char *ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static void *ngx_http_access_create_loc_conf(ngx_conf_t *cf);
@@ -77,7 +81,7 @@ static ngx_command_t  ngx_http_access_commands[] = {
 
     { ngx_string("deny"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LMT_CONF
-                        |NGX_CONF_TAKE1,
+                        |NGX_CONF_TAKE12,
       ngx_http_access_rule,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -194,7 +198,8 @@ ngx_http_access_inet(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
                        addr, rule[i].mask, rule[i].addr);
 
         if ((addr & rule[i].mask) == rule[i].addr) {
-            return ngx_http_access_found(r, rule[i].deny);
+            return ngx_http_access_found(r, rule[i].deny,
+                                            rule[i].deny_status_code);
         }
     }
 
@@ -237,7 +242,8 @@ ngx_http_access_inet6(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf,
             }
         }
 
-        return ngx_http_access_found(r, rule6[i].deny);
+        return ngx_http_access_found(r, rule6[i].deny,
+                                        rule6[i].deny_status_code);
 
     next:
         continue;
@@ -262,7 +268,8 @@ ngx_http_access_unix(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf)
 
         /* TODO: check path */
         if (1) {
-            return ngx_http_access_found(r, rule_un[i].deny);
+            return ngx_http_access_found(r, rule_un[i].deny,
+                                            rule_un[i].deny_status_code);
         }
     }
 
@@ -273,7 +280,8 @@ ngx_http_access_unix(ngx_http_request_t *r, ngx_http_access_loc_conf_t *alcf)
 
 
 static ngx_int_t
-ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny)
+ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny,
+    ngx_int_t deny_status_code)
 {
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -282,10 +290,11 @@ ngx_http_access_found(ngx_http_request_t *r, ngx_uint_t deny)
 
         if (clcf->satisfy == NGX_HTTP_SATISFY_ALL) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "access forbidden by rule");
+                          "access denied by rule with status %ui",
+                          deny_status_code);
         }
 
-        return NGX_HTTP_FORBIDDEN;
+        return deny_status_code;
     }
 
     return NGX_OK;
@@ -299,6 +308,8 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     ngx_int_t                   rc;
     ngx_uint_t                  all;
+    ngx_uint_t                  deny;
+    ngx_int_t                   deny_status_code;
     ngx_str_t                  *value;
     ngx_cidr_t                  cidr;
     ngx_http_access_rule_t     *rule;
@@ -309,10 +320,12 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_access_rule_un_t  *rule_un;
 #endif
 
-    all = 0;
-    ngx_memzero(&cidr, sizeof(ngx_cidr_t));
-
     value = cf->args->elts;
+
+    all = 0;
+    deny = (value[0].data[0] == 'd') ? 1 : 0;
+    deny_status_code = NGX_HTTP_FORBIDDEN;
+    ngx_memzero(&cidr, sizeof(ngx_cidr_t));
 
     if (value[1].len == 3 && ngx_strcmp(value[1].data, "all") == 0) {
         all = 1;
@@ -337,6 +350,19 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    if (deny && cf->args->nelts == 3) {
+        deny_status_code = ngx_atoi(value[2].data, value[2].len);
+        if (deny_status_code == NGX_ERROR || !(
+                   deny_status_code == NGX_HTTP_FORBIDDEN ||
+                   deny_status_code == NGX_HTTP_NOT_FOUND ||
+                   deny_status_code == NGX_HTTP_NOT_ALLOWED)) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                "invalid \"%V\" response status code \"%V\"",
+                &value[0], &value[2]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
     if (cidr.family == AF_INET || all) {
 
         if (alcf->rules == NULL) {
@@ -354,7 +380,8 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         rule->mask = cidr.u.in.mask;
         rule->addr = cidr.u.in.addr;
-        rule->deny = (value[0].data[0] == 'd') ? 1 : 0;
+        rule->deny = deny;
+        rule->deny_status_code = deny_status_code;
     }
 
 #if (NGX_HAVE_INET6)
@@ -375,7 +402,8 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         rule6->mask = cidr.u.in6.mask;
         rule6->addr = cidr.u.in6.addr;
-        rule6->deny = (value[0].data[0] == 'd') ? 1 : 0;
+        rule6->deny = deny;
+        rule6->deny_status_code = deny_status_code;
     }
 #endif
 
@@ -395,7 +423,8 @@ ngx_http_access_rule(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
 
-        rule_un->deny = (value[0].data[0] == 'd') ? 1 : 0;
+        rule_un->deny = deny;
+        rule_un->deny_status_code = deny_status_code;
     }
 #endif
 
