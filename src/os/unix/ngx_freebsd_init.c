@@ -21,7 +21,6 @@ u_long  ngx_freebsd_net_inet_tcp_sendspace;
 int     ngx_freebsd_machdep_hlt_logical_cpus;
 
 
-ngx_uint_t  ngx_freebsd_sendfile_nbytes_bug;
 ngx_uint_t  ngx_freebsd_use_tcp_nopush;
 
 ngx_uint_t  ngx_debug_malloc;
@@ -78,12 +77,6 @@ ngx_debug_init(void)
 {
 #if (NGX_DEBUG_MALLOC)
 
-#if __FreeBSD_version >= 500014 && __FreeBSD_version < 1000011
-    _malloc_options = "J";
-#elif __FreeBSD_version < 500014
-    malloc_options = "J";
-#endif
-
     ngx_debug_malloc = 1;
 
 #else
@@ -101,7 +94,6 @@ ngx_debug_init(void)
 ngx_int_t
 ngx_os_specific_init(ngx_log_t *log)
 {
-    int         version;
     size_t      size;
     ngx_err_t   err;
     ngx_uint_t  i;
@@ -141,48 +133,7 @@ ngx_os_specific_init(ngx_log_t *log)
         return NGX_ERROR;
     }
 
-    version = ngx_freebsd_kern_osreldate;
-
-
-#if (NGX_HAVE_SENDFILE)
-
-    /*
-     * The determination of the sendfile() "nbytes bug" is complex enough.
-     * There are two sendfile() syscalls: a new #393 has no bug while
-     * an old #336 has the bug in some versions and has not in others.
-     * Besides libc_r wrapper also emulates the bug in some versions.
-     * There is no way to say exactly if syscall #336 in FreeBSD circa 4.6
-     * has the bug.  We use the algorithm that is correct at least for
-     * RELEASEs and for syscalls only (not libc_r wrapper).
-     *
-     * 4.6.1-RELEASE and below have the bug
-     * 4.6.2-RELEASE and above have the new syscall
-     *
-     * We detect the new sendfile() syscall available at the compile time
-     * to allow an old binary to run correctly on an updated FreeBSD system.
-     */
-
-#if (__FreeBSD__ == 4 && __FreeBSD_version >= 460102)                         \
-     || __FreeBSD_version == 460002 || __FreeBSD_version >= 500039
-
-    /* a new syscall without the bug */
-
-    ngx_freebsd_sendfile_nbytes_bug = 0;
-
-#else
-
-    /* an old syscall that may have the bug */
-
-    ngx_freebsd_sendfile_nbytes_bug = 1;
-
-#endif
-
-#endif /* NGX_HAVE_SENDFILE */
-
-
-    if ((version < 500000 && version >= 440003) || version >= 500017) {
-        ngx_freebsd_use_tcp_nopush = 1;
-    }
+    ngx_freebsd_use_tcp_nopush = 1;
 
 
     for (i = 0; sysctls[i].name; i++) {
@@ -211,12 +162,6 @@ ngx_os_specific_init(ngx_log_t *log)
 
     } else {
         ngx_ncpu = ngx_freebsd_hw_ncpu;
-    }
-
-    if (version < 600008 && ngx_freebsd_kern_ipc_somaxconn > 32767) {
-        ngx_log_error(NGX_LOG_ALERT, log, 0,
-                      "sysctl kern.ipc.somaxconn must be less than 32768");
-        return NGX_ERROR;
     }
 
     ngx_tcp_nodelay_and_tcp_nopush = 1;
