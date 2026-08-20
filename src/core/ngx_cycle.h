@@ -32,7 +32,8 @@ struct ngx_shm_zone_s {
     ngx_shm_zone_init_pt      init;
     void                     *tag;
     void                     *sync;
-    ngx_uint_t                noreuse;  /* unsigned  noreuse:1; */
+    ngx_uint_t                noreuse:1;
+    ngx_uint_t                skip_inherit:1;
 };
 
 
@@ -89,6 +90,7 @@ struct ngx_cycle_s {
 typedef struct {
     ngx_flag_t                daemon;
     ngx_flag_t                master;
+    ngx_flag_t                auto_reload;
 
     ngx_msec_t                timer_resolution;
     ngx_msec_t                shutdown_timeout;
