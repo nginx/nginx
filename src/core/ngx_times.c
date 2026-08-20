@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 
 
-static ngx_msec_t ngx_monotonic_time(time_t sec, ngx_uint_t msec);
+static ngx_usec_t ngx_monotonic_time(time_t sec, ngx_uint_t usec);
 
 
 /*
@@ -27,6 +27,7 @@ static ngx_uint_t        slot;
 static ngx_atomic_t      ngx_time_lock;
 
 volatile ngx_msec_t      ngx_current_msec;
+volatile ngx_usec_t      ngx_current_usec;
 volatile ngx_time_t     *ngx_cached_time;
 volatile ngx_str_t       ngx_cached_err_log_time;
 volatile ngx_str_t       ngx_cached_http_time;
@@ -83,7 +84,8 @@ ngx_time_update(void)
     u_char          *p0, *p1, *p2, *p3, *p4;
     ngx_tm_t         tm, gmt;
     time_t           sec;
-    ngx_uint_t       msec;
+    ngx_uint_t       msec, usec;
+    ngx_usec_t       current_usec;
     ngx_time_t      *tp;
     struct timeval   tv;
 
@@ -94,9 +96,13 @@ ngx_time_update(void)
     ngx_gettimeofday(&tv);
 
     sec = tv.tv_sec;
-    msec = tv.tv_usec / 1000;
+    usec = tv.tv_usec;
+    msec = usec / 1000;
 
-    ngx_current_msec = ngx_monotonic_time(sec, msec);
+    current_usec = ngx_monotonic_time(sec, usec);
+
+    ngx_current_msec = (ngx_msec_t) (current_usec / 1000);
+    ngx_current_usec = current_usec;
 
     tp = &cached_time[slot];
 
@@ -192,8 +198,8 @@ ngx_time_update(void)
 }
 
 
-static ngx_msec_t
-ngx_monotonic_time(time_t sec, ngx_uint_t msec)
+static ngx_usec_t
+ngx_monotonic_time(time_t sec, ngx_uint_t usec)
 {
 #if (NGX_HAVE_CLOCK_MONOTONIC)
     struct timespec  ts;
@@ -201,11 +207,11 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
     clock_gettime(CLOCK_MONOTONIC, &ts);
 
     sec = ts.tv_sec;
-    msec = ts.tv_nsec / 1000000;
+    usec = ts.tv_nsec / 1000;
 
 #endif
 
-    return (ngx_msec_t) sec * 1000 + msec;
+    return (ngx_usec_t) sec * 1000000 + usec;
 }
 
 
