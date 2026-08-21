@@ -900,9 +900,12 @@ ngx_quic_init_connection(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
-    if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
-        SSL_set_quic_tls_early_data_enabled(ssl_conn, 1);
-    }
+    /*
+     * Enable early data unconditionally; the per-connection
+     * max_early_data (updated in the SNI callback for the selected
+     * server) governs whether 0-RTT is actually accepted.
+     */
+    SSL_set_quic_tls_early_data_enabled(ssl_conn, 1);
 
 #else /* NGX_QUIC_BORINGSSL_API || NGX_QUIC_QUICTLS_API */
 
@@ -925,9 +928,8 @@ ngx_quic_init_connection(ngx_connection_t *c)
     }
 
 #if (NGX_QUIC_QUICTLS_API)
-    if (SSL_CTX_get_max_early_data(qc->conf->ssl->ctx)) {
-        SSL_set_quic_early_data_enabled(ssl_conn, 1);
-    }
+    /* see the SSL_set_quic_tls_early_data_enabled comment above */
+    SSL_set_quic_early_data_enabled(ssl_conn, 1);
 #endif
 
 #endif
