@@ -96,10 +96,17 @@ ngx_json_obj_length(ngx_data_item_t *item)
 
     if (i) {
         for ( ;; ) {
-            len = sizeof("\"\":") - 1 + i->name.len
-                  + ngx_escape_json(NULL, i->name.data, i->name.len);
+            len = sizeof("\"\":") - 1 + i->name.len;
 
-            if (total > NGX_MAX_SIZE_T_VALUE - len) {
+            if (len > NGX_MAX_SIZE_T_VALUE - total) {
+                return NGX_ERROR;
+            }
+
+            total += len;
+
+            len = ngx_escape_json(NULL, i->name.data, i->name.len);
+
+            if (len > NGX_MAX_SIZE_T_VALUE - total) {
                 return NGX_ERROR;
             }
 
@@ -110,7 +117,7 @@ ngx_json_obj_length(ngx_data_item_t *item)
                 return NGX_ERROR;
             }
 
-            if (total > NGX_MAX_SIZE_T_VALUE - len) {
+            if (len > NGX_MAX_SIZE_T_VALUE - total) {
                 return NGX_ERROR;
             }
 
@@ -190,7 +197,7 @@ ngx_json_list_length(ngx_data_item_t *item)
                 return NGX_ERROR;
             }
 
-            if (total > NGX_MAX_SIZE_T_VALUE - len) {
+            if (len > NGX_MAX_SIZE_T_VALUE - total) {
                 return NGX_ERROR;
             }
 
@@ -248,12 +255,24 @@ ngx_json_list_encode(u_char *p, ngx_data_item_t *item)
 static ssize_t
 ngx_json_string_length(ngx_data_item_t *item)
 {
+    size_t      len, total;
     ngx_str_t  *str;
 
     str = &item->data.string;
 
-    return sizeof("\"\"") - 1 + str->len
-           + ngx_escape_json(NULL, str->data, str->len);
+    if (str->len > NGX_MAX_SIZE_T_VALUE - (sizeof("\"\"") - 1)) {
+        return NGX_ERROR;
+    }
+
+    total = sizeof("\"\"") - 1 + str->len;
+
+    len = ngx_escape_json(NULL, str->data, str->len);
+
+    if (len > NGX_MAX_SIZE_T_VALUE - total) {
+        return NGX_ERROR;
+    }
+
+    return total + len;
 }
 
 
