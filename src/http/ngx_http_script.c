@@ -1978,7 +1978,11 @@ ngx_http_script_var_code(ngx_http_script_engine_t *e)
 
     e->ip += sizeof(ngx_http_script_var_code_t);
 
-    value = ngx_http_get_flushed_variable(e->request, code->index);
+    if (e->flushed) {
+        value = ngx_http_get_indexed_variable(e->request, code->index);
+    } else {
+        value = ngx_http_get_flushed_variable(e->request, code->index);
+    }
 
     if (value && !value->not_found) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0,
