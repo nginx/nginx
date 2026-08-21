@@ -2049,9 +2049,10 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
     encoded = h->value;
 
     if (encoded.len < sizeof("Basic ") - 1
-        || ngx_strncasecmp(encoded.data, (u_char *) "Basic ",
-                           sizeof("Basic ") - 1)
-           != 0)
+        || ngx_strncasecmp(encoded.data, (u_char *) "Basic",
+                           sizeof("Basic") - 1) != 0
+        || (encoded.data[sizeof("Basic") - 1] != ' '
+            && encoded.data[sizeof("Basic") - 1] != '\t'))
     {
         r->headers_in.user.data = (u_char *) "";
         return NGX_DECLINED;
@@ -2060,7 +2061,7 @@ ngx_http_auth_basic_user(ngx_http_request_t *r)
     encoded.len -= sizeof("Basic ") - 1;
     encoded.data += sizeof("Basic ") - 1;
 
-    while (encoded.len && encoded.data[0] == ' ') {
+    while (encoded.len && (encoded.data[0] == ' ' || encoded.data[0] == '\t')) {
         encoded.len--;
         encoded.data++;
     }
@@ -2286,7 +2287,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
             return NGX_DECLINED;
         }
 
-        if (p == start || (*(p - 1) == ',' || *(p - 1) == ' ')) {
+        if (p == start || (*(p - 1) == ',' || *(p - 1) == ' ' || *(p - 1) == '\t')) {
             break;
         }
 
@@ -2302,6 +2303,7 @@ ngx_http_gzip_accept_encoding(ngx_str_t *ae)
         case ';':
             goto quantity;
         case ' ':
+        case '\t':
             continue;
         default:
             return NGX_DECLINED;
@@ -2318,6 +2320,7 @@ quantity:
         case 'Q':
             goto equal;
         case ' ':
+        case '\t':
             continue;
         default:
             return NGX_DECLINED;
@@ -2360,7 +2363,7 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
 
     c = *p++;
 
-    if (c == ',' || c == ' ') {
+    if (c == ',' || c == ' ' || c == '\t') {
         return q;
     }
 
@@ -2373,7 +2376,7 @@ ngx_http_gzip_quantity(u_char *p, u_char *last)
     while (p < last) {
         c = *p++;
 
-        if (c == ',' || c == ' ') {
+        if (c == ',' || c == ' ' || c == '\t') {
             break;
         }
 
@@ -2882,13 +2885,13 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
         }
 
         for (p = xff + xfflen - 1; p > xff; p--, xfflen--) {
-            if (*p != ' ' && *p != ',') {
+            if (*p != ' ' && *p != '\t' && *p != ',') {
                 break;
             }
         }
 
         for ( /* void */ ; p > xff; p--) {
-            if (*p == ' ' || *p == ',') {
+            if (*p == ' ' || *p == '\t' || *p == ',') {
                 p++;
                 break;
             }
