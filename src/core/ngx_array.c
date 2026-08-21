@@ -30,12 +30,15 @@ ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size)
 void
 ngx_array_destroy(ngx_array_t *a)
 {
+    size_t       size;
     ngx_pool_t  *p;
 
     p = a->pool;
 
-    if ((u_char *) a->elts + a->size * a->nalloc == p->d.last) {
-        p->d.last -= a->size * a->nalloc;
+    if (ngx_array_calc_size(a->nalloc, a->size, &size) == NGX_OK
+        && (u_char *) a->elts + size == p->d.last)
+    {
+        p->d.last -= size;
     }
 
     if ((u_char *) a + sizeof(ngx_array_t) == p->d.last) {
@@ -48,19 +51,21 @@ void *
 ngx_array_push(ngx_array_t *a)
 {
     void        *elt, *new;
-    size_t       size;
+    size_t       size, alloc;
     ngx_pool_t  *p;
 
     if (a->nelts == a->nalloc) {
 
         /* the array is full */
 
-        size = a->size * a->nalloc;
+        if (ngx_array_calc_size(a->nalloc, a->size, &size) != NGX_OK) {
+            return NULL;
+        }
 
         p = a->pool;
 
         if ((u_char *) a->elts + size == p->d.last
-            && p->d.last + a->size <= p->d.end)
+            && a->size <= (size_t) (p->d.end - p->d.last))
         {
             /*
              * the array allocation is the last in the pool
@@ -73,7 +78,15 @@ ngx_array_push(ngx_array_t *a)
         } else {
             /* allocate a new array */
 
-            new = ngx_palloc(p, 2 * size);
+            if (a->nalloc > (ngx_uint_t) -1 / 2) {
+                return NULL;
+            }
+
+            if (ngx_array_calc_size(2, size, &alloc) != NGX_OK) {
+                return NULL;
+            }
+
+            new = ngx_palloc(p, alloc);
             if (new == NULL) {
                 return NULL;
             }
@@ -84,7 +97,11 @@ ngx_array_push(ngx_array_t *a)
         }
     }
 
-    elt = (u_char *) a->elts + a->size * a->nelts;
+    if (ngx_array_calc_size(a->nelts, a->size, &size) != NGX_OK) {
+        return NULL;
+    }
+
+    elt = (u_char *) a->elts + size;
     a->nelts++;
 
     return elt;
@@ -95,20 +112,33 @@ void *
 ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
 {
     void        *elt, *new;
-    size_t       size;
+    size_t       size, alloc;
+    ngx_uint_t   nelts;
     ngx_uint_t   nalloc;
     ngx_pool_t  *p;
 
-    size = n * a->size;
+    if (ngx_array_calc_size(n, a->size, &size) != NGX_OK) {
+        return NULL;
+    }
 
-    if (a->nelts + n > a->nalloc) {
+    nelts = a->nelts + n;
+
+    if (nelts < a->nelts) {
+        return NULL;
+    }
+
+    if (nelts > a->nalloc) {
 
         /* the array is full */
 
         p = a->pool;
 
-        if ((u_char *) a->elts + a->size * a->nalloc == p->d.last
-            && p->d.last + size <= p->d.end)
+        if (ngx_array_calc_size(a->nalloc, a->size, &alloc) != NGX_OK) {
+            return NULL;
+        }
+
+        if ((u_char *) a->elts + alloc == p->d.last
+            && size <= (size_t) (p->d.end - p->d.last))
         {
             /*
              * the array allocation is the last in the pool
@@ -121,21 +151,39 @@ ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
         } else {
             /* allocate a new array */
 
-            nalloc = 2 * ((n >= a->nalloc) ? n : a->nalloc);
+            nalloc = (n >= a->nalloc) ? n : a->nalloc;
 
-            new = ngx_palloc(p, nalloc * a->size);
+            if (nalloc > (ngx_uint_t) -1 / 2) {
+                return NULL;
+            }
+
+            nalloc *= 2;
+
+            if (ngx_array_calc_size(nalloc, a->size, &alloc) != NGX_OK) {
+                return NULL;
+            }
+
+            new = ngx_palloc(p, alloc);
             if (new == NULL) {
                 return NULL;
             }
 
-            ngx_memcpy(new, a->elts, a->nelts * a->size);
+            if (ngx_array_calc_size(a->nelts, a->size, &alloc) != NGX_OK) {
+                return NULL;
+            }
+
+            ngx_memcpy(new, a->elts, alloc);
             a->elts = new;
             a->nalloc = nalloc;
         }
     }
 
-    elt = (u_char *) a->elts + a->size * a->nelts;
-    a->nelts += n;
+    if (ngx_array_calc_size(a->nelts, a->size, &size) != NGX_OK) {
+        return NULL;
+    }
+
+    elt = (u_char *) a->elts + size;
+    a->nelts = nelts;
 
     return elt;
 }
