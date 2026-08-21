@@ -211,6 +211,8 @@ ngx_http_tunnel_handler(ngx_http_request_t *r)
     u->abort_request = ngx_http_tunnel_abort_request;
     u->finalize_request = ngx_http_tunnel_finalize_request;
 
+    r->request_body_no_buffering = 1;
+
     rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init);
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
