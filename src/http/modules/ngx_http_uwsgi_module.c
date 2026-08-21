@@ -82,6 +82,8 @@ static char *ngx_http_uwsgi_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_uwsgi_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_uwsgi_create_key(ngx_http_request_t *r);
@@ -125,6 +127,8 @@ static ngx_conf_bitmask_t ngx_http_uwsgi_next_upstream_masks[] = {
     { ngx_null_string, 0 }
 };
 
+static ngx_conf_post_t  ngx_http_uwsgi_buffer_size_post =
+    { ngx_http_uwsgi_buffer_size_check };
 
 #if (NGX_HTTP_SSL)
 
@@ -252,7 +256,7 @@ static ngx_command_t ngx_http_uwsgi_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_uwsgi_loc_conf_t, upstream.buffer_size),
-      NULL },
+      &ngx_http_uwsgi_buffer_size_post },
 
     { ngx_string("uwsgi_pass_request_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -2433,6 +2437,19 @@ ngx_http_uwsgi_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_http_script_compile(&sc) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_uwsgi_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
     }
 
     return NGX_CONF_OK;
