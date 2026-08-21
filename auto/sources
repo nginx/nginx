@@ -43,6 +43,8 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_crypt.h \
            src/core/ngx_data.h \
            src/core/ngx_json.h \
+           src/core/ngx_json_parse.h \
+           src/core/ngx_json_unescape.h \
            src/core/ngx_proxy_protocol.h \
            src/core/ngx_syslog.h"
 
@@ -83,6 +85,8 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_crypt.c \
            src/core/ngx_data.c \
            src/core/ngx_json.c \
+           src/core/ngx_json_parse.c \
+           src/core/ngx_json_unescape.c \
            src/core/ngx_proxy_protocol.c \
            src/core/ngx_syslog.c"
 
