@@ -34,6 +34,10 @@ struct ngx_file_s {
     ngx_event_aio_t           *aio;
 #endif
 
+#if (NGX_HAVE_IO_URING || NGX_COMPAT)
+    ngx_event_io_uring_t      *io_uring;
+#endif
+
     unsigned                   valid_info:1;
     unsigned                   directio:1;
 };
