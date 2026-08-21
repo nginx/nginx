@@ -4144,7 +4144,15 @@ ngx_http_log_error(ngx_log_t *log, u_char *buf, size_t len)
 
     ctx = log->data;
 
-    p = ngx_snprintf(buf, len, ", client: %V", &ctx->connection->addr_text);
+    if (ctx->connection->proxy_protocol
+        && ctx->connection->proxy_protocol->src_addr.len)
+    {
+        p = ngx_snprintf(buf, len, ", client: %V",
+                         &ctx->connection->proxy_protocol->src_addr);
+    } else {
+        p = ngx_snprintf(buf, len, ", client: %V", &ctx->connection->addr_text);
+    }
+
     len -= p - buf;
 
     r = ctx->request;
