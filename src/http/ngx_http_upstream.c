@@ -27,6 +27,8 @@ static ngx_int_t ngx_http_upstream_cache_last_modified(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_upstream_cache_etag(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_http_upstream_process_upgrade(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 #endif
 
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
@@ -335,6 +337,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, content_encoding), 0 },
+
+    { ngx_string("Upgrade"),
+                 ngx_http_upstream_process_upgrade, 0,
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
@@ -2619,6 +2625,96 @@ done:
 
     /* rc == NGX_OK */
 
+    /*
+     * Check that we don't send a 0xx response to the client.
+     * Also check that we don't send a 1xx response to a client that can't
+     * handle it, and that the connection was upgraded if it was supposed
+     * to be.
+     */
+    if (r->method == NGX_HTTP_CONNECT
+        && u->headers_in.status_n >= NGX_HTTP_OK
+        && u->headers_in.status_n <= 299)
+    {
+        if (!u->upgrade) {
+            /*
+             * Something (probably an upstream server) successfully handled
+             * a CONNECT request, but this isn't supported.
+             */
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "Successful response to CONNECT request, "
+                          "but no upgrade. Check that your upstream "
+                          "servers reject CONNECT requests.");
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (r->http_version != NGX_HTTP_VERSION_11) {
+            /* Rejected in ngx_http_request.c */
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "Attempt to upgrade non-HTTP/1.1 connection");
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    } else if (u->upgrade) {
+        /* Someone upgraded the connection when they should not have. */
+        if (u->headers_in.status_n != NGX_HTTP_SWITCHING_PROTOCOLS) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "Upgrade flag sent, but status is %ui (not 101)",
+                          u->headers_in.status_n);
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (r->http_version != NGX_HTTP_VERSION_11) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "Upstream sent 101 response to non-HTTP/1.1 request");
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+            return;
+        }
+
+        if (r->method == NGX_HTTP_HEAD) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "Upstream sent 101 response to HEAD request");
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+            return;
+        }
+
+        if (!r->headers_in.upgrade) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "Upstream sent 101 response, but client didn't "
+                          "send Upgrade header");
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+            return;
+        }
+
+        if (!u->headers_in.upgrade) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "Upstream sent 101 without setting Upgrade header");
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+            return;
+        }
+    } else if (u->headers_in.status_n < NGX_HTTP_OK) {
+        /*
+         * This means that the upstream protocol (probably FastCGI, uWSGI,
+         * or SCGI) cannot handle 1xx responses of the type the upstream server
+         * provided.  It could also mean that 0xx responses were not rejected.
+         * Log an error and return 502 Bad Gateway.
+         *
+         * 1xx responses from upstream HTTP servers don't reach here.  Their
+         * protocol handlers return NGX_HTTP_UPSTREAM_EARLY_HINTS from their
+         * process_headers() function when they get a 1xx response.  That
+         * causes a 1xx response to be sent to the client.
+         */
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "Upstream sent response with status %ui that upstream "
+                      "protocol does not support", u->headers_in.status_n);
+        ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+        return;
+    }
+
     u->state->header_time = ngx_current_msec - u->start_time;
 
     if (u->headers_in.status_n >= NGX_HTTP_SPECIAL_RESPONSE) {
@@ -2658,7 +2754,7 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
 
-    if (u->conf->pass_early_hints) {
+    if (u->conf->pass_early_hints && r->http_version >= NGX_HTTP_VERSION_11) {
 
         u->early_hints_length += u->buffer.pos - u->buffer.start;
 
@@ -5468,6 +5564,15 @@ ngx_http_upstream_process_connection(ngx_http_request_t *r, ngx_table_elt_t *h,
         u->headers_in.connection_close = 1;
     }
 
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_process_upgrade(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+    r->upstream->headers_in.upgrade = 1;
     return NGX_OK;
 }
 
