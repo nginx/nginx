@@ -161,6 +161,7 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
 {
     size_t                 len;
     u_char                *p;
+    ngx_uint_t             family;
     ngx_proxy_protocol_t  *pp;
 
     p = buf;
@@ -194,12 +195,17 @@ ngx_proxy_protocol_read(ngx_connection_t *c, u_char *buf, u_char *last)
         goto invalid;
     }
 
+    family = (p[3] == '4') ? NGX_PROXY_PROTOCOL_AF_INET
+                            : NGX_PROXY_PROTOCOL_AF_INET6;
+
     p += 5;
 
     pp = ngx_pcalloc(c->pool, sizeof(ngx_proxy_protocol_t));
     if (pp == NULL) {
         return NULL;
     }
+
+    pp->family = family;
 
     p = ngx_proxy_protocol_read_addr(c, p, last, &pp->src_addr);
     if (p == NULL) {
@@ -339,7 +345,8 @@ ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
 u_char *
 ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
 {
-    ngx_uint_t  port, lport;
+    ngx_uint_t             port, lport;
+    ngx_proxy_protocol_t  *pp;
 
     if (last - buf < NGX_PROXY_PROTOCOL_V1_MAX_HEADER) {
         ngx_log_error(NGX_LOG_ALERT, c->log, 0,
@@ -347,8 +354,43 @@ ngx_proxy_protocol_write(ngx_connection_t *c, u_char *buf, u_char *last)
         return NULL;
     }
 
+    pp = c->proxy_protocol;
+
+    if (pp) {
+        switch (pp->family) {
+
+        case NGX_PROXY_PROTOCOL_AF_INET:
+            buf = ngx_cpymem(buf, "PROXY TCP4 ",
+                              sizeof("PROXY TCP4 ") - 1);
+            break;
+
+        case NGX_PROXY_PROTOCOL_AF_INET6:
+            buf = ngx_cpymem(buf, "PROXY TCP6 ",
+                              sizeof("PROXY TCP6 ") - 1);
+            break;
+
+        default:
+            return ngx_cpymem(buf, "PROXY UNKNOWN" CRLF,
+                              sizeof("PROXY UNKNOWN" CRLF) - 1);
+        }
+
+        buf = ngx_cpymem(buf, pp->src_addr.data, pp->src_addr.len);
+
+        *buf++ = ' ';
+
+        buf = ngx_cpymem(buf, pp->dst_addr.data, pp->dst_addr.len);
+
+        return ngx_slprintf(buf, last, " %ui %ui" CRLF, pp->src_port,
+                            pp->dst_port);
+    }
+
     if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
         return NULL;
+    }
+
+    if (c->sockaddr->sa_family != c->local_sockaddr->sa_family) {
+        return ngx_cpymem(buf, "PROXY UNKNOWN" CRLF,
+                          sizeof("PROXY UNKNOWN" CRLF) - 1);
     }
 
     switch (c->sockaddr->sa_family) {
@@ -464,6 +506,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in->src_port);
         pp->dst_port = ngx_proxy_protocol_parse_uint16(in->dst_port);
+        pp->family = family;
 
         socklen = sizeof(struct sockaddr_in);
 
@@ -491,6 +534,7 @@ ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf, u_char *last)
 
         pp->src_port = ngx_proxy_protocol_parse_uint16(in6->src_port);
         pp->dst_port = ngx_proxy_protocol_parse_uint16(in6->dst_port);
+        pp->family = family;
 
         socklen = sizeof(struct sockaddr_in6);
 
