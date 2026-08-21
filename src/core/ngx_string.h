@@ -236,4 +236,11 @@ void ngx_sort(void *base, size_t n, size_t size,
 #define ngx_value(n)          ngx_value_helper(n)
 
 
+static ngx_inline ngx_int_t
+ngx_str_is_hws(ngx_uint_t c)
+{
+    return c == '\t' || c == ' ';
+}
+
+
 #endif /* _NGX_STRING_H_INCLUDED_ */
