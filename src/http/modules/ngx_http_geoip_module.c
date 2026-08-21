@@ -669,6 +669,14 @@ ngx_http_geoip_init_conf(ngx_conf_t *cf, void *conf)
 
     ngx_conf_init_value(gcf->proxy_recursive, 0);
 
+    if (gcf->country != NULL || gcf->org != NULL || gcf->city != NULL) {
+        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                      "the GeoIP module uses the legacy MaxMind GeoIP "
+                      "library (libGeoIP) which reached End-of-Life "
+                      "in May 2022; consider migrating to the GeoIP2 "
+                      "module (--with-http_geoip2_module)");
+    }
+
     return NGX_CONF_OK;
 }
 

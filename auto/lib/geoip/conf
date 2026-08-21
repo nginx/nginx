@@ -83,6 +83,16 @@ fi
 
 if [ $ngx_found = yes ]; then
 
+cat << END
+
+WARNING: The GeoIP module uses the MaxMind GeoIP Legacy library (libGeoIP),
+which reached End-of-Life in May 2022. The GeoIP Legacy database was frozen
+in January 2023 and will not receive further security patches or database
+updates. It is strongly recommended to migrate to --with-http_geoip2_module
+(backed by libmaxminddb and the maintained GeoLite2 MMDB database format).
+
+END
+
     CORE_INCS="$CORE_INCS $ngx_feature_path"
 
     if [ $USE_GEOIP = YES ]; then
