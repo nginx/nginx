@@ -4473,12 +4473,14 @@ ngx_http_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if (NGX_PCRE)
         || clcf->regex
 #endif
+        || clcf->predicate
         || clcf->noname)
     {
         if (plcf->vars.uri.len) {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                "\"proxy_pass\" cannot have URI part in "
                                "location given by regular expression, "
+                               "or inside predicate location, "
                                "or inside named location, "
                                "or inside \"if\" statement, "
                                "or inside \"limit_except\" block");
