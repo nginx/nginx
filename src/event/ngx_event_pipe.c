@@ -253,6 +253,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 chain->next = NULL;
 
             } else if (!p->cacheable
+                       && !p->downstream_error
                        && p->downstream->data == p->output_ctx
                        && p->downstream->write->ready
                        && !p->downstream->write->delayed)
@@ -1111,11 +1112,7 @@ ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
     ngx_chain_t  *cl, *tl;
 
     for ( ;; ) {
-        if (p->busy) {
-            cl = p->busy;
-            p->busy = NULL;
-
-        } else if (p->out) {
+        if (p->out) {
             cl = p->out;
             p->out = NULL;
 
