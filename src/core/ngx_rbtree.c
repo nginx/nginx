@@ -388,12 +388,8 @@ ngx_rbtree_next(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 
     root = tree->root;
 
-    for ( ;; ) {
+    while (node != root) {
         parent = node->parent;
-
-        if (node == root) {
-            return NULL;
-        }
 
         if (node == parent->left) {
             return parent;
@@ -401,4 +397,5 @@ ngx_rbtree_next(ngx_rbtree_t *tree, ngx_rbtree_node_t *node)
 
         node = parent;
     }
+    return NULL;
 }
