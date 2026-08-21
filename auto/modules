@@ -1000,6 +1000,19 @@ if [ $HTTP = YES ]; then
 
         . auto/module
     fi
+
+    if [ $HTTP_PROMETHEUS_METRICS = YES ]; then
+        have=NGX_PROMETHEUS_METRICS . auto/have
+
+        ngx_module_name=ngx_http_prometheus_metrics_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_prometheus_metrics_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_PROMETHEUS_METRICS
+
+        . auto/module
+    fi
 fi
 
 
