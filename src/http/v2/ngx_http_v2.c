@@ -43,6 +43,7 @@
 #define NGX_HTTP_V2_MAX_STREAMS_SETTING          0x3
 #define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING     0x4
 #define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING       0x5
+#define NGX_HTTP_V2_ENABLE_CONNECT_PROTOCOL      0x8
 
 #define NGX_HTTP_V2_FRAME_BUFFER_SIZE            24
 
@@ -153,6 +154,8 @@ static ngx_int_t ngx_http_v2_parse_method(ngx_http_request_t *r,
 static ngx_int_t ngx_http_v2_parse_scheme(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_parse_authority(ngx_http_request_t *r,
+    ngx_str_t *value);
+static ngx_int_t ngx_http_v2_parse_protocol(ngx_http_request_t *r,
     ngx_str_t *value);
 static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
@@ -2737,6 +2740,13 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 3;
 
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    if (h2scf->extended_connect == NGX_HTTP_V2_EXTENDED_CONNECT_ADVERTISE) {
+        len += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
+    }
+
     buf = ngx_create_temp_buf(h2c->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE + len);
     if (buf == NULL) {
         return NGX_ERROR;
@@ -2763,9 +2773,6 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     buf->last = ngx_http_v2_write_sid(buf->last, 0);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
-
     buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_MAX_STREAMS_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
@@ -2779,6 +2786,12 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
                                          NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
                                          NGX_HTTP_V2_MAX_FRAME_SIZE);
+
+    if (h2scf->extended_connect == NGX_HTTP_V2_EXTENDED_CONNECT_ADVERTISE) {
+        buf->last = ngx_http_v2_write_uint16(buf->last,
+                                         NGX_HTTP_V2_ENABLE_CONNECT_PROTOCOL);
+        buf->last = ngx_http_v2_write_uint32(buf->last, 1);
+    }
 
     ngx_http_v2_queue_blocked_frame(h2c, frame);
 
@@ -3339,6 +3352,13 @@ ngx_http_v2_pseudo_header(ngx_http_request_t *r, ngx_http_v2_header_t *header)
 
         break;
 
+    case 8:
+        if (ngx_memcmp(header->name.data, "protocol", 8) == 0) {
+            return ngx_http_v2_parse_protocol(r, &header->value);
+        }
+
+        break;
+
     case 9:
         if (ngx_memcmp(header->name.data, "authority", sizeof("authority") - 1)
             == 0)
@@ -3582,14 +3602,81 @@ ngx_http_v2_parse_authority(ngx_http_request_t *r, ngx_str_t *value)
 
 
 static ngx_int_t
+ngx_http_v2_parse_protocol(ngx_http_request_t *r, ngx_str_t *value)
+{
+    if (r->stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent duplicate :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 0) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent empty :protocol header");
+
+        return NGX_DECLINED;
+    }
+
+    if (value->len == 9 && ngx_memcmp(value->data, "websocket", 9) == 0) {
+        r->stream_connect = NGX_HTTP_PROTOCOL_WEBSOCKET;
+        return NGX_OK;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                  "client sent unsupported :protocol header: \"%V\"", value);
+
+    return NGX_DECLINED;
+}
+
+
+static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 {
-    u_char  *p;
+    u_char                    *p;
+    ngx_int_t                  rc;
+    ngx_str_t                  target;
+    ngx_http_core_srv_conf_t  *cscf;
 
     static const u_char ending[] = " HTTP/2.0";
+    static ngx_str_t    path = ngx_string("/");
 
     if (r->request_line.len) {
         return NGX_OK;
+    }
+
+    if (r->method == NGX_HTTP_CONNECT
+        && r->stream_connect == NGX_HTTP_PROTOCOL_NONE)
+    {
+        if (r->schema.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT with :scheme header");
+            goto failed;
+        }
+
+        if (r->unparsed_uri.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT with :path header");
+            goto failed;
+        }
+
+        if (r->host_start == NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT without :authority header");
+            goto failed;
+        }
+
+        if (r->port == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT without port in :authority "
+                          "header");
+            goto failed;
+        }
+
+        target.len = r->host_end - r->host_start;
+        target.data = r->host_start;
+
+        goto construct;
     }
 
     if (r->method_name.len == 0
@@ -3613,8 +3700,12 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    target = r->unparsed_uri;
+
+construct:
+
     r->request_line.len = r->method_name.len + 1
-                          + r->unparsed_uri.len
+                          + target.len
                           + sizeof(ending) - 1;
 
     p = ngx_pnalloc(r->pool, r->request_line.len + 1);
@@ -3629,14 +3720,39 @@ ngx_http_v2_construct_request_line(ngx_http_request_t *r)
 
     *p++ = ' ';
 
-    p = ngx_cpymem(p, r->unparsed_uri.data, r->unparsed_uri.len);
+    p = ngx_cpymem(p, target.data, target.len);
 
     ngx_memcpy(p, ending, sizeof(ending));
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http2 request line: \"%V\"", &r->request_line);
 
+    if (r->method == NGX_HTTP_CONNECT
+        && r->stream_connect == NGX_HTTP_PROTOCOL_NONE)
+    {
+        rc = ngx_http_v2_parse_path(r, &path);
+
+        if (rc == NGX_ABORT) {
+            return NGX_ERROR;
+        }
+
+        if (rc != NGX_OK) {
+            goto failed;
+        }
+
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (cscf->allow_connect) {
+            r->stream_connect = NGX_HTTP_PROTOCOL_TUNNEL;
+        }
+    }
+
     return NGX_OK;
+
+failed:
+
+    ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+    return NGX_ERROR;
 }
 
 
@@ -3939,8 +4055,39 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     }
 
     if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, fc->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        if (!r->stream_connect) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT method");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            goto failed;
+        }
+
+        if (r->stream_connect >= NGX_HTTP_PROTOCOL_WEBSOCKET
+            && h2scf->extended_connect == NGX_HTTP_V2_EXTENDED_CONNECT_OFF)
+        {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT method with :protocol header");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            goto failed;
+        }
+
+        if (r->headers_in.content_length_n > 0) {
+            ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                          "client sent CONNECT request with body");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            goto failed;
+        }
+
+        if (r->headers_in.content_length_n == 0) {
+            r->headers_in.content_length_n = -1;
+            r->headers_in.chunked = !r->stream->in_closed;
+        }
+
+    } else if (r->stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent %V with :protocol header",
+                      &r->method_name);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         goto failed;
     }
 
@@ -4277,6 +4424,9 @@ ngx_http_v2_filter_request_body(ngx_http_request_t *r)
 
                 return NGX_HTTP_BAD_REQUEST;
             }
+
+        } else if (r->stream_connect && r->upstream && r->upstream->upgrade) {
+            /* skip client_max_body_size */
 
         } else {
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);

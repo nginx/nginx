@@ -42,8 +42,13 @@
 #define NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY       0x01
 #define NGX_HTTP_V3_PARAM_MAX_FIELD_SECTION_SIZE   0x06
 #define NGX_HTTP_V3_PARAM_BLOCKED_STREAMS          0x07
+#define NGX_HTTP_V3_PARAM_ENABLE_CONNECT_PROTOCOL  0x08
 
 #define NGX_HTTP_V3_MAX_TABLE_CAPACITY             4096
+
+#define NGX_HTTP_V3_EXTENDED_CONNECT_OFF           0
+#define NGX_HTTP_V3_EXTENDED_CONNECT_ON            1
+#define NGX_HTTP_V3_EXTENDED_CONNECT_ADVERTISE     2
 
 #define NGX_HTTP_V3_STREAM_CLIENT_CONTROL          0
 #define NGX_HTTP_V3_STREAM_SERVER_CONTROL          1
@@ -107,6 +112,7 @@ typedef struct {
     ngx_flag_t                    enable_hq;
     size_t                        max_table_capacity;
     ngx_uint_t                    max_blocked_streams;
+    ngx_uint_t                    extended_connect;
     ngx_uint_t                    max_concurrent_streams;
     ngx_quic_conf_t               quic;
 } ngx_http_v3_srv_conf_t;
@@ -153,6 +159,7 @@ void ngx_http_v3_shutdown(ngx_connection_t *c);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
+ngx_int_t ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in);
 
 
 extern ngx_module_t  ngx_http_v3_module;

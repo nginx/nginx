@@ -71,6 +71,14 @@ static ngx_conf_post_t  ngx_http_v2_chunk_size_post =
     { ngx_http_v2_chunk_size };
 
 
+static ngx_conf_enum_t  ngx_http_v2_extended_connect[] = {
+    { ngx_string("off"), NGX_HTTP_V2_EXTENDED_CONNECT_OFF },
+    { ngx_string("on"), NGX_HTTP_V2_EXTENDED_CONNECT_ON },
+    { ngx_string("advertise"), NGX_HTTP_V2_EXTENDED_CONNECT_ADVERTISE },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_http_v2_commands[] = {
 
     { ngx_string("http2"),
@@ -135,6 +143,13 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v2_srv_conf_t, preread_size),
       &ngx_http_v2_preread_size_post },
+
+    { ngx_string("http2_extended_connect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v2_srv_conf_t, extended_connect),
+      &ngx_http_v2_extended_connect },
 
     { ngx_string("http2_streams_index_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -327,6 +342,8 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
 
     h2scf->preread_size = NGX_CONF_UNSET_SIZE;
 
+    h2scf->extended_connect = NGX_CONF_UNSET_UINT;
+
     h2scf->streams_index_mask = NGX_CONF_UNSET_UINT;
 
     return h2scf;
@@ -347,6 +364,9 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->concurrent_streams, 128);
 
     ngx_conf_merge_size_value(conf->preread_size, prev->preread_size, 65536);
+
+    ngx_conf_merge_uint_value(conf->extended_connect, prev->extended_connect,
+                              NGX_HTTP_V2_EXTENDED_CONNECT_ON);
 
     ngx_conf_merge_uint_value(conf->streams_index_mask,
                               prev->streams_index_mask, 32 - 1);
