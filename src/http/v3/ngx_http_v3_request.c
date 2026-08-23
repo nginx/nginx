@@ -896,6 +896,34 @@ ngx_http_v3_process_pseudo_header(ngx_http_request_t *r, ngx_str_t *name,
         return NGX_OK;
     }
 
+    if (name->len == 9 && ngx_strncmp(name->data, ":protocol", 9) == 0) {
+
+        if (r->stream_connect) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent duplicate \":protocol\" header");
+            goto failed;
+        }
+
+        if (value->len == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent empty \":protocol\" header");
+            goto failed;
+        }
+
+        if (value->len == 9 && ngx_memcmp(value->data, "websocket", 9) == 0) {
+            r->stream_connect = NGX_HTTP_STREAM_CONNECT_WEBSOCKET;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http3 protocol \"%V\"", value);
+            return NGX_OK;
+        }
+
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent unsupported \":protocol\" header: \"%V\"",
+                      value);
+        goto failed;
+    }
+
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "client sent unknown pseudo-header \"%V\"", name);
 
@@ -1155,6 +1183,13 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
             r->headers_in.content_length_n = -1;
             r->headers_in.chunked = 1;
         }
+
+    } else if (r->stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent %V with \":protocol\" header",
+                      &r->method_name);
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        return NGX_ERROR;
     }
 
     if (r->method == NGX_HTTP_TRACE) {

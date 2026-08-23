@@ -99,6 +99,8 @@ typedef struct {
 
     ngx_buf_t                     *trailers;
 
+    u_char                         sec_websocket_key[24];
+
     unsigned                       head:1;
     unsigned                       internal_chunked:1;
     unsigned                       header_sent:1;
