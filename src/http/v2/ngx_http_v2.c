@@ -43,6 +43,7 @@
 #define NGX_HTTP_V2_MAX_STREAMS_SETTING          0x3
 #define NGX_HTTP_V2_INIT_WINDOW_SIZE_SETTING     0x4
 #define NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING       0x5
+#define NGX_HTTP_V2_ENABLE_CONNECT_PROTOCOL      0x8
 #define NGX_HTTP_V2_NO_PRIORITIES_SETTING        0x9
 
 #define NGX_HTTP_V2_FRAME_BUFFER_SIZE            24
@@ -2810,6 +2811,13 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     len = NGX_HTTP_V2_SETTINGS_PARAM_SIZE * 4;
 
+    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
+                                         ngx_http_v2_module);
+
+    if (h2scf->extended_connect) {
+        len += NGX_HTTP_V2_SETTINGS_PARAM_SIZE;
+    }
+
     buf = ngx_create_temp_buf(h2c->pool, NGX_HTTP_V2_FRAME_HEADER_SIZE + len);
     if (buf == NULL) {
         return NGX_ERROR;
@@ -2836,9 +2844,6 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
 
     buf->last = ngx_http_v2_write_sid(buf->last, 0);
 
-    h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
-                                         ngx_http_v2_module);
-
     buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_MAX_STREAMS_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
@@ -2852,6 +2857,12 @@ ngx_http_v2_send_settings(ngx_http_v2_connection_t *h2c)
                                          NGX_HTTP_V2_MAX_FRAME_SIZE_SETTING);
     buf->last = ngx_http_v2_write_uint32(buf->last,
                                          NGX_HTTP_V2_MAX_FRAME_SIZE);
+
+    if (h2scf->extended_connect) {
+        buf->last = ngx_http_v2_write_uint16(buf->last,
+                                         NGX_HTTP_V2_ENABLE_CONNECT_PROTOCOL);
+        buf->last = ngx_http_v2_write_uint32(buf->last, 1);
+    }
 
     buf->last = ngx_http_v2_write_uint16(buf->last,
                                          NGX_HTTP_V2_NO_PRIORITIES_SETTING);

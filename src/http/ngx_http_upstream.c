@@ -612,6 +612,17 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->stream_connect > NGX_HTTP_STREAM_CONNECT_TUNNEL
+        && !clcf->accept_extended_connect)
+    {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent extended CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return;
+    }
+
     if (r->stream_connect && !u->allow_stream_connect) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent CONNECT method");
@@ -705,8 +716,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     if (u->conf->socket_sndbuf) {
         u->peer.sndbuf = (int) u->conf->socket_sndbuf;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     u->output.alignment = clcf->directio_alignment;
     u->output.pool = r->pool;
