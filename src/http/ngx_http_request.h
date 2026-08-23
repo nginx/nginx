@@ -49,6 +49,7 @@
 
 #define NGX_HTTP_STREAM_CONNECT_NONE       0
 #define NGX_HTTP_STREAM_CONNECT_TUNNEL     1
+#define NGX_HTTP_STREAM_CONNECT_WEBSOCKET  2
 
 
 #define NGX_NONE                           1
