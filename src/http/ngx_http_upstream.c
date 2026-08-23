@@ -3695,6 +3695,11 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
+    if (u->buffer.pos == u->buffer.last) {
+        u->buffer.pos = u->buffer.start;
+        u->buffer.last = u->buffer.start;
+    }
+
     if (u->peer.connection->read->ready
         || u->buffer.pos != u->buffer.last)
     {
