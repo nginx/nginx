@@ -1137,9 +1137,24 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
     }
 
     if (r->method == NGX_HTTP_CONNECT) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent CONNECT method");
-        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
-        return NGX_ERROR;
+        if (!r->stream_connect) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent CONNECT method");
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+            return NGX_ERROR;
+        }
+
+        if (r->headers_in.content_length_n > 0) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "client sent CONNECT request with body");
+            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+            return NGX_ERROR;
+        }
+
+        if (r->headers_in.content_length_n == 0) {
+            r->headers_in.content_length_n = -1;
+            r->headers_in.chunked = 1;
+        }
     }
 
     if (r->method == NGX_HTTP_TRACE) {
@@ -1575,7 +1590,7 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     max = r->headers_in.content_length_n;
 
-    if (max == -1 && clcf->client_max_body_size) {
+    if (!r->stream_connect && max == -1 && clcf->client_max_body_size) {
         max = clcf->client_max_body_size;
     }
 

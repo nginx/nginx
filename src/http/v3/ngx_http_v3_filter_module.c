@@ -38,8 +38,6 @@ typedef struct {
 
 static ngx_int_t ngx_http_v3_header_filter(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_early_hints_filter(ngx_http_request_t *r);
-static ngx_int_t ngx_http_v3_body_filter(ngx_http_request_t *r,
-    ngx_chain_t *in);
 static ngx_chain_t *ngx_http_v3_create_trailers(ngx_http_request_t *r,
     ngx_http_v3_filter_ctx_t *ctx);
 static ngx_int_t ngx_http_v3_filter_init(ngx_conf_t *cf);
@@ -117,6 +115,12 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     if (r->method == NGX_HTTP_HEAD) {
         r->header_only = 1;
+    }
+
+    if (r->stream_connect
+        && r->headers_out.status == NGX_HTTP_SWITCHING_PROTOCOLS)
+    {
+        r->headers_out.status = NGX_HTTP_OK;
     }
 
     if (r->headers_out.last_modified_time != -1) {
@@ -735,7 +739,7 @@ ngx_http_v3_early_hints_filter(ngx_http_request_t *r)
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_v3_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
     u_char                    *chunk;
