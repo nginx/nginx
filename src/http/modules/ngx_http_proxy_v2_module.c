@@ -140,7 +140,6 @@ static ssize_t ngx_http_proxy_v2_stream_send(ngx_connection_t *sc,
     u_char *buf, size_t size);
 static ngx_chain_t *ngx_http_proxy_v2_stream_send_chain(ngx_connection_t *sc,
     ngx_chain_t *in, off_t limit);
-static void ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev);
 static void ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state);
 
@@ -1379,9 +1378,18 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
     if (rc == NGX_AGAIN) {
         ctx->output_blocked = 1;
+        ctx->stream->session->write_stream = ctx->stream;
 
     } else {
         ctx->output_blocked = 0;
+
+        if (ctx->stream->session->write_stream == ctx->stream) {
+            ctx->stream->session->write_stream = NULL;
+        }
+
+        if (rc == NGX_OK) {
+            ngx_http_proxy_v2_session_schedule_write(ctx->stream->session);
+        }
     }
 
     if (ctx->done) {
@@ -3960,14 +3968,32 @@ ngx_http_proxy_v2_stream_send(ngx_connection_t *sc, u_char *buf, size_t size)
     ngx_connection_t             *c;
     ngx_http_request_t           *r;
     ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_session_t  *s;
+    ngx_http_proxy_v2_stream_t   *stream;
 
     r = sc->data;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
-    c = ctx->stream->session->connection;
+    stream = ctx->stream;
+    s = stream->session;
+    c = s->connection;
+
+    if (s->write_stream && s->write_stream != stream) {
+        ngx_http_proxy_v2_session_queue_write(s, stream);
+        sc->write->ready = 0;
+        return NGX_AGAIN;
+    }
 
     n = c->send(c, buf, size);
 
     if (n == NGX_ERROR) {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
+
+        ngx_http_proxy_v2_session_notify_write_error(s);
+
         sc->write->error = 1;
         return NGX_ERROR;
     }
@@ -3976,12 +4002,32 @@ ngx_http_proxy_v2_stream_send(ngx_connection_t *sc, u_char *buf, size_t size)
     sc->buffered = c->buffered;
 
     if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
+
+        ngx_http_proxy_v2_session_notify_write_error(s);
+
         sc->write->error = 1;
         return NGX_ERROR;
     }
 
     if (n > 0) {
         sc->sent += n;
+    }
+
+    if (n == NGX_AGAIN || (size_t) n < size || c->buffered) {
+        stream->partial_write = 1;
+        s->write_stream = stream;
+
+    } else {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
     }
 
     return n;
@@ -3997,10 +4043,20 @@ ngx_http_proxy_v2_stream_send_chain(ngx_connection_t *sc, ngx_chain_t *in,
     ngx_connection_t             *c;
     ngx_http_request_t           *r;
     ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_session_t  *s;
+    ngx_http_proxy_v2_stream_t   *stream;
 
     r = sc->data;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
-    c = ctx->stream->session->connection;
+    stream = ctx->stream;
+    s = stream->session;
+    c = s->connection;
+
+    if (s->write_stream && s->write_stream != stream) {
+        ngx_http_proxy_v2_session_queue_write(s, stream);
+        sc->write->ready = 0;
+        return in;
+    }
 
     sent = c->sent;
 
@@ -4009,6 +4065,14 @@ ngx_http_proxy_v2_stream_send_chain(ngx_connection_t *sc, ngx_chain_t *in,
     sc->sent += c->sent - sent;
 
     if (cl == NGX_CHAIN_ERROR) {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
+
+        ngx_http_proxy_v2_session_notify_write_error(s);
+
         sc->write->error = 1;
         sc->error = 1;
         return NGX_CHAIN_ERROR;
@@ -4018,111 +4082,32 @@ ngx_http_proxy_v2_stream_send_chain(ngx_connection_t *sc, ngx_chain_t *in,
     sc->buffered = c->buffered;
 
     if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
+
+        ngx_http_proxy_v2_session_notify_write_error(s);
+
         sc->write->error = 1;
         sc->error = 1;
         return NGX_CHAIN_ERROR;
     }
 
+    if (cl || c->buffered) {
+        stream->partial_write = 1;
+        s->write_stream = stream;
+
+    } else {
+        stream->partial_write = 0;
+
+        if (s->write_stream == stream) {
+            s->write_stream = NULL;
+        }
+    }
+
     return cl;
-}
-
-
-static void
-ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev)
-{
-    ngx_connection_t             *c, *sc;
-    ngx_int_t                      rc;
-    ngx_http_request_t           *r;
-    ngx_http_upstream_t          *u;
-    ngx_http_proxy_v2_ctx_t      *ctx;
-    ngx_http_proxy_v2_session_t  *s;
-    ngx_http_proxy_v2_stream_t   *stream;
-
-    c = wev->data;
-    s = ngx_http_proxy_v2_session_get(c);
-
-    if (s == NULL) {
-        return;
-    }
-
-    stream = s->stream;
-
-    if (stream == NULL || stream->connection == NULL) {
-        return;
-    }
-
-    r = stream->request;
-    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
-
-    if (ctx == NULL) {
-        return;
-    }
-
-    sc = stream->connection;
-    u = r->upstream;
-
-    sc->write->ready = wev->ready;
-    sc->write->error = wev->error;
-    sc->write->timedout = wev->timedout;
-
-    if (s->output_pos != s->output_last) {
-
-        if (u->writer.out) {
-            sc->write->handler(sc->write);
-
-            if (c->write->ready && !c->write->posted) {
-                ngx_post_event(c->write, &ngx_posted_events);
-            }
-
-            return;
-        }
-
-        if (wev->timedout) {
-            sc->write->handler(sc->write);
-            return;
-        }
-
-        rc = ngx_http_proxy_v2_session_send(s);
-
-        if (rc == NGX_ERROR) {
-            sc->write->error = 1;
-            sc->write->handler(sc->write);
-            return;
-        }
-
-        if (rc == NGX_AGAIN) {
-            if (!wev->timer_set) {
-                ngx_add_timer(wev, u->conf->send_timeout);
-                s->output_blocked = 1;
-            }
-
-            if (ngx_handle_write_event(wev, 0) != NGX_OK) {
-                sc->write->error = 1;
-                sc->write->handler(sc->write);
-            }
-
-            return;
-        }
-
-        if (s->output_blocked) {
-            if (wev->timer_set) {
-                ngx_del_timer(wev);
-            }
-
-            s->output_blocked = 0;
-        }
-
-        if (c->read->ready && !c->read->posted) {
-            ngx_post_event(c->read, &ngx_posted_events);
-        }
-    }
-
-    if (wev->timer_set && !wev->timedout) {
-        ngx_del_timer(wev);
-        ngx_add_timer(sc->write, r->upstream->conf->send_timeout);
-    }
-
-    sc->write->handler(sc->write);
 }
 
 

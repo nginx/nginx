@@ -29,6 +29,7 @@ struct ngx_http_proxy_v2_in_frame_s {
 
 struct ngx_http_proxy_v2_stream_s {
     ngx_rbtree_node_t                node;
+    ngx_queue_t                      write_queue;
 
     ngx_http_request_t              *request;
     ngx_http_proxy_v2_session_t     *session;
@@ -37,6 +38,7 @@ struct ngx_http_proxy_v2_stream_s {
     ngx_uint_t                       id;
     ssize_t                          send_window;
     size_t                           recv_window;
+    ngx_msec_t                       send_timeout;
 
     ngx_http_proxy_v2_in_frame_t    *frames;
     ngx_http_proxy_v2_in_frame_t    *recv_frame;
@@ -46,6 +48,8 @@ struct ngx_http_proxy_v2_stream_s {
     unsigned                         goaway:1;
     unsigned                         unprocessed:1;
     unsigned                         registered:1;
+    unsigned                         partial_write:1;
+    unsigned                         write_waiting:1;
 };
 
 
@@ -53,11 +57,12 @@ struct ngx_http_proxy_v2_session_s {
     ngx_http_proxy_v2_frame_parse_t  frame_parse;
 
     ngx_connection_t                *connection;
-    ngx_http_proxy_v2_stream_t      *stream;
+    ngx_http_proxy_v2_stream_t      *write_stream;
     ngx_buf_t                       *input;
 
     ngx_rbtree_t                     streams;
     ngx_rbtree_node_t                streams_sentinel;
+    ngx_queue_t                      write_queue;
 
     u_char                           output[NGX_HTTP_V2_FRAME_HEADER_SIZE
                                             + NGX_HTTP_PROXY_V2_PING_SIZE];
@@ -65,6 +70,7 @@ struct ngx_http_proxy_v2_session_s {
     u_char                          *output_last;
 
     size_t                           frame_size;
+    ngx_msec_t                       send_timeout;
 
     size_t                           init_window;
     size_t                           send_window;
@@ -103,6 +109,12 @@ ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_session_find_stream(
     ngx_http_proxy_v2_session_t *s, ngx_uint_t stream_id);
 void ngx_http_proxy_v2_session_unregister_stream(
     ngx_http_proxy_v2_session_t *s, ngx_http_proxy_v2_stream_t *stream);
+void ngx_http_proxy_v2_session_queue_write(
+    ngx_http_proxy_v2_session_t *s, ngx_http_proxy_v2_stream_t *stream);
+void ngx_http_proxy_v2_session_schedule_write(
+    ngx_http_proxy_v2_session_t *s);
+void ngx_http_proxy_v2_session_notify_write_error(
+    ngx_http_proxy_v2_session_t *s);
 ngx_int_t ngx_http_proxy_v2_session_attach(ngx_http_proxy_v2_session_t *s,
     ngx_connection_t *c, ngx_http_proxy_v2_stream_t *stream);
 void ngx_http_proxy_v2_session_detach(ngx_http_proxy_v2_session_t *s,
@@ -121,6 +133,7 @@ ngx_int_t ngx_http_proxy_v2_session_process_settings(
 ngx_int_t ngx_http_proxy_v2_session_process_goaway(
     ngx_http_proxy_v2_session_t *s);
 void ngx_http_proxy_v2_session_read_handler(ngx_event_t *rev);
+void ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev);
 ngx_int_t ngx_http_proxy_v2_session_send(ngx_http_proxy_v2_session_t *s);
 
 
