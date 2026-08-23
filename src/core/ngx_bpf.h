@@ -35,6 +35,8 @@ int ngx_bpf_load_program(ngx_log_t *log, ngx_bpf_program_t *program);
 
 int ngx_bpf_map_create(ngx_log_t *log, enum bpf_map_type type, int key_size,
     int value_size, int max_entries, uint32_t map_flags);
+int ngx_bpf_map_create_outer(ngx_log_t *log, enum bpf_map_type type,
+    int max_entries, uint32_t map_flags, int template_fd);
 int ngx_bpf_map_update(int fd, const void *key, const void *value,
     uint64_t flags);
 int ngx_bpf_map_delete(int fd, const void *key);
