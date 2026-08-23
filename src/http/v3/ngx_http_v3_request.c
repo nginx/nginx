@@ -937,11 +937,14 @@ failed:
 static ngx_int_t
 ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 {
-    size_t      len;
-    u_char     *p;
-    ngx_int_t   rc;
-    ngx_str_t   host;
-    in_port_t   port;
+    size_t                     len;
+    u_char                    *p;
+    ngx_int_t                  rc;
+    ngx_str_t                  host, target;
+    in_port_t                  port;
+    ngx_http_core_srv_conf_t  *cscf;
+
+    static ngx_str_t  path = ngx_string("/");
 
     if (r->request_line.len) {
         return NGX_OK;
@@ -951,6 +954,48 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                       "client sent no \":method\" header");
         goto failed;
+    }
+
+    if (r->method == NGX_HTTP_CONNECT
+        && r->stream_connect == NGX_HTTP_STREAM_CONNECT_NONE)
+    {
+        if (r->schema.len) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT with \":scheme\" header");
+            goto failed;
+        }
+
+        if (r->uri_start != NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT with \":path\" header");
+            goto failed;
+        }
+
+        if (r->host_start == NULL) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT without \":authority\" header");
+            goto failed;
+        }
+
+        host.len = r->host_end - r->host_start;
+        host.data = r->host_start;
+
+        if (ngx_http_validate_host(&host, &port, r->pool, 0) != NGX_OK) {
+            ngx_str_set(&target, "-");
+            goto construct;
+        }
+
+        if (port == 0) {
+            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                          "client sent CONNECT with invalid port in "
+                          "\":authority\" header");
+            goto failed;
+        }
+
+        target.len = r->host_end - r->host_start;
+        target.data = r->host_start;
+
+        goto construct;
     }
 
     if (r->schema.len == 0) {
@@ -965,8 +1010,13 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
         goto failed;
     }
 
+    target.len = r->uri_end - r->uri_start;
+    target.data = r->uri_start;
+
+construct:
+
     len = r->method_name.len + 1
-          + (r->uri_end - r->uri_start) + 1
+          + target.len + 1
           + sizeof("HTTP/3.0") - 1;
 
     p = ngx_pnalloc(r->pool, len);
@@ -979,7 +1029,7 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
     p = ngx_cpymem(p, r->method_name.data, r->method_name.len);
     *p++ = ' ';
-    p = ngx_cpymem(p, r->uri_start, r->uri_end - r->uri_start);
+    p = ngx_cpymem(p, target.data, target.len);
     *p++ = ' ';
     p = ngx_cpymem(p, "HTTP/3.0", sizeof("HTTP/3.0") - 1);
 
@@ -989,6 +1039,13 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
                    "http3 request line: \"%V\"", &r->request_line);
 
     ngx_str_set(&r->http_protocol, "HTTP/3.0");
+
+    if (r->method == NGX_HTTP_CONNECT
+        && r->stream_connect == NGX_HTTP_STREAM_CONNECT_NONE)
+    {
+        r->uri_start = path.data;
+        r->uri_end = path.data + path.len;
+    }
 
     if (ngx_http_process_request_uri(r) != NGX_OK) {
         return NGX_ERROR;
@@ -1018,6 +1075,16 @@ ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r)
 
         r->headers_in.server = host;
         r->port = port;
+    }
+
+    if (r->method == NGX_HTTP_CONNECT
+        && r->stream_connect == NGX_HTTP_STREAM_CONNECT_NONE)
+    {
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (cscf->allow_connect) {
+            r->stream_connect = NGX_HTTP_STREAM_CONNECT_TUNNEL;
+        }
     }
 
     if (ngx_list_init(&r->headers_in.headers, r->pool, 20,
