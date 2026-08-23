@@ -25,9 +25,11 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t  initial_window;
+    ngx_uint_t  max_concurrent_streams;
 
     unsigned    ack:1;
     unsigned    initial_window_set:1;
+    unsigned    max_concurrent_streams_set:1;
 } ngx_http_proxy_v2_settings_t;
 
 
