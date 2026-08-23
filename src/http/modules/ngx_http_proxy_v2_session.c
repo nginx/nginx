@@ -37,10 +37,12 @@ ngx_http_proxy_v2_stream_create(ngx_pool_t *pool, ngx_http_request_t *r)
     stream->connection = NULL;
 
     ngx_memzero(&stream->node, sizeof(ngx_rbtree_node_t));
+    ngx_queue_init(&stream->write_queue);
 
     stream->id = 0;
     stream->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     stream->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+    stream->send_timeout = 0;
 
     stream->frames = NULL;
     stream->recv_frame = NULL;
@@ -50,6 +52,8 @@ ngx_http_proxy_v2_stream_create(ngx_pool_t *pool, ngx_http_request_t *r)
     stream->goaway = 0;
     stream->unprocessed = 0;
     stream->registered = 0;
+    stream->partial_write = 0;
+    stream->write_waiting = 0;
 
     return stream;
 }
@@ -117,16 +121,18 @@ ngx_http_proxy_v2_session_init(ngx_http_proxy_v2_session_t *s)
     s->frame_parse.state = 0;
 
     s->connection = NULL;
-    s->stream = NULL;
+    s->write_stream = NULL;
     s->input = NULL;
 
     ngx_rbtree_init(&s->streams, &s->streams_sentinel,
                     ngx_rbtree_insert_value);
+    ngx_queue_init(&s->write_queue);
 
     s->output_pos = s->output;
     s->output_last = s->output;
 
     s->frame_size = 0;
+    s->send_timeout = 0;
 
     s->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     s->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
@@ -243,8 +249,77 @@ ngx_http_proxy_v2_session_unregister_stream(ngx_http_proxy_v2_session_t *s,
 
     ngx_rbtree_delete(&s->streams, &stream->node);
 
+    if (stream->write_waiting) {
+        ngx_queue_remove(&stream->write_queue);
+        ngx_queue_init(&stream->write_queue);
+        stream->write_waiting = 0;
+    }
+
     stream->registered = 0;
     stream->session = NULL;
+}
+
+
+void
+ngx_http_proxy_v2_session_schedule_write(ngx_http_proxy_v2_session_t *s)
+{
+    ngx_queue_t                 *q;
+    ngx_connection_t            *c, *sc;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    if (s->write_stream || s->output_pos != s->output_last) {
+        return;
+    }
+
+    c = s->connection;
+    if (c == NULL) {
+        return;
+    }
+
+    while (!ngx_queue_empty(&s->write_queue)) {
+        q = ngx_queue_head(&s->write_queue);
+        ngx_queue_remove(q);
+
+        stream = ngx_queue_data(q, ngx_http_proxy_v2_stream_t, write_queue);
+
+        ngx_queue_init(&stream->write_queue);
+        stream->write_waiting = 0;
+
+        sc = stream->connection;
+
+        if (sc == NULL) {
+            continue;
+        }
+
+        s->write_stream = stream;
+
+        sc->write->ready = c->write->ready;
+        sc->write->error = c->write->error;
+        sc->write->timedout = c->write->timedout;
+
+        if (!sc->write->posted) {
+            ngx_post_event(sc->write, &ngx_posted_events);
+        }
+
+        return;
+    }
+}
+
+
+void
+ngx_http_proxy_v2_session_queue_write(ngx_http_proxy_v2_session_t *s,
+    ngx_http_proxy_v2_stream_t *stream)
+{
+    if (!stream->registered || stream->session != s
+        || s->write_stream == stream || stream->write_waiting)
+    {
+        return;
+    }
+
+    ngx_queue_insert_tail(&s->write_queue, &stream->write_queue);
+    stream->write_waiting = 1;
+
+    ngx_http_proxy_v2_session_schedule_write(s);
 }
 
 
@@ -257,7 +332,8 @@ ngx_http_proxy_v2_session_attach(ngx_http_proxy_v2_session_t *s,
     }
 
     s->connection = c;
-    s->stream = stream;
+    stream->send_timeout = stream->request->upstream->conf->send_timeout;
+    s->send_timeout = stream->send_timeout;
 
     return NGX_OK;
 }
@@ -267,11 +343,19 @@ void
 ngx_http_proxy_v2_session_detach(ngx_http_proxy_v2_session_t *s,
     ngx_http_proxy_v2_stream_t *stream)
 {
+    ngx_uint_t  was_write_stream;
+
+    was_write_stream = (s->write_stream == stream);
+
     ngx_http_proxy_v2_session_unregister_stream(s, stream);
 
-    if (s->stream == stream) {
-        s->stream = NULL;
+    stream->partial_write = 0;
+
+    if (was_write_stream) {
+        s->write_stream = NULL;
     }
+
+    ngx_http_proxy_v2_session_schedule_write(s);
 }
 
 
@@ -761,6 +845,52 @@ ngx_http_proxy_v2_session_wake_streams(ngx_http_proxy_v2_session_t *s,
 }
 
 
+static void
+ngx_http_proxy_v2_session_wake_write_streams(ngx_http_proxy_v2_session_t *s,
+    ngx_uint_t timedout)
+{
+    ngx_connection_t            *sc;
+    ngx_rbtree_node_t           *node;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    if (s->streams.root == s->streams.sentinel) {
+        return;
+    }
+
+    node = ngx_rbtree_min(s->streams.root, s->streams.sentinel);
+
+    while (node) {
+        stream = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t, node);
+        sc = stream->connection;
+
+        if (sc) {
+            sc->write->ready = 1;
+
+            if (timedout) {
+                sc->write->timedout = 1;
+
+            } else {
+                sc->write->error = 1;
+            }
+
+            if (!sc->write->posted) {
+                ngx_post_event(sc->write, &ngx_posted_events);
+            }
+        }
+
+        node = ngx_rbtree_next(&s->streams, node);
+    }
+}
+
+
+void
+ngx_http_proxy_v2_session_notify_write_error(
+    ngx_http_proxy_v2_session_t *s)
+{
+    ngx_http_proxy_v2_session_wake_write_streams(s, 0);
+}
+
+
 static ngx_int_t
 ngx_http_proxy_v2_session_read_frame(ngx_http_proxy_v2_session_t *s)
 {
@@ -926,4 +1056,106 @@ ngx_http_proxy_v2_session_send(ngx_http_proxy_v2_session_t *s)
     s->output_last = s->output;
 
     return NGX_OK;
+}
+
+
+void
+ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev)
+{
+    ngx_int_t                    rc;
+    ngx_connection_t             *c, *sc;
+    ngx_http_proxy_v2_session_t  *s;
+    ngx_http_proxy_v2_stream_t   *stream;
+
+    c = wev->data;
+    s = ngx_http_proxy_v2_session_get(c);
+
+    if (s == NULL) {
+        return;
+    }
+
+    if (wev->timedout) {
+        ngx_http_proxy_v2_session_wake_write_streams(s, 1);
+        return;
+    }
+
+    if (wev->error) {
+        ngx_http_proxy_v2_session_notify_write_error(s);
+        return;
+    }
+
+    stream = s->write_stream;
+
+    if (s->output_pos != s->output_last) {
+
+        if (stream && stream->connection) {
+            sc = stream->connection;
+
+            if (stream->partial_write) {
+                sc->write->ready = wev->ready;
+                sc->write->error = wev->error;
+                sc->write->timedout = wev->timedout;
+
+                sc->write->handler(sc->write);
+
+                if (c->write->ready && !c->write->posted) {
+                    ngx_post_event(c->write, &ngx_posted_events);
+                }
+
+                return;
+            }
+        }
+
+        rc = ngx_http_proxy_v2_session_send(s);
+
+        if (rc == NGX_ERROR) {
+            ngx_http_proxy_v2_session_notify_write_error(s);
+            return;
+        }
+
+        if (rc == NGX_AGAIN) {
+            if (!wev->timer_set) {
+                ngx_add_timer(wev, s->send_timeout);
+                s->output_blocked = 1;
+            }
+
+            if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+                ngx_http_proxy_v2_session_notify_write_error(s);
+            }
+
+            return;
+        }
+
+        if (s->output_blocked) {
+            if (wev->timer_set) {
+                ngx_del_timer(wev);
+            }
+
+            s->output_blocked = 0;
+        }
+
+        if (c->read->ready && !c->read->posted) {
+            ngx_post_event(c->read, &ngx_posted_events);
+        }
+    }
+
+    if (stream == NULL || stream->connection == NULL) {
+        ngx_http_proxy_v2_session_schedule_write(s);
+        return;
+    }
+
+    sc = stream->connection;
+
+    sc->write->ready = wev->ready;
+    sc->write->error = wev->error;
+    sc->write->timedout = wev->timedout;
+
+    if (wev->timer_set && !wev->timedout) {
+        ngx_del_timer(wev);
+        ngx_add_timer(sc->write, stream->send_timeout);
+    }
+
+    sc->write->handler(sc->write);
+
+    ngx_http_proxy_v2_session_schedule_write(s);
 }
