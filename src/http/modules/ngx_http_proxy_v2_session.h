@@ -55,10 +55,13 @@ struct ngx_http_proxy_v2_stream_s {
 
 struct ngx_http_proxy_v2_session_s {
     ngx_http_proxy_v2_frame_parse_t  frame_parse;
+    ngx_queue_t                      pool_queue;
 
     ngx_connection_t                *connection;
     ngx_http_proxy_v2_stream_t      *write_stream;
     ngx_buf_t                       *input;
+    struct sockaddr_storage         pool_sockaddr;
+    socklen_t                       pool_socklen;
 
     ngx_rbtree_t                     streams;
     ngx_rbtree_node_t                streams_sentinel;
@@ -76,6 +79,8 @@ struct ngx_http_proxy_v2_session_s {
     size_t                           send_window;
     size_t                           recv_window;
     ngx_uint_t                       last_stream_id;
+    ngx_uint_t                       active_streams;
+    ngx_uint_t                       peer_max_concurrent_streams;
     ngx_uint_t                       peer_last_stream_id;
     ngx_uint_t                       goaway_error;
     ngx_uint_t                       connection_error;
@@ -85,6 +90,9 @@ struct ngx_http_proxy_v2_session_s {
     unsigned                         frame_error:1;
     unsigned                         output_blocked:1;
     unsigned                         goaway:1;
+    unsigned                         pooled:1;
+    unsigned                         pool_ssl:1;
+    unsigned                         reserved:1;
 };
 
 
@@ -100,9 +108,16 @@ void ngx_http_proxy_v2_stream_free_frame(ngx_http_proxy_v2_stream_t *stream,
     ngx_http_proxy_v2_in_frame_t *frame);
 void ngx_http_proxy_v2_session_init(ngx_http_proxy_v2_session_t *s);
 ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_session_create(
-    ngx_connection_t *c);
+    ngx_peer_connection_t *pc, ngx_uint_t ssl);
 ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_session_get(
     ngx_connection_t *c);
+ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_session_pool_get(
+    ngx_peer_connection_t *pc, ngx_uint_t ssl);
+void ngx_http_proxy_v2_session_pool_add(ngx_http_proxy_v2_session_t *s,
+    ngx_peer_connection_t *pc, ngx_uint_t ssl);
+void ngx_http_proxy_v2_session_pool_remove(
+    ngx_http_proxy_v2_session_t *s);
+void ngx_http_proxy_v2_session_pool_cleanup(void);
 ngx_int_t ngx_http_proxy_v2_session_register_stream(
     ngx_http_proxy_v2_session_t *s, ngx_http_proxy_v2_stream_t *stream);
 ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_session_find_stream(

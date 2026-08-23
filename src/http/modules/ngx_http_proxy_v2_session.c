@@ -15,10 +15,92 @@
     (NGX_HTTP_V2_FRAME_HEADER_SIZE + NGX_HTTP_V2_DEFAULT_FRAME_SIZE)
 
 
+typedef struct {
+    ngx_queue_t  sessions;
+
+    unsigned     initialized:1;
+} ngx_http_proxy_v2_pool_t;
+
+
+static ngx_http_proxy_v2_pool_t  ngx_http_proxy_v2_pool;
+
+
+void
+ngx_http_proxy_v2_session_pool_add(ngx_http_proxy_v2_session_t *s,
+    ngx_peer_connection_t *pc, ngx_uint_t ssl)
+{
+    if (pc->sockaddr == NULL
+        || pc->socklen > sizeof(struct sockaddr_storage))
+    {
+        return;
+    }
+
+    s->pool_ssl = (ssl != 0);
+    s->pool_socklen = pc->socklen;
+    ngx_memcpy(&s->pool_sockaddr, pc->sockaddr, pc->socklen);
+
+    if (s->pooled) {
+        return;
+    }
+
+    if (!ngx_http_proxy_v2_pool.initialized) {
+        ngx_queue_init(&ngx_http_proxy_v2_pool.sessions);
+        ngx_http_proxy_v2_pool.initialized = 1;
+    }
+
+    ngx_queue_insert_tail(&ngx_http_proxy_v2_pool.sessions, &s->pool_queue);
+    s->pooled = 1;
+}
+
+
+void
+ngx_http_proxy_v2_session_pool_remove(ngx_http_proxy_v2_session_t *s)
+{
+    if (!s->pooled) {
+        return;
+    }
+
+    ngx_queue_remove(&s->pool_queue);
+    ngx_queue_init(&s->pool_queue);
+    s->pooled = 0;
+}
+
+
+void
+ngx_http_proxy_v2_session_pool_cleanup(void)
+{
+    ngx_queue_t                  *q;
+    ngx_connection_t            *c;
+    ngx_http_proxy_v2_session_t *s;
+
+    if (!ngx_http_proxy_v2_pool.initialized) {
+        return;
+    }
+
+    while (!ngx_queue_empty(&ngx_http_proxy_v2_pool.sessions)) {
+        q = ngx_queue_head(&ngx_http_proxy_v2_pool.sessions);
+        s = ngx_queue_data(q, ngx_http_proxy_v2_session_t, pool_queue);
+        c = s->connection;
+
+        ngx_http_proxy_v2_session_pool_remove(s);
+
+        if (c) {
+            ngx_close_connection(c);
+        }
+    }
+
+    ngx_http_proxy_v2_pool.initialized = 0;
+}
+
+
 static void
 ngx_http_proxy_v2_session_cleanup(void *data)
 {
-    return;
+    ngx_http_proxy_v2_session_t  *s;
+
+    s = data;
+
+    ngx_http_proxy_v2_session_pool_remove(s);
 }
 
 
@@ -119,10 +201,12 @@ void
 ngx_http_proxy_v2_session_init(ngx_http_proxy_v2_session_t *s)
 {
     s->frame_parse.state = 0;
+    ngx_queue_init(&s->pool_queue);
 
     s->connection = NULL;
     s->write_stream = NULL;
     s->input = NULL;
+    s->pool_socklen = 0;
 
     ngx_rbtree_init(&s->streams, &s->streams_sentinel,
                     ngx_rbtree_insert_value);
@@ -138,6 +222,8 @@ ngx_http_proxy_v2_session_init(ngx_http_proxy_v2_session_t *s)
     s->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     s->recv_window = NGX_HTTP_V2_MAX_WINDOW;
     s->last_stream_id = 1;
+    s->active_streams = 0;
+    s->peer_max_concurrent_streams = NGX_MAX_UINT32_VALUE;
     s->peer_last_stream_id = 0;
     s->goaway_error = 0;
     s->connection_error = 0;
@@ -147,14 +233,20 @@ ngx_http_proxy_v2_session_init(ngx_http_proxy_v2_session_t *s)
     s->frame_error = 0;
     s->output_blocked = 0;
     s->goaway = 0;
+    s->pooled = 0;
+    s->pool_ssl = 0;
+    s->reserved = 0;
 }
 
 
 ngx_http_proxy_v2_session_t *
-ngx_http_proxy_v2_session_create(ngx_connection_t *c)
+ngx_http_proxy_v2_session_create(ngx_peer_connection_t *pc, ngx_uint_t ssl)
 {
     ngx_pool_cleanup_t            *cln;
     ngx_http_proxy_v2_session_t   *s;
+    ngx_connection_t              *c;
+
+    c = pc->connection;
 
     cln = ngx_pool_cleanup_add(c->pool,
                                sizeof(ngx_http_proxy_v2_session_t));
@@ -167,7 +259,55 @@ ngx_http_proxy_v2_session_create(ngx_connection_t *c)
 
     ngx_http_proxy_v2_session_init(s);
 
+    ngx_http_proxy_v2_session_pool_add(s, pc, ssl);
+
     return s;
+}
+
+
+ngx_http_proxy_v2_session_t *
+ngx_http_proxy_v2_session_pool_get(ngx_peer_connection_t *pc, ngx_uint_t ssl)
+{
+    ngx_queue_t                  *q;
+    ngx_connection_t            *c;
+    ngx_http_proxy_v2_session_t *s;
+
+    if (!ngx_http_proxy_v2_pool.initialized) {
+        return NULL;
+    }
+
+    for (q = ngx_queue_head(&ngx_http_proxy_v2_pool.sessions);
+         q != ngx_queue_sentinel(&ngx_http_proxy_v2_pool.sessions);
+         q = ngx_queue_next(q))
+    {
+        s = ngx_queue_data(q, ngx_http_proxy_v2_session_t, pool_queue);
+        c = s->connection;
+
+        if (s->reserved || s->pool_ssl != (ssl != 0)
+            || s->goaway || s->connection_error
+            || s->active_streams == 0
+            || s->active_streams >= s->peer_max_concurrent_streams
+            || c == NULL || c->idle || s->pool_socklen != pc->socklen
+            || c->read->eof || c->read->error || c->read->timedout
+            || c->write->error || c->write->timedout)
+        {
+            continue;
+        }
+
+        if (ngx_memn2cmp((u_char *) &s->pool_sockaddr,
+                         (u_char *) pc->sockaddr,
+                         s->pool_socklen, pc->socklen)
+            != 0)
+        {
+            continue;
+        }
+
+        s->reserved = 1;
+
+        return s;
+    }
+
+    return NULL;
 }
 
 
@@ -197,6 +337,10 @@ ngx_http_proxy_v2_session_register_stream(ngx_http_proxy_v2_session_t *s,
         return NGX_ERROR;
     }
 
+    if (s->active_streams >= s->peer_max_concurrent_streams) {
+        return NGX_BUSY;
+    }
+
     ngx_memzero(&stream->node, sizeof(ngx_rbtree_node_t));
     stream->node.key = stream->id;
 
@@ -204,6 +348,7 @@ ngx_http_proxy_v2_session_register_stream(ngx_http_proxy_v2_session_t *s,
 
     stream->session = s;
     stream->registered = 1;
+    s->active_streams++;
 
     return NGX_OK;
 }
@@ -257,6 +402,7 @@ ngx_http_proxy_v2_session_unregister_stream(ngx_http_proxy_v2_session_t *s,
 
     stream->registered = 0;
     stream->session = NULL;
+    s->active_streams--;
 }
 
 
@@ -328,9 +474,11 @@ ngx_http_proxy_v2_session_attach(ngx_http_proxy_v2_session_t *s,
     ngx_connection_t *c, ngx_http_proxy_v2_stream_t *stream)
 {
     if (ngx_http_proxy_v2_session_register_stream(s, stream) != NGX_OK) {
+        s->reserved = 0;
         return NGX_ERROR;
     }
 
+    s->reserved = 0;
     s->connection = c;
     stream->send_timeout = stream->request->upstream->conf->send_timeout;
     s->send_timeout = stream->send_timeout;
@@ -598,6 +746,14 @@ ngx_http_proxy_v2_session_process_settings(ngx_http_proxy_v2_session_t *s,
         s->init_window = settings.initial_window;
     }
 
+    if (settings.max_concurrent_streams_set) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0,
+                       "http proxy max concurrent streams: %ui",
+                       settings.max_concurrent_streams);
+
+        s->peer_max_concurrent_streams = settings.max_concurrent_streams;
+    }
+
     if (s->output_pos != s->output_last) {
         ngx_log_error(NGX_LOG_ALERT, s->connection->log, 0,
                       "http proxy session output is busy");
@@ -845,6 +1001,19 @@ ngx_http_proxy_v2_session_wake_streams(ngx_http_proxy_v2_session_t *s,
 }
 
 
+static ngx_uint_t
+ngx_http_proxy_v2_session_close_idle(ngx_http_proxy_v2_session_t *s)
+{
+    if (s->streams.root != s->streams.sentinel) {
+        return 0;
+    }
+
+    ngx_close_connection(s->connection);
+
+    return 1;
+}
+
+
 static void
 ngx_http_proxy_v2_session_wake_write_streams(ngx_http_proxy_v2_session_t *s,
     ngx_uint_t timedout)
@@ -994,6 +1163,8 @@ ngx_http_proxy_v2_session_read_handler(ngx_event_t *rev)
 
     if (rev->timedout) {
         ngx_http_proxy_v2_session_wake_streams(s, 1);
+
+        ngx_http_proxy_v2_session_close_idle(s);
         return;
     }
 
@@ -1006,6 +1177,8 @@ ngx_http_proxy_v2_session_read_handler(ngx_event_t *rev)
 
         if (rc == NGX_ERROR) {
             ngx_http_proxy_v2_session_wake_streams(s, 0);
+
+            ngx_http_proxy_v2_session_close_idle(s);
             return;
         }
 
@@ -1013,6 +1186,8 @@ ngx_http_proxy_v2_session_read_handler(ngx_event_t *rev)
 
         if (rc == NGX_ERROR) {
             ngx_http_proxy_v2_session_wake_streams(s, 0);
+
+            ngx_http_proxy_v2_session_close_idle(s);
             return;
         }
 
@@ -1021,11 +1196,17 @@ ngx_http_proxy_v2_session_read_handler(ngx_event_t *rev)
         }
 
         if (rc == NGX_OK) {
+            if (s->goaway && ngx_http_proxy_v2_session_close_idle(s)) {
+                return;
+            }
+
             continue;
         }
 
         if (ngx_http_proxy_v2_session_dispatch_stream_frame(s) != NGX_OK) {
             ngx_http_proxy_v2_session_wake_streams(s, 0);
+
+            ngx_http_proxy_v2_session_close_idle(s);
             return;
         }
     }
@@ -1076,11 +1257,15 @@ ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev)
 
     if (wev->timedout) {
         ngx_http_proxy_v2_session_wake_write_streams(s, 1);
+
+        ngx_http_proxy_v2_session_close_idle(s);
         return;
     }
 
     if (wev->error) {
         ngx_http_proxy_v2_session_notify_write_error(s);
+
+        ngx_http_proxy_v2_session_close_idle(s);
         return;
     }
 
@@ -1110,6 +1295,8 @@ ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev)
 
         if (rc == NGX_ERROR) {
             ngx_http_proxy_v2_session_notify_write_error(s);
+
+            ngx_http_proxy_v2_session_close_idle(s);
             return;
         }
 
@@ -1121,6 +1308,7 @@ ngx_http_proxy_v2_session_write_handler(ngx_event_t *wev)
 
             if (ngx_handle_write_event(wev, 0) != NGX_OK) {
                 ngx_http_proxy_v2_session_notify_write_error(s);
+                ngx_http_proxy_v2_session_close_idle(s);
             }
 
             return;

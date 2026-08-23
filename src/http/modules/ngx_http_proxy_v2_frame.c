@@ -188,7 +188,11 @@ ngx_http_proxy_v2_frame_parse_settings(
         value |= (ngx_uint_t) p[4] << 8;
         value |= p[5];
 
-        if (id == 0x04) {
+        if (id == 0x03) {
+            settings->max_concurrent_streams = value;
+            settings->max_concurrent_streams_set = 1;
+
+        } else if (id == 0x04) {
             if (value > NGX_HTTP_V2_MAX_WINDOW) {
                 return NGX_ERROR;
             }
