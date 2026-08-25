@@ -3736,6 +3736,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
     if (upstream->read->timedout || upstream->write->timedout) {
         ngx_connection_error(c, NGX_ETIMEDOUT, "upstream timed out");
+        r->connect_error = 1;
         ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
         return;
     }
@@ -3816,7 +3817,9 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
                     }
 
                     if (n == NGX_ERROR) {
-                        upstream->read->eof = 1;
+                        r->connect_error = 1;
+                        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+                        return;
                     }
                 }
 
@@ -3837,6 +3840,10 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
                     rc = ngx_output_chain(&u->output, out);
 
                     if (rc == NGX_ERROR) {
+                        if (upstream->write->error || upstream->error) {
+                            r->connect_error = 1;
+                        }
+
                         ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                         return;
                     }
@@ -3983,12 +3990,9 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
         }
 #endif
 
-        if (upstream->read->error
-            && u->out_bufs == NULL
-            && u->busy_bufs == NULL
-            && !downstream_buffered)
-        {
-            ngx_http_upstream_finalize_request(r, u, 0);
+        if (upstream->read->error) {
+            r->connect_error = 1;
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
             return;
         }
 
@@ -4052,6 +4056,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
             if (ngx_shutdown_socket(upstream->fd, NGX_WRITE_SHUTDOWN) == -1) {
                 ngx_connection_error(c, ngx_socket_errno,
                                      ngx_shutdown_socket_n " failed");
+                r->connect_error = 1;
                 ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
                 return;
             }
