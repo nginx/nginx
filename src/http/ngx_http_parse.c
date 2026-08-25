@@ -990,18 +990,13 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
             }
 
             if (ch == CR) {
-                r->header_name_end = p;
-                r->header_start = p;
                 r->header_end = p;
-                state = sw_almost_done;
-                break;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
 
             if (ch == LF) {
-                r->header_name_end = p;
-                r->header_start = p;
                 r->header_end = p;
-                goto done;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
 
             /* IIS may send the duplicate "HTTP/1.1 ..." lines */
