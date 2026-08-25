@@ -453,6 +453,11 @@ ngx_http_v3_cleanup_request(void *data)
 {
     ngx_http_request_t  *r = data;
 
+    if (r->connect_error) {
+        ngx_quic_reset_stream(r->connection,
+                              NGX_HTTP_V3_ERR_CONNECT_ERROR);
+    }
+
     if (!r->response_sent) {
         r->connection->error = 1;
     }

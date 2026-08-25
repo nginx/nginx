@@ -4643,7 +4643,15 @@ ngx_http_v2_close_stream(ngx_http_v2_stream_t *stream, ngx_int_t rc)
 
     if (!stream->rst_sent && !h2c->connection->error) {
 
-        if (!stream->out_closed) {
+        if (stream->request->connect_error) {
+            if (ngx_http_v2_send_rst_stream(h2c, node->id,
+                                            NGX_HTTP_V2_CONNECT_ERROR)
+                != NGX_OK)
+            {
+                h2c->connection->error = 1;
+            }
+
+        } else if (!stream->out_closed) {
             if (ngx_http_v2_send_rst_stream(h2c, node->id,
                                       fc->timedout ? NGX_HTTP_V2_PROTOCOL_ERROR
                                                    : NGX_HTTP_V2_INTERNAL_ERROR)
