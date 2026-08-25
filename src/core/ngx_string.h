@@ -103,8 +103,19 @@ void *ngx_memcpy(void *dst, const void *src, size_t n);
  * gcc3 compiles memcpy(d, s, 4) to the inline "mov"es.
  * icc8 compile memcpy(d, s, 4) to the inline "mov"es or XMM moves.
  */
-#define ngx_memcpy(dst, src, n)   (void) memcpy(dst, src, n)
-#define ngx_cpymem(dst, src, n)   (((u_char *) memcpy(dst, src, n)) + (n))
+static inline void
+ngx_memcpy(void *restrict dst, const void *restrict src, size_t n)
+{
+    if (n != 0) {
+        (void) memcpy(dst, src, n);
+    }
+}
+
+static inline u_char *
+ngx_cpymem(void *restrict dst, const void *restrict src, size_t n)
+{
+    return n != 0 ? (u_char *) memcpy(dst, src, n) + n : (u_char *) dst;
+}
 
 #endif
 
