@@ -47,7 +47,7 @@ static ngx_int_t         cached_gmtoff;
 
 static ngx_time_t        cached_time[NGX_TIME_SLOTS];
 static u_char            cached_err_log_time[NGX_TIME_SLOTS]
-                                    [sizeof("1970/09/28 12:00:00")];
+                                    [sizeof("1970/09/28 12:00:00.000")];
 static u_char            cached_http_time[NGX_TIME_SLOTS]
                                     [sizeof("Mon, 28 Sep 1970 06:00:00 GMT")];
 static u_char            cached_http_log_time[NGX_TIME_SLOTS]
@@ -65,7 +65,7 @@ static char  *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
 void
 ngx_time_init(void)
 {
-    ngx_cached_err_log_time.len = sizeof("1970/09/28 12:00:00") - 1;
+    ngx_cached_err_log_time.len = sizeof("1970/09/28 12:00:00.000") - 1;
     ngx_cached_http_time.len = sizeof("Mon, 28 Sep 1970 06:00:00 GMT") - 1;
     ngx_cached_http_log_time.len = sizeof("28/Sep/1970:12:00:00 +0600") - 1;
     ngx_cached_http_log_iso8601.len = sizeof("1970-09-28T12:00:00+06:00") - 1;
@@ -102,6 +102,7 @@ ngx_time_update(void)
 
     if (tp->sec == sec) {
         tp->msec = msec;
+        ngx_sprintf(&cached_err_log_time[slot][19], ".%03d", msec);
         ngx_unlock(&ngx_time_lock);
         return;
     }
@@ -149,10 +150,11 @@ ngx_time_update(void)
 
     p1 = &cached_err_log_time[slot][0];
 
-    (void) ngx_sprintf(p1, "%4d/%02d/%02d %02d:%02d:%02d",
+    (void) ngx_sprintf(p1, "%4d/%02d/%02d %02d:%02d:%02d.%03d",
                        tm.ngx_tm_year, tm.ngx_tm_mon,
                        tm.ngx_tm_mday, tm.ngx_tm_hour,
-                       tm.ngx_tm_min, tm.ngx_tm_sec);
+                       tm.ngx_tm_min, tm.ngx_tm_sec,
+                       msec);
 
 
     p2 = &cached_http_log_time[slot][0];
@@ -217,6 +219,7 @@ ngx_time_sigsafe_update(void)
     u_char          *p, *p2;
     ngx_tm_t         tm;
     time_t           sec;
+    ngx_uint_t       msec;
     ngx_time_t      *tp;
     struct timeval   tv;
 
@@ -227,10 +230,12 @@ ngx_time_sigsafe_update(void)
     ngx_gettimeofday(&tv);
 
     sec = tv.tv_sec;
+    msec = tv.tv_usec / 1000;
 
     tp = &cached_time[slot];
 
     if (tp->sec == sec) {
+        ngx_sprintf(&cached_err_log_time[slot][19], ".%03d", msec);
         ngx_unlock(&ngx_time_lock);
         return;
     }
@@ -249,10 +254,11 @@ ngx_time_sigsafe_update(void)
 
     p = &cached_err_log_time[slot][0];
 
-    (void) ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d",
+    (void) ngx_sprintf(p, "%4d/%02d/%02d %02d:%02d:%02d.%03d",
                        tm.ngx_tm_year, tm.ngx_tm_mon,
                        tm.ngx_tm_mday, tm.ngx_tm_hour,
-                       tm.ngx_tm_min, tm.ngx_tm_sec);
+                       tm.ngx_tm_min, tm.ngx_tm_sec,
+                       msec);
 
     p2 = &cached_syslog_time[slot][0];
 
