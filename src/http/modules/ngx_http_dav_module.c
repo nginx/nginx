@@ -654,6 +654,7 @@ destination_done:
     if (alias && alias != NGX_MAX_SIZE_T_VALUE) {
 
         if (alias > duri.len
+            || alias > r->uri.len
             || ngx_filename_cmp(duri.data, r->uri.data, alias) != 0)
         {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
