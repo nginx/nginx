@@ -189,7 +189,8 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].socklen = server[i].addrs[0].socklen;
                 peer[n].name = server[i].addrs[0].name;
                 peer[n].weight = server[i].weight;
-                peer[n].effective_weight = server[i].weight;
+                /* Initialize to 1 instead of server[i].weight for randomness */
+                peer[n].effective_weight = 1;
                 peer[n].current_weight = 0;
                 peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
@@ -209,7 +210,8 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].socklen = server[i].addrs[j].socklen;
                 peer[n].name = server[i].addrs[j].name;
                 peer[n].weight = server[i].weight;
-                peer[n].effective_weight = server[i].weight;
+                /* Initialize to 1 instead of server[i].weight for randomness */
+                peer[n].effective_weight = 1;
                 peer[n].current_weight = 0;
                 peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
@@ -314,7 +316,8 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].socklen = server[i].addrs[0].socklen;
                 peer[n].name = server[i].addrs[0].name;
                 peer[n].weight = server[i].weight;
-                peer[n].effective_weight = server[i].weight;
+                /* Initialize to 1 instead of server[i].weight for randomness */
+                peer[n].effective_weight = 1;
                 peer[n].current_weight = 0;
                 peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
@@ -334,7 +337,8 @@ ngx_stream_upstream_init_round_robin(ngx_conf_t *cf,
                 peer[n].socklen = server[i].addrs[j].socklen;
                 peer[n].name = server[i].addrs[j].name;
                 peer[n].weight = server[i].weight;
-                peer[n].effective_weight = server[i].weight;
+                /* Initialize to 1 instead of server[i].weight for randomness */
+                peer[n].effective_weight = 1;
                 peer[n].current_weight = 0;
                 peer[n].max_conns = server[i].max_conns;
                 peer[n].max_fails = server[i].max_fails;
@@ -760,7 +764,15 @@ ngx_stream_upstream_get_peer(ngx_stream_upstream_rr_peer_data_t *rrp)
             peer->effective_weight++;
         }
 
-        if (best == NULL || peer->current_weight > best->current_weight) {
+        /*
+         * Introduce randomness to solve the herd effect in cluster deployment
+         * When two peers have equal current weights, use random number to decide which one to choose
+         */
+        if (best == NULL
+            || peer->current_weight > best->current_weight
+            || (peer->current_weight == best->current_weight
+                && ngx_random() % 2))
+        {
             best = peer;
             p = i;
         }
