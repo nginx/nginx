@@ -452,8 +452,13 @@ ngx_int_t
 ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
     ngx_array_t *keys, ngx_array_t *passwords)
 {
+    char        *err;
+    X509        *x509, **certp;
+    u_char      *name;
+    EVP_PKEY    **pkey;
+    ngx_int_t    rc;
     ngx_str_t   *cert, *key;
-    ngx_uint_t   i;
+    ngx_uint_t   i, j, found;
 
     cert = certs->elts;
     key = keys->elts;
@@ -467,7 +472,75 @@ ngx_ssl_certificates(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_array_t *certs,
         }
     }
 
-    return NGX_OK;
+    /*
+     * Check that every certificate has a matching key.  OpenSSL pairs
+     * certificates and keys by type, not by directive, so the check is
+     * delayed until all pairs are loaded; each certificate is then matched
+     * against the whole set of keys, regardless of the directive order.
+     */
+
+    if (keys->nelts == 0) {
+        return NGX_OK;
+    }
+
+    pkey = ngx_palloc(cf->temp_pool, keys->nelts * sizeof(EVP_PKEY *));
+    if (pkey == NULL) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < keys->nelts; i++) {
+        pkey[i] = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_PKEY, &err, &key[i],
+                                      passwords);
+        if (pkey[i] == NULL) {
+            while (i--) {
+                EVP_PKEY_free(pkey[i]);
+            }
+            return NGX_ERROR;
+        }
+    }
+
+    rc = NGX_OK;
+    certp = ssl->certs.elts;
+
+    for (i = 0; i < ssl->certs.nelts; i++) {
+        x509 = certp[i];
+        found = 0;
+
+        for (j = 0; j < keys->nelts; j++) {
+            if (pkey[j] == NULL) {
+                continue;
+            }
+
+            if (X509_check_private_key(x509, pkey[j]) == 1) {
+                EVP_PKEY_free(pkey[j]);
+                pkey[j] = NULL;
+                found = 1;
+                break;
+            }
+        }
+
+        /* discard errors left by failed X509_check_private_key() attempts */
+
+        ERR_clear_error();
+
+        if (!found) {
+            name = X509_get_ex_data(x509, ngx_ssl_certificate_name_index);
+
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "certificate \"%s\" does not match "
+                          "any \"ssl_certificate_key\"", name);
+            rc = NGX_ERROR;
+            break;
+        }
+    }
+
+    for (j = 0; j < keys->nelts; j++) {
+        if (pkey[j] != NULL) {
+            EVP_PKEY_free(pkey[j]);
+        }
+    }
+
+    return rc;
 }
 
 
