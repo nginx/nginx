@@ -437,6 +437,12 @@ ngx_http_v3_parse_field_section_prefix(ngx_connection_t *c,
                 return rc;
             }
 
+            if (st->pint.value > (ngx_uint_t) -1) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent too large insert count");
+                return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+            }
+
             st->insert_count = st->pint.value;
             st->state = sw_delta_base;
             break;
@@ -461,6 +467,12 @@ ngx_http_v3_parse_field_section_prefix(ngx_connection_t *c,
                 return rc;
             }
 
+            if (st->pint.value > (ngx_uint_t) -1) {
+                ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                              "client sent too large delta base");
+                return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+            }
+
             st->delta_base = st->pint.value;
             goto done;
         }
@@ -482,6 +494,11 @@ done:
         st->base = st->insert_count - st->delta_base - 1;
 
     } else {
+        if (st->delta_base > (ngx_uint_t) -1 - st->insert_count) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "client sent too large base");
+            return NGX_HTTP_V3_ERR_DECOMPRESSION_FAILED;
+        }
+
         st->base = st->insert_count + st->delta_base;
     }
 
