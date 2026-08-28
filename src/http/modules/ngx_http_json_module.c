@@ -915,6 +915,30 @@ ngx_http_json_store(ngx_http_json_state_t *state, ngx_http_json_node_t *node,
         if (unescape && ngx_json_unescape_string(&val) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        /*
+         * A decoded JSON string may contain raw CR or LF, written either as the
+         * two-character escapes or as the \u000d / \u000a forms.  Unlike
+         * $http_* or $arg_*, whose sources the request parser keeps CRLF-free,
+         * such a value would inject into the header block if the json_set
+         * variable is used in add_header or proxy_set_header.  Refuse those
+         * bytes here: the variable resolves as not found rather than carrying
+         * the CRLF onward.
+         */
+        if (ngx_strlchr(val.data, val.data + val.len, CR) != NULL
+            || ngx_strlchr(val.data, val.data + val.len, LF) != NULL)
+        {
+            ngx_log_error(NGX_LOG_INFO, state->r->connection->log, 0,
+                          "json_set: rejected CR/LF in decoded value");
+
+            for (i = 0; i < node->ndests; i++) {
+                slot = &state->values[node->dests[i]];
+                slot->valid = 0;
+                slot->not_found = 1;
+            }
+
+            return NGX_OK;
+        }
     }
 
     for (i = 0; i < node->ndests; i++) {
