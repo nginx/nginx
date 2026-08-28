@@ -41,6 +41,14 @@ typedef enum {
     ngx_json_object_value_separator,
     ngx_json_array_value_separator,
     ngx_json_array,
+
+    /*
+     * All states from here on are "inside a token", that is, the parser
+     * holds a pointer into the caller's buffer (the local "start") that it
+     * will need later to emit the token.  ngx_json_in_token() below relies
+     * on that; keep new token states after this point.
+     */
+
     ngx_json_string,
     ngx_json_number_minus,
     ngx_json_number_int,
@@ -99,7 +107,19 @@ struct ngx_json_ctx_s {
     void                  *data;
 
     unsigned               in_key; /* unsigned in_key:1 */
+
+    /*
+     * Set when the previous ngx_json_parse_ctx() call ended in the middle
+     * of a token.  A token is emitted as a pointer into the buffer it was
+     * read from, so it cannot span two calls; resuming would emit a token
+     * pointing into a buffer the caller may already have released.
+     */
+
+    unsigned               incomplete:1;
 };
+
+
+#define ngx_json_in_token(state)   ((state) >= ngx_json_string)
 
 
 void ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool);

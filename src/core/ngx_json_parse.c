@@ -52,6 +52,7 @@ ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool)
     ctx->stack = NULL;
 
     ctx->in_key = 0;
+    ctx->incomplete = 0;
 }
 
 
@@ -68,6 +69,18 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
     }
 
     if (data == NULL) {
+        return NGX_ERROR;
+    }
+
+    /*
+     * A token is emitted as a pointer into the buffer it was read from, so
+     * the previous call must not have ended inside one: "start" would refer
+     * to a buffer that is no longer ours, and the length computed against
+     * the new buffer would be meaningless.  Refuse instead of emitting a
+     * token the caller cannot use.
+     */
+
+    if (ctx->incomplete) {
         return NGX_ERROR;
     }
 
@@ -653,6 +666,19 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
         }
 
         state = ngx_json_done;
+
+        /*
+         * The number was terminated by the end of the buffer rather than by
+         * a delimiter, so it is only complete if this was the whole input.
+         * Mark the context so that a caller that has more to feed is told
+         * the value it just received was truncated.
+         */
+
+        ctx->incomplete = 1;
+    }
+
+    if (ngx_json_in_token(state)) {
+        ctx->incomplete = 1;
     }
 
     ctx->state = state;
