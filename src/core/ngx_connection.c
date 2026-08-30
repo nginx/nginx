@@ -755,6 +755,8 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         ls[i].log = *ls[i].logp;
+        ls[i].log.data = &ls[i].addr_text;
+        ls[i].log.handler = ngx_accept_log_error;
 
         if (ls[i].rcvbuf != -1) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF,
