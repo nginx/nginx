@@ -6,9 +6,9 @@ TEMP =		tmp
 
 CC =		cl
 OBJS =		objs.msvc8
-OPENSSL =	openssl-3.5.7
+OPENSSL =	openssl-3.5.8
 ZLIB =		zlib-1.3.2
-PCRE =		pcre2-10.47
+PCRE =		pcre2-10.48
 
 
 release: export
