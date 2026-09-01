@@ -353,7 +353,7 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
     of.valid = clcf->open_file_cache_valid;
     of.min_uses = clcf->open_file_cache_min_uses;
     of.events = clcf->open_file_cache_events;
-    of.directio = NGX_OPEN_FILE_DIRECTIO_OFF;
+    of.directio = clcf->directio;
     of.read_ahead = clcf->read_ahead;
 
     if (ngx_open_cached_file(clcf->open_file_cache, &c->file.name, &of, r->pool)
@@ -380,13 +380,36 @@ ngx_http_file_cache_open(ngx_http_request_t *r)
 
     c->file.fd = of.fd;
     c->file.log = r->connection->log;
+    c->file.directio = of.is_directio;
     c->uniq = of.uniq;
     c->length = of.size;
     c->fs_size = (of.fs_size + cache->bsize - 1) / cache->bsize;
 
-    c->buf = ngx_create_temp_buf(r->pool, c->body_start);
-    if (c->buf == NULL) {
-        return NGX_ERROR;
+    if (of.is_directio) {
+
+        c->body_start = ngx_align(c->body_start, clcf->directio_alignment);
+
+        c->buf = ngx_calloc_buf(r->pool);
+        if (c->buf == NULL) {
+            return NGX_ERROR;
+        }
+
+        c->buf->start = ngx_pmemalign(r->pool, c->body_start,
+                                      clcf->directio_alignment);
+        if (c->buf->start == NULL) {
+            return NGX_ERROR;
+        }
+
+        c->buf->pos = c->buf->start;
+        c->buf->last = c->buf->start;
+        c->buf->end = c->buf->start + c->body_start;
+        c->buf->temporary = 1;
+
+    } else {
+        c->buf = ngx_create_temp_buf(r->pool, c->body_start);
+        if (c->buf == NULL) {
+            return NGX_ERROR;
+        }
     }
 
     return ngx_http_file_cache_read(r, c);
@@ -1663,6 +1686,7 @@ ngx_http_cache_send(ngx_http_request_t *r)
     b->file->fd = c->file.fd;
     b->file->name = c->file.name;
     b->file->log = r->connection->log;
+    b->file->directio = c->file.directio;
 
     out.buf = b;
     out.next = NULL;
