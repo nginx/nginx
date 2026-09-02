@@ -46,7 +46,7 @@ CONTROL_API=NO
 USE_THREADS=NO
 
 NGX_FILE_AIO=NO
-
+NGX_IO_URING=NO
 QUIC_BPF=NO
 
 HTTP=YES
@@ -224,6 +224,7 @@ do
         --with-threads)                  USE_THREADS=YES            ;;
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
+        --with-io_uring)                 NGX_IO_URING=YES            ;;
 
         --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
 
@@ -477,6 +478,7 @@ cat << END
   --with-threads                     enable thread pool support
 
   --with-file-aio                    enable file AIO support
+  --with-io_uring                    enable io_uring support
 
   --without-quic_bpf_module          disable ngx_quic_bpf_module
 
