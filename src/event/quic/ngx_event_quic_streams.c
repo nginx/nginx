@@ -12,6 +12,13 @@
 
 #define NGX_QUIC_STREAM_GONE     (void *) -1
 
+/*
+ * Per-round byte quantum used when interleaving equally-urgent incremental
+ * streams (RFC 9218).  A moderate value keeps interleaving fair without
+ * fragmenting the send stream into excessively small frames.
+ */
+#define NGX_QUIC_INCREMENTAL_QUANTUM  16384
+
 
 static ngx_int_t ngx_quic_do_reset_stream(ngx_quic_stream_t *qs,
     ngx_uint_t err);
@@ -31,7 +38,11 @@ static ssize_t ngx_quic_stream_send(ngx_connection_t *c, u_char *buf,
     size_t size);
 static ngx_chain_t *ngx_quic_stream_send_chain(ngx_connection_t *c,
     ngx_chain_t *in, off_t limit);
-static ngx_int_t ngx_quic_stream_flush(ngx_quic_stream_t *qs);
+static ngx_int_t ngx_quic_stream_flush(ngx_quic_stream_t *qs, off_t quantum);
+static ngx_int_t ngx_quic_flush_streams_by_priority(ngx_connection_t *c);
+static ngx_int_t ngx_quic_stream_priority_cmp(const void *one,
+    const void *two);
+static void ngx_quic_restamp_stream_priority(ngx_quic_stream_t *qs);
 static void ngx_quic_stream_cleanup_handler(void *data);
 static ngx_int_t ngx_quic_close_stream(ngx_quic_stream_t *qs);
 static ngx_int_t ngx_quic_can_shutdown(ngx_connection_t *c);
@@ -167,6 +178,150 @@ ngx_quic_find_stream(ngx_rbtree_t *rbtree, uint64_t id)
     }
 
     return NULL;
+}
+
+
+ngx_connection_t *
+ngx_quic_find_stream_connection(ngx_connection_t *pc, uint64_t id)
+{
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(pc);
+
+    qs = ngx_quic_find_stream(&qc->streams.tree, id);
+    if (qs == NULL) {
+        return NULL;
+    }
+
+    return qs->connection;
+}
+
+
+ngx_int_t
+ngx_quic_client_bidi_stream_id_allowed(ngx_connection_t *pc, uint64_t id)
+{
+    ngx_quic_connection_t  *qc;
+
+    /*
+     * RFC 9000, 4.6: a client-initiated bidirectional stream id is only
+     * permitted once its stream number is below the limit the server has
+     * advertised via MAX_STREAMS.  An id at or above the current limit
+     * identifies a stream the client is not yet allowed to open.
+     */
+
+    qc = ngx_quic_get_connection(pc);
+
+    return (id >> 2) < qc->streams.client_max_streams_bidi;
+}
+
+
+void
+ngx_quic_set_stream_app_ready(ngx_connection_t *c)
+{
+    ngx_quic_stream_t  *qs;
+
+    /*
+     * The application layer marks a stream ready once it has attached its
+     * per-stream object to c->data.  Kept behind this setter so the HTTP
+     * layer does not reach into the QUIC stream representation directly.
+     */
+
+    qs = c->quic;
+
+    if (qs == NULL) {
+        return;
+    }
+
+    qs->app_ready = 1;
+}
+
+
+ngx_int_t
+ngx_quic_stream_app_ready(ngx_connection_t *c)
+{
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    return qs != NULL && qs->app_ready;
+}
+
+
+void
+ngx_quic_set_stream_priority(ngx_connection_t *c, ngx_uint_t urgency,
+    ngx_uint_t incremental)
+{
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    if (qs == NULL) {
+        return;
+    }
+
+    incremental = incremental ? 1 : 0;
+
+    if (qs->urgency == urgency && qs->incremental == incremental) {
+        return;
+    }
+
+    qs->urgency = urgency;
+    qs->incremental = incremental;
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id:0x%xL priority u=%ui i=%ui",
+                   qs->id, qs->urgency, (ngx_uint_t) qs->incremental);
+
+    /*
+     * A PRIORITY_UPDATE (or upstream Priority merge) can change the priority
+     * of a stream whose response is already in flight.  STREAM frames that
+     * were queued under the old urgency are still waiting in the application
+     * send context ordered by that stale value, so re-stamp and re-insert
+     * them to restore the by-urgency wire order for this stream.
+     */
+
+    ngx_quic_restamp_stream_priority(qs);
+}
+
+
+static void
+ngx_quic_restamp_stream_priority(ngx_quic_stream_t *qs)
+{
+    ngx_queue_t            *q;
+    ngx_quic_frame_t       *f;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(qs->parent);
+
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+
+    q = ngx_queue_head(&ctx->frames);
+
+    while (q != ngx_queue_sentinel(&ctx->frames)) {
+
+        f = ngx_queue_data(q, ngx_quic_frame_t, queue);
+        q = ngx_queue_next(q);
+
+        if (f->type != NGX_QUIC_FT_STREAM
+            || f->u.stream.stream_id != qs->id)
+        {
+            continue;
+        }
+
+        if (f->urgency == qs->urgency
+            && (ngx_uint_t) f->incremental == qs->incremental)
+        {
+            continue;
+        }
+
+        f->urgency = qs->urgency;
+        f->incremental = qs->incremental;
+
+        ngx_queue_remove(&f->queue);
+        ngx_quic_queue_stream_frame(ctx, f);
+    }
 }
 
 
@@ -332,7 +487,7 @@ ngx_quic_shutdown_stream_send(ngx_connection_t *c)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, qs->parent->log, 0,
                    "quic stream id:0x%xL send shutdown", qs->id);
 
-    return ngx_quic_stream_flush(qs);
+    return ngx_quic_stream_flush(qs, 0);
 }
 
 
@@ -689,6 +844,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     qs->id = id;
     qs->send_final_size = (uint64_t) -1;
     qs->recv_final_size = (uint64_t) -1;
+    qs->urgency = NGX_QUIC_STREAM_DEFAULT_URGENCY;
 
     pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, c->log);
     if (pool == NULL) {
@@ -1001,7 +1157,14 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic send_chain sent:%uL", n);
 
-    if (ngx_quic_stream_flush(qs) != NGX_OK) {
+    /*
+     * Flush pending stream data in priority order rather than flushing
+     * this stream directly.  This ensures that whenever several streams
+     * compete for the shared connection-level send window, the more
+     * urgent streams are served first (RFC 9218), instead of whichever
+     * stream the HTTP layer happens to write to.
+     */
+    if (ngx_quic_flush_streams_by_priority(pc) != NGX_OK) {
         return NGX_CHAIN_ERROR;
     }
 
@@ -1010,7 +1173,7 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
 
 static ngx_int_t
-ngx_quic_stream_flush(ngx_quic_stream_t *qs)
+ngx_quic_stream_flush(ngx_quic_stream_t *qs, off_t quantum)
 {
     off_t                   limit, len;
     ngx_uint_t              last;
@@ -1032,6 +1195,15 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
 
     limit = ngx_min(qc->streams.send_max_data - qc->streams.send_offset,
                     qs->send_max_data - qs->send_offset);
+
+    /*
+     * A non-zero quantum caps how much this stream may send in one flush,
+     * used to interleave equally-urgent incremental streams (RFC 9218)
+     * fairly instead of draining one before starting the next.
+     */
+    if (quantum > 0 && limit > quantum) {
+        limit = quantum;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, pc->log, 0,
                    "quic stream id:0x%xL flush limit:%O", qs->id, limit);
@@ -1066,6 +1238,9 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
     frame->type = NGX_QUIC_FT_STREAM;
     frame->data = out;
 
+    frame->urgency = qs->urgency;
+    frame->incremental = qs->incremental;
+
     frame->u.stream.off = 1;
     frame->u.stream.len = 1;
     frame->u.stream.fin = last;
@@ -1085,6 +1260,374 @@ ngx_quic_stream_flush(ngx_quic_stream_t *qs)
 
     if (qs->connection == NULL) {
         return ngx_quic_close_stream(qs);
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_quic_stream_priority_cmp(const void *one, const void *two)
+{
+    ngx_quic_stream_t  *qs1 = *(ngx_quic_stream_t **) one;
+    ngx_quic_stream_t  *qs2 = *(ngx_quic_stream_t **) two;
+
+    /* RFC 9218: lower urgency value is served first */
+
+    if (qs1->urgency != qs2->urgency) {
+        return (qs1->urgency < qs2->urgency) ? -1 : 1;
+    }
+
+    /*
+     * Within one urgency, keep non-incremental streams ahead of incremental
+     * ones so each urgency level splits into at most two contiguous runs the
+     * scheduler can apply the correct (sequential vs round-robin) policy to.
+     * Non-incremental resources are served first, matching the sequential-
+     * completion preference of RFC 9218 Section 7.
+     */
+
+    if (qs1->incremental != qs2->incremental) {
+        return qs1->incremental ? 1 : -1;
+    }
+
+    /* tie-break by stream id to keep ordering stable and deterministic */
+
+    if (qs1->id != qs2->id) {
+        return (qs1->id < qs2->id) ? -1 : 1;
+    }
+
+    return 0;
+}
+
+
+/*
+ * A stream in the SEND_SEND state does not necessarily have anything to put
+ * on the wire: its send buffer may be fully drained with no final size yet
+ * known (a streaming response awaiting more upstream data).  A flush of such
+ * a stream is a no-op.  Report whether a flush would actually emit a STREAM
+ * frame, i.e. there are unsent buffered bytes or a known final size has been
+ * reached and the closing (FIN) frame is still pending.  This lets the
+ * scheduler count and sort only the streams that have data to send instead
+ * of every open response.
+ */
+static ngx_inline ngx_uint_t
+ngx_quic_stream_send_ready(ngx_quic_stream_t *qs)
+{
+    if (qs->send_state != NGX_QUIC_STREAM_SEND_SEND) {
+        return 0;
+    }
+
+    if (qs->send.last_offset > qs->send.offset) {
+        return 1;
+    }
+
+    return qs->send_final_size != (uint64_t) -1
+           && qs->send_final_size == qs->send.offset;
+}
+
+
+/*
+ * Flush send-active streams in RFC 9218 urgency order when the connection
+ * is constrained by the shared MAX_DATA budget.  The most urgent stream is
+ * offered the whole remaining budget first and drains its buffered data to
+ * exhaustion before any less urgent stream is served, giving strict
+ * prioritization rather than the round-robin that rbtree (stream id) order
+ * would otherwise produce.
+ */
+static ngx_int_t
+ngx_quic_flush_streams_by_priority(ngx_connection_t *c)
+{
+    uint64_t                sent;
+    ngx_uint_t              i, j, k, n, rr, active, nalloc;
+    ngx_rbtree_t           *tree;
+    ngx_rbtree_node_t      *node;
+    ngx_quic_stream_t      *qs, **streams;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    tree = &qc->streams.tree;
+
+    if (tree->root == tree->sentinel) {
+        return NGX_OK;
+    }
+
+    /*
+     * Unidirectional streams (HTTP/3 control, QPACK encoder/decoder, ...)
+     * carry protocol state, not response bodies, and RFC 9218 prioritization
+     * does not apply to them.  Flush them unconditionally and up front so
+     * they are never starved or delayed by a busy high-priority request
+     * stream, then prioritize only the bidirectional request streams.
+     */
+
+    n = 0;
+
+    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+         node;
+         node = ngx_rbtree_next(tree, node))
+    {
+        qs = (ngx_quic_stream_t *) node;
+
+        if (qs->send_state != NGX_QUIC_STREAM_SEND_SEND) {
+            continue;
+        }
+
+        if (qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+            if (ngx_quic_stream_flush(qs, 0) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_quic_stream_send_ready(qs)) {
+            n++;
+        }
+    }
+
+    if (n == 0) {
+        return NGX_OK;
+    }
+
+    if (n == 1) {
+        /* a single request stream; nothing to order */
+
+        for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+             node;
+             node = ngx_rbtree_next(tree, node))
+        {
+            qs = (ngx_quic_stream_t *) node;
+
+            if (!(qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+                && ngx_quic_stream_send_ready(qs))
+            {
+                return ngx_quic_stream_flush(qs, 0);
+            }
+        }
+
+        return NGX_OK;
+    }
+
+    /*
+     * Use a reusable scratch array kept on the connection, grown on demand,
+     * instead of allocating from the connection pool on every flush (pool
+     * allocations of this size are not reclaimed by ngx_pfree()).  Grow it
+     * geometrically so that, as active streams are added one at a time, the
+     * total memory retained across reallocations stays O(N) rather than the
+     * O(N^2) that growing to exactly n each time would leak into the pool.
+     */
+    if (qc->streams.sched_nalloc < n) {
+        nalloc = qc->streams.sched_nalloc ? qc->streams.sched_nalloc : 4;
+
+        while (nalloc < n) {
+            nalloc *= 2;
+        }
+
+        streams = ngx_palloc(c->pool, nalloc * sizeof(ngx_quic_stream_t *));
+        if (streams == NULL) {
+            return NGX_ERROR;
+        }
+
+        qc->streams.sched = streams;
+        qc->streams.sched_nalloc = nalloc;
+    }
+
+    streams = qc->streams.sched;
+
+    i = 0;
+
+    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+         node;
+         node = ngx_rbtree_next(tree, node))
+    {
+        qs = (ngx_quic_stream_t *) node;
+
+        if (!(qs->id & NGX_QUIC_STREAM_UNIDIRECTIONAL)
+            && ngx_quic_stream_send_ready(qs))
+        {
+            streams[i++] = qs;
+        }
+    }
+
+    ngx_sort(streams, n, sizeof(ngx_quic_stream_t *),
+             ngx_quic_stream_priority_cmp);
+
+    /*
+     * Walk the urgency-sorted array group by group.  Each group holds all
+     * send-active streams that share one urgency value.
+     *
+     * RFC 9218 semantics within a group:
+     *   - non-incremental: send one stream at a time (drain it fully before
+     *     moving to the next), so flush each with an unlimited quantum;
+     *   - incremental: distribute bandwidth fairly, so round-robin a bounded
+     *     quantum across the group's streams until the shared send window is
+     *     exhausted or every stream in the group has drained.
+     */
+
+    i = 0;
+
+    while (i < n) {
+
+        if (qc->streams.send_offset >= qc->streams.send_max_data) {
+            break;
+        }
+
+        /*
+         * [i, j) is the run of streams sharing streams[i]'s urgency AND
+         * incremental mode.  Because the sort orders by (urgency,
+         * incremental, id), each urgency level yields at most two such runs
+         * (non-incremental first, then incremental), so every stream is
+         * scheduled with the policy matching its own incremental bit.
+         */
+
+        for (j = i + 1; j < n; j++) {
+            if (streams[j]->urgency != streams[i]->urgency
+                || streams[j]->incremental != streams[i]->incremental)
+            {
+                break;
+            }
+        }
+
+        if (!streams[i]->incremental) {
+
+            /*
+             * Non-incremental: prefer sending one stream at a time.  The
+             * streams are already ordered by stream id within the group, so
+             * flushing them in turn lets the earlier stream consume as much
+             * of the currently available send window (and its refilled send
+             * buffer) as it can before the next stream is offered any,
+             * biasing completion towards the earlier stream without ever
+             * withholding the window when the leading stream has nothing
+             * buffered to send (which would otherwise stall the group).
+             */
+
+            for (k = i; k < j; k++) {
+
+                if (qc->streams.send_offset >= qc->streams.send_max_data) {
+                    break;
+                }
+
+                if (ngx_quic_stream_flush(streams[k], 0) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+            }
+
+            i = j;
+            continue;
+        }
+
+        /*
+         * Incremental group: distribute the connection send window fairly
+         * across the group's streams (RFC 9218) instead of letting the first
+         * stream drain it.
+         *
+         * Each round the per-stream quantum is the smaller of a fixed cap and
+         * an equal share of the window currently available.  Dividing the
+         * available window is what actually produces interleaving: when only
+         * a little window has opened, a fixed 16k quantum would let the first
+         * stream visited consume all of it, starving its equally-urgent peers
+         * until the next round; an equal share guarantees every active peer
+         * gets to advance in the same round.
+         *
+         * The first stream visited each round is chosen from a round-robin
+         * cursor (sched_rr_next) preserved across flushes, so that when the
+         * available window is smaller than the group size across successive
+         * MAX_DATA increases the window rotates through the group instead of
+         * repeatedly favouring its lowest id.
+         */
+
+        rr = i;
+
+        for (k = i; k < j; k++) {
+            if (streams[k]->id >= qc->streams.sched_rr_next) {
+                rr = k;
+                break;
+            }
+        }
+
+        for ( ;; ) {
+            off_t       quantum;
+            uint64_t    avail;
+            ngx_uint_t  group_active, m;
+
+            /*
+             * Count the streams in the group that can actually make progress
+             * this round: they must have buffered data AND per-stream flow
+             * control room (send_offset < send_max_data).  A stream that is
+             * blocked by its own MAX_STREAM_DATA limit cannot consume any of
+             * the connection window, so including it would shrink every
+             * writable peer's quantum and force repeated scans (quadratic
+             * work) to drain the window while blocked streams sit idle.
+             */
+
+            group_active = 0;
+
+            for (k = i; k < j; k++) {
+                if (streams[k]->send_state == NGX_QUIC_STREAM_SEND_SEND
+                    && streams[k]->send.last_offset > streams[k]->send.offset
+                    && streams[k]->send_offset < streams[k]->send_max_data)
+                {
+                    group_active++;
+                }
+            }
+
+            if (group_active == 0
+                || qc->streams.send_offset >= qc->streams.send_max_data)
+            {
+                break;
+            }
+
+            avail = qc->streams.send_max_data - qc->streams.send_offset;
+
+            quantum = avail / group_active;
+
+            if (quantum == 0) {
+                quantum = 1;
+            }
+
+            if (quantum > NGX_QUIC_INCREMENTAL_QUANTUM) {
+                quantum = NGX_QUIC_INCREMENTAL_QUANTUM;
+            }
+
+            active = 0;
+
+            for (m = 0; m < j - i; m++) {
+
+                k = i + (rr - i + m) % (j - i);
+
+                if (qc->streams.send_offset >= qc->streams.send_max_data) {
+                    break;
+                }
+
+                if (streams[k]->send_state != NGX_QUIC_STREAM_SEND_SEND) {
+                    continue;
+                }
+
+                sent = streams[k]->send.offset;
+
+                if (ngx_quic_stream_flush(streams[k], quantum) != NGX_OK) {
+                    return NGX_ERROR;
+                }
+
+                if (streams[k]->send_state == NGX_QUIC_STREAM_SEND_SEND
+                    && streams[k]->send.offset > sent)
+                {
+                    active = 1;
+                }
+            }
+
+            if (!active) {
+                break;
+            }
+        }
+
+        /*
+         * Advance the cursor past the stream the next flush should start
+         * from, so the group is entered at a different stream each time.
+         */
+
+        qc->streams.sched_rr_next = streams[rr]->id + 1;
+
+        i = j;
     }
 
     return NGX_OK;
@@ -1321,8 +1864,6 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     ngx_quic_max_data_frame_t *f)
 {
     ngx_rbtree_t           *tree;
-    ngx_rbtree_node_t      *node;
-    ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -1341,19 +1882,8 @@ ngx_quic_handle_max_data_frame(ngx_connection_t *c,
     }
 
     qc->streams.send_max_data = f->max_data;
-    node = ngx_rbtree_min(tree->root, tree->sentinel);
 
-    while (node && qc->streams.send_offset < qc->streams.send_max_data) {
-
-        qs = (ngx_quic_stream_t *) node;
-        node = ngx_rbtree_next(tree, node);
-
-        if (ngx_quic_stream_flush(qs) != NGX_OK) {
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
+    return ngx_quic_flush_streams_by_priority(c);
 }
 
 
@@ -1441,7 +1971,15 @@ ngx_quic_handle_max_stream_data_frame(ngx_connection_t *c,
 
     qs->send_max_data = f->limit;
 
-    return ngx_quic_stream_flush(qs);
+    /*
+     * The stream was blocked on its per-stream limit and has now been
+     * unblocked.  Flush through the connection scheduler rather than
+     * flushing this stream directly: another, more urgent stream may also
+     * have data waiting on the shared connection window, and RFC 9218
+     * requires it to be served first (flushing this stream alone could let a
+     * lower-priority stream consume the remaining MAX_DATA budget).
+     */
+    return ngx_quic_flush_streams_by_priority(c);
 }
 
 
