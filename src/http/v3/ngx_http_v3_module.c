@@ -18,6 +18,18 @@ static char *ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_http_quic_host_key(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+#if (NGX_QUIC_QLOG)
+static char *ngx_http_quic_qlog_allow(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+
+
+static ngx_conf_enum_t  ngx_http_quic_qlog_importance[] = {
+    { ngx_string("core"), NGX_QUIC_QLOG_LEVEL_CORE },
+    { ngx_string("base"), NGX_QUIC_QLOG_LEVEL_BASE },
+    { ngx_string("extra"), NGX_QUIC_QLOG_LEVEL_EXTRA },
+    { ngx_null_string, 0 }
+};
+#endif
 
 
 static ngx_command_t  ngx_http_v3_commands[] = {
@@ -77,6 +89,50 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_v3_srv_conf_t, quic.active_connection_id_limit),
       NULL },
+
+#if (NGX_QUIC_QLOG)
+    { ngx_string("quic_qlog"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.qlog_enabled),
+      NULL },
+
+    { ngx_string("quic_qlog_path"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.qlog_path),
+      NULL },
+
+    { ngx_string("quic_qlog_importance"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.qlog_importance),
+      &ngx_http_quic_qlog_importance },
+
+    { ngx_string("quic_qlog_sample"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.qlog_sample_n),
+      NULL },
+
+    { ngx_string("quic_qlog_max_size"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, quic.qlog_max_size),
+      NULL },
+
+    { ngx_string("quic_qlog_allow"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_http_quic_qlog_allow,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+#endif
 
       ngx_null_command
 };
@@ -194,6 +250,8 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
      *     h3scf->quic.disable_active_migration = 0;
      *     h3scf->quic.idle_timeout = 0;
      *     h3scf->max_blocked_streams = 0;
+     *     (NGX_QUIC_QLOG) h3scf->quic.qlog_path = { 0, NULL }
+     *     (NGX_QUIC_QLOG) h3scf->quic.qlog_allow = NULL;
      */
 
     h3scf->enable = NGX_CONF_UNSET;
@@ -209,6 +267,13 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
     h3scf->quic.stream_close_code = NGX_HTTP_V3_ERR_NO_ERROR;
     h3scf->quic.stream_reject_code_bidi = NGX_HTTP_V3_ERR_REQUEST_REJECTED;
     h3scf->quic.active_connection_id_limit = NGX_CONF_UNSET_UINT;
+
+#if (NGX_QUIC_QLOG)
+    h3scf->quic.qlog_enabled = NGX_CONF_UNSET;
+    h3scf->quic.qlog_importance = NGX_CONF_UNSET_UINT;
+    h3scf->quic.qlog_sample_n = NGX_CONF_UNSET_UINT;
+    h3scf->quic.qlog_max_size = NGX_CONF_UNSET_SIZE;
+#endif
 
     h3scf->quic.init = ngx_http_v3_init;
     h3scf->quic.shutdown = ngx_http_v3_shutdown;
@@ -249,6 +314,42 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->quic.active_connection_id_limit,
                               prev->quic.active_connection_id_limit,
                               2);
+
+#if (NGX_QUIC_QLOG)
+    ngx_conf_merge_value(conf->quic.qlog_enabled, prev->quic.qlog_enabled, 0);
+    ngx_conf_merge_str_value(conf->quic.qlog_path, prev->quic.qlog_path, "");
+    ngx_conf_merge_uint_value(conf->quic.qlog_importance,
+                              prev->quic.qlog_importance,
+                              NGX_QUIC_QLOG_LEVEL_BASE);
+    ngx_conf_merge_uint_value(conf->quic.qlog_sample_n,
+                              prev->quic.qlog_sample_n,
+                              1);
+    ngx_conf_merge_size_value(conf->quic.qlog_max_size,
+                              prev->quic.qlog_max_size,
+                              0);
+
+    if (conf->quic.qlog_sample_n < 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "quic_qlog_sample must be at least 1");
+        return NGX_CONF_ERROR;
+    }
+
+    if (conf->quic.qlog_allow == NULL) {
+        conf->quic.qlog_allow = prev->quic.qlog_allow;
+    }
+
+    if (conf->quic.qlog_path.len) {
+        if (ngx_conf_full_name(cf->cycle, &conf->quic.qlog_path, 0) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    if (conf->quic.qlog_enabled && conf->quic.qlog_path.len == 0) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "quic_qlog enabled but quic_qlog_path is not set");
+        return NGX_CONF_ERROR;
+    }
+#endif
 
     if (conf->quic.host_key.len == 0) {
 
@@ -391,3 +492,50 @@ failed:
 
     return NGX_CONF_ERROR;
 }
+
+
+#if (NGX_QUIC_QLOG)
+
+static char *
+ngx_http_quic_qlog_allow(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_http_v3_srv_conf_t *h3scf = conf;
+
+    ngx_int_t    rc;
+    ngx_str_t   *value;
+    ngx_cidr_t   cidr, *pcidr;
+
+    if (h3scf->quic.qlog_allow == NULL) {
+        h3scf->quic.qlog_allow = ngx_array_create(cf->pool, 2,
+                                                  sizeof(ngx_cidr_t));
+        if (h3scf->quic.qlog_allow == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    value = cf->args->elts;
+
+    rc = ngx_ptocidr(&value[1], &cidr);
+    if (rc == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (rc == NGX_DONE) {
+        ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                           "low address bits of %V are meaningless",
+                           &value[1]);
+    }
+
+    pcidr = ngx_array_push(h3scf->quic.qlog_allow);
+    if (pcidr == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *pcidr = cidr;
+
+    return NGX_CONF_OK;
+}
+
+#endif /* NGX_QUIC_QLOG */
