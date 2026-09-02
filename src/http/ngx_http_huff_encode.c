@@ -156,99 +156,56 @@ static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table_lc[256] =
 };
 
 
-#if (NGX_PTR_SIZE == 8)
-
-#if (NGX_HAVE_LITTLE_ENDIAN)
-
-#if (NGX_HAVE_GCC_BSWAP64)
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = __builtin_bswap64(buf))
-#else
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    ((dst)[0] = (u_char) ((buf) >> 56),                                       \
-     (dst)[1] = (u_char) ((buf) >> 48),                                       \
-     (dst)[2] = (u_char) ((buf) >> 40),                                       \
-     (dst)[3] = (u_char) ((buf) >> 32),                                       \
-     (dst)[4] = (u_char) ((buf) >> 24),                                       \
-     (dst)[5] = (u_char) ((buf) >> 16),                                       \
-     (dst)[6] = (u_char) ((buf) >> 8),                                        \
-     (dst)[7] = (u_char)  (buf))
-#endif
-
-#else /* !NGX_HAVE_LITTLE_ENDIAN */
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = (buf))
-#endif
-
-#else /* NGX_PTR_SIZE == 4 */
-
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint32_t *) (dst) = htonl(buf))
-
-#endif
-
-
 size_t
 ngx_http_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
 {
-    u_char                       *end;
-    size_t                        hlen;
-    ngx_uint_t                    buf, pending, code;
-    ngx_http_huff_encode_code_t  *table, *next;
+    u_char                         ch;
+    size_t                         hlt, pending;
+    ngx_uint_t                     i;
+    uint64_t                       buf;
+    ngx_http_huff_encode_code_t   *table, *code;
 
     table = lower ? ngx_http_huff_encode_table_lc
                   : ngx_http_huff_encode_table;
-    hlen = 0;
+
+    hlt = 0;
+    for (i = 0; i < len; i++) {
+        ch = src[i];
+        hlt += table[ch].len;
+    }
+
+    hlt = (hlt + 7) / 8;
+
+    if (dst == NULL) {
+        return hlt;
+    }
+
     buf = 0;
     pending = 0;
 
-    end = src + len;
+    for (i = 0; i < len; i++) {
+        ch = src[i];
+        code = &table[ch];
 
-    while (src != end) {
-        next = &table[*src++];
+        buf <<= code->len;
+        buf |= code->code;
+        pending += code->len;
 
-        code = next->code;
-        pending += next->len;
-
-        /* accumulate bits */
-        if (pending < sizeof(buf) * 8) {
-            buf |= code << (sizeof(buf) * 8 - pending);
-            continue;
+        /*
+         * Emit encoded output one byte at a time to avoid
+         * alignment-sensitive wide stores on the destination buffer.
+         */
+        while (pending >= 8) {
+            pending -= 8;
+            *dst++ = (u_char) (buf >> pending);
         }
-
-        if (hlen + sizeof(buf) >= len) {
-            return 0;
-        }
-
-        pending -= sizeof(buf) * 8;
-
-        buf |= code >> pending;
-
-        ngx_http_huff_encode_buf(&dst[hlen], buf);
-
-        hlen += sizeof(buf);
-
-        buf = pending ? code << (sizeof(buf) * 8 - pending) : 0;
     }
 
-    if (pending == 0) {
-        return hlen;
+    if (pending > 0) {
+        buf <<= (8 - pending);
+        buf |= (uint64_t) (0xff >> pending);
+        *dst++ = (u_char) buf;
     }
 
-    buf |= (ngx_uint_t) -1 >> pending;
-
-    pending = ngx_align(pending, 8);
-
-    if (hlen + pending / 8 >= len) {
-        return 0;
-    }
-
-    buf >>= sizeof(buf) * 8 - pending;
-
-    do {
-        pending -= 8;
-        dst[hlen++] = (u_char) (buf >> pending);
-    } while (pending);
-
-    return hlen;
+    return hlt;
 }
