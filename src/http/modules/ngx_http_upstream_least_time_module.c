@@ -411,7 +411,7 @@ static ngx_uint_t
 ngx_http_upstream_least_time_eta(ngx_http_upstream_lt_peer_data_t *ltp,
     ngx_http_upstream_rr_peer_t *peer)
 {
-    time_t      now;
+    time_t      now, shift;
     ngx_msec_t  rt;
 
     switch (ltp->conf->mode) {
@@ -429,9 +429,17 @@ ngx_http_upstream_least_time_eta(ngx_http_upstream_lt_peer_data_t *ltp,
     if (now - peer->checked > peer->fail_timeout) {
         /*
          * once in fail_timeout make response time of a peer 2 times
-         * lower to give chances to slow peers
+         * lower to give chances to slow peers; shifting by the type
+         * width or more is undefined, so long-idle peers saturate to 0
          */
-        rt >>= (now - peer->checked) / (peer->fail_timeout + 1);
+        shift = (now - peer->checked) / (peer->fail_timeout + 1);
+
+        if (shift < (time_t) (8 * sizeof(ngx_msec_t))) {
+            rt >>= shift;
+
+        } else {
+            rt = 0;
+        }
     }
 
     if (peer->inflight_reqs > 0) {
