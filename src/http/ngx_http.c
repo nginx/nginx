@@ -2274,6 +2274,23 @@ ngx_conf_check_field_name_and_strip_value(ngx_conf_t *cf)
         }
     }
 
+    /*
+     * Transfer-Encoding and Content-Length are used
+     * for framing and must not be set manually.
+     */
+    if ((elts[1].len == sizeof("transfer-encoding") - 1 &&
+         ngx_strncasecmp(elts[1].data, (u_char *)"transfer-encoding",
+                         elts[1].len) == 0) ||
+        (elts[1].len == sizeof("content-length") - 1 &&
+         ngx_strncasecmp(elts[1].data, (u_char *)"content-length",
+                         elts[1].len) == 0))
+    {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "%V: header %V cannot be manually set",
+                           elts, elts + 1);
+        return NGX_ERROR;
+    }
+
 #define ISSPACE(c) ((c) == ' ' || (c) == '\t')
     dup = hdr;
     /* Strip trailing whitespace first, so all-whitespace doesn't leave
