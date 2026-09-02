@@ -31,6 +31,7 @@ typedef struct {
     ngx_uint_t                       next_upstream_tries;
     ngx_flag_t                       next_upstream;
     ngx_uint_t                       proxy_protocol;
+    ngx_stream_complex_value_t      *proxy_protocol_value;
     ngx_flag_t                       half_close;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
@@ -94,6 +95,9 @@ static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_proxy_protocol(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static ngx_int_t ngx_stream_proxy_protocol_parse(ngx_str_t *value);
 
 #if (NGX_STREAM_SSL)
 
@@ -276,10 +280,10 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
 
     { ngx_string("proxy_protocol"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
+      ngx_stream_proxy_protocol,
       NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_proxy_srv_conf_t, proxy_protocol),
-      &ngx_stream_proxy_protocol_versions },
+      0,
+      NULL },
 
     { ngx_string("proxy_half_close"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
@@ -755,6 +759,7 @@ static void
 ngx_stream_proxy_connect(ngx_stream_session_t *s)
 {
     ngx_int_t                     rc;
+    ngx_str_t                     value;
     ngx_connection_t             *c, *pc;
     ngx_stream_upstream_t        *u;
     ngx_stream_proxy_srv_conf_t  *pscf;
@@ -768,7 +773,26 @@ ngx_stream_proxy_connect(ngx_stream_session_t *s)
     u = s->upstream;
 
     u->connected = 0;
-    u->proxy_protocol = pscf->proxy_protocol;
+
+    if (pscf->proxy_protocol_value) {
+        if (ngx_stream_complex_value(s, pscf->proxy_protocol_value, &value)
+            != NGX_OK)
+        {
+            ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        rc = ngx_stream_proxy_protocol_parse(&value);
+
+        if (rc == NGX_ERROR) {
+            rc = 0;
+        }
+
+        u->proxy_protocol = (ngx_uint_t) rc;
+
+    } else {
+        u->proxy_protocol = pscf->proxy_protocol;
+    }
 
     if (u->state) {
         u->state->response_time = ngx_current_msec - u->start_time;
@@ -2428,6 +2452,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->next_upstream = NGX_CONF_UNSET;
     conf->proxy_protocol = NGX_CONF_UNSET_UINT;
+    conf->proxy_protocol_value = NGX_CONF_UNSET_PTR;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
     conf->socket_rcvbuf = NGX_CONF_UNSET_SIZE;
@@ -2486,7 +2511,11 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->next_upstream, prev->next_upstream, 1);
 
-    ngx_conf_merge_uint_value(conf->proxy_protocol, prev->proxy_protocol, 0);
+    ngx_conf_merge_uint_value(conf->proxy_protocol,
+                              prev->proxy_protocol, 0);
+
+    ngx_conf_merge_ptr_value(conf->proxy_protocol_value,
+                             prev->proxy_protocol_value, NULL);
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 
@@ -2746,6 +2775,81 @@ ngx_stream_proxy_set_ssl(ngx_conf_t *cf, ngx_stream_proxy_srv_conf_t *pscf)
 }
 
 #endif
+
+
+static char *
+ngx_stream_proxy_protocol(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_stream_proxy_srv_conf_t *pscf = conf;
+
+    ngx_int_t                            n;
+    ngx_str_t                           *value;
+    ngx_stream_complex_value_t          *cv;
+    ngx_stream_compile_complex_value_t   ccv;
+
+    if (pscf->proxy_protocol != NGX_CONF_UNSET_UINT
+        || pscf->proxy_protocol_value != NGX_CONF_UNSET_PTR)
+    {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_stream_script_variables_count(&value[1]) == 0) {
+        n = ngx_stream_proxy_protocol_parse(&value[1]);
+
+        if (n == NGX_ERROR) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid value \"%V\"", &value[1]);
+            return NGX_CONF_ERROR;
+        }
+
+        pscf->proxy_protocol = (ngx_uint_t) n;
+        pscf->proxy_protocol_value = NULL;
+
+        return NGX_CONF_OK;
+    }
+
+    cv = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+    if (cv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = cv;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    pscf->proxy_protocol = 0;
+    pscf->proxy_protocol_value = cv;
+
+    return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_proxy_protocol_parse(ngx_str_t *value)
+{
+    ngx_uint_t       i;
+    ngx_conf_enum_t  *e;
+
+    e = ngx_stream_proxy_protocol_versions;
+
+    for (i = 0; e[i].name.len != 0; i++) {
+        if (e[i].name.len == value->len
+            && ngx_strncasecmp(e[i].name.data, value->data, value->len) == 0)
+        {
+            return (ngx_int_t) e[i].value;
+        }
+    }
+
+    return NGX_ERROR;
+}
 
 
 static char *
