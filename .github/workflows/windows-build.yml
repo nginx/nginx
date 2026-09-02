@@ -1,0 +1,217 @@
+name: "Windows Build & Unsigned ZIP"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      openssl_version: ${{ steps.deps.outputs.openssl_version }}
+      zlib_version: ${{ steps.deps.outputs.zlib_version }}
+      pcre2_version: ${{ steps.deps.outputs.pcre2_version }}
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF_NAME#release-}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up MSVC compiler
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x86 || exit /b 1
+          echo Path=%Path%>>%GITHUB_ENV%
+          echo INCLUDE=%INCLUDE%>>%GITHUB_ENV%
+          echo LIB=%LIB%>>%GITHUB_ENV%
+          echo LIBPATH=%LIBPATH%>>%GITHUB_ENV%
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        with:
+          msystem: MINGW32
+          install: make tar gzip file perl
+
+      - name: Detect dependency versions
+        id: deps
+        shell: msys2 {0}
+        run: |
+          print_var() {
+            make -f misc/GNUmakefile --eval="print_$1: ; @echo \$($1)" "print_$1" | cut -d- -f2-
+          }
+
+          OPENSSL_VER=$(print_var OPENSSL)
+          ZLIB_VER=$(print_var ZLIB)
+          PCRE2_VER=$(print_var PCRE)
+
+          for pair in "openssl:$OPENSSL_VER" "zlib:$ZLIB_VER" "pcre2:$PCRE2_VER"; do
+            name="${pair%%:*}"; ver="${pair#*:}"
+            if [ -z "$ver" ]; then
+              echo "::error::Could not detect ${name} version from misc/GNUmakefile"
+              exit 1
+            fi
+            echo "${name}_version=${ver}" >> "$GITHUB_OUTPUT"
+            echo "- ${name}: \`${ver}\`" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Cache dependencies
+        id: cache-deps
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        with:
+          path: objs.msvc8/lib
+          key: win-deps-${{ steps.deps.outputs.openssl_version }}-${{ steps.deps.outputs.zlib_version }}-${{ steps.deps.outputs.pcre2_version }}
+
+      - name: Download dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        shell: msys2 {0}
+        run: |
+          download() {
+            local url="$1" file="$2" name="$3"
+            echo "Downloading ${name}..."
+            if ! curl -fSL -o "$file" "$url"; then
+              echo "::error::Failed to download ${name} from ${url}"
+              exit 1
+            fi
+            file "$file" | grep -q "gzip" || { echo "::error::${name} is not a valid gzip archive"; exit 1; }
+            tar xzf "$file" && rm "$file"
+          }
+
+          OV="${{ steps.deps.outputs.openssl_version }}"
+          ZV="${{ steps.deps.outputs.zlib_version }}"
+          PV="${{ steps.deps.outputs.pcre2_version }}"
+
+          mkdir -p objs.msvc8/lib && cd objs.msvc8/lib
+          download "https://www.openssl.org/source/openssl-${OV}.tar.gz" openssl.tar.gz "OpenSSL ${OV}"
+          download "https://github.com/madler/zlib/releases/download/v${ZV}/zlib-${ZV}.tar.gz" zlib.tar.gz "zlib ${ZV}"
+          download "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${PV}/pcre2-${PV}.tar.gz" pcre2.tar.gz "PCRE2 ${PV}"
+
+          # Fix missing inttypes.h header for MSVC compatibility
+          echo '#include <stdint.h>' > "pcre2-${PV}/src/inttypes.h"
+
+      - name: Verify dependencies
+        shell: msys2 {0}
+        run: |
+          OV="${{ steps.deps.outputs.openssl_version }}"
+          ZV="${{ steps.deps.outputs.zlib_version }}"
+          PV="${{ steps.deps.outputs.pcre2_version }}"
+
+          [ -f "objs.msvc8/lib/zlib-${ZV}/zlib.h" ]                || { echo "::error::zlib.h not found"; exit 1; }
+          [ -d "objs.msvc8/lib/openssl-${OV}" ]                    || { echo "::error::OpenSSL dir not found"; exit 1; }
+          [ -f "objs.msvc8/lib/pcre2-${PV}/src/pcre2.h.generic" ]  || { echo "::error::PCRE2 headers not found"; exit 1; }
+          [ -f "objs.msvc8/lib/pcre2-${PV}/src/inttypes.h" ]       || { echo "::error::PCRE2 inttypes.h fix missing"; exit 1; }
+          echo "All dependencies verified"
+
+      - name: Configure nginx
+        shell: msys2 {0}
+        run: make -f misc/GNUmakefile win32
+
+      - name: Compile nginx
+        shell: cmd
+        run: nmake
+
+      - name: Verify build
+        shell: bash
+        run: |
+          [ -f objs.msvc8/nginx.exe ] || { echo "::error::nginx.exe was not created"; exit 1; }
+          ls -lh objs.msvc8/nginx.exe
+          echo "- nginx.exe: \`$(ls -lh objs.msvc8/nginx.exe | awk '{print $5}')\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout nginx-tests
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: nginx/nginx-tests
+          path: nginx-tests
+
+      - name: Run tests
+        shell: cmd
+        run: |
+          set TEST_NGINX_BINARY=%CD%\objs.msvc8\nginx.exe
+          set TMPDIR=%CD%\tmp
+          mkdir "%TMPDIR%"
+          cd nginx-tests
+          del ssl_certificate_cache.t
+          prove -v .
+
+      - name: Upload nginx.exe
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-binary
+          path: objs.msvc8/nginx.exe
+          retention-days: 5
+
+  create-zip:
+    needs: build-windows
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Download nginx.exe
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-binary
+          path: objs.msvc8/
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxml2-utils \
+            xsltproc
+
+      - name: Download dependencies
+        run: |
+          download() {
+            local url="$1" file="$2" name="$3"
+            echo "Downloading ${name}..."
+            if ! curl -fSL -o "$file" "$url"; then
+              echo "::error::Failed to download ${name} from ${url}"
+              exit 1
+            fi
+            file "$file" | grep -q "gzip" || { echo "::error::${name} is not a valid gzip archive"; exit 1; }
+            tar xzf "$file" && rm "$file"
+          }
+
+          OV="${{ needs.build-windows.outputs.openssl_version }}"
+          ZV="${{ needs.build-windows.outputs.zlib_version }}"
+          PV="${{ needs.build-windows.outputs.pcre2_version }}"
+
+          mkdir -p objs.msvc8/lib && cd objs.msvc8/lib
+          download "https://www.openssl.org/source/openssl-${OV}.tar.gz" openssl.tar.gz "OpenSSL ${OV}"
+          download "https://github.com/madler/zlib/releases/download/v${ZV}/zlib-${ZV}.tar.gz" zlib.tar.gz "zlib ${ZV}"
+          download "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${PV}/pcre2-${PV}.tar.gz" pcre2.tar.gz "PCRE2 ${PV}"
+
+      - name: Create ZIP
+        id: zip
+        run: |
+          # Fix BSD sed syntax for GNU/Linux: sed -i '' → sed -i
+          sed -i "s/sed -i '' /sed -i /" misc/GNUmakefile
+
+          make -f misc/GNUmakefile zip
+
+          # GNUmakefile derives version from src/core/nginx.h, not the git tag
+          VERSION=$(grep 'define NGINX_VERSION' src/core/nginx.h | sed -e 's/^.*"\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          [ -f "nginx-${VERSION}.zip" ] || { echo "::error::ZIP not created"; exit 1; }
+
+          echo "- ZIP: \`nginx-${VERSION}.zip\` (\`$(ls -lh "nginx-${VERSION}.zip" | awk '{print $5}')\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nginx-${{ steps.zip.outputs.version }}
+          path: nginx-${{ steps.zip.outputs.version }}.zip
+          retention-days: 5
