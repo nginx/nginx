@@ -135,6 +135,9 @@ static char *ngx_http_proxy_ssl_password_file(ngx_conf_t *cf,
 #endif
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
+static char *ngx_http_proxy_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
+
 #if (NGX_HTTP_SSL)
 static char *ngx_http_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post,
     void *data);
@@ -154,6 +157,8 @@ static void ngx_http_proxy_set_vars(ngx_url_t *u, ngx_http_proxy_vars_t *v);
 
 static ngx_conf_post_t  ngx_http_proxy_lowat_post =
     { ngx_http_proxy_lowat_check };
+static ngx_conf_post_t  ngx_http_proxy_buffer_size_post =
+    { ngx_http_proxy_buffer_size_check };
 
 
 static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
@@ -394,7 +399,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.buffer_size),
-      NULL },
+      &ngx_http_proxy_buffer_size_post },
 
     { ngx_string("proxy_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
@@ -5274,6 +5279,19 @@ ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data)
     *np = 0;
 
 #endif
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_http_proxy_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
+    }
 
     return NGX_CONF_OK;
 }
