@@ -83,6 +83,7 @@ HTTP_RANDOM_INDEX=NO
 HTTP_STATUS=NO
 HTTP_GEO=YES
 HTTP_GEOIP=NO
+HTTP_GEOIP2=NO
 HTTP_MAP=YES
 HTTP_SPLIT_CLIENTS=YES
 HTTP_REFERER=YES
@@ -130,6 +131,7 @@ STREAM_LIMIT_CONN=YES
 STREAM_ACCESS=YES
 STREAM_GEO=YES
 STREAM_GEOIP=NO
+STREAM_GEOIP2=NO
 STREAM_MAP=YES
 STREAM_SPLIT_CLIENTS=YES
 STREAM_RETURN=YES
@@ -174,6 +176,7 @@ NGX_PERL=perl
 USE_LIBXSLT=NO
 USE_LIBGD=NO
 USE_GEOIP=NO
+USE_MMDB=NO
 
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
@@ -257,6 +260,9 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --with-http_geoip_module)        HTTP_GEOIP=YES             ;;
         --with-http_geoip_module=dynamic)
                                          HTTP_GEOIP=DYNAMIC         ;;
+        --with-http_geoip2_module)       HTTP_GEOIP2=YES            ;;
+        --with-http_geoip2_module=dynamic)
+                                         HTTP_GEOIP2=DYNAMIC        ;;
         --with-http_sub_module)          HTTP_SUB=YES               ;;
         --with-http_dav_module)          HTTP_DAV=YES               ;;
         --with-http_flv_module)          HTTP_FLV=YES               ;;
@@ -348,6 +354,9 @@ use the \"--with-mail_ssl_module\" option instead"
         --with-stream_geoip_module)      STREAM_GEOIP=YES           ;;
         --with-stream_geoip_module=dynamic)
                                          STREAM_GEOIP=DYNAMIC       ;;
+        --with-stream_geoip2_module)     STREAM_GEOIP2=YES          ;;
+        --with-stream_geoip2_module=dynamic)
+                                         STREAM_GEOIP2=DYNAMIC      ;;
         --with-stream_ssl_preread_module)
                                          STREAM_SSL_PREREAD=YES     ;;
         --without-stream_limit_conn_module)
@@ -492,6 +501,8 @@ cat << END
                                      enable dynamic ngx_http_image_filter_module
   --with-http_geoip_module           enable ngx_http_geoip_module
   --with-http_geoip_module=dynamic   enable dynamic ngx_http_geoip_module
+  --with-http_geoip2_module          enable ngx_http_geoip2_module
+  --with-http_geoip2_module=dynamic  enable dynamic ngx_http_geoip2_module
   --with-http_sub_module             enable ngx_http_sub_module
   --with-http_dav_module             enable ngx_http_dav_module
   --with-http_flv_module             enable ngx_http_flv_module
@@ -580,6 +591,9 @@ cat << END
   --with-stream_realip_module        enable ngx_stream_realip_module
   --with-stream_geoip_module         enable ngx_stream_geoip_module
   --with-stream_geoip_module=dynamic enable dynamic ngx_stream_geoip_module
+  --with-stream_geoip2_module        enable ngx_stream_geoip2_module
+  --with-stream_geoip2_module=dynamic
+                                     enable dynamic ngx_stream_geoip2_module
   --with-stream_ssl_preread_module   enable ngx_stream_ssl_preread_module
   --without-stream_limit_conn_module disable ngx_stream_limit_conn_module
   --without-stream_access_module     disable ngx_stream_access_module

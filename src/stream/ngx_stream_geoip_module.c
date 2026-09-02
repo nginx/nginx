@@ -80,6 +80,7 @@ static GeoIPRecord *ngx_stream_geoip_get_city_record(ngx_stream_session_t *s);
 
 static ngx_int_t ngx_stream_geoip_add_variables(ngx_conf_t *cf);
 static void *ngx_stream_geoip_create_conf(ngx_conf_t *cf);
+static char *ngx_stream_geoip_init_conf(ngx_conf_t *cf, void *conf);
 static char *ngx_stream_geoip_country(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_geoip_org(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -121,7 +122,7 @@ static ngx_stream_module_t  ngx_stream_geoip_module_ctx = {
     NULL,                                  /* postconfiguration */
 
     ngx_stream_geoip_create_conf,          /* create main configuration */
-    NULL,                                  /* init main configuration */
+    ngx_stream_geoip_init_conf,            /* init main configuration */
 
     NULL,                                  /* create server configuration */
     NULL                                   /* merge server configuration */
@@ -619,6 +620,23 @@ ngx_stream_geoip_create_conf(ngx_conf_t *cf)
     cln->data = conf;
 
     return conf;
+}
+
+
+static char *
+ngx_stream_geoip_init_conf(ngx_conf_t *cf, void *conf)
+{
+    ngx_stream_geoip_conf_t  *gcf = conf;
+
+    if (gcf->country != NULL || gcf->org != NULL || gcf->city != NULL) {
+        ngx_log_error(NGX_LOG_WARN, cf->log, 0,
+                      "the GeoIP module uses the legacy MaxMind GeoIP "
+                      "library (libGeoIP) which reached End-of-Life "
+                      "in May 2022; consider migrating to the GeoIP2 "
+                      "module (--with-stream_geoip2_module)");
+    }
+
+    return NGX_CONF_OK;
 }
 
 

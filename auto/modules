@@ -692,6 +692,19 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_GEOIP2 != NO ]; then
+        have=NGX_HTTP_X_FORWARDED_FOR . auto/have
+
+        ngx_module_name=ngx_http_geoip2_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_geoip2_module.c
+        ngx_module_libs=MMDB
+        ngx_module_link=$HTTP_GEOIP2
+
+        . auto/module
+    fi
+
     if [ $HTTP_MAP = YES ]; then
         ngx_module_name=ngx_http_map_module
         ngx_module_incs=
@@ -1209,6 +1222,17 @@ if [ $STREAM != NO ]; then
         ngx_module_srcs=src/stream/ngx_stream_geoip_module.c
         ngx_module_libs=GEOIP
         ngx_module_link=$STREAM_GEOIP
+
+        . auto/module
+    fi
+
+    if [ $STREAM_GEOIP2 != NO ]; then
+        ngx_module_name=ngx_stream_geoip2_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_geoip2_module.c
+        ngx_module_libs=MMDB
+        ngx_module_link=$STREAM_GEOIP2
 
         . auto/module
     fi
