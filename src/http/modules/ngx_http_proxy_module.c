@@ -1153,7 +1153,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
 
     key->data = p;
 
-    if (r->valid_location) {
+    if (r->valid_location && ctx->vars.uri.len) {
         p = ngx_copy(p, ctx->vars.uri.data, ctx->vars.uri.len);
     }
 
@@ -1394,7 +1394,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         b->last = ngx_copy(b->last, r->unparsed_uri.data, r->unparsed_uri.len);
 
     } else {
-        if (r->valid_location) {
+        if (r->valid_location && ctx->vars.uri.len) {
             b->last = ngx_copy(b->last, ctx->vars.uri.data, ctx->vars.uri.len);
         }
 
