@@ -3460,6 +3460,13 @@ ngx_http_mp4_update_stsz_atom(ngx_http_mp4_file_t *mp4,
         data->pos += trak->start_sample * sizeof(uint32_t);
         end = (uint32_t *) data->pos;
 
+        if (trak->start_chunk_samples > trak->start_sample) {
+            ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                          "too many mp4 start chunk samples in \"%s\"",
+                          mp4->file.name.data);
+            return NGX_ERROR;
+        }
+
         for (pos = end - trak->start_chunk_samples; pos < end; pos++) {
             trak->start_chunk_samples_size += ngx_mp4_get_32value(pos);
         }
@@ -3486,6 +3493,13 @@ ngx_http_mp4_update_stsz_atom(ngx_http_mp4_file_t *mp4,
             entries = trak->end_sample - trak->start_sample;
             data->last = data->pos + entries * sizeof(uint32_t);
             end = (uint32_t *) data->last;
+
+            if (trak->end_chunk_samples > entries) {
+                ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                              "too many mp4 end chunk samples in \"%s\"",
+                              mp4->file.name.data);
+                return NGX_ERROR;
+            }
 
             for (pos = end - trak->end_chunk_samples; pos < end; pos++) {
                 trak->end_chunk_samples_size += ngx_mp4_get_32value(pos);
@@ -3653,7 +3667,9 @@ ngx_http_mp4_update_stco_atom(ngx_http_mp4_file_t *mp4,
 
     if (mp4->length) {
 
-        if (trak->end_chunk > trak->chunks) {
+        if (trak->end_chunk - trak->start_chunk
+            > trak->chunks - trak->start_chunk)
+        {
             ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
                           "end time is out mp4 stco chunks in \"%s\"",
                           mp4->file.name.data);
@@ -3866,8 +3882,10 @@ ngx_http_mp4_update_co64_atom(ngx_http_mp4_file_t *mp4,
 
     if (mp4->length) {
 
-        if (trak->end_chunk > trak->chunks) {
-            ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+        if (trak->end_chunk - trak->start_chunk
+            > trak->chunks - trak->start_chunk)
+        {
+            ngx_log_error(NGX_LOG_ALERT, mp4->file.log, 0,
                           "end time is out mp4 co64 chunks in \"%s\"",
                           mp4->file.name.data);
             return NGX_ERROR;

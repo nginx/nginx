@@ -1991,6 +1991,12 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
         return NULL;
     }
 
+    if (alias > r->uri.len && alias != NGX_MAX_SIZE_T_VALUE) {
+        ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                      "URI shorter than aliased URI part");
+        return NULL;
+    }
+
     if (clcf->root_lengths == NULL) {
 
         *root_length = clcf->root.len;
@@ -5112,6 +5118,8 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static char *
 ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+#if (NGX_HAVE_PREAD || NGX_WIN32)
+
     ngx_http_core_loc_conf_t *clcf = conf;
 
     time_t       inactive;
@@ -5179,11 +5187,17 @@ ngx_http_core_open_file_cache(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     clcf->open_file_cache = ngx_open_file_cache_init(cf->pool, max, inactive);
-    if (clcf->open_file_cache) {
-        return NGX_CONF_OK;
+    if (clcf->open_file_cache == NULL) {
+        return NGX_CONF_ERROR;
     }
 
-    return NGX_CONF_ERROR;
+#else
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                       "\"open_file_cache\" is not supported "
+                       "on this platform, ignored");
+#endif
+
+    return NGX_CONF_OK;
 }
 
 
