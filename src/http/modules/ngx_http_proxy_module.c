@@ -89,6 +89,10 @@ static ngx_int_t
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_proxy_internal_chunked_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
+static ngx_uint_t ngx_http_proxy_is_websocket_header(u_char *data, size_t len);
+static u_char *ngx_http_proxy_websocket_key(u_char *p);
+static ngx_int_t ngx_http_proxy_websocket_response(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_proxy_parse_cookie(ngx_str_t *value,
     ngx_array_t *attrs);
 static ngx_int_t ngx_http_proxy_rewrite_cookie_value(ngx_http_request_t *r,
@@ -758,6 +762,11 @@ static char  ngx_http_proxy_version[] = " HTTP/1.0" CRLF;
 static char  ngx_http_proxy_version_11[] = " HTTP/1.1" CRLF;
 
 
+static char  ngx_http_proxy_header_upgrade[] = "Upgrade: websocket" CRLF;
+static char  ngx_http_proxy_header_connection[] = "Connection: Upgrade" CRLF;
+static char  ngx_http_proxy_sec_websocket_key[] = "Sec-WebSocket-Key";
+
+
 static ngx_keyval_t  ngx_http_proxy_headers[] = {
     { ngx_string("Host"), ngx_string("") },
     { ngx_string("Connection"), ngx_string("") },
@@ -965,6 +974,10 @@ ngx_http_proxy_handler(ngx_http_request_t *r)
             || plcf->http_version == NGX_HTTP_VERSION_11))
     {
         r->request_body_no_buffering = 1;
+    }
+
+    if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET) {
+        u->allow_stream_connect = 1;
     }
 
     rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init);
@@ -1185,6 +1198,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
 {
     size_t                        len, uri_len, loc_len, body_len, headers_len,
                                   key_len, val_len;
+    u_char                       *p;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
     ngx_str_t                     method, host;
@@ -1218,6 +1232,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         if (ngx_http_complex_value(r, plcf->method, &method) != NGX_OK) {
             return NGX_ERROR;
         }
+
+    } else if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET) {
+        ngx_str_set(&method, "GET");
 
     } else {
         method = r->method_name;
@@ -1303,6 +1320,9 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         ctx->internal_body_length = body_len;
         len += body_len;
 
+    } else if (r->stream_connect) {
+        ctx->internal_body_length = -1;
+
     } else if (r->headers_in.chunked && r->reading_body) {
         ctx->internal_body_length = -1;
         ctx->internal_chunked = 1;
@@ -1361,9 +1381,24 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET
+                && ngx_http_proxy_is_websocket_header(header[i].key.data,
+                                                      header[i].key.len))
+            {
+                continue;
+            }
+
             len += header[i].key.len + sizeof(": ") - 1
                 + header[i].value.len + sizeof(CRLF) - 1;
         }
+    }
+
+    if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET) {
+        len += sizeof(ngx_http_proxy_header_upgrade) - 1
+               + sizeof(ngx_http_proxy_header_connection) - 1
+               + sizeof(ngx_http_proxy_sec_websocket_key) - 1
+               + sizeof(": ") - 1 + ngx_base64_encoded_length(16)
+               + sizeof(CRLF) - 1;
     }
 
 
@@ -1465,8 +1500,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
             continue;
         }
 
+        p = e.pos;
+
         code = *(ngx_http_script_code_pt *) e.ip;
         code((ngx_http_script_engine_t *) &e);
+
+        key_len = e.pos - p;
 
         if (e.status) {
             return NGX_ERROR;
@@ -1493,6 +1532,12 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         }
 
         *e.pos++ = CR; *e.pos++ = LF;
+
+        if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET
+            && ngx_http_proxy_is_websocket_header(p, key_len))
+        {
+            e.pos = p;
+        }
     }
 
     b->last = e.pos;
@@ -1520,6 +1565,13 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET
+                && ngx_http_proxy_is_websocket_header(header[i].key.data,
+                                                      header[i].key.len))
+            {
+                continue;
+            }
+
             b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
 
             *b->last++ = ':'; *b->last++ = ' ';
@@ -1535,6 +1587,18 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         }
     }
 
+
+    if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET) {
+        b->last = ngx_cpymem(b->last, ngx_http_proxy_header_upgrade,
+                             sizeof(ngx_http_proxy_header_upgrade) - 1);
+        b->last = ngx_cpymem(b->last, ngx_http_proxy_header_connection,
+                             sizeof(ngx_http_proxy_header_connection) - 1);
+        b->last = ngx_cpymem(b->last, ngx_http_proxy_sec_websocket_key,
+                             sizeof(ngx_http_proxy_sec_websocket_key) - 1);
+        *b->last++ = ':'; *b->last++ = ' ';
+        b->last = ngx_http_proxy_websocket_key(b->last);
+        *b->last++ = CR; *b->last++ = LF;
+    }
 
     /* add "\r\n" at the header end */
     *b->last++ = CR; *b->last++ = LF;
@@ -2041,6 +2105,14 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
                 if (r->headers_in.upgrade) {
                     u->upgrade = 1;
+                }
+
+                if (r->stream_connect == NGX_HTTP_STREAM_CONNECT_WEBSOCKET) {
+                    rc = ngx_http_proxy_websocket_response(r, u);
+
+                    if (rc != NGX_OK) {
+                        return rc;
+                    }
                 }
             }
 
@@ -2876,6 +2948,97 @@ ngx_http_proxy_internal_chunked_variable(ngx_http_request_t *r,
 
     v->data = (u_char *) "chunked";
     v->len = sizeof("chunked") - 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_uint_t
+ngx_http_proxy_is_websocket_header(u_char *data, size_t len)
+{
+    if (len == 7 && ngx_strncasecmp(data, (u_char *) "Upgrade", 7) == 0) {
+        return 1;
+    }
+
+    if (len == 10 && ngx_strncasecmp(data, (u_char *) "Connection", 10) == 0) {
+        return 1;
+    }
+
+    if (len == 17
+        && ngx_strncasecmp(data, (u_char *) "Sec-WebSocket-Key", 17) == 0)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+
+static u_char *
+ngx_http_proxy_websocket_key(u_char *p)
+{
+    ngx_str_t  src, dst;
+    uint64_t   nonce[2];
+
+#if (NGX_OPENSSL)
+    if (RAND_bytes((u_char *) nonce, 16) != 1)
+#endif
+    {
+        nonce[0] = ((uint64_t) ngx_random() << 32) | (uint32_t) ngx_random();
+        nonce[1] = ((uint64_t) ngx_random() << 32) | (uint32_t) ngx_random();
+    }
+
+    src.len = 16;
+    src.data = (u_char *) nonce;
+
+    dst.data = p;
+    ngx_encode_base64(&dst, &src);
+
+    return p + dst.len;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_websocket_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
+{
+    u_char           *key;
+    size_t            len;
+    ngx_uint_t        i;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *h;
+
+    part = &u->headers_in.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */ ; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
+        if (h[i].hash == 0) {
+            continue;
+        }
+
+        len = h[i].key.len;
+        key = h[i].lowcase_key;
+
+        if ((len == 7 && ngx_memcmp(key, "upgrade", 7) == 0)
+            || (len == 20 && ngx_memcmp(key, "sec-websocket-accept", 20) == 0))
+        {
+            h[i].hash = 0;
+        }
+    }
+
+    u->headers_in.content_length_n = -1;
+
+    u->upgrade = 1;
 
     return NGX_OK;
 }
