@@ -40,7 +40,9 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_frame_t       *fp;
     ngx_quic_connection_t  *qc;
 
-    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION || pkt->path_challenged) {
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION || pkt->path_challenged
+        || pkt->path->cid == NULL)
+    {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic ignoring PATH_CHALLENGE");
         return NGX_OK;
@@ -422,6 +424,9 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
         if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        /* a freed path has no client id; pkt->path may still reference it */
+        path->cid = NULL;
     }
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -460,6 +465,11 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     /* got non-probing packet via non-active path */
 
     qc = ngx_quic_get_connection(c);
+
+    if (pkt->path->cid == NULL) {
+        /* the path was retired while handling the packet */
+        return NGX_OK;
+    }
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);
 
