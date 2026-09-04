@@ -25,7 +25,7 @@
 .\" SUCH DAMAGE.
 .\"
 .\"
-.Dd January 21, 2026
+.Dd September 4, 2026
 .Dt NGINX 8
 .Os
 .Sh NAME
@@ -37,6 +37,7 @@
 .Op Fl c Ar file
 .Op Fl e Ar file
 .Op Fl g Ar directives
+.Op Fl l Ar address
 .Op Fl p Ar prefix
 .Op Fl s Ar signal
 .Sh DESCRIPTION
@@ -65,6 +66,11 @@ indicates that the standard error output should be used.
 Set global configuration directives.
 See
 .Sx EXAMPLES
+for details.
+.It Fl l Ar address
+Set a control socket listen address.
+See
+.Sx CONTROL SOCKET
 for details.
 .It Fl p Ar prefix
 Set the prefix path.
@@ -165,6 +171,27 @@ events {
 	debug_connection 127.0.0.1;
 }
 .Ed
+.Sh CONTROL SOCKET
+To enable a control socket, reconfigure
+.Nm
+to build with control API:
+.Pp
+.Dl "./configure --with-control-api ..."
+.Pp
+and then set the control socket listen address, for example:
+.Bd -literal -offset indent
+nginx -c ~/mynginx.conf -l 127.0.0.1:8888
+.Ed
+.Pp
+IPv6 addresses should be enclosed in square brackets:
+.Bd -literal -offset indent
+nginx -c ~/mynginx.conf -l [::1]:8888
+.Ed
+.Pp
+It is also possible to listen on UNIX-domain addresses:
+.Bd -literal -offset indent
+nginx -c ~/mynginx.conf -l unix:/path/to/socket
+.Ed
 .Sh ENVIRONMENT
 The
 .Ev NGINX
@@ -197,9 +224,6 @@ nginx -t -c ~/mynginx.conf \e
 .\"Pp
 Documentation at
 .Pa http://nginx.org/en/docs/ .
-.Pp
-For questions and technical support, please refer to
-.Pa http://nginx.org/en/support.html .
 .Sh HISTORY
 Development of
 .Nm
