@@ -480,21 +480,21 @@ ngx_control_handle_accept(void)
                        "control accept fd:%d", r->fd);
 
         if (fcntl(r->fd, F_SETFD, FD_CLOEXEC) == -1) {
-            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, ngx_socket_errno,
                           "control: fcntl(FD_CLOEXEC) failed");
             ngx_close_socket(r->fd);
             continue;
         }
 
         if (fcntl(r->fd, F_SETFL, O_ASYNC|O_NONBLOCK) == -1) {
-            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, ngx_socket_errno,
                           "control: fcntl(O_ASYNC|O_NONBLOCK) failed");
             ngx_close_socket(r->fd);
             continue;
         }
 
         if (fcntl(r->fd, F_SETOWN, ngx_pid) == -1) {
-            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, ngx_socket_errno,
                           "control: fcntl(F_SETOWN) failed");
             ngx_close_socket(r->fd);
             continue;
