@@ -221,6 +221,11 @@ ngx_quic_close_streams(ngx_connection_t *c, ngx_quic_connection_t *qc)
 
         sc->close = 1;
 
+        if (qc->draining) {
+            /* peer-initiated close: CONNECTION_CLOSE or stateless reset */
+            sc->error = 1;
+        }
+
         if (sc->read->posted) {
             ngx_delete_posted_event(sc->read);
         }
