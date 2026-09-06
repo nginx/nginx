@@ -1515,7 +1515,11 @@ ngx_http_core_find_location(ngx_http_request_t *r)
 
             vv = ngx_http_get_flushed_variable(r, (*clcfp)->predicate - 1);
 
-            if (vv && vv->len && (vv->len != 1 || vv->data[0] != '0')) {
+            if (vv == NULL) {
+                return NGX_ERROR;
+            }
+
+            if (vv->len && (vv->len != 1 || vv->data[0] != '0')) {
                 r->loc_conf = (*clcfp)->loc_conf;
 
                 /* look up nested locations */
