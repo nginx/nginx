@@ -186,6 +186,14 @@ typedef struct {
 } ngx_quic_congestion_t;
 
 
+typedef struct {
+    size_t                            budget;
+    size_t                            rate;
+    size_t                            fraction;
+    ngx_usec_t                        last;
+} ngx_quic_pacing_t;
+
+
 /*
  * RFC 9000, 12.3.  Packet Numbers
  *
@@ -280,6 +288,7 @@ struct ngx_quic_connection_s {
 
     ngx_quic_streams_t                streams;
     ngx_quic_congestion_t             congestion;
+    ngx_quic_pacing_t                 pacing;
 
     uint64_t                          rst_pnum;    /* first on validated path */
 
