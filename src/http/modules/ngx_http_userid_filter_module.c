@@ -913,9 +913,9 @@ ngx_http_userid_mark(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 static ngx_int_t
 ngx_http_userid_init_worker(ngx_cycle_t *cycle)
 {
-    struct timeval  tp;
+    ngx_timeval_t   tp;
 
-    ngx_gettimeofday(&tp);
+    ngx_gettimeofday64(&tp);
 
     /* use the most significant usec part that fits to 16 bits */
     start_value = (((uint32_t) tp.tv_usec / 20) << 16) | ngx_pid;
