@@ -373,6 +373,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, client_body_timeout),
       NULL },
 
+    { ngx_string("client_body_total_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, client_body_total_timeout),
+      NULL },
+
     { ngx_string("client_body_temp_path"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1234,
       ngx_conf_set_path_slot,
@@ -3711,6 +3718,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->client_max_body_size = NGX_CONF_UNSET;
     clcf->client_body_buffer_size = NGX_CONF_UNSET_SIZE;
     clcf->client_body_timeout = NGX_CONF_UNSET_MSEC;
+    clcf->client_body_total_timeout = NGX_CONF_UNSET_MSEC;
     clcf->satisfy = NGX_CONF_UNSET_UINT;
     clcf->auth_delay = NGX_CONF_UNSET_MSEC;
     clcf->if_modified_since = NGX_CONF_UNSET_UINT;
@@ -3926,6 +3934,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               (size_t) 2 * ngx_pagesize);
     ngx_conf_merge_msec_value(conf->client_body_timeout,
                               prev->client_body_timeout, 60000);
+    ngx_conf_merge_msec_value(conf->client_body_total_timeout,
+                              prev->client_body_total_timeout, 0);
 
     ngx_conf_merge_bitmask_value(conf->keepalive_disable,
                               prev->keepalive_disable,

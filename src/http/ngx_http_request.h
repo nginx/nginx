@@ -310,6 +310,7 @@ typedef struct {
     ngx_chain_t                      *busy;
     ngx_http_chunked_t               *chunked;
     ngx_http_client_body_handler_pt   post_handler;
+    ngx_event_t                      *total_timeout;
     unsigned                          filter_need_buffering:1;
     unsigned                          last_sent:1;
     unsigned                          last_saved:1;
