@@ -1379,6 +1379,9 @@ static ngx_int_t
 ngx_http_ssl_init(ngx_conf_t *cf)
 {
     ngx_uint_t                   a, p, s;
+#if (NGX_QUIC_OPENSSL_COMPAT)
+    ngx_uint_t                   compat;
+#endif
     const char                  *name;
     ngx_http_conf_addr_t        *addr;
     ngx_http_conf_port_t        *port;
@@ -1423,6 +1426,25 @@ ngx_http_ssl_init(ngx_conf_t *cf)
         return NGX_OK;
     }
 
+#if (NGX_QUIC_OPENSSL_COMPAT)
+
+    compat = 0;
+
+    port = cmcf->ports->elts;
+    for (p = 0; p < cmcf->ports->nelts && !compat; p++) {
+
+        addr = port[p].addrs.elts;
+        for (a = 0; a < port[p].addrs.nelts; a++) {
+
+            if (addr[a].opt.quic) {
+                compat = 1;
+                break;
+            }
+        }
+    }
+
+#endif
+
     port = cmcf->ports->elts;
     for (p = 0; p < cmcf->ports->nelts; p++) {
 
@@ -1433,14 +1455,16 @@ ngx_http_ssl_init(ngx_conf_t *cf)
                 continue;
             }
 
-            if (addr[a].opt.quic) {
-                name = "quic";
-
 #if (NGX_QUIC_OPENSSL_COMPAT)
+            if (compat) {
                 if (ngx_http_ssl_quic_compat_init(cf, &addr[a]) != NGX_OK) {
                     return NGX_ERROR;
                 }
+            }
 #endif
+
+            if (addr[a].opt.quic) {
+                name = "quic";
 
             } else {
                 name = "ssl";
@@ -1514,8 +1538,12 @@ ngx_http_ssl_quic_compat_init(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
         sscf = cscf->ctx->srv_conf[ngx_http_ssl_module.ctx_index];
 
         if (sscf->certificates || sscf->reject_handshake) {
-            if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
+            if (ngx_quic_compat_ext_init(cf, sscf->ssl.ctx) != NGX_OK) {
                 return NGX_ERROR;
+            }
+
+            if (addr->opt.quic) {
+                ngx_quic_compat_keylog_init(sscf->ssl.ctx);
             }
         }
     }
