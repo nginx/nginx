@@ -15,6 +15,8 @@
 
 
 typedef struct {
+    size_t       client_buffer_size;
+
     ngx_str_t    capability;
     ngx_str_t    starttls_capability;
     ngx_str_t    starttls_only_capability;
