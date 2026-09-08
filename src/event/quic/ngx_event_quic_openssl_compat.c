@@ -70,11 +70,16 @@ static ngx_int_t ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec,
     ngx_str_t *res);
 
 
-ngx_int_t
-ngx_quic_compat_init(ngx_conf_t *cf, SSL_CTX *ctx)
+void
+ngx_quic_compat_keylog_init(SSL_CTX *ctx)
 {
     SSL_CTX_set_keylog_callback(ctx, ngx_quic_compat_keylog_callback);
+}
 
+
+ngx_int_t
+ngx_quic_compat_ext_init(ngx_conf_t *cf, SSL_CTX *ctx)
+{
     if (SSL_CTX_has_client_custom_ext(ctx, NGX_QUIC_COMPAT_SSL_TP_EXT)) {
         return NGX_OK;
     }
