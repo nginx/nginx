@@ -1470,7 +1470,7 @@ ngx_http_core_find_location(ngx_http_request_t *r)
         rc = ngx_http_core_find_location(r);
     }
 
-    if (rc == NGX_OK || rc == NGX_DONE) {
+    if (rc == NGX_OK || rc == NGX_DONE || rc == NGX_ERROR) {
         return rc;
     }
 
