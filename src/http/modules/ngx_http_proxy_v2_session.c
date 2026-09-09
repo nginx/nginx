@@ -75,6 +75,26 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 }
 
 
+ngx_http_proxy_v2_stream_t *
+ngx_http_proxy_v2_create_stream(ngx_pool_t *pool,
+    ngx_http_proxy_v2_session_t *sess, ngx_uint_t id)
+{
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    stream = ngx_pcalloc(pool, sizeof(ngx_http_proxy_v2_stream_t));
+    if (stream == NULL) {
+        return NULL;
+    }
+
+    stream->session = sess;
+    stream->id = id;
+    stream->send_window = sess->init_window;
+    stream->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+
+    return stream;
+}
+
+
 ngx_int_t
 ngx_http_proxy_v2_parse_frame_header(ngx_http_proxy_v2_session_t *sess,
     ngx_buf_t *b, ngx_log_t *log)

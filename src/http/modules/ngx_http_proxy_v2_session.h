@@ -44,9 +44,29 @@ typedef struct {
 } ngx_http_proxy_v2_session_t;
 
 
+typedef struct {
+    ngx_http_proxy_v2_session_t   *session;
+    ngx_uint_t                     id;
+
+    ssize_t                        send_window;
+    size_t                         recv_window;
+
+    ngx_uint_t                     error;
+
+    unsigned                       header_sent:1;
+    unsigned                       output_closed:1;
+    unsigned                       end_stream:1;
+    unsigned                       done:1;
+    unsigned                       rst:1;
+} ngx_http_proxy_v2_stream_t;
+
+
 ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_create_session(ngx_pool_t *pool);
 ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_get_session(
     ngx_peer_connection_t *pc);
+
+ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_create_stream(ngx_pool_t *pool,
+    ngx_http_proxy_v2_session_t *sess, ngx_uint_t id);
 
 ngx_int_t ngx_http_proxy_v2_parse_frame_header(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
