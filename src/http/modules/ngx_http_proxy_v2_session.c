@@ -34,6 +34,7 @@ ngx_http_proxy_v2_create_session(ngx_pool_t *pool)
     sess->last_stream_id = 1;
 
     sess->header_state = 0;
+    sess->ping_length = 0;
 
     return sess;
 }
@@ -167,6 +168,56 @@ ngx_http_proxy_v2_parse_frame_header(ngx_http_proxy_v2_session_t *sess,
     sess->header_state = state;
 
     return NGX_AGAIN;
+}
+
+
+ngx_int_t
+ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log)
+{
+    size_t  n;
+
+    if (sess->ping_length == 0) {
+
+        if (sess->stream_id) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent ping frame "
+                          "with non-zero stream id: %ui",
+                          sess->stream_id);
+            return NGX_ERROR;
+        }
+
+        if (sess->length != sizeof(sess->ping_data)) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent ping frame "
+                          "with invalid length: %uz",
+                          sess->length);
+            return NGX_ERROR;
+        }
+
+        if (sess->flags & NGX_HTTP_V2_ACK_FLAG) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent ping frame with ack flag");
+            return NGX_ERROR;
+        }
+    }
+
+    n = ngx_min((size_t) (b->last - b->pos),
+                sizeof(sess->ping_data) - sess->ping_length);
+
+    ngx_memcpy(sess->ping_data + sess->ping_length, b->pos, n);
+    sess->ping_length += n;
+    b->pos += n;
+
+    if (sess->ping_length < sizeof(sess->ping_data)) {
+        return NGX_AGAIN;
+    }
+
+    sess->ping_length = 0;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http proxy ping");
+
+    return NGX_OK;
 }
 
 

@@ -25,6 +25,9 @@ typedef struct {
     ngx_uint_t                     stream_id;
     u_char                         type;
     u_char                         flags;
+
+    size_t                         ping_length;
+    u_char                         ping_data[8];
 } ngx_http_proxy_v2_session_t;
 
 
@@ -34,6 +37,8 @@ ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_get_session(
 
 ngx_int_t ngx_http_proxy_v2_parse_frame_header(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log);
 
 
 #endif /* _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_ */

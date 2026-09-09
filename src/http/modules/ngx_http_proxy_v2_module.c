@@ -56,8 +56,6 @@ typedef struct {
     ngx_uint_t                     setting_id;
     ngx_uint_t                     setting_value;
 
-    u_char                         ping_data[8];
-
     ngx_uint_t                     index;
     ngx_str_t                      name;
     ngx_str_t                      value;
@@ -3826,87 +3824,30 @@ static ngx_int_t
 ngx_http_proxy_v2_parse_ping(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
-    u_char  ch, *p, *last;
-    enum {
-        sw_start = 0,
-        sw_data_2,
-        sw_data_3,
-        sw_data_4,
-        sw_data_5,
-        sw_data_6,
-        sw_data_7,
-        sw_data_8
-    } state;
+    ngx_int_t                     rc;
+    ngx_uint_t                    start;
+    ngx_http_proxy_v2_session_t  *sess;
 
-    if (b->last - b->pos < (ssize_t) ctx->rest) {
-        last = b->last;
+    sess = ctx->session;
+    start = (sess->ping_length == 0);
 
-    } else {
-        last = b->pos + ctx->rest;
+    rc = ngx_http_proxy_v2_parse_ping_frame(sess, b, r->connection->log);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
     }
 
-    state = ctx->frame_state;
-
-    if (state == sw_start) {
-
-        if (ctx->stream_id) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent ping frame "
-                          "with non-zero stream id: %ui",
-                          ctx->stream_id);
-            return NGX_ERROR;
-        }
-
-        if (ctx->rest != 8) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent ping frame "
-                          "with invalid length: %uz",
-                          ctx->rest);
-            return NGX_ERROR;
-        }
-
-        if (ctx->flags & NGX_HTTP_V2_ACK_FLAG) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent ping frame with ack flag");
-            return NGX_ERROR;
-        }
-
-        if (ctx->free == NULL && ctx->pings++ > 1000) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too many ping frames");
-            return NGX_ERROR;
-        }
+    if (start && ctx->free == NULL && ctx->pings++ > 1000) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent too many ping frames");
+        return NGX_ERROR;
     }
 
-    for (p = b->pos; p < last; p++) {
-        ch = *p;
-
-#if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http proxy ping byte: %02Xd s:%d", ch, state);
-#endif
-
-        if (state < sw_data_8) {
-            ctx->ping_data[state] = ch;
-            state++;
-
-        } else {
-            ctx->ping_data[7] = ch;
-            state = sw_start;
-
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy ping");
-        }
-    }
-
-    ctx->rest -= p - b->pos;
-    ctx->frame_state = state;
-    b->pos = p;
-
-    if (ctx->rest > 0) {
+    if (rc == NGX_AGAIN) {
         return NGX_AGAIN;
     }
 
+    ctx->rest = 0;
     ctx->state = ngx_http_proxy_v2_st_start;
 
     return ngx_http_proxy_v2_send_ping_ack(r, ctx);
@@ -3983,7 +3924,7 @@ ngx_http_proxy_v2_send_ping_ack(ngx_http_request_t *r,
     f->stream_id_2 = 0;
     f->stream_id_3 = 0;
 
-    cl->buf->last = ngx_copy(cl->buf->last, ctx->ping_data, 8);
+    cl->buf->last = ngx_copy(cl->buf->last, ctx->session->ping_data, 8);
 
     *ll = cl;
 
