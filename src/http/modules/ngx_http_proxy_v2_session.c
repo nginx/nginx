@@ -35,6 +35,8 @@ ngx_http_proxy_v2_create_session(ngx_pool_t *pool)
 
     sess->header_state = 0;
     sess->ping_length = 0;
+    sess->goaway_length = 0;
+    sess->goaway = 0;
 
     return sess;
 }
@@ -216,6 +218,97 @@ ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
     sess->ping_length = 0;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "http proxy ping");
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_proxy_v2_parse_goaway_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log)
+{
+    u_char  ch, *p, *last;
+    size_t  n;
+
+    if (sess->goaway_length == 0) {
+
+        if (sess->stream_id) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent goaway frame "
+                          "with non-zero stream id: %ui",
+                          sess->stream_id);
+            return NGX_ERROR;
+        }
+
+        if (sess->length < 8) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent goaway frame "
+                          "with invalid length: %uz",
+                          sess->length);
+            return NGX_ERROR;
+        }
+    }
+
+    n = ngx_min((size_t) (b->last - b->pos),
+                sess->length - sess->goaway_length);
+    last = b->pos + n;
+
+    for (p = b->pos; p < last && sess->goaway_length < 8; p++) {
+        ch = *p;
+
+        switch (sess->goaway_length) {
+
+        case 0:
+            sess->goaway_last_stream_id = (ch & 0x7f) << 24;
+            break;
+
+        case 1:
+            sess->goaway_last_stream_id |= ch << 16;
+            break;
+
+        case 2:
+            sess->goaway_last_stream_id |= ch << 8;
+            break;
+
+        case 3:
+            sess->goaway_last_stream_id |= ch;
+            break;
+
+        case 4:
+            sess->goaway_error = (ngx_uint_t) ch << 24;
+            break;
+
+        case 5:
+            sess->goaway_error |= ch << 16;
+            break;
+
+        case 6:
+            sess->goaway_error |= ch << 8;
+            break;
+
+        case 7:
+            sess->goaway_error |= ch;
+            break;
+        }
+
+        sess->goaway_length++;
+    }
+
+    /* skip debug data up to the end of this frame */
+
+    sess->goaway_length += last - p;
+    b->pos = last;
+
+    if (sess->goaway_length < sess->length) {
+        return NGX_AGAIN;
+    }
+
+    sess->goaway_length = 0;
+    sess->goaway = 1;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "http proxy goaway: %ui, stream %ui",
+                   sess->goaway_error, sess->goaway_last_stream_id);
 
     return NGX_OK;
 }

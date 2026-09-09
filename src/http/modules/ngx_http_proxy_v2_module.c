@@ -77,7 +77,6 @@ typedef struct {
     unsigned                       done:1;
     unsigned                       status:1;
     unsigned                       rst:1;
-    unsigned                       goaway:1;
 } ngx_http_proxy_v2_ctx_t;
 
 
@@ -122,8 +121,6 @@ static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
     ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
-static ngx_int_t ngx_http_proxy_v2_parse_goaway(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
@@ -1027,7 +1024,6 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->done = 0;
     ctx->status = 0;
     ctx->rst = 0;
-    ctx->goaway = 0;
     ctx->session = NULL;
     ctx->in = NULL;
     ctx->busy = NULL;
@@ -1390,7 +1386,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
             && ctx->out == NULL
             && ctx->output_closed
             && !ctx->output_blocked
-            && !ctx->goaway
+            && !ctx->session->goaway
             && ctx->state == ngx_http_proxy_v2_st_start)
         {
             u->keepalive = 1;
@@ -1670,7 +1666,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     && ctx->out == NULL
                     && ctx->output_closed
                     && !ctx->output_blocked
-                    && !ctx->goaway
+                    && !ctx->session->goaway
                     && b->last == b->pos)
                 {
                     u->keepalive = 1;
@@ -1974,14 +1970,16 @@ static ngx_int_t
 ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
-    ngx_int_t             rc;
-    ngx_http_upstream_t  *u;
+    ngx_int_t                     rc;
+    ngx_http_upstream_t          *u;
+    ngx_http_proxy_v2_session_t  *sess;
 
     u = r->upstream;
+    sess = ctx->session;
 
     if (ctx->type == NGX_HTTP_V2_GOAWAY_FRAME) {
 
-        rc = ngx_http_proxy_v2_parse_goaway(r, ctx, b);
+        rc = ngx_http_proxy_v2_parse_goaway_frame(sess, b, r->connection->log);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -1991,27 +1989,28 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
+        ctx->rest = 0;
+        ctx->state = ngx_http_proxy_v2_st_start;
+
         /*
-         * If stream_id is lower than one we use, our
+         * If the last stream id is lower than one we use, our
          * request won't be processed and needs to be retried.
-         * If stream_id is greater or equal to the one we use,
+         * If the last stream id is greater or equal to the one we use,
          * we can continue normally (except we can't use this
          * connection for additional requests).  If there is
          * a real error, the connection will be closed.
          */
 
-        if (ctx->stream_id < ctx->id) {
+        if (sess->goaway_last_stream_id < ctx->id) {
 
             /* TODO: we can retry non-idempotent requests */
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent goaway with error %ui",
-                          ctx->error);
+                          sess->goaway_error);
 
             return NGX_ERROR;
         }
-
-        ctx->goaway = 1;
 
         return NGX_OK;
     }
@@ -2139,7 +2138,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                     if (ctx->in == NULL
                         && ctx->output_closed
                         && !ctx->output_blocked
-                        && !ctx->goaway
+                        && !ctx->session->goaway
                         && ctx->state == ngx_http_proxy_v2_st_start)
                     {
                         u->keepalive = 1;
@@ -3415,124 +3414,6 @@ ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
     if (ctx->rest > 0) {
         return NGX_AGAIN;
     }
-
-    ctx->state = ngx_http_proxy_v2_st_start;
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
-ngx_http_proxy_v2_parse_goaway(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
-{
-    u_char  ch, *p, *last;
-    enum {
-        sw_start = 0,
-        sw_last_stream_id_2,
-        sw_last_stream_id_3,
-        sw_last_stream_id_4,
-        sw_error,
-        sw_error_2,
-        sw_error_3,
-        sw_error_4,
-        sw_debug
-    } state;
-
-    if (b->last - b->pos < (ssize_t) ctx->rest) {
-        last = b->last;
-
-    } else {
-        last = b->pos + ctx->rest;
-    }
-
-    state = ctx->frame_state;
-
-    if (state == sw_start) {
-
-        if (ctx->stream_id) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent goaway frame "
-                          "with non-zero stream id: %ui",
-                          ctx->stream_id);
-            return NGX_ERROR;
-        }
-
-        if (ctx->rest < 8) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent goaway frame "
-                          "with invalid length: %uz",
-                          ctx->rest);
-            return NGX_ERROR;
-        }
-    }
-
-    for (p = b->pos; p < last; p++) {
-        ch = *p;
-
-#if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http proxy goaway byte: %02Xd s:%d", ch, state);
-#endif
-
-        switch (state) {
-
-        case sw_start:
-            ctx->stream_id = (ch & 0x7f) << 24;
-            state = sw_last_stream_id_2;
-            break;
-
-        case sw_last_stream_id_2:
-            ctx->stream_id |= ch << 16;
-            state = sw_last_stream_id_3;
-            break;
-
-        case sw_last_stream_id_3:
-            ctx->stream_id |= ch << 8;
-            state = sw_last_stream_id_4;
-            break;
-
-        case sw_last_stream_id_4:
-            ctx->stream_id |= ch;
-            state = sw_error;
-            break;
-
-        case sw_error:
-            ctx->error = (ngx_uint_t) ch << 24;
-            state = sw_error_2;
-            break;
-
-        case sw_error_2:
-            ctx->error |= ch << 16;
-            state = sw_error_3;
-            break;
-
-        case sw_error_3:
-            ctx->error |= ch << 8;
-            state = sw_error_4;
-            break;
-
-        case sw_error_4:
-            ctx->error |= ch;
-            state = sw_debug;
-            break;
-
-        case sw_debug:
-            break;
-        }
-    }
-
-    ctx->rest -= p - b->pos;
-    ctx->frame_state = state;
-    b->pos = p;
-
-    if (ctx->rest > 0) {
-        return NGX_AGAIN;
-    }
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy goaway: %ui, stream %ui",
-                   ctx->error, ctx->stream_id);
 
     ctx->state = ngx_http_proxy_v2_st_start;
 
