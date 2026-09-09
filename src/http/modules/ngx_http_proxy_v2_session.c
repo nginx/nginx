@@ -37,6 +37,7 @@ ngx_http_proxy_v2_create_session(ngx_pool_t *pool)
     sess->ping_length = 0;
     sess->goaway_length = 0;
     sess->window_update_length = 0;
+    sess->settings_length = 0;
     sess->goaway = 0;
 
     return sess;
@@ -368,6 +369,120 @@ ngx_http_proxy_v2_parse_window_update_frame(ngx_http_proxy_v2_session_t *sess,
     sess->send_window += sess->window_update;
 
     return NGX_OK;
+}
+
+
+/* return NGX_OK for each setting and NGX_DONE at the end of the frame */
+
+ngx_int_t
+ngx_http_proxy_v2_parse_settings_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log)
+{
+    u_char  ch;
+
+    if (sess->settings_length == 0) {
+
+        if (sess->stream_id) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent settings frame "
+                          "with non-zero stream id: %ui",
+                          sess->stream_id);
+            return NGX_ERROR;
+        }
+
+        if (sess->flags & NGX_HTTP_V2_ACK_FLAG) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0,
+                           "http proxy settings ack");
+
+            if (sess->length != 0) {
+                ngx_log_error(NGX_LOG_ERR, log, 0,
+                              "upstream sent settings frame "
+                              "with ack flag and non-zero length: %uz",
+                              sess->length);
+                return NGX_ERROR;
+            }
+
+        } else if (sess->length % 6 != 0) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent settings frame "
+                          "with invalid length: %uz",
+                          sess->length);
+            return NGX_ERROR;
+        }
+    }
+
+    if (sess->settings_length == sess->length) {
+        sess->settings_length = 0;
+        return NGX_DONE;
+    }
+
+    while (b->pos < b->last && sess->settings_length < sess->length) {
+        ch = *b->pos++;
+
+        switch (sess->settings_length % 6) {
+
+        case 0:
+            sess->setting_id = ch << 8;
+            break;
+
+        case 1:
+            sess->setting_id |= ch;
+            break;
+
+        case 2:
+            sess->setting_value = (ngx_uint_t) ch << 24;
+            break;
+
+        case 3:
+            sess->setting_value |= ch << 16;
+            break;
+
+        case 4:
+            sess->setting_value |= ch << 8;
+            break;
+
+        case 5:
+            sess->setting_value |= ch;
+            break;
+        }
+
+        if (++sess->settings_length % 6 != 0) {
+            continue;
+        }
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
+                       "http proxy setting: %ui %ui",
+                       sess->setting_id, sess->setting_value);
+
+        /*
+         * The following settings are defined by the protocol:
+         *
+         * SETTINGS_HEADER_TABLE_SIZE, SETTINGS_ENABLE_PUSH,
+         * SETTINGS_MAX_CONCURRENT_STREAMS, SETTINGS_INITIAL_WINDOW_SIZE,
+         * SETTINGS_MAX_FRAME_SIZE, SETTINGS_MAX_HEADER_LIST_SIZE
+         *
+         * Only SETTINGS_INITIAL_WINDOW_SIZE seems to be needed in
+         * a simple client.
+         */
+
+        if (sess->setting_id == 0x04) {
+            /* SETTINGS_INITIAL_WINDOW_SIZE */
+
+            if (sess->setting_value > NGX_HTTP_V2_MAX_WINDOW) {
+                ngx_log_error(NGX_LOG_ERR, log, 0,
+                              "upstream sent settings frame "
+                              "with too large initial window size: %ui",
+                              sess->setting_value);
+                return NGX_ERROR;
+            }
+
+            sess->init_window = sess->setting_value;
+        }
+
+        return NGX_OK;
+    }
+
+    return NGX_AGAIN;
 }
 
 

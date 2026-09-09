@@ -36,6 +36,10 @@ typedef struct {
     size_t                         window_update_length;
     ngx_uint_t                     window_update;
 
+    size_t                         settings_length;
+    ngx_uint_t                     setting_id;
+    ngx_uint_t                     setting_value;
+
     unsigned                       goaway:1;
 } ngx_http_proxy_v2_session_t;
 
@@ -51,6 +55,8 @@ ngx_int_t ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
 ngx_int_t ngx_http_proxy_v2_parse_goaway_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
 ngx_int_t ngx_http_proxy_v2_parse_window_update_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_settings_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
 
 
