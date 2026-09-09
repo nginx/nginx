@@ -33,6 +33,9 @@ typedef struct ngx_quic_send_ctx_s    ngx_quic_send_ctx_t;
 typedef struct ngx_quic_socket_s      ngx_quic_socket_t;
 typedef struct ngx_quic_path_s        ngx_quic_path_t;
 typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
+#if (NGX_QUIC_QLOG)
+typedef struct ngx_quic_qlog_s        ngx_quic_qlog_t;
+#endif
 
 #if (NGX_QUIC_OPENSSL_COMPAT)
 #include <ngx_event_quic_openssl_compat.h>
@@ -246,6 +249,10 @@ struct ngx_quic_connection_s {
     ngx_quic_keys_t                  *keys;
 
     ngx_quic_conf_t                  *conf;
+
+#if (NGX_QUIC_QLOG)
+    ngx_quic_qlog_t                  *qlog;
+#endif
 
     ngx_event_t                       push;
     ngx_event_t                       pto;
