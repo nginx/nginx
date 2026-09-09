@@ -36,6 +36,7 @@ ngx_http_proxy_v2_create_session(ngx_pool_t *pool)
     sess->header_state = 0;
     sess->ping_length = 0;
     sess->goaway_length = 0;
+    sess->window_update_length = 0;
     sess->goaway = 0;
 
     return sess;
@@ -309,6 +310,62 @@ ngx_http_proxy_v2_parse_goaway_frame(ngx_http_proxy_v2_session_t *sess,
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
                    "http proxy goaway: %ui, stream %ui",
                    sess->goaway_error, sess->goaway_last_stream_id);
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_proxy_v2_parse_window_update_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log)
+{
+    u_char  ch;
+
+    if (sess->window_update_length == 0) {
+        if (sess->length != 4) {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent window update frame "
+                          "with invalid length: %uz",
+                          sess->length);
+            return NGX_ERROR;
+        }
+    }
+
+    while (b->pos < b->last && sess->window_update_length < 4) {
+        ch = *b->pos++;
+
+        if (sess->window_update_length == 0) {
+            sess->window_update = ch & 0x7f;
+
+        } else {
+            sess->window_update = (sess->window_update << 8) | ch;
+        }
+
+        sess->window_update_length++;
+    }
+
+    if (sess->window_update_length < 4) {
+        return NGX_AGAIN;
+    }
+
+    sess->window_update_length = 0;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "http proxy window update: %ui", sess->window_update);
+
+    if (sess->window_update == 0) {
+        ngx_log_error(NGX_LOG_ERR, log, 0,
+                      "upstream sent zero window update");
+        return NGX_ERROR;
+    }
+
+    if (sess->window_update > NGX_HTTP_V2_MAX_WINDOW - sess->send_window) {
+        ngx_log_error(NGX_LOG_ERR, log, 0,
+                      "upstream sent too large window update");
+        return NGX_ERROR;
+    }
+
+    sess->send_window += sess->window_update;
 
     return NGX_OK;
 }

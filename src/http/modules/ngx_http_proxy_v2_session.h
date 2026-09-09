@@ -33,6 +33,9 @@ typedef struct {
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
 
+    size_t                         window_update_length;
+    ngx_uint_t                     window_update;
+
     unsigned                       goaway:1;
 } ngx_http_proxy_v2_session_t;
 
@@ -46,6 +49,8 @@ ngx_int_t ngx_http_proxy_v2_parse_frame_header(
 ngx_int_t ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
     ngx_buf_t *b, ngx_log_t *log);
 ngx_int_t ngx_http_proxy_v2_parse_goaway_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_window_update_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
 
 

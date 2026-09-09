@@ -2017,7 +2017,18 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
     if (ctx->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
 
-        rc = ngx_http_proxy_v2_parse_window_update(r, ctx, b);
+        if (ctx->stream_id == 0) {
+            rc = ngx_http_proxy_v2_parse_window_update_frame(sess, b,
+                                                           r->connection->log);
+
+            if (rc == NGX_OK) {
+                ctx->rest = 0;
+                ctx->state = ngx_http_proxy_v2_st_start;
+            }
+
+        } else {
+            rc = ngx_http_proxy_v2_parse_window_update(r, ctx, b);
+        }
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -3503,30 +3514,13 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    if (ctx->stream_id) {
-
-        if (ctx->window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
-                                 - ctx->send_window)
-        {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too large window update");
-            return NGX_ERROR;
-        }
-
-        ctx->send_window += ctx->window_update;
-
-    } else {
-
-        if (ctx->window_update > NGX_HTTP_V2_MAX_WINDOW
-                                 - ctx->session->send_window)
-        {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too large window update");
-            return NGX_ERROR;
-        }
-
-        ctx->session->send_window += ctx->window_update;
+    if (ctx->window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW - ctx->send_window) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent too large window update");
+        return NGX_ERROR;
     }
+
+    ctx->send_window += ctx->window_update;
 
     return NGX_OK;
 }
