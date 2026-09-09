@@ -1750,9 +1750,38 @@ ngx_http_proxy_v2_filter_init(void *data)
             return NGX_ERROR;
         }
 
-        u->length = 0;
-        u->pipe->length = 0;
         ctx->done = 1;
+
+        if (ctx->out == NULL
+            && u->buffer.pos == u->buffer.last
+            && u->pipe->preread_size == 0)
+        {
+            /* the response is complete */
+
+            u->length = 0;
+            u->pipe->length = 0;
+
+        } else {
+
+            /*
+             * Control frames were received along with the response headers,
+             * either still unparsed - left in the buffer, or moved to the
+             * pipe as preread data - or already parsed and awaiting a reply,
+             * most commonly an acknowledgement of the peer's initial
+             * SETTINGS.  Keep the length set so that the exchange is
+             * completed in the usual way, by
+             * ngx_http_proxy_v2_process_frames() on the read side and by
+             * ngx_http_proxy_v2_body_output_filter() on the write side,
+             * either of which then resolves keepalive.
+             */
+
+            u->length = 1;
+            u->pipe->length = 1;
+
+            if (ctx->out) {
+                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+            }
+        }
 
     } else {
         u->length = 1;
