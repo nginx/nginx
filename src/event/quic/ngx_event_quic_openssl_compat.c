@@ -346,7 +346,7 @@ ngx_quic_compat_parse_transport_params_callback(SSL *ssl, unsigned int ext_type,
 
     c = ngx_ssl_get_connection(ssl);
     if (c->type != SOCK_DGRAM) {
-        return 0;
+        return 1;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
