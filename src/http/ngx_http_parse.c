@@ -2053,11 +2053,22 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
 
         while (start < end) {
 
+            while (start < end && (*start == ' ' || *start == '\t')) {
+                start++;
+            }
+
+            if (start == end) {
+                break;
+            }
+
             if (ngx_strncasecmp(start, name->data, name->len) != 0) {
                 goto skip;
             }
 
-            for (start += name->len; start < end && *start == ' '; start++) {
+            for (start += name->len;
+                 start < end && (*start == ' ' || *start == '\t');
+                 start++)
+            {
                 /* void */
             }
 
@@ -2074,7 +2085,9 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
                 goto skip;
             }
 
-            while (start < end && *start == ' ') { start++; }
+            while (start < end && (*start == ' ' || *start == '\t')) {
+                start++;
+            }
 
             for (last = start; last < end && *last != sep; last++) {
                 /* void */
@@ -2093,8 +2106,6 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
                     break;
                 }
             }
-
-            while (start < end && *start == ' ') { start++; }
         }
     }
 
