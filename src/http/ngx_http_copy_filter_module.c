@@ -15,6 +15,7 @@ typedef struct {
 } ngx_http_copy_filter_conf_t;
 
 
+static ngx_int_t ngx_http_copy_body_output_filter(void *data, ngx_chain_t *in);
 #if (NGX_HAVE_FILE_AIO)
 static void ngx_http_copy_aio_handler(ngx_output_chain_ctx_t *ctx,
     ngx_file_t *file);
@@ -117,8 +118,7 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
         ctx->bufs = conf->bufs;
         ctx->tag = (ngx_buf_tag_t) &ngx_http_copy_filter_module;
 
-        ctx->output_filter = (ngx_output_chain_filter_pt)
-                                  ngx_http_next_body_filter;
+        ctx->output_filter = ngx_http_copy_body_output_filter;
         ctx->filter_ctx = r;
 
 #if (NGX_HAVE_FILE_AIO)
@@ -155,6 +155,15 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
                    "http copy filter: %i \"%V?%V\"", rc, &r->uri, &r->args);
 
     return rc;
+}
+
+
+static ngx_int_t
+ngx_http_copy_body_output_filter(void *data, ngx_chain_t *in)
+{
+    ngx_http_request_t  *r = data;
+
+    return ngx_http_next_body_filter(r, in);
 }
 
 
