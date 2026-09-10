@@ -238,7 +238,7 @@ ngx_include="sys/vfs.h";     . auto/include
 
 # BPF sockhash
 
-ngx_feature="BPF sockhash"
+ngx_feature="BPF maps"
 ngx_feature_name="NGX_HAVE_BPF"
 ngx_feature_run=no
 ngx_feature_incs="#include <linux/bpf.h>
@@ -249,7 +249,14 @@ ngx_feature_test="union bpf_attr attr = { 0 };
 
                   attr.map_flags = 0;
                   attr.map_type = BPF_MAP_TYPE_SOCKHASH;
+                  syscall(__NR_bpf, 0, &attr, 0);
 
+                  attr.map_flags = 0;
+                  attr.map_type = BPF_MAP_TYPE_SOCKMAP;
+                  syscall(__NR_bpf, 0, &attr, 0);
+
+                  attr.map_flags = 0;
+                  attr.map_type = BPF_MAP_TYPE_ARRAY;
                   syscall(__NR_bpf, 0, &attr, 0);"
 . auto/feature
 
@@ -260,23 +267,6 @@ if [ $ngx_found = yes ]; then
     if [ $QUIC_BPF != NONE ]; then
         QUIC_BPF=YES
     fi
-fi
-
-
-ngx_feature="SO_COOKIE"
-ngx_feature_name="NGX_HAVE_SO_COOKIE"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  $NGX_INCLUDE_INTTYPES_H"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="socklen_t optlen = sizeof(uint64_t);
-                  uint64_t cookie;
-                  getsockopt(0, SOL_SOCKET, SO_COOKIE, &cookie, &optlen)"
-. auto/feature
-
-if [ $ngx_found = yes ]; then
-    SO_COOKIE_FOUND=YES
 fi
 
 

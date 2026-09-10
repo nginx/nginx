@@ -105,6 +105,13 @@ ngx_quic_open_sockets(ngx_connection_t *c, ngx_quic_connection_t *qc,
 failed:
 
     ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+
+#if (NGX_QUIC_BPF)
+    if (ngx_quic_bpf_delete(c, qc, qsock) != NGX_OK) {
+        return NGX_ERROR;
+    }
+#endif
+
     c->udp = NULL;
 
     return NGX_ERROR;
@@ -156,6 +163,13 @@ ngx_quic_close_socket(ngx_connection_t *c, ngx_quic_socket_t *qsock)
     ngx_queue_insert_head(&qc->free_sockets, &qsock->queue);
 
     ngx_rbtree_delete(&c->listening->rbtree, &qsock->udp.node);
+
+#if (NGX_QUIC_BPF)
+    if (ngx_quic_bpf_delete(c, qc, qsock) != NGX_OK) {
+        return;
+    }
+#endif
+
     qc->nsockets--;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -181,6 +195,12 @@ ngx_quic_listen(ngx_connection_t *c, ngx_quic_connection_t *qc,
     qsock->udp.key = id;
 
     ngx_rbtree_insert(&c->listening->rbtree, &qsock->udp.node);
+
+#if (NGX_QUIC_BPF)
+    if (ngx_quic_bpf_insert(c, qc, qsock) != NGX_OK) {
+        return NGX_ERROR;
+    }
+#endif
 
     ngx_queue_insert_tail(&qc->sockets, &qsock->queue);
 
