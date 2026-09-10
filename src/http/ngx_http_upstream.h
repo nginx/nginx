@@ -166,6 +166,7 @@ typedef struct {
     ngx_msec_t                       send_timeout;
     ngx_msec_t                       read_timeout;
     ngx_msec_t                       next_upstream_timeout;
+    ngx_msec_t                       next_upstream_backoff;
 
     size_t                           send_lowat;
     size_t                           buffer_size;
@@ -185,6 +186,7 @@ typedef struct {
     ngx_uint_t                       next_upstream;
     ngx_uint_t                       store_access;
     ngx_uint_t                       next_upstream_tries;
+    ngx_flag_t                       next_upstream_reinit;
     ngx_flag_t                       buffering;
     ngx_flag_t                       request_buffering;
     ngx_flag_t                       pass_request_headers;
@@ -386,6 +388,8 @@ struct ngx_http_upstream_s {
                                          ngx_table_elt_t *h);
 
     ngx_msec_t                       start_time;
+
+    ngx_event_t                      retry_event;
 
     ngx_http_upstream_state_t       *state;
 
