@@ -144,6 +144,19 @@ ngx_http_v3_header_filter(ngx_http_request_t *r)
 
     c = r->connection;
 
+    if (r->headers_out.content_length_n > 0x3fffffffffffffff) {
+
+        /*
+         * the length would not fit into a QUIC variable-length integer
+         * and would be silently truncated in the DATA frame length
+         */
+
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "too large content length %O in HTTP/3 response",
+                      r->headers_out.content_length_n);
+        return NGX_ERROR;
+    }
+
     out = NULL;
     ll = &out;
 
