@@ -188,6 +188,8 @@ static ngx_int_t ngx_http_upstream_set_local(ngx_http_request_t *r,
 
 static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
+static ngx_int_t ngx_http_upstream_reinit_peers(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_upstream_ssl_init_connection(ngx_http_request_t *,
@@ -2812,7 +2814,11 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
             mask = un->mask;
         }
 
-        if (u->peer.tries > 1
+        if ((u->peer.tries > 1
+             || ((u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_NOLIVE)
+                 && u->conf->next_upstream_tries
+                 && r->upstream_states->nelts
+                    < u->conf->next_upstream_tries))
             && ((u->conf->next_upstream & mask) == mask)
             && !(u->request_sent && r->request_body_no_buffering)
             && !(timeout && ngx_current_msec - u->peer.start_time >= timeout))
@@ -4600,7 +4606,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
 {
     ngx_msec_t  timeout;
-    ngx_uint_t  status, state;
+    ngx_uint_t  reinit, status, state;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
@@ -4683,6 +4689,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     u->state->status = status;
 
     timeout = u->conf->next_upstream_timeout;
+    reinit = (u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_NOLIVE)
+             && u->conf->next_upstream_tries
+             && r->upstream_states->nelts < u->conf->next_upstream_tries;
 
     if (u->request_sent
         && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
@@ -4690,7 +4699,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
     }
 
-    if (u->peer.tries == 0
+    if ((u->peer.tries == 0 && !reinit)
+        || (u->conf->next_upstream_tries
+            && r->upstream_states->nelts >= u->conf->next_upstream_tries)
         || ((u->conf->next_upstream & ft_type) != ft_type)
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
@@ -4749,6 +4760,14 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
         ngx_close_connection(u->peer.connection);
         u->peer.connection = NULL;
+    }
+
+    if (u->peer.tries == 0 && reinit) {
+        if (ngx_http_upstream_reinit_peers(r, u) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
     }
 
     ngx_http_upstream_connect(r, u);
@@ -7349,4 +7368,43 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_reinit_peers(ngx_http_request_t *r,
+    ngx_http_upstream_t *u)
+{
+    ngx_uint_t  tries;
+
+    if (u->upstream) {
+        u->peer.data = NULL;
+        u->peer.name = NULL;
+
+        u->peer.get = NULL;
+        u->peer.free = NULL;
+        u->peer.notify = NULL;
+#if (NGX_SSL)
+        u->peer.set_session = NULL;
+        u->peer.save_session = NULL;
+#endif
+
+        if (u->upstream->peer.init(r, u->upstream) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
+    } else if (u->resolved) {
+        ngx_http_upstream_reinit_round_robin_peer(&u->peer, u->peer.data);
+
+    } else {
+        return NGX_ERROR;
+    }
+
+    tries = u->conf->next_upstream_tries - r->upstream_states->nelts;
+
+    if (u->peer.tries > tries) {
+        u->peer.tries = tries;
+    }
+
+    return NGX_OK;
 }
