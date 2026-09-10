@@ -46,6 +46,8 @@ static ngx_int_t ngx_http_v3_parse_control(ngx_connection_t *c,
     ngx_http_v3_parse_control_t *st, ngx_buf_t *b);
 static ngx_int_t ngx_http_v3_parse_settings(ngx_connection_t *c,
     ngx_http_v3_parse_settings_t *st, ngx_buf_t *b);
+static ngx_int_t ngx_http_v3_parse_priority_update(ngx_connection_t *c,
+    ngx_http_v3_parse_priority_t *st, ngx_buf_t *b);
 
 static ngx_int_t ngx_http_v3_parse_encoder(ngx_connection_t *c,
     ngx_http_v3_parse_encoder_t *st, ngx_buf_t *b);
@@ -289,7 +291,9 @@ ngx_http_v3_parse_headers(ngx_connection_t *c, ngx_http_v3_parse_headers_t *st,
                 || st->type == NGX_HTTP_V3_FRAME_SETTINGS
                 || st->type == NGX_HTTP_V3_FRAME_MAX_PUSH_ID
                 || st->type == NGX_HTTP_V3_FRAME_CANCEL_PUSH
-                || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE)
+                || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE
+                || st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_REQUEST
+                || st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_PUSH)
             {
                 return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
             }
@@ -1177,14 +1181,18 @@ static ngx_int_t
 ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
     ngx_buf_t *b)
 {
-    ngx_buf_t  loc;
-    ngx_int_t  rc;
+    ngx_str_t            value;
+    ngx_buf_t            loc;
+    ngx_int_t            rc;
+    ngx_http_priority_t  priority;
     enum {
         sw_start = 0,
         sw_first_type,
         sw_type,
         sw_length,
         sw_settings,
+        sw_priority_update,
+        sw_priority_update_push,
         sw_skip
     };
 
@@ -1252,6 +1260,21 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
                            "http3 parse frame len:%uL", st->vlint.value);
 
             st->length = st->vlint.value;
+
+            /*
+             * RFC 9218: a PRIORITY_UPDATE frame carries a mandatory
+             * Prioritized Element ID and so cannot have an empty payload.
+             * An empty payload is a malformed frame (H3_FRAME_ERROR),
+             * regardless of variant; the id-range check (H3_ID_ERROR) only
+             * applies once an id has actually been decoded.
+             */
+            if ((st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_REQUEST
+                 || st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_PUSH)
+                && st->length == 0)
+            {
+                return NGX_HTTP_V3_ERR_FRAME_ERROR;
+            }
+
             if (st->length == 0) {
                 st->state = sw_type;
                 break;
@@ -1261,6 +1284,25 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
 
             case NGX_HTTP_V3_FRAME_SETTINGS:
                 st->state = sw_settings;
+                break;
+
+            case NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_REQUEST:
+                st->priority.state = 0;
+                st->priority.vlint.state = 0;
+                st->priority.value_len = 0;
+                st->priority.value_overflow = 0;
+                st->state = sw_priority_update;
+                break;
+
+            case NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_PUSH:
+                /*
+                 * nginx advertises no push capability, so it never grants a
+                 * push id and any decodable push id is out of range.  Decode
+                 * the id first (a truncated varint is H3_FRAME_ERROR) and
+                 * only then report the out-of-range id as H3_ID_ERROR.
+                 */
+                st->priority.vlint.state = 0;
+                st->state = sw_priority_update_push;
                 break;
 
             default:
@@ -1292,6 +1334,96 @@ ngx_http_v3_parse_control(ngx_connection_t *c, ngx_http_v3_parse_control_t *st,
             }
 
             break;
+
+        case sw_priority_update:
+
+            ngx_http_v3_parse_start_local(b, &loc, st->length);
+
+            rc = ngx_http_v3_parse_priority_update(c, &st->priority, &loc);
+
+            ngx_http_v3_parse_end_local(b, &loc, &st->length);
+
+            if (st->length == 0 && rc == NGX_AGAIN) {
+                /*
+                 * The frame is fully consumed but the parser is still waiting
+                 * for value bytes.  If the element id has been parsed, this is
+                 * a valid Priority Field Value of length zero (an explicit
+                 * reset), so complete it; otherwise the id itself was
+                 * truncated and the frame is malformed.
+                 */
+                if (st->priority.state == 0) {
+                    return NGX_HTTP_V3_ERR_FRAME_ERROR;
+                }
+
+                rc = NGX_DONE;
+            }
+
+            if (rc != NGX_DONE) {
+                return rc;
+            }
+
+            if (st->length == 0) {
+
+                /*
+                 * A value that overflowed the buffer would parse to something
+                 * other than what the peer sent; reject it as excessive load
+                 * rather than silently truncating and misapplying it.
+                 */
+                if (st->priority.value_overflow) {
+                    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                                  "client sent too long PRIORITY_UPDATE value");
+                    return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+                }
+
+                /*
+                 * Parse the whole Priority Field Value in one pass with the
+                 * shared parser, so commas inside quoted strings, structured
+                 * field parameters, and unknown extension members are all
+                 * handled without dropping the recognized "u"/"i" members.
+                 */
+                value.data = st->priority.value;
+                value.len = st->priority.value_len;
+
+                ngx_http_priority_parse(&value, &priority);
+
+                rc = ngx_http_v3_set_priority(c, st->priority.element_id,
+                                              &priority);
+                if (rc != NGX_OK) {
+                    return rc;
+                }
+
+                st->state = sw_type;
+            }
+
+            break;
+
+        case sw_priority_update_push:
+
+            ngx_http_v3_parse_start_local(b, &loc, st->length);
+
+            rc = ngx_http_v3_parse_varlen_int(c, &st->priority.vlint, &loc);
+
+            ngx_http_v3_parse_end_local(b, &loc, &st->length);
+
+            /*
+             * A truncated Prioritized Element ID (the frame is fully consumed
+             * but the varint is incomplete) is a malformed frame.  Once the
+             * id decodes, it necessarily references a push that was never
+             * promised, which RFC 9218 treats as H3_ID_ERROR.
+             */
+            if (rc == NGX_AGAIN) {
+                if (st->length == 0) {
+                    return NGX_HTTP_V3_ERR_FRAME_ERROR;
+                }
+
+                return NGX_AGAIN;
+            }
+
+            if (rc != NGX_DONE) {
+                return rc;
+            }
+
+            return NGX_HTTP_V3_ERR_ID_ERROR;
 
         case sw_skip:
 
@@ -1362,6 +1494,61 @@ done:
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http3 parse settings done");
 
     st->state = sw_start;
+    return NGX_DONE;
+}
+
+
+static ngx_int_t
+ngx_http_v3_parse_priority_update(ngx_connection_t *c,
+    ngx_http_v3_parse_priority_t *st, ngx_buf_t *b)
+{
+    u_char     ch;
+    ngx_int_t  rc;
+
+    enum {
+        sw_id = 0,
+        sw_value
+    };
+
+    if (st->state == sw_id) {
+        rc = ngx_http_v3_parse_varlen_int(c, &st->vlint, b);
+        if (rc != NGX_DONE) {
+            return rc;
+        }
+
+        st->element_id = st->vlint.value;
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 priority update element id:%uL", st->element_id);
+
+        st->state = sw_value;
+    }
+
+    if (st->state == sw_value) {
+
+        if (b->pos == b->last) {
+            return NGX_AGAIN;
+        }
+
+        /*
+         * Buffer the whole Priority Field Value so it can be handed to the
+         * shared ngx_http_priority_parse() in one pass once the frame ends.
+         * A legitimate value is tiny; anything that does not fit the buffer
+         * is flagged and later rejected as excessive load rather than being
+         * silently truncated (which could change the parsed priority).
+         */
+        while (b->pos < b->last) {
+            ch = *b->pos++;
+
+            if (st->value_len < sizeof(st->value)) {
+                st->value[st->value_len++] = ch;
+
+            } else {
+                st->value_overflow = 1;
+            }
+        }
+    }
+
     return NGX_DONE;
 }
 
@@ -1839,7 +2026,9 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
                 || st->type == NGX_HTTP_V3_FRAME_SETTINGS
                 || st->type == NGX_HTTP_V3_FRAME_MAX_PUSH_ID
                 || st->type == NGX_HTTP_V3_FRAME_CANCEL_PUSH
-                || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE)
+                || st->type == NGX_HTTP_V3_FRAME_PUSH_PROMISE
+                || st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_REQUEST
+                || st->type == NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_PUSH)
             {
                 return NGX_HTTP_V3_ERR_FRAME_UNEXPECTED;
             }

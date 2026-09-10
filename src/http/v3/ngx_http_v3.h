@@ -38,6 +38,8 @@
 #define NGX_HTTP_V3_FRAME_PUSH_PROMISE             0x05
 #define NGX_HTTP_V3_FRAME_GOAWAY                   0x07
 #define NGX_HTTP_V3_FRAME_MAX_PUSH_ID              0x0d
+#define NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_REQUEST  0xf0700
+#define NGX_HTTP_V3_FRAME_PRIORITY_UPDATE_PUSH     0xf0701
 
 #define NGX_HTTP_V3_PARAM_MAX_TABLE_CAPACITY       0x01
 #define NGX_HTTP_V3_PARAM_MAX_FIELD_SECTION_SIZE   0x06
@@ -117,7 +119,20 @@ struct ngx_http_v3_parse_s {
     ngx_http_v3_parse_headers_t   headers;
     ngx_http_v3_parse_data_t      body;
     ngx_array_t                  *cookies;
+
+    /* RFC9218 extensible priority for this request stream */
+    ngx_http_priority_state_t     priority;
 };
+
+
+/*
+ * RFC9218: Pending priority update for streams not yet created.
+ * PRIORITY_UPDATE frames may arrive before the HEADERS frame.
+ */
+typedef struct {
+    uint64_t                      id;
+    ngx_http_priority_t           priority;
+} ngx_http_v3_pending_priority_t;
 
 
 struct ngx_http_v3_session_s {
@@ -141,6 +156,18 @@ struct ngx_http_v3_session_s {
     unsigned                      created_streams:NGX_HTTP_V3_MAX_KNOWN_STREAM;
 
     ngx_connection_t             *known_streams[NGX_HTTP_V3_MAX_KNOWN_STREAM];
+
+    /* RFC9218 Extensible Priorities */
+    ngx_array_t                  *pending_priorities;
+
+    /*
+     * Replenished budget for PRIORITY_UPDATE frames, mirroring the HTTP/2
+     * priority_limit: it caps how many updates a peer may send relative to
+     * the number of requests it opens, so a flood of updates (each of which
+     * reprioritizes and re-sorts queued STREAM frames) cannot be used for
+     * CPU exhaustion.
+     */
+    ngx_uint_t                    priority_limit;
 };
 
 
@@ -150,6 +177,9 @@ ngx_int_t ngx_http_v3_init_session(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_check_flood(ngx_connection_t *c);
 ngx_int_t ngx_http_v3_init(ngx_connection_t *c);
 void ngx_http_v3_shutdown(ngx_connection_t *c);
+
+ngx_int_t ngx_http_v3_set_priority(ngx_connection_t *c, uint64_t id,
+    ngx_http_priority_t *value);
 
 ngx_int_t ngx_http_v3_read_request_body(ngx_http_request_t *r);
 ngx_int_t ngx_http_v3_read_unbuffered_request_body(ngx_http_request_t *r);
