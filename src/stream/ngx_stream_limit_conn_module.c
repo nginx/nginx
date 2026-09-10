@@ -194,7 +194,17 @@ ngx_stream_limit_conn_handler(ngx_stream_session_t *s)
                           "the value of the \"%V\" key "
                           "is more than 255 bytes: \"%V\"",
                           &ctx->key.value, &key);
-            continue;
+
+            ngx_stream_limit_conn_cleanup_all(s->connection->pool);
+
+            if (lccf->dry_run) {
+                s->limit_conn_status = NGX_STREAM_LIMIT_CONN_REJECTED_DRY_RUN;
+                return NGX_DECLINED;
+            }
+
+            s->limit_conn_status = NGX_STREAM_LIMIT_CONN_REJECTED;
+
+            return NGX_STREAM_SERVICE_UNAVAILABLE;
         }
 
         s->limit_conn_status = NGX_STREAM_LIMIT_CONN_PASSED;
