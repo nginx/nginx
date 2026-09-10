@@ -807,6 +807,17 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             ngx_quic_queue_frame(qc, f);
             break;
 
+        case NGX_QUIC_FT_DATA_BLOCKED:
+            if (qc->streams.send_offset < qc->streams.send_max_data) {
+                /* not blocked on MAX_DATA anymore */
+                ngx_quic_free_frame(c, f);
+                break;
+            }
+
+            f->u.data_blocked.limit = qc->streams.send_max_data;
+            ngx_quic_queue_frame(qc, f);
+            break;
+
         case NGX_QUIC_FT_MAX_STREAMS:
         case NGX_QUIC_FT_MAX_STREAMS2:
             f->u.max_streams.limit = f->u.max_streams.bidi
@@ -824,6 +835,24 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             }
 
             f->u.max_stream_data.limit = qs->recv_max_data;
+            ngx_quic_queue_frame(qc, f);
+            break;
+
+        case NGX_QUIC_FT_STREAM_DATA_BLOCKED:
+            qs = ngx_quic_find_stream(&qc->streams.tree,
+                                      f->u.stream_data_blocked.id);
+
+            if (qs == NULL
+                || qs->send_state != NGX_QUIC_STREAM_SEND_SEND
+                || qs->send_offset < qs->send_max_data
+                || qs->send.offset == qs->sent)
+            {
+                /* not blocked on MAX_STREAM_DATA anymore */
+                ngx_quic_free_frame(c, f);
+                break;
+            }
+
+            f->u.stream_data_blocked.limit = qs->send_max_data;
             ngx_quic_queue_frame(qc, f);
             break;
 
