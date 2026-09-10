@@ -77,6 +77,7 @@ static struct pollfd          ngx_control_pollfd[NGX_CTRL_MAX_FD];
 static ngx_uint_t             ngx_control_pollfd_n;
 static char                   ngx_control_unix_path[NGX_UNIX_ADDRSTRLEN];
 static ngx_uint_t             ngx_control_inherited;
+static u_char                *ngx_control_env;
 ngx_uint_t                    ngx_control_api_enabled;
 
 
@@ -129,6 +130,18 @@ static ngx_data_decl_t  ngx_control_config_fields[] = {
 
       ngx_data_null_decl
 };
+
+
+void
+ngx_control_preinit(void)
+{
+    /*
+     * the variable is read before ngx_init_cycle(), which may replace
+     * the environment while parsing configuration
+     */
+
+    ngx_control_env = (u_char *) getenv(NGX_CTRL_ENV);
+}
 
 
 ngx_int_t
@@ -382,7 +395,7 @@ ngx_control_inherit(void)
     u_char    *env;
     ngx_fd_t   fd;
 
-    env = (u_char *) getenv(NGX_CTRL_ENV);
+    env = ngx_control_env;
     if (env == NULL) {
         return NGX_DECLINED;
     }

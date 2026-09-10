@@ -12,6 +12,7 @@
 #include <ngx_core.h>
 
 
+void ngx_control_preinit(void);
 ngx_int_t ngx_control_init(u_char *addr);
 void ngx_control_uninit(void);
 void ngx_control_close_sockets(void);
