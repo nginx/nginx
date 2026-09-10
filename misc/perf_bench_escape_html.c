@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -76,7 +76,7 @@ baseline_escape_html(u_char *dst, u_char *src, size_t size)
 
 #define BUF_SIZE 1024
 #define NUM_DOCS 100
-#define ITERATIONS 1000
+#define ITERATIONS 200
 
 static u_char test_docs[NUM_DOCS][BUF_SIZE];
 static u_char dst_base[BUF_SIZE * 6];

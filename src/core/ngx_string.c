@@ -1832,69 +1832,150 @@ done:
 uintptr_t
 ngx_escape_html(u_char *dst, u_char *src, size_t size)
 {
-    u_char      ch;
+    u_char      ch, type, c0, c1, c2, c3;
     ngx_uint_t  len;
+
+    static const u_char  html_map[256] = {
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,1,0,0,0,2,0, 0,0,0,0,0,0,0,0, /* " is 1, & is 2 */
+        0,0,0,0,0,0,0,0, 0,0,0,0,3,0,4,0, /* < is 3, > is 4 */
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
+    };
+
+    static const u_char  html_len_map[5] = { 0, 5, 4, 3, 3 };
 
     if (dst == NULL) {
 
         len = 0;
 
-        while (size) {
-            switch (*src++) {
+        while (size >= 4) {
+            c0 = html_map[src[0]];
+            c1 = html_map[src[1]];
+            c2 = html_map[src[2]];
+            c3 = html_map[src[3]];
 
-            case '<':
-                len += sizeof("&lt;") - 2;
-                break;
-
-            case '>':
-                len += sizeof("&gt;") - 2;
-                break;
-
-            case '&':
-                len += sizeof("&amp;") - 2;
-                break;
-
-            case '"':
-                len += sizeof("&quot;") - 2;
-                break;
-
-            default:
-                break;
+            if ((c0 | c1 | c2 | c3) == 0) {
+                src += 4;
+                size -= 4;
+                continue;
             }
-            size--;
+
+            if (c0) {
+                len += html_len_map[c0];
+            }
+            if (c1) {
+                len += html_len_map[c1];
+            }
+            if (c2) {
+                len += html_len_map[c2];
+            }
+            if (c3) {
+                len += html_len_map[c3];
+            }
+
+            src += 4;
+            size -= 4;
+        }
+
+        while (size--) {
+            type = html_map[*src++];
+            if (type) {
+                len += html_len_map[type];
+            }
         }
 
         return (uintptr_t) len;
     }
 
-    while (size) {
-        ch = *src++;
+    while (size >= 4) {
+        c0 = html_map[src[0]];
+        c1 = html_map[src[1]];
+        c2 = html_map[src[2]];
+        c3 = html_map[src[3]];
 
-        switch (ch) {
-
-        case '<':
-            *dst++ = '&'; *dst++ = 'l'; *dst++ = 't'; *dst++ = ';';
-            break;
-
-        case '>':
-            *dst++ = '&'; *dst++ = 'g'; *dst++ = 't'; *dst++ = ';';
-            break;
-
-        case '&':
-            *dst++ = '&'; *dst++ = 'a'; *dst++ = 'm'; *dst++ = 'p';
-            *dst++ = ';';
-            break;
-
-        case '"':
-            *dst++ = '&'; *dst++ = 'q'; *dst++ = 'u'; *dst++ = 'o';
-            *dst++ = 't'; *dst++ = ';';
-            break;
-
-        default:
-            *dst++ = ch;
-            break;
+        if ((c0 | c1 | c2 | c3) == 0) {
+            ngx_memcpy(dst, src, 4);
+            dst += 4;
+            src += 4;
+            size -= 4;
+            continue;
         }
+
+        ch = *src++;
+        type = html_map[ch];
+
+        if (type == 0) {
+            *dst++ = ch;
+
+        } else {
+            switch (type) {
+            case 3: /* < */
+                ngx_memcpy(dst, "&lt;", 4);
+                dst += 4;
+                break;
+
+            case 4: /* > */
+                ngx_memcpy(dst, "&gt;", 4);
+                dst += 4;
+                break;
+
+            case 2: /* & */
+                ngx_memcpy(dst, "&amp;", 5);
+                dst += 5;
+                break;
+
+            case 1: /* " */
+                ngx_memcpy(dst, "&quot;", 6);
+                dst += 6;
+                break;
+            }
+        }
+
         size--;
+    }
+
+    while (size--) {
+        ch = *src++;
+        type = html_map[ch];
+
+        if (type == 0) {
+            *dst++ = ch;
+
+        } else {
+            switch (type) {
+            case 3: /* < */
+                ngx_memcpy(dst, "&lt;", 4);
+                dst += 4;
+                break;
+
+            case 4: /* > */
+                ngx_memcpy(dst, "&gt;", 4);
+                dst += 4;
+                break;
+
+            case 2: /* & */
+                ngx_memcpy(dst, "&amp;", 5);
+                dst += 5;
+                break;
+
+            case 1: /* " */
+                ngx_memcpy(dst, "&quot;", 6);
+                dst += 6;
+                break;
+            }
+        }
     }
 
     return (uintptr_t) dst;
