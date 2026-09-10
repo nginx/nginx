@@ -340,6 +340,24 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
 };
 
 
+/*
+ * Connection-specific and framing header fields are never forwarded within
+ * a 103 (Early Hints) response: they are hop-by-hop (RFC 9110, 7.6.1), a
+ * 1xx response never carries content, and with HTTP/2 and HTTP/3 such fields
+ * make the response malformed (RFC 9113, 8.2.2; RFC 9114, 4.2).
+ */
+
+static ngx_str_t  ngx_http_upstream_early_hints_hide_headers[] = {
+    ngx_string("Connection"),
+    ngx_string("Content-Length"),
+    ngx_string("Keep-Alive"),
+    ngx_string("Proxy-Connection"),
+    ngx_string("Transfer-Encoding"),
+    ngx_string("Upgrade"),
+    ngx_null_string
+};
+
+
 static ngx_command_t  ngx_http_upstream_commands[] = {
 
     { ngx_string("upstream"),
@@ -2648,13 +2666,16 @@ static ngx_int_t
 ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
-    u_char            *p;
-    ngx_uint_t         i;
-    ngx_list_part_t   *part;
-    ngx_table_elt_t   *h, *ho;
-    ngx_connection_t  *c;
+    u_char                         *p;
+    ngx_uint_t                      i;
+    ngx_list_part_t                *part;
+    ngx_table_elt_t                *h, *ho;
+    ngx_connection_t               *c;
+    ngx_http_upstream_main_conf_t  *umcf;
 
     c = r->connection;
+
+    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
 
@@ -2681,6 +2702,12 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
                 if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
                                   h[i].lowcase_key, h[i].key.len))
+                {
+                    continue;
+                }
+
+                if (ngx_hash_find(&umcf->early_hints_hide_headers_hash,
+                                  h[i].hash, h[i].lowcase_key, h[i].key.len))
                 {
                     continue;
                 }
@@ -7296,6 +7323,7 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_upstream_main_conf_t  *umcf = conf;
 
+    ngx_str_t                      *name;
     ngx_uint_t                      i;
     ngx_array_t                     headers_in;
     ngx_hash_key_t                 *hk;
@@ -7341,6 +7369,41 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
     hash.max_size = 512;
     hash.bucket_size = ngx_align(64, ngx_cacheline_size);
     hash.name = "upstream_headers_in_hash";
+    hash.pool = cf->pool;
+    hash.temp_pool = NULL;
+
+    if (ngx_hash_init(&hash, headers_in.elts, headers_in.nelts) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+
+    /* early_hints_hide_headers_hash */
+
+    if (ngx_array_init(&headers_in, cf->temp_pool, 8, sizeof(ngx_hash_key_t))
+        != NGX_OK)
+    {
+        return NGX_CONF_ERROR;
+    }
+
+    for (name = ngx_http_upstream_early_hints_hide_headers;
+         name->len;
+         name++)
+    {
+        hk = ngx_array_push(&headers_in);
+        if (hk == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        hk->key = *name;
+        hk->key_hash = ngx_hash_key_lc(name->data, name->len);
+        hk->value = (void *) 1;
+    }
+
+    hash.hash = &umcf->early_hints_hide_headers_hash;
+    hash.key = ngx_hash_key_lc;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
+    hash.name = "early_hints_hide_headers_hash";
     hash.pool = cf->pool;
     hash.temp_pool = NULL;
 
