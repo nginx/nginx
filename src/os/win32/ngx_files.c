@@ -1027,6 +1027,25 @@ ngx_fs_available(u_char *name)
     return (off_t) navail.QuadPart;
 }
 
+off_t
+ngx_fs_size(u_char *name)
+{
+    ULARGE_INTEGER free_bytes;
+    ULARGE_INTEGER total_bytes;
+    ULARGE_INTEGER total_free_bytes;
+
+    if (GetDiskFreeSpaceEx((LPCSTR) name,
+                           &free_bytes,
+                           &total_bytes,
+                           &total_free_bytes)
+        == 0)
+    {
+        return 0;
+    }
+
+    return (off_t) total_bytes.QuadPart;
+}
+
 
 static ngx_int_t
 ngx_win32_check_filename(u_short *u, size_t len, ngx_uint_t dirname)
