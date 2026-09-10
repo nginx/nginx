@@ -545,8 +545,9 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     u_char                        *p;
     time_t                         now;
     ssize_t                        n;
-    ngx_str_t                     *key;
     ngx_int_t                      rc;
+    ngx_str_t                     *key;
+    ngx_time_t                    *tp;
     ngx_uint_t                     i;
     ngx_http_file_cache_t         *cache;
     ngx_http_file_cache_header_t  *h;
@@ -650,8 +651,11 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     }
 
     now = ngx_time();
+    tp = ngx_timeofday();
 
-    if (c->valid_sec < now) {
+    if (c->valid_sec < now
+        || (c->valid_sec == now && c->valid_msec <= tp->msec))
+    {
         c->stale_updating = c->valid_sec + c->updating_sec >= now;
         c->stale_error = c->valid_sec + c->error_sec >= now;
 
@@ -900,8 +904,14 @@ ngx_http_file_cache_exists(ngx_http_file_cache_t *cache, ngx_http_cache_t *c)
         }
 
         if (fcn->error) {
+            ngx_time_t  *tp;
 
-            if (fcn->valid_sec < ngx_time()) {
+            tp = ngx_timeofday();
+
+            if (fcn->valid_sec < tp->sec
+                || (fcn->valid_sec == tp->sec
+                    && fcn->valid_msec <= tp->msec))
+            {
                 goto renew;
             }
 
@@ -2349,7 +2359,7 @@ ngx_http_file_cache_set_watermark(ngx_http_file_cache_t *cache)
 }
 
 
-time_t
+ngx_msec_t
 ngx_http_file_cache_valid(ngx_array_t *cache_valid, ngx_uint_t status)
 {
     ngx_uint_t               i;
@@ -2728,9 +2738,9 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
 {
     char  *p = conf;
 
-    time_t                    valid;
-    ngx_str_t                *value;
     ngx_int_t                 status;
+    ngx_str_t                *value;
+    ngx_msec_t                valid;
     ngx_uint_t                i, n;
     ngx_array_t             **a;
     ngx_http_cache_valid_t   *v;
@@ -2748,8 +2758,8 @@ ngx_http_file_cache_valid_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     value = cf->args->elts;
     n = cf->args->nelts - 1;
 
-    valid = ngx_parse_time(&value[n], 1);
-    if (valid == (time_t) NGX_ERROR) {
+    valid = ngx_parse_time(&value[n], 0);
+    if (valid == (ngx_msec_t) NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                            "invalid time value \"%V\"", &value[n]);
         return NGX_CONF_ERROR;
