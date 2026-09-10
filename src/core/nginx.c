@@ -289,6 +289,10 @@ main(int argc, char *const *argv)
         return 1;
     }
 
+#if (NGX_CONTROL_API)
+    ngx_control_preinit();
+#endif
+
     if (ngx_preinit_modules() != NGX_OK) {
         return 1;
     }
