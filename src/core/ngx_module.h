@@ -35,7 +35,9 @@
 #define NGX_MODULE_SIGNATURE_2   "0"
 #endif
 
-#if (NGX_HAVE_FILE_AIO || NGX_COMPAT)
+#if (NGX_HAVE_IO_URING)
+#define NGX_MODULE_SIGNATURE_3   "2"
+#elif (NGX_HAVE_FILE_AIO || NGX_COMPAT)
 #define NGX_MODULE_SIGNATURE_3   "1"
 #else
 #define NGX_MODULE_SIGNATURE_3   "0"
