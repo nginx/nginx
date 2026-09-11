@@ -81,6 +81,10 @@ static ngx_int_t ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log);
 static void ngx_ssl_ticket_keys_cleanup(void *data);
 #endif
 
+#if (OPENSSL_VERSION_NUMBER >= 0x40100000L)
+static ngx_int_t ngx_ssl_verify_host(ngx_connection_t *c, X509 *cert,
+    ngx_str_t *name);
+#endif
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 static ngx_int_t ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *str);
 #endif
@@ -5264,7 +5268,26 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
         return NGX_ERROR;
     }
 
-#ifdef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+#if (OPENSSL_VERSION_NUMBER >= 0x40100000L)
+
+    /* X509_check_host() is deprecated in OpenSSL 4.1 */
+
+    if (name->len == 0) {
+        goto failed;
+    }
+
+    if (ngx_ssl_verify_host(c, cert, name) != NGX_OK) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "X509_verify_cert(): no match");
+        goto failed;
+    }
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "X509_verify_cert(): match");
+
+    goto found;
+
+#elif defined X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
 
     /* X509_check_host() is only available in OpenSSL 1.0.2+ */
 
@@ -5379,6 +5402,86 @@ found:
     X509_free(cert);
     return NGX_OK;
 }
+
+
+#if (OPENSSL_VERSION_NUMBER >= 0x40100000L)
+
+static ngx_int_t
+ngx_ssl_verify_host(ngx_connection_t *c, X509 *cert, ngx_str_t *name)
+{
+    int                 err;
+    X509_STORE         *store;
+    X509_STORE_CTX     *store_ctx;
+    X509_VERIFY_PARAM  *param;
+
+    store_ctx = NULL;
+
+    store = X509_STORE_new();
+    if (store == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_STORE_new() failed");
+        goto failed;
+    }
+
+    if (X509_STORE_add_cert(store, cert) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                      "X509_STORE_add_cert() failed");
+        goto failed;
+    }
+
+    store_ctx = X509_STORE_CTX_new();
+    if (store_ctx == NULL) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "X509_STORE_CTX_new() failed");
+        goto failed;
+    }
+
+    if (X509_STORE_CTX_init(store_ctx, store, cert, NULL) == 0) {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                      "X509_STORE_CTX_init() failed");
+        goto failed;
+    }
+
+    param = X509_STORE_CTX_get0_param(store_ctx);
+
+    /* the identity check */
+
+    X509_VERIFY_PARAM_set_flags(param, X509_V_FLAG_PARTIAL_CHAIN
+                                       |X509_V_FLAG_NO_CHECK_TIME
+                                       |X509_V_FLAG_IGNORE_CRITICAL);
+
+    if (X509_VERIFY_PARAM_set1_host(param, (char *) name->data, name->len)
+        == 0)
+    {
+        ngx_ssl_error(NGX_LOG_ALERT, c->log, 0,
+                      "X509_VERIFY_PARAM_set1_host() failed");
+        goto failed;
+    }
+
+    if (X509_verify_cert(store_ctx) != 1) {
+        err = X509_STORE_CTX_get_error(store_ctx);
+
+        if (err != X509_V_ERR_HOSTNAME_MISMATCH) {
+            ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                          "X509_verify_cert() failed: (%d:%s)",
+                          err, X509_verify_cert_error_string(err));
+        }
+
+        goto failed;
+    }
+
+    X509_STORE_CTX_free(store_ctx);
+    X509_STORE_free(store);
+
+    return NGX_OK;
+
+failed:
+
+    X509_STORE_CTX_free(store_ctx);
+    X509_STORE_free(store);
+
+    return NGX_ERROR;
+}
+
+#endif
 
 
 #ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
