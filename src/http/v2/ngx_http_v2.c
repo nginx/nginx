@@ -3979,6 +3979,10 @@ ngx_http_v2_read_request_body(ngx_http_request_t *r)
     rb = r->request_body;
 
     if (stream->skip_data) {
+        if (rb->total_timeout && rb->total_timeout->timer_set) {
+            ngx_del_timer(rb->total_timeout);
+        }
+
         r->request_body_no_buffering = 0;
         rb->post_handler(r);
         return NGX_OK;
