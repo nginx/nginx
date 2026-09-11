@@ -539,7 +539,7 @@ static ngx_int_t
 ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
 {
     u_char                    *p, *host, *last, ch;
-    size_t                     len, root;
+    size_t                     len, root, alias;
     ngx_err_t                  err;
     ngx_int_t                  rc, depth;
     ngx_uint_t                 overwrite, slash, dir, flags;
@@ -649,15 +649,42 @@ destination_done:
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+    alias = clcf->alias;
 
-    if (clcf->alias
-        && clcf->alias != NGX_MAX_SIZE_T_VALUE
-        && duri.len < clcf->alias)
-    {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "client sent invalid \"Destination\" header: \"%V\"",
-                      &dest->value);
-        return NGX_HTTP_BAD_REQUEST;
+    if (alias && alias != NGX_MAX_SIZE_T_VALUE) {
+
+        if (alias > duri.len
+            || alias > r->uri.len
+            || ngx_filename_cmp(duri.data, r->uri.data, alias) != 0)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "\"Destination\" URI \"%V\" must be "
+                          "within location prefix when using \"alias\"",
+                          &dest->value);
+            return NGX_HTTP_BAD_REQUEST;
+        }
+
+        /*
+         * If the location name does not end with a slash, the prefix
+         * comparison above can be satisfied while the remainder still
+         * starts a parent directory component, as in "/dav.." matching
+         * the "/dav" location.  Such a component is not visible to
+         * ngx_http_parse_unsafe_uri(), which examines the destination
+         * before the prefix is stripped.
+         */
+
+        len = duri.len - alias;
+
+        if (len >= 2
+            && duri.data[alias] == '.'
+            && duri.data[alias + 1] == '.'
+            && (len == 2 || duri.data[alias + 2] == '/'))
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "client sent unsafe \"Destination\" URI \"%V\"",
+                          &dest->value);
+            return NGX_HTTP_BAD_REQUEST;
+        }
     }
 
     depth = ngx_http_dav_depth(r, NGX_HTTP_DAV_INFINITY_DEPTH);
