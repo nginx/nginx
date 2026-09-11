@@ -136,6 +136,13 @@ static ngx_command_t  ngx_http_v2_commands[] = {
       offsetof(ngx_http_v2_srv_conf_t, preread_size),
       &ngx_http_v2_preread_size_post },
 
+    { ngx_string("http2_extended_connect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v2_srv_conf_t, extended_connect),
+      NULL },
+
     { ngx_string("http2_streams_index_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
@@ -321,6 +328,8 @@ ngx_http_v2_create_srv_conf(ngx_conf_t *cf)
 
     h2scf->enable = NGX_CONF_UNSET;
 
+    h2scf->extended_connect = NGX_CONF_UNSET;
+
     h2scf->pool_size = NGX_CONF_UNSET_SIZE;
 
     h2scf->concurrent_streams = NGX_CONF_UNSET_UINT;
@@ -340,6 +349,8 @@ ngx_http_v2_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_v2_srv_conf_t *conf = child;
 
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
+
+    ngx_conf_merge_value(conf->extended_connect, prev->extended_connect, 0);
 
     ngx_conf_merge_size_value(conf->pool_size, prev->pool_size, 4096);
 

@@ -63,6 +63,7 @@ typedef u_char *(*ngx_http_v2_handler_pt) (ngx_http_v2_connection_t *h2c,
 
 typedef struct {
     ngx_flag_t                       enable;
+    ngx_flag_t                       extended_connect;
     size_t                           pool_size;
     ngx_uint_t                       concurrent_streams;
     size_t                           preread_size;

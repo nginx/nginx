@@ -70,6 +70,11 @@ static void ngx_http_upstream_upgraded_read_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_upgraded_write_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_upgrade_stream(ngx_http_request_t *r);
+static ssize_t ngx_http_upstream_upgraded_recv_downstream(ngx_http_request_t *r,
+    u_char *buf, size_t size);
+static ssize_t ngx_http_upstream_upgraded_send_downstream(ngx_http_request_t *r,
+    ngx_buf_t *b);
 static void ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     ngx_uint_t from_upstream, ngx_uint_t do_write);
 static void
@@ -601,6 +606,24 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     u = r->upstream;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->stream_connect > NGX_HTTP_STREAM_CONNECT_TUNNEL
+        && !clcf->accept_extended_connect)
+    {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent extended CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return;
+    }
+
+    if (r->stream_connect && !u->allow_stream_connect) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent CONNECT method");
+        ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
+        return;
+    }
+
 #if (NGX_HTTP_CACHE)
 
     if (u->conf->cache) {
@@ -687,8 +710,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     if (u->conf->socket_sndbuf) {
         u->peer.sndbuf = (int) u->conf->socket_sndbuf;
     }
-
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     u->output.alignment = clcf->directio_alignment;
     u->output.pool = r->pool;
@@ -3281,6 +3302,21 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
 
+    if (r->stream_connect) {
+        if (u->upgrade) {
+            rc = ngx_http_upstream_upgrade_stream(r);
+
+            if (rc != NGX_OK) {
+                ngx_http_upstream_finalize_request(r, u, rc);
+                return;
+            }
+
+        } else if (r->headers_out.status < NGX_HTTP_SPECIAL_RESPONSE) {
+            ngx_http_upstream_finalize_request(r, u, NGX_HTTP_BAD_GATEWAY);
+            return;
+        }
+    }
+
     rc = ngx_http_send_header(r);
 
     if (rc == NGX_ERROR || rc > NGX_OK || r->post_action) {
@@ -3659,6 +3695,11 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
+    if (u->buffer.pos == u->buffer.last) {
+        u->buffer.pos = u->buffer.start;
+        u->buffer.last = u->buffer.start;
+    }
+
     if (u->peer.connection->read->ready
         || u->buffer.pos != u->buffer.last)
     {
@@ -3698,6 +3739,173 @@ ngx_http_upstream_upgraded_write_upstream(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
     ngx_http_upstream_process_upgraded(r, 0, 1);
+}
+
+
+static ngx_int_t
+ngx_http_upstream_upgrade_stream(ngx_http_request_t *r)
+{
+    ngx_int_t          rc;
+    ngx_connection_t  *c;
+
+    c = r->connection;
+
+    r->stream_connect_upgraded = 1;
+    r->request_body_no_buffering = 1;
+
+    rc = ngx_http_read_client_request_body(r, ngx_http_request_empty_handler);
+
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+        return rc;
+    }
+
+    r->main->count--;
+
+    if (!r->reading_body && r->request_body->buf) {
+        r->request_body_no_buffering = 1;
+        r->reading_body = 1;
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+    r->limit_rate = 0;
+    r->limit_rate_set = 1;
+
+    return NGX_OK;
+}
+
+
+static ssize_t
+ngx_http_upstream_upgraded_recv_downstream(ngx_http_request_t *r, u_char *buf,
+    size_t size)
+{
+    size_t             n, len, rest;
+    ngx_int_t          rc;
+    ngx_buf_t         *b;
+    ngx_chain_t       *out, *cl;
+    ngx_connection_t  *c;
+
+    c = r->connection;
+
+    c->read->timedout = 0;
+
+    out = r->request_body->bufs;
+
+    if (out == NULL && r->reading_body) {
+        rc = ngx_http_read_unbuffered_request_body(r);
+
+        if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+            return NGX_ERROR;
+        }
+
+        out = r->request_body->bufs;
+    }
+
+    if (c->read->timer_set) {
+        ngx_del_timer(c->read);
+    }
+
+    len = 0;
+    rest = size;
+
+    while (out && rest) {
+        b = out->buf;
+
+        n = b->last - b->pos;
+
+        if (n > rest) {
+            n = rest;
+        }
+
+        if (n) {
+            buf = ngx_cpymem(buf, b->pos, n);
+            b->pos += n;
+
+            len += n;
+            rest -= n;
+        }
+
+        if (b->pos == b->last) {
+            cl = out;
+            out = out->next;
+            ngx_free_chain(r->pool, cl);
+        }
+    }
+
+    r->request_body->bufs = out;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream recv downstream: %uz of %uz", len, size);
+
+    if (len > 0) {
+        return len;
+    }
+
+    if (r->reading_body) {
+        return NGX_AGAIN;
+    }
+
+    c->read->eof = 1;
+
+    return 0;
+}
+
+
+static ssize_t
+ngx_http_upstream_upgraded_send_downstream(ngx_http_request_t *r, ngx_buf_t *b)
+{
+    u_char               *pos;
+    ngx_int_t             rc;
+    ngx_chain_t          *cl;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    pos = b->pos;
+
+    for (cl = u->busy_bufs; cl; cl = cl->next) {
+        pos = cl->buf->last;
+    }
+
+    if (pos < b->last) {
+        cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
+        if (cl == NULL) {
+            return NGX_ERROR;
+        }
+
+        cl->buf->flush = 1;
+        cl->buf->memory = 1;
+        cl->buf->pos = pos;
+        cl->buf->last = b->last;
+        cl->buf->tag = u->output.tag;
+
+        u->out_bufs = cl;
+    }
+
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        rc = ngx_http_v3_body_filter(r, u->out_bufs);
+
+    } else
+#endif
+    {
+        rc = ngx_http_write_filter(r, u->out_bufs);
+    }
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs,
+                            &u->out_bufs, u->output.tag);
+
+    if (u->busy_bufs) {
+        return u->busy_bufs->buf->pos - b->pos;
+    }
+
+    return b->last - b->pos;
 }
 
 
@@ -3745,7 +3953,7 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
         dst = upstream;
         b = &u->from_client;
 
-        if (r->header_in->last > r->header_in->pos) {
+        if (!r->stream_connect && r->header_in->last > r->header_in->pos) {
             b = r->header_in;
             b->end = b->last;
             do_write = 1;
@@ -3772,9 +3980,17 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
             size = b->last - b->pos;
 
-            if (size && dst->write->ready) {
+            if (size) {
 
-                n = dst->send(dst, b->pos, size);
+                if (r->stream_connect && from_upstream) {
+                    n = ngx_http_upstream_upgraded_send_downstream(r, b);
+
+                } else if (dst->write->ready) {
+                    n = dst->send(dst, b->pos, size);
+
+                } else {
+                    n = 0;
+                }
 
                 if (n == NGX_ERROR) {
                     ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
@@ -3794,9 +4010,18 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
         size = b->end - b->last;
 
-        if (size && src->read->ready) {
+        if (size) {
 
-            n = src->recv(src, b->last, size);
+            if (r->stream_connect && !from_upstream) {
+                n = ngx_http_upstream_upgraded_recv_downstream(r, b->last,
+                                                              size);
+
+            } else if (src->read->ready) {
+                n = src->recv(src, b->last, size);
+
+            } else {
+                n = 0;
+            }
 
             if (n == NGX_AGAIN || n == 0) {
                 break;

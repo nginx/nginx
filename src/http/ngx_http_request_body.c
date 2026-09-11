@@ -53,6 +53,12 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         goto done;
     }
 
+    if (r->stream_connect && !r->stream_connect_upgraded) {
+        r->request_body_no_buffering = 0;
+        post_handler(r);
+        return NGX_OK;
+    }
+
     rb = ngx_pcalloc(r->pool, sizeof(ngx_http_request_body_t));
     if (rb == NULL) {
         rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
