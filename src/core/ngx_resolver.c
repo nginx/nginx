@@ -3320,6 +3320,10 @@ valid:
 
         i += sizeof(ngx_resolver_an_t);
 
+        if (len > n - i) {
+            goto short_response;
+        }
+
         switch (type) {
 
         case NGX_RESOLVE_PTR:
