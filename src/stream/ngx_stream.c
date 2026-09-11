@@ -371,13 +371,15 @@ ngx_stream_init_phase_handlers(ngx_conf_t *cf,
             checker = ngx_stream_core_generic_phase;
         }
 
-        n += cmcf->phases[i].handlers.nelts;
+        if (cmcf->phases[i].handlers.nelts > 0) {
+            n += cmcf->phases[i].handlers.nelts;
 
-        for (j = cmcf->phases[i].handlers.nelts - 1; j >= 0; j--) {
-            ph->checker = checker;
-            ph->handler = h[j];
-            ph->next = n;
-            ph++;
+            for (j = cmcf->phases[i].handlers.nelts - 1; j >= 0; j--) {
+                ph->checker = checker;
+                ph->handler = h[j];
+                ph->next = n;
+                ph++;
+            }
         }
     }
 
