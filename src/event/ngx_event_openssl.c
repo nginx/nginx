@@ -2982,6 +2982,10 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
 
+    if (err == NGX_ECONNRESET) {
+        c->error = 1;
+    }
+
     if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "peer shutdown SSL cleanly");
