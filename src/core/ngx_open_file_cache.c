@@ -227,15 +227,15 @@ ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
             goto add_event;
         }
 
-        if (file->use_event
-            || (file->event == NULL
-                && (of->uniq == 0 || of->uniq == file->uniq)
-                && now - file->created < of->valid
+        if ((file->use_event
+             || (file->event == NULL
+                 && (of->uniq == 0 || of->uniq == file->uniq)
+                 && now - file->created < of->valid))
 #if (NGX_HAVE_OPENAT)
-                && of->disable_symlinks == file->disable_symlinks
-                && of->disable_symlinks_from == file->disable_symlinks_from
+            && of->disable_symlinks == file->disable_symlinks
+            && of->disable_symlinks_from == file->disable_symlinks_from
 #endif
-            ))
+            )
         {
             if (file->err == 0) {
 

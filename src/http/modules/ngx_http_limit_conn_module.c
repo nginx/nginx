@@ -60,6 +60,8 @@ static ngx_rbtree_node_t *ngx_http_limit_conn_lookup(ngx_rbtree_t *rbtree,
     ngx_str_t *key, uint32_t hash);
 static void ngx_http_limit_conn_cleanup(void *data);
 static ngx_inline void ngx_http_limit_conn_cleanup_all(ngx_pool_t *pool);
+static void ngx_http_limit_conn_cleanup_node(ngx_shm_zone_t *shm_zone,
+    ngx_rbtree_node_t *node);
 
 static ngx_int_t ngx_http_limit_conn_status_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
@@ -294,6 +296,7 @@ ngx_http_limit_conn_handler(ngx_http_request_t *r)
         cln = ngx_pool_cleanup_add(r->pool,
                                    sizeof(ngx_http_limit_conn_cleanup_t));
         if (cln == NULL) {
+            ngx_http_limit_conn_cleanup_node(limits[i].shm_zone, node);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
@@ -430,6 +433,19 @@ ngx_http_limit_conn_cleanup_all(ngx_pool_t *pool)
     }
 
     pool->cleanup = cln;
+}
+
+
+static void
+ngx_http_limit_conn_cleanup_node(ngx_shm_zone_t *shm_zone,
+    ngx_rbtree_node_t *node)
+{
+    ngx_http_limit_conn_cleanup_t  lccln;
+
+    lccln.shm_zone = shm_zone;
+    lccln.node = node;
+
+    ngx_http_limit_conn_cleanup(&lccln);
 }
 
 

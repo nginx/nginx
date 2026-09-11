@@ -883,6 +883,7 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
 
         s->mail_state = 0;
         s->auth_method = NGX_MAIL_AUTH_PLAIN;
+        s->tag.len = 0;
 
         c->log->action = "in auth state";
 

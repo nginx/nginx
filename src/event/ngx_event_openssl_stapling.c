@@ -1647,6 +1647,10 @@ ngx_ssl_ocsp_write_handler(ngx_event_t *wev)
     if (!wev->timer_set && ctx->timeout) {
         ngx_add_timer(wev, ctx->timeout);
     }
+
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        ngx_ssl_ocsp_error(ctx);
+    }
 }
 
 

@@ -65,6 +65,7 @@ struct ngx_http_chunked_s {
     ngx_uint_t           state;
     off_t                size;
     off_t                length;
+    off_t                skipped;
 };
 
 

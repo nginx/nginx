@@ -750,6 +750,8 @@ ngx_mail_auth_external(ngx_mail_session_t *s, ngx_connection_t *c,
     s->login.len = external.len;
     s->login.data = external.data;
 
+    ngx_str_null(&s->passwd);
+
     ngx_log_debug1(NGX_LOG_DEBUG_MAIL, c->log, 0,
                    "mail auth external: \"%V\"", &s->login);
 
