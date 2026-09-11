@@ -118,6 +118,13 @@ static ngx_command_t  ngx_mail_ssl_commands[] = {
       offsetof(ngx_mail_ssl_conf_t, ecdh_curve),
       NULL },
 
+    { ngx_string("ssl_sigalgs"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      offsetof(ngx_mail_ssl_conf_t, sigalgs),
+      NULL },
+
     { ngx_string("ssl_protocols"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_1MORE,
       ngx_conf_set_bitmask_slot,
@@ -308,6 +315,7 @@ ngx_mail_ssl_create_conf(ngx_conf_t *cf)
      *     scf->protocols = 0;
      *     scf->dhparam = { 0, NULL };
      *     scf->ecdh_curve = { 0, NULL };
+     *     scf->sigalgs = { 0, NULL };
      *     scf->client_certificate = { 0, NULL };
      *     scf->trusted_certificate = { 0, NULL };
      *     scf->crl = { 0, NULL };
@@ -370,6 +378,8 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_str_value(conf->ecdh_curve, prev->ecdh_curve,
                          NGX_DEFAULT_ECDH_CURVE);
+
+    ngx_conf_merge_str_value(conf->sigalgs, prev->sigalgs, "");
 
     ngx_conf_merge_str_value(conf->client_certificate,
                          prev->client_certificate, "");
@@ -502,6 +512,10 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     }
 
     if (ngx_ssl_ecdh_curve(cf, &conf->ssl, &conf->ecdh_curve) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_ssl_sigalgs(cf, &conf->ssl, &conf->sigalgs) != NGX_OK) {
         return NGX_CONF_ERROR;
     }
 
