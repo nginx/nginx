@@ -1,0 +1,83 @@
+
+/*
+ * Copyright (C) Maxim Dounin
+ * Copyright (C) Nginx, Inc.
+ */
+
+
+#ifndef _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_
+#define _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_
+
+
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+
+
+typedef struct {
+    size_t                         init_window;
+    size_t                         send_window;
+    size_t                         recv_window;
+    ngx_uint_t                     last_stream_id;
+
+    ngx_uint_t                     header_state;
+    size_t                         length;
+    ngx_uint_t                     stream_id;
+    u_char                         type;
+    u_char                         flags;
+
+    size_t                         ping_length;
+    u_char                         ping_data[8];
+
+    size_t                         goaway_length;
+    ngx_uint_t                     goaway_last_stream_id;
+    ngx_uint_t                     goaway_error;
+
+    size_t                         window_update_length;
+    ngx_uint_t                     window_update;
+
+    size_t                         settings_length;
+    ngx_uint_t                     setting_id;
+    ngx_uint_t                     setting_value;
+
+    unsigned                       goaway:1;
+} ngx_http_proxy_v2_session_t;
+
+
+typedef struct {
+    ngx_http_proxy_v2_session_t   *session;
+    ngx_uint_t                     id;
+
+    ssize_t                        send_window;
+    size_t                         recv_window;
+
+    ngx_uint_t                     error;
+
+    unsigned                       header_sent:1;
+    unsigned                       output_closed:1;
+    unsigned                       end_stream:1;
+    unsigned                       done:1;
+    unsigned                       rst:1;
+} ngx_http_proxy_v2_stream_t;
+
+
+ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_create_session(ngx_pool_t *pool);
+ngx_http_proxy_v2_session_t *ngx_http_proxy_v2_get_session(
+    ngx_peer_connection_t *pc);
+
+ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_create_stream(ngx_pool_t *pool,
+    ngx_http_proxy_v2_session_t *sess, ngx_uint_t id);
+
+ngx_int_t ngx_http_proxy_v2_parse_frame_header(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_ping_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_goaway_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_window_update_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+ngx_int_t ngx_http_proxy_v2_parse_settings_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_log_t *log);
+
+
+#endif /* _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_ */
