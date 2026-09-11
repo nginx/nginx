@@ -56,6 +56,20 @@ if [ $ngx_found = yes ]; then
     EVENT_FOUND=YES
 
 
+    # epoll_pwait2() appeared in Linux 5.11, glibc 2.35
+
+    ngx_feature="epoll_pwait2()"
+    ngx_feature_name="NGX_HAVE_EPOLL_PWAIT2"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <sys/epoll.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="struct epoll_event ee;
+                      struct timespec ts = { 0, 0 };
+                      (void) epoll_pwait2(-1, &ee, 1, &ts, NULL)"
+    . auto/feature
+
+
     # EPOLLRDHUP appeared in Linux 2.6.17, glibc 2.8
 
     ngx_feature="EPOLLRDHUP"

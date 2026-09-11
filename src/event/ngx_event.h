@@ -78,7 +78,11 @@ struct ngx_event_s {
 
 #if (NGX_HAVE_KQUEUE)
     unsigned         kq_vnode:1;
+#endif
 
+    unsigned         timer_precise:1;
+
+#if (NGX_HAVE_KQUEUE)
     /* the pending errno reported by kqueue */
     int              kq_errno;
 #endif

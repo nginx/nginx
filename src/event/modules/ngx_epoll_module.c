@@ -134,6 +134,10 @@ static int                  ep = -1;
 static struct epoll_event  *event_list;
 static ngx_uint_t           nevents;
 
+#if (NGX_HAVE_EPOLL_PWAIT2)
+static ngx_uint_t           ngx_epoll_pwait2 = 1;
+#endif
+
 #if (NGX_HAVE_EVENTFD)
 static int                  notify_fd = -1;
 static ngx_event_t          notify_event;
@@ -792,12 +796,48 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     ngx_queue_t       *queue;
     ngx_connection_t  *c;
 
+#if (NGX_HAVE_EPOLL_PWAIT2)
+    ngx_usec_t         precise;
+    struct timespec    ts;
+#endif
+
     /* NGX_TIMER_INFINITE == INFTIM */
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
                    "epoll timer: %M", timer);
 
-    events = epoll_wait(ep, event_list, (int) nevents, timer);
+#if (NGX_HAVE_EPOLL_PWAIT2)
+
+    precise = ngx_event_find_precise_timer();
+
+    if (ngx_epoll_pwait2 && precise != NGX_PRECISE_TIMER_INFINITE) {
+        if (timer != NGX_TIMER_INFINITE && timer <= precise / 1000) {
+            ts.tv_sec = timer / 1000;
+            ts.tv_nsec = (timer % 1000) * 1000000;
+
+        } else {
+            ts.tv_sec = precise / 1000000;
+            ts.tv_nsec = (precise % 1000000) * 1000;
+        }
+
+        events = epoll_pwait2(ep, event_list, (int) nevents, &ts, NULL);
+
+        if (events == -1 && (ngx_errno == NGX_ENOSYS || ngx_errno == NGX_EPERM)) {
+            ngx_epoll_pwait2 = 0;
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, ngx_errno,
+                          "epoll_pwait2() unavailable, using epoll_wait()");
+
+            events = epoll_wait(ep, event_list, (int) nevents, timer);
+        }
+
+    } else
+
+#endif
+
+    {
+        events = epoll_wait(ep, event_list, (int) nevents, timer);
+    }
 
     err = (events == -1) ? ngx_errno : 0;
 
