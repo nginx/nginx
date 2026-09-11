@@ -1,15 +1,13 @@
-# Copyright (C) Nitin Swami
 # Copyright (C) Nginx, Inc.
 
 
-    ngx_feature="MaxMind libmaxminddb library"
+    ngx_feature="MaxMind DB library"
     ngx_feature_name=
     ngx_feature_run=no
     ngx_feature_incs="#include <maxminddb.h>"
     ngx_feature_path=
     ngx_feature_libs="-lmaxminddb"
-    ngx_feature_test="MMDB_s mmdb;
-                      MMDB_open(NULL, MMDB_MODE_MMAP, &mmdb)"
+    ngx_feature_test="MMDB_s mmdb; MMDB_open(NULL, MMDB_MODE_MMAP, &mmdb)"
     . auto/feature
 
 
@@ -17,7 +15,7 @@ if [ $ngx_found = no ]; then
 
     # FreeBSD port
 
-    ngx_feature="MaxMind libmaxminddb library in /usr/local/"
+    ngx_feature="MaxMind DB library in /usr/local/"
     ngx_feature_path="/usr/local/include"
 
     if [ $NGX_RPATH = YES ]; then
@@ -34,7 +32,7 @@ if [ $ngx_found = no ]; then
 
     # NetBSD port
 
-    ngx_feature="MaxMind libmaxminddb library in /usr/pkg/"
+    ngx_feature="MaxMind DB library in /usr/pkg/"
     ngx_feature_path="/usr/pkg/include"
 
     if [ $NGX_RPATH = YES ]; then
@@ -51,7 +49,7 @@ if [ $ngx_found = no ]; then
 
     # MacPorts
 
-    ngx_feature="MaxMind libmaxminddb library in /opt/local/"
+    ngx_feature="MaxMind DB library in /opt/local/"
     ngx_feature_path="/opt/local/include"
 
     if [ $NGX_RPATH = YES ]; then
@@ -68,7 +66,7 @@ if [ $ngx_found = no ]; then
 
     # Homebrew on Apple Silicon
 
-    ngx_feature="MaxMind libmaxminddb library in /opt/homebrew/"
+    ngx_feature="MaxMind DB library in /opt/homebrew/"
     ngx_feature_path="/opt/homebrew/include"
 
     if [ $NGX_RPATH = YES ]; then
@@ -83,6 +81,8 @@ fi
 
 if [ $ngx_found = yes ]; then
 
+    have=NGX_HAVE_MAXMINDDB . auto/have
+
     CORE_INCS="$CORE_INCS $ngx_feature_path"
 
     if [ $USE_MMDB = YES ]; then
@@ -91,14 +91,27 @@ if [ $ngx_found = yes ]; then
 
     NGX_LIB_MMDB=$ngx_feature_libs
 
+elif [ "$NGX_FOUND_LIBGEOIP" = YES ]; then
+
+    # the module is built with the legacy GeoIP database support only
+
+    cat << END
+
+$0: warning: the MaxMind DB (MMDB) library was not found, the GeoIP
+module will only support the legacy GeoIP databases, which reached
+End-of-Life in May 2022.  Install libmaxminddb to use the GeoIP2 and
+GeoLite2 databases.
+
+END
+
 else
 
 cat << END
 
-$0: error: the GeoIP2 module requires the MaxMind libmaxminddb library.
-Install libmaxminddb-dev (Debian/Ubuntu) or libmaxminddb-devel (RHEL) and retry.
+$0: error: the GeoIP module requires the MaxMind DB library
+or the legacy GeoIP library.
+You can either do not enable the module or install the library.
 
 END
-
     exit 1
 fi
