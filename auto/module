@@ -67,7 +67,7 @@ if [ "$ngx_module_link" = DYNAMIC ]; then
     do
         case $lib in
 
-            LIBXSLT | LIBGD | GEOIP | PERL)
+            LIBXSLT | LIBGD | GEOIP | MMDB | PERL)
                 libs="$libs \$NGX_LIB_$lib"
 
                 if eval [ "\$USE_${lib}" = NO ] ; then
@@ -110,7 +110,7 @@ elif [ "$ngx_module_link" = YES ]; then
     do
         case $lib in
 
-            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP | MMDB)
                 eval USE_${lib}=YES
             ;;
 
@@ -161,7 +161,7 @@ elif [ "$ngx_module_link" = ADDON ]; then
     do
         case $lib in
 
-            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP)
+            PCRE | OPENSSL | ZLIB | LIBXSLT | LIBGD | PERL | GEOIP | MMDB)
                 eval USE_${lib}=YES
             ;;
 

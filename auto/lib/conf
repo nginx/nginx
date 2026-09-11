@@ -45,6 +45,10 @@ if [ $USE_GEOIP != NO ]; then
     . auto/lib/geoip/conf
 fi
 
+if [ $USE_MMDB != NO ]; then
+    . auto/lib/mmdb/conf
+fi
+
 if [ $NGX_GOOGLE_PERFTOOLS = YES ]; then
     . auto/lib/google-perftools/conf
 fi

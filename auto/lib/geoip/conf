@@ -83,6 +83,10 @@ fi
 
 if [ $ngx_found = yes ]; then
 
+    NGX_FOUND_LIBGEOIP=YES
+
+    have=NGX_HAVE_LIBGEOIP . auto/have
+
     CORE_INCS="$CORE_INCS $ngx_feature_path"
 
     if [ $USE_GEOIP = YES ]; then
@@ -100,6 +104,13 @@ if [ $ngx_found = yes ]; then
     #ngx_feature_libs=
     ngx_feature_test="printf(\"%d\", GEOIP_CITY_EDITION_REV0_V6);"
     . auto/feature
+
+elif [ $USE_MMDB != NO ]; then
+
+    # the module can be built with the MaxMind DB (MMDB) support only,
+    # see auto/lib/mmdb/conf
+
+    NGX_FOUND_LIBGEOIP=NO
 
 else
 
