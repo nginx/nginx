@@ -54,6 +54,8 @@ static char *ngx_http_ssl_ocsp_cache(ngx_conf_t *cf, ngx_command_t *cmd,
 
 static char *ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post,
     void *data);
+static char *ngx_http_ssl_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
 
 static ngx_int_t ngx_http_ssl_init(ngx_conf_t *cf);
 #if (NGX_QUIC_OPENSSL_COMPAT)
@@ -92,6 +94,9 @@ static ngx_conf_enum_t  ngx_http_ssl_ocsp[] = {
 
 static ngx_conf_post_t  ngx_http_ssl_conf_command_post =
     { ngx_http_ssl_conf_command_check };
+
+static ngx_conf_post_t  ngx_http_ssl_buffer_size_post =
+    { ngx_http_ssl_buffer_size_check };
 
 
 static ngx_command_t  ngx_http_ssl_commands[] = {
@@ -171,7 +176,7 @@ static ngx_command_t  ngx_http_ssl_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_ssl_srv_conf_t, buffer_size),
-      NULL },
+      &ngx_http_ssl_buffer_size_post },
 
     { ngx_string("ssl_verify_client"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -1372,6 +1377,19 @@ ngx_http_ssl_conf_command_check(ngx_conf_t *cf, void *post, void *data)
 #else
     return NGX_CONF_OK;
 #endif
+}
+
+
+static char *
+ngx_http_ssl_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
+    }
+
+    return NGX_CONF_OK;
 }
 
 

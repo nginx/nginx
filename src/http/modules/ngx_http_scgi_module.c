@@ -64,6 +64,11 @@ static ngx_int_t ngx_http_scgi_init_params(ngx_conf_t *cf,
 static char *ngx_http_scgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_http_scgi_store(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_http_scgi_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data);
+
+static ngx_conf_post_t  ngx_http_scgi_buffer_size_post =
+    { ngx_http_scgi_buffer_size_check };
 
 #if (NGX_HTTP_CACHE)
 static ngx_int_t ngx_http_scgi_create_key(ngx_http_request_t *r);
@@ -184,7 +189,7 @@ static ngx_command_t ngx_http_scgi_commands[] = {
       ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_scgi_loc_conf_t, upstream.buffer_size),
-      NULL },
+      &ngx_http_scgi_buffer_size_post },
 
     { ngx_string("scgi_pass_request_headers"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
@@ -624,6 +629,19 @@ ngx_http_scgi_eval(ngx_http_request_t *r, ngx_http_scgi_loc_conf_t * scf)
     u->resolved->no_port = url.no_port;
 
     return NGX_OK;
+}
+
+
+static char *
+ngx_http_scgi_buffer_size_check(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
+    }
+
+    return NGX_CONF_OK;
 }
 
 

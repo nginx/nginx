@@ -31,6 +31,11 @@ static char *ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
+static char *ngx_stream_core_preread_buffer_size_check(ngx_conf_t *cf,
+    void *post, void *data);
+
+static ngx_conf_post_t  ngx_stream_core_preread_buffer_size_post =
+    { ngx_stream_core_preread_buffer_size_check };
 
 
 static ngx_command_t  ngx_stream_core_commands[] = {
@@ -124,7 +129,7 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_core_srv_conf_t, preread_buffer_size),
-      NULL },
+      &ngx_stream_core_preread_buffer_size_post },
 
     { ngx_string("preread_timeout"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
@@ -890,6 +895,20 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     conf->server_name.data = ngx_pstrdup(cf->pool, &name);
     if (conf->server_name.data == NULL) {
         return NGX_CONF_ERROR;
+    }
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_core_preread_buffer_size_check(ngx_conf_t *cf, void *post,
+    void *data)
+{
+    size_t *sp = data;
+
+    if (*sp == 0) {
+        return "value is too small";
     }
 
     return NGX_CONF_OK;
