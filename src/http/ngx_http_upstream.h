@@ -421,6 +421,7 @@ struct ngx_http_upstream_s {
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         request_body_blocked:1;
+    unsigned                         half_closed:1;
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
 };
