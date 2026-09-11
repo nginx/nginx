@@ -1100,6 +1100,27 @@ ngx_http_upstream_free_round_robin_peer_locked(ngx_peer_connection_t *pc,
 }
 
 
+void
+ngx_http_upstream_reinit_round_robin_peer(ngx_peer_connection_t *pc,
+    void *data)
+{
+    ngx_http_upstream_rr_peer_data_t  *rrp = data;
+
+    ngx_uint_t  i, n;
+
+    rrp->current = NULL;
+
+    n = (rrp->peers->number + (8 * sizeof(uintptr_t) - 1))
+            / (8 * sizeof(uintptr_t));
+
+    for (i = 0; i < n; i++) {
+        rrp->tried[i] = 0;
+    }
+
+    pc->tries = ngx_http_upstream_tries(rrp->peers);
+}
+
+
 #if (NGX_HTTP_SSL)
 
 ngx_int_t
