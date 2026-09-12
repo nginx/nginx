@@ -98,6 +98,11 @@ struct io_event {
 typedef struct {
     ngx_uint_t  events;
     ngx_uint_t  aio_requests;
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+    ngx_uint_t  busy_poll_usecs;
+    ngx_uint_t  busy_poll_budget;
+    ngx_flag_t  prefer_busy_poll;
+#endif
 } ngx_epoll_conf_t;
 
 
@@ -108,6 +113,12 @@ static void ngx_epoll_notify_handler(ngx_event_t *ev);
 #endif
 #if (NGX_HAVE_EPOLLRDHUP)
 static void ngx_epoll_test_rdhup(ngx_cycle_t *cycle);
+#endif
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+static void ngx_epoll_set_busy_poll(ngx_cycle_t *cycle,
+    ngx_epoll_conf_t *epcf);
+static char *ngx_epoll_busy_poll(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 #endif
 static void ngx_epoll_done(ngx_cycle_t *cycle);
 static ngx_int_t ngx_epoll_add_event(ngx_event_t *ev, ngx_int_t event,
@@ -171,6 +182,17 @@ static ngx_command_t  ngx_epoll_commands[] = {
       0,
       offsetof(ngx_epoll_conf_t, aio_requests),
       NULL },
+
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+
+    { ngx_string("epoll_busy_poll"),
+      NGX_EVENT_CONF|NGX_CONF_TAKE123,
+      ngx_epoll_busy_poll,
+      0,
+      0,
+      NULL },
+
+#endif
 
       ngx_null_command
 };
@@ -348,6 +370,10 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
 #if (NGX_HAVE_EPOLLRDHUP)
         ngx_epoll_test_rdhup(cycle);
 #endif
+
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+        ngx_epoll_set_busy_poll(cycle, epcf);
+#endif
     }
 
     if (nevents < epcf->events) {
@@ -521,6 +547,93 @@ failed:
         ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
                       "close() failed");
     }
+}
+
+#endif
+
+
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+
+static void
+ngx_epoll_set_busy_poll(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
+{
+    struct epoll_params  params;
+
+    if (epcf->busy_poll_usecs == 0) {
+        return;
+    }
+
+    ngx_memzero(&params, sizeof(struct epoll_params));
+
+    params.busy_poll_usecs = epcf->busy_poll_usecs;
+    params.busy_poll_budget = epcf->busy_poll_budget;
+    params.prefer_busy_poll = epcf->prefer_busy_poll;
+
+    if (ioctl(ep, EPIOCSPARAMS, &params) == -1) {
+        ngx_log_error(NGX_LOG_WARN, cycle->log, ngx_errno,
+                      "ioctl(EPIOCSPARAMS) failed, epoll busy polling disabled");
+        return;
+    }
+
+    ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "epoll busy poll: usecs:%ui budget:%ui prefer:%ui",
+                   epcf->busy_poll_usecs, epcf->busy_poll_budget,
+                   (ngx_uint_t) epcf->prefer_busy_poll);
+}
+
+
+static char *
+ngx_epoll_busy_poll(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_epoll_conf_t *epcf = conf;
+
+    ngx_int_t    n;
+    ngx_str_t   *value;
+    ngx_uint_t   i;
+
+    if (epcf->busy_poll_usecs != NGX_CONF_UNSET_UINT) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    n = ngx_atoi(value[1].data, value[1].len);
+    if (n == NGX_ERROR) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid busy poll time \"%V\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    epcf->busy_poll_usecs = n;
+
+    for (i = 2; i < cf->args->nelts; i++) {
+
+        if (ngx_strncmp(value[i].data, "budget=", 7) == 0) {
+
+            n = ngx_atoi(value[i].data + 7, value[i].len - 7);
+            if (n == NGX_ERROR) {
+                goto invalid;
+            }
+
+            epcf->busy_poll_budget = n;
+            continue;
+        }
+
+        if (ngx_strcmp(value[i].data, "prefer_busy_poll") == 0) {
+            epcf->prefer_busy_poll = 1;
+            continue;
+        }
+
+        goto invalid;
+    }
+
+    return NGX_CONF_OK;
+
+invalid:
+
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "invalid parameter \"%V\"", &value[i]);
+    return NGX_CONF_ERROR;
 }
 
 #endif
@@ -1034,6 +1147,11 @@ ngx_epoll_create_conf(ngx_cycle_t *cycle)
 
     epcf->events = NGX_CONF_UNSET;
     epcf->aio_requests = NGX_CONF_UNSET;
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+    epcf->busy_poll_usecs = NGX_CONF_UNSET_UINT;
+    epcf->busy_poll_budget = NGX_CONF_UNSET_UINT;
+    epcf->prefer_busy_poll = NGX_CONF_UNSET;
+#endif
 
     return epcf;
 }
@@ -1046,6 +1164,11 @@ ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_uint_value(epcf->events, 512);
     ngx_conf_init_uint_value(epcf->aio_requests, 32);
+#if (NGX_HAVE_EPOLL_BUSY_POLL)
+    ngx_conf_init_uint_value(epcf->busy_poll_usecs, 0);
+    ngx_conf_init_uint_value(epcf->busy_poll_budget, 0);
+    ngx_conf_init_value(epcf->prefer_busy_poll, 0);
+#endif
 
     return NGX_CONF_OK;
 }
