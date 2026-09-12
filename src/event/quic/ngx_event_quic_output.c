@@ -75,6 +75,10 @@ ngx_quic_output(ngx_connection_t *c)
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
 
+    if (c->fd == (ngx_socket_t) -1) {
+        return NGX_ERROR;
+    }
+
     c->log->action = "sending frames";
 
     qc = ngx_quic_get_connection(c);
@@ -1085,7 +1089,6 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
     pkt.odcid = inpkt->dcid;
     pkt.dcid = inpkt->scid;
 
-    /* TODO: generate routable dcid */
     if (RAND_bytes(dcid, NGX_QUIC_SERVER_CID_LEN) != 1) {
         return NGX_ERROR;
     }
