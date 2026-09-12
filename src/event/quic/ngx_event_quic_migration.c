@@ -618,6 +618,7 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 void
 ngx_quic_discover_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path)
 {
+    size_t                  max;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
@@ -634,9 +635,12 @@ ngx_quic_discover_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path)
     } else {
         path->mtud = path->mtu * 2;
 
-        if (path->mtud >= qc->ctp.max_udp_payload_size) {
-            path->mtud = qc->ctp.max_udp_payload_size;
-            path->max_mtu = qc->ctp.max_udp_payload_size;
+        max = ngx_min(qc->ctp.max_udp_payload_size,
+                      qc->conf->max_egress_udp_payload_size);
+
+        if (path->mtud >= max) {
+            path->mtud = max;
+            path->max_mtu = max;
         }
     }
 
