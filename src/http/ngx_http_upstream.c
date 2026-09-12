@@ -1725,6 +1725,10 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->request_body_blocked = 0;
     u->response_received = 0;
 
+    if (u->conf->header_timeout) {
+        ngx_add_timer(c->read, u->conf->header_timeout);
+    }
+
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, u->conf->connect_timeout);
         return;
@@ -2266,7 +2270,9 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
             return;
         }
 
-        ngx_add_timer(c->read, u->conf->read_timeout);
+        if (!c->read->timer_set) {
+            ngx_add_timer(c->read, u->conf->read_timeout);
+        }
 
         if (c->read->ready) {
             ngx_http_upstream_process_header(r, u);
