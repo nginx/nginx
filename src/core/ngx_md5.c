@@ -137,15 +137,14 @@ ngx_md5_final(u_char result[16], ngx_md5_t *ctx)
  * SET() reads 4 input bytes in little-endian byte order and stores them
  * in a properly aligned word in host byte order.
  *
- * The check for little-endian architectures that tolerate unaligned
- * memory accesses is just an optimization.  Nothing will break if it
- * does not work.
+ * The check for little-endian architectures is just an optimization.
+ * Nothing will break if it does not work.
  */
 
-#if (NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED)
+#if (NGX_HAVE_LITTLE_ENDIAN)
 
-#define SET(n)      (*(uint32_t *) &p[n * 4])
-#define GET(n)      (*(uint32_t *) &p[n * 4])
+#define SET(n)      (ngx_memcpy(&block[n], &p[n * 4], 4), block[n])
+#define GET(n)      block[n]
 
 #else
 
@@ -172,9 +171,7 @@ ngx_md5_body(ngx_md5_t *ctx, const u_char *data, size_t size)
     uint32_t       a, b, c, d;
     uint32_t       saved_a, saved_b, saved_c, saved_d;
     const u_char  *p;
-#if !(NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED)
     uint32_t       block[16];
-#endif
 
     p = data;
 
