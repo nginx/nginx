@@ -4680,7 +4680,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         return;
     }
 
-    u->state->status = status;
+    if (u->conf->upstream_status_on_error) {
+        u->state->status = status;
+    }
 
     timeout = u->conf->next_upstream_timeout;
 
