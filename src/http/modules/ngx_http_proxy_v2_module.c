@@ -1098,28 +1098,27 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
         ctx->header_sent = 1;
 
+        b = ctx->in->buf;
+        p = b->start + sizeof(ngx_http_proxy_v2_connection_start) - 1;
+
         if (ctx->id != 1) {
             /*
-             * keepalive connection: skip connection preface,
-             * update stream identifiers
+             * keepalive connection: skip connection preface
              */
 
-            b = ctx->in->buf;
-            b->pos += sizeof(ngx_http_proxy_v2_connection_start) - 1;
+            b->pos = p;
+        }
 
-            p = b->pos;
+        while (p < b->last) {
+            f = (ngx_http_proxy_v2_frame_t *) p;
+            p += sizeof(ngx_http_proxy_v2_frame_t);
 
-            while (p < b->last) {
-                f = (ngx_http_proxy_v2_frame_t *) p;
-                p += sizeof(ngx_http_proxy_v2_frame_t);
+            f->stream_id_0 = (u_char) ((ctx->id >> 24) & 0xff);
+            f->stream_id_1 = (u_char) ((ctx->id >> 16) & 0xff);
+            f->stream_id_2 = (u_char) ((ctx->id >> 8) & 0xff);
+            f->stream_id_3 = (u_char) (ctx->id & 0xff);
 
-                f->stream_id_0 = (u_char) ((ctx->id >> 24) & 0xff);
-                f->stream_id_1 = (u_char) ((ctx->id >> 16) & 0xff);
-                f->stream_id_2 = (u_char) ((ctx->id >> 8) & 0xff);
-                f->stream_id_3 = (u_char) (ctx->id & 0xff);
-
-                p += (f->length_0 << 16) + (f->length_1 << 8) + f->length_2;
-            }
+            p += (f->length_0 << 16) + (f->length_1 << 8) + f->length_2;
         }
 
         if (ctx->in->buf->last_buf) {
@@ -1538,6 +1537,10 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             if (rc == NGX_ERROR) {
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+            }
+
+            if (rc == NGX_HTTP_UPSTREAM_RETRY) {
+                return NGX_HTTP_UPSTREAM_RETRY;
             }
 
             if (rc == NGX_OK) {
@@ -2021,7 +2024,9 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
         if (ctx->stream_id < ctx->id) {
 
-            /* TODO: we can retry non-idempotent requests */
+            if (ctx->error == 0) {
+                return NGX_HTTP_UPSTREAM_RETRY;
+            }
 
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent goaway with error %ui",
@@ -2307,6 +2312,10 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
         }
 
         if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_HTTP_UPSTREAM_RETRY) {
             return NGX_ERROR;
         }
 
