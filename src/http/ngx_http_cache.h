@@ -59,6 +59,8 @@ typedef struct {
     size_t                           body_start;
     off_t                            fs_size;
     ngx_msec_t                       lock_time;
+    ngx_int_t                        updating_updater_process_slot;
+    ngx_pid_t                        updating_updater_process_pid;
 } ngx_http_file_cache_node_t;
 
 
