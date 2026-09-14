@@ -79,8 +79,9 @@ ngx_array_push(ngx_array_t *a)
             }
 
             ngx_memcpy(new, a->elts, size);
-            a->elts = new;
+            /* nalloc before elts so sized_by sees the new capacity */
             a->nalloc *= 2;
+            a->elts = new;
         }
     }
 
@@ -129,8 +130,9 @@ ngx_array_push_n(ngx_array_t *a, ngx_uint_t n)
             }
 
             ngx_memcpy(new, a->elts, a->nelts * a->size);
-            a->elts = new;
+            /* nalloc before elts so sized_by sees the new capacity */
             a->nalloc = nalloc;
+            a->elts = new;
         }
     }
 

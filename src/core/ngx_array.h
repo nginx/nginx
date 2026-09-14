@@ -13,8 +13,19 @@
 #include <ngx_core.h>
 
 
+/*
+ * Optional Clang -fbounds-safety annotation: elts spans nalloc * size bytes.
+ * Expands to nothing when the attribute is unavailable.
+ */
+#if defined(__has_attribute) && __has_attribute(__sized_by__)
+#define ngx_array_sized_by(n)  __attribute__((__sized_by__(n)))
+#else
+#define ngx_array_sized_by(n)
+#endif
+
+
 typedef struct {
-    void        *elts;
+    void        *elts ngx_array_sized_by(nalloc * size);
     ngx_uint_t   nelts;
     size_t       size;
     ngx_uint_t   nalloc;
