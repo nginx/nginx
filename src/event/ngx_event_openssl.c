@@ -3242,6 +3242,12 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
     int        n, sslerr;
     ngx_err_t  err;
 
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
+
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (c->ssl->in_early) {
         return ngx_ssl_write_early(c, data, size);
@@ -3472,6 +3478,12 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
     int        sslerr, flags;
     ssize_t    n;
     ngx_err_t  err;
+
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
 
     ngx_ssl_clear_error(c->log);
 
