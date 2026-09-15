@@ -190,6 +190,7 @@ static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
 static ngx_int_t ngx_http_upstream_reinit_peers(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static void ngx_http_upstream_retry_handler(ngx_event_t *ev);
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_upstream_ssl_init_connection(ngx_http_request_t *,
@@ -4762,12 +4763,17 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         u->peer.connection = NULL;
     }
 
-    if (u->peer.tries == 0 && reinit) {
-        if (ngx_http_upstream_reinit_peers(r, u) != NGX_OK) {
-            ngx_http_upstream_finalize_request(r, u,
-                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
-        }
+    if (reinit) {
+
+        /* defer retries to the event loop to avoid recursive connects */
+
+        u->retry_event.handler = ngx_http_upstream_retry_handler;
+        u->retry_event.data = r;
+        u->retry_event.log = r->connection->log;
+
+        ngx_add_timer(&u->retry_event,
+                      u->peer.tries == 0 ? u->conf->next_upstream_delay : 0);
+        return;
     }
 
     ngx_http_upstream_connect(r, u);
@@ -4803,6 +4809,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     *u->cleanup = NULL;
     u->cleanup = NULL;
+
+    if (u->retry_event.timer_set) {
+        ngx_del_timer(&u->retry_event);
+    }
 
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
@@ -7407,4 +7417,29 @@ ngx_http_upstream_reinit_peers(ngx_http_request_t *r,
     }
 
     return NGX_OK;
+}
+
+
+static void
+ngx_http_upstream_retry_handler(ngx_event_t *ev)
+{
+    ngx_http_request_t  *r;
+    ngx_http_upstream_t *u;
+
+    r = ev->data;
+    u = r->upstream;
+
+    if (u->cleanup == NULL) {
+        return;
+    }
+
+    if (u->peer.tries == 0) {
+        if (ngx_http_upstream_reinit_peers(r, u) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+
+    ngx_http_upstream_connect(r, u);
 }
