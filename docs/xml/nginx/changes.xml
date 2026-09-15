@@ -5,6 +5,37 @@
 <change_log title="nginx">
 
 
+<changes ver="1.30.5" date="2026-09-15">
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3 с OpenSSL 3.5.0 и более ранними версиями
+в определённых конфигурациях
+могло произойти переполнение буфера в рабочем процессе (CVE-2026-90439).<br/>
+Спасибо Banny Liao.
+</para>
+<para lang="en">
+a heap memory buffer overflow might occur in a worker process
+under certain configurations
+when using HTTP/3 with OpenSSL 3.5.0 and earlier (CVE-2026-90439).<br/>
+Thanks to Banny Liao.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь расширение QUIC transport parameters, полученное в SSL-соединении,
+всегда игнорируется.
+</para>
+<para lang="en">
+now the QUIC transport parameters extension received in an SSL connection
+is always ignored.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.30.4" date="2026-07-15">
 
 <change type="security">
