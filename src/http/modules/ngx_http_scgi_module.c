@@ -659,7 +659,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
     u_char                        ch, sep, *key, *val, *lowcase_key;
     size_t                        len, params_len, key_len, val_len, allocated;
     ngx_buf_t                    *b;
-    ngx_str_t                     content_length;
+    ngx_str_t                     content_length, field_name, field_value;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -871,9 +871,7 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
                 continue;
             }
 
-#if (NGX_DEBUG)
-            key = e.pos;
-#endif
+            field_name.data = e.pos;
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
 
@@ -881,9 +879,19 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-#if (NGX_DEBUG)
-            val = e.pos;
-#endif
+            if (e.pos - field_name.data < 1 || e.pos[-1] != '\0') {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "missing NUL terminator for header name");
+                return NGX_ERROR;
+            }
+            field_name.len = (size_t)(e.pos - 1 - field_name.data);
+            if (!ngx_http_valid_header_name(&field_name)) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "invalid SCGI field name");
+                return NGX_ERROR;
+            }
+
+            field_value.data = e.pos;
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) &e);
@@ -896,12 +904,18 @@ ngx_http_scgi_create_request(ngx_http_request_t *r)
             if (ngx_http_script_check_length(&e, 1) != NGX_OK) {
                 return NGX_ERROR;
             }
+            field_value.len = (size_t)(e.pos - field_value.data);
+            if (!ngx_http_valid_header_value(&field_value)) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "SCGI field %V has invalid value", &field_name);
+                return NGX_ERROR;
+            }
 
             *e.pos++ = '\0';
             e.ip += sizeof(uintptr_t);
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "scgi param: \"%s: %s\"", key, val);
+                           "scgi param: \"%V: %V\"", &field_name, &field_value);
         }
 
         if (e.pos != e.end) {
