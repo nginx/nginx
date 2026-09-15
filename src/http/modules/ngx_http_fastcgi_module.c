@@ -862,6 +862,7 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     size_t                        size, len, params_len,
                                   key_len, val_len, padding, allocated;
     ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
+    ngx_str_t                     field_name, field_value;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1136,6 +1137,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 *e.pos++ = (u_char) val_len;
             }
 
+            field_name.data = e.pos;
+
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) &e);
@@ -1146,10 +1149,33 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "fastcgi param: \"%*s: %*s\"",
-                           key_len, e.pos - (key_len + val_len),
-                           val_len, e.pos - val_len);
+            if ((size_t)(e.pos - field_name.data) != key_len + val_len) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "fastcgi key/value length mismatch");
+                return NGX_ERROR;
+            }
+
+            field_name.len = key_len;
+
+            if (ngx_valid_http_field_name(&field_name) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "fastcgi invalid field name");
+                return NGX_ERROR;
+            }
+
+            field_value.data = field_name.data + key_len;
+            field_value.len = val_len;
+
+            if (ngx_valid_http_field_value(&field_value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "fastcgi invalid value for field %V",
+                              &field_name);
+                return NGX_ERROR;
+            }
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "fastcgi param: \"%V: %V\"",
+                           &field_name, &field_value);
         }
 
         if (e.pos != e.end) {
