@@ -438,6 +438,7 @@ ngx_http_source_charset(ngx_http_request_t *r, ngx_str_t *name)
 
     if (charset == NGX_HTTP_CHARSET_OFF) {
         name->len = 0;
+        name->data = NULL;
         return charset;
     }
 

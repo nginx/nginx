@@ -1342,6 +1342,8 @@ ngx_http_grpc_reinit_request(ngx_http_request_t *r)
     ctx->in = NULL;
     ctx->busy = NULL;
     ctx->out = NULL;
+    ctx->pings = 0;
+    ctx->settings = 0;
 
     return NGX_OK;
 }

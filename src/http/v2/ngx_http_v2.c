@@ -1345,7 +1345,8 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     clcf = ngx_http_get_module_loc_conf(h2c->http_connection->conf_ctx,
                                         ngx_http_core_module);
 
-    if (clcf->keepalive_timeout == 0
+    if (ngx_exiting
+        || clcf->keepalive_timeout == 0
         || h2c->connection->requests >= clcf->keepalive_requests
         || ngx_current_msec - h2c->connection->start_time
            > clcf->keepalive_time)
