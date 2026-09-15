@@ -4780,7 +4780,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         u->retry_event.data = r;
         u->retry_event.log = r->connection->log;
 
-        ngx_add_timer(&u->retry_event, 0);
+        ngx_add_timer(&u->retry_event, u->conf->next_upstream_delay);
 
         return;
     }
