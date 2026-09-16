@@ -313,7 +313,7 @@ ngx_http_slice_parse_content_range(ngx_http_request_t *r,
     end = 0;
     complete_length = 0;
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p < '0' || *p > '9') {
         return NGX_ERROR;
@@ -327,13 +327,13 @@ ngx_http_slice_parse_content_range(ngx_http_request_t *r,
         start = start * 10 + (*p++ - '0');
     }
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p++ != '-') {
         return NGX_ERROR;
     }
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p < '0' || *p > '9') {
         return NGX_ERROR;
@@ -349,13 +349,13 @@ ngx_http_slice_parse_content_range(ngx_http_request_t *r,
 
     end++;
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p++ != '/') {
         return NGX_ERROR;
     }
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p != '*') {
         if (*p < '0' || *p > '9') {
@@ -377,7 +377,7 @@ ngx_http_slice_parse_content_range(ngx_http_request_t *r,
         p++;
     }
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p != '\0') {
         return NGX_ERROR;
@@ -474,7 +474,7 @@ ngx_http_slice_get_start(ngx_http_request_t *r)
         return 0;
     }
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p == '-') {
         return 0;

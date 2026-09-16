@@ -306,7 +306,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
         end = 0;
         suffix = 0;
 
-        while (*p == ' ') { p++; }
+        while (*p == ' ' || *p == '\t') { p++; }
 
         if (*p != '-') {
             if (*p < '0' || *p > '9') {
@@ -321,13 +321,13 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
                 start = start * 10 + (*p++ - '0');
             }
 
-            while (*p == ' ') { p++; }
+            while (*p == ' ' || *p == '\t') { p++; }
 
             if (*p++ != '-') {
                 return NGX_HTTP_RANGE_NOT_SATISFIABLE;
             }
 
-            while (*p == ' ') { p++; }
+            while (*p == ' ' || *p == '\t') { p++; }
 
             if (*p == ',' || *p == '\0') {
                 end = content_length;
@@ -351,7 +351,7 @@ ngx_http_range_parse(ngx_http_request_t *r, ngx_http_range_filter_ctx_t *ctx,
             end = end * 10 + (*p++ - '0');
         }
 
-        while (*p == ' ') { p++; }
+        while (*p == ' ' || *p == '\t') { p++; }
 
         if (*p != ',' && *p != '\0') {
             return NGX_HTTP_RANGE_NOT_SATISFIABLE;

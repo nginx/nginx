@@ -1135,11 +1135,11 @@ ngx_http_file_cache_vary(ngx_http_request_t *r, u_char *vary, size_t len,
 
     while (p < last) {
 
-        while (p < last && (*p == ' ' || *p == ',')) { p++; }
+        while (p < last && (*p == ' ' || *p == '\t' || *p == ',')) { p++; }
 
         name.data = p;
 
-        while (p < last && *p != ',' && *p != ' ') { p++; }
+        while (p < last && *p != ',' && *p != ' ' && *p != '\t') { p++; }
 
         name.len = p - name.data;
 
@@ -1241,11 +1241,11 @@ ngx_http_file_cache_vary_header(ngx_http_request_t *r, ngx_md5_t *md5,
 
         while (p < last) {
 
-            while (p < last && (*p == ' ' || *p == ',')) { p++; }
+            while (p < last && (*p == ' ' || *p == '\t' || *p == ',')) { p++; }
 
             start = p;
 
-            while (p < last && *p != ',' && *p != ' ') { p++; }
+            while (p < last && *p != ',' && *p != ' ' && *p != '\t') { p++; }
 
             len = p - start;
 

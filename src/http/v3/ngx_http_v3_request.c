@@ -736,6 +736,20 @@ ngx_http_v3_validate_header(ngx_http_request_t *r, ngx_str_t *name,
         r->invalid_header = 1;
     }
 
+    /* RFC 9114, 10.3; RFC 9113, 8.2.1: no leading or trailing SP or HTAB */
+
+    if (value->len > 0
+        && (value->data[0] == ' ' || value->data[0] == '\t'
+            || value->data[value->len - 1] == ' '
+            || value->data[value->len - 1] == '\t'))
+    {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+                      "client sent header \"%V\" with "
+                      "invalid value: \"%V\"", name, value);
+
+        return NGX_ERROR;
+    }
+
     for (i = 0; i != value->len; i++) {
         ch = value->data[i];
 
