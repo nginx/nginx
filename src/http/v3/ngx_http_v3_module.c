@@ -43,6 +43,13 @@ static ngx_command_t  ngx_http_v3_commands[] = {
       offsetof(ngx_http_v3_srv_conf_t, max_concurrent_streams),
       NULL },
 
+    { ngx_string("http3_extended_connect"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      offsetof(ngx_http_v3_srv_conf_t, extended_connect),
+      NULL },
+
     { ngx_string("http3_stream_buffer_size"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_size_slot,
@@ -198,6 +205,7 @@ ngx_http_v3_create_srv_conf(ngx_conf_t *cf)
 
     h3scf->enable = NGX_CONF_UNSET;
     h3scf->enable_hq = NGX_CONF_UNSET;
+    h3scf->extended_connect = NGX_CONF_UNSET;
     h3scf->max_table_capacity = NGX_HTTP_V3_MAX_TABLE_CAPACITY;
     h3scf->max_concurrent_streams = NGX_CONF_UNSET_UINT;
 
@@ -229,6 +237,8 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->enable, prev->enable, 1);
 
     ngx_conf_merge_value(conf->enable_hq, prev->enable_hq, 0);
+
+    ngx_conf_merge_value(conf->extended_connect, prev->extended_connect, 0);
 
     ngx_conf_merge_uint_value(conf->max_concurrent_streams,
                               prev->max_concurrent_streams, 128);
