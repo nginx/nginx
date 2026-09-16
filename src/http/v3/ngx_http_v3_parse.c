@@ -90,6 +90,7 @@ ngx_http_v3_parse_skip(ngx_buf_t *b, ngx_uint_t *length)
     }
 
     b->pos += *length;
+    *length = 0;
     return NGX_DONE;
 }
 
