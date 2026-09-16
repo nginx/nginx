@@ -317,18 +317,26 @@ ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
 #define ngx_http_v2_prefix(bits)  ((1 << (bits)) - 1)
 
 
-#if (NGX_HAVE_NONALIGNED)
+static ngx_inline uint16_t
+ngx_http_v2_parse_uint16(const u_char *p)
+{
+    uint16_t  v;
 
-#define ngx_http_v2_parse_uint16(p)  ntohs(*(uint16_t *) (p))
-#define ngx_http_v2_parse_uint32(p)  ntohl(*(uint32_t *) (p))
+    ngx_memcpy(&v, p, sizeof(uint16_t));
 
-#else
+    return ntohs(v);
+}
 
-#define ngx_http_v2_parse_uint16(p)  ((p)[0] << 8 | (p)[1])
-#define ngx_http_v2_parse_uint32(p)                                           \
-    ((uint32_t) (p)[0] << 24 | (p)[1] << 16 | (p)[2] << 8 | (p)[3])
 
-#endif
+static ngx_inline uint32_t
+ngx_http_v2_parse_uint32(const u_char *p)
+{
+    uint32_t  v;
+
+    ngx_memcpy(&v, p, sizeof(uint32_t));
+
+    return ntohl(v);
+}
 
 #define ngx_http_v2_parse_length(p)  ((p) >> 8)
 #define ngx_http_v2_parse_type(p)    ((p) & 0xff)
@@ -341,26 +349,26 @@ ngx_int_t ngx_http_v2_table_size(ngx_http_v2_connection_t *h2c, size_t size);
 #define ngx_http_v2_write_uint32_aligned(p, s)                                \
     (*(uint32_t *) (p) = htonl((uint32_t) (s)), (p) + sizeof(uint32_t))
 
-#if (NGX_HAVE_NONALIGNED)
+static ngx_inline u_char *
+ngx_http_v2_write_uint16(u_char *p, ngx_uint_t s)
+{
+    uint16_t  v = htons((uint16_t) s);
 
-#define ngx_http_v2_write_uint16  ngx_http_v2_write_uint16_aligned
-#define ngx_http_v2_write_uint32  ngx_http_v2_write_uint32_aligned
+    ngx_memcpy(p, &v, sizeof(uint16_t));
 
-#else
+    return p + sizeof(uint16_t);
+}
 
-#define ngx_http_v2_write_uint16(p, s)                                        \
-    ((p)[0] = (u_char) ((s) >> 8),                                            \
-     (p)[1] = (u_char)  (s),                                                  \
-     (p) + sizeof(uint16_t))
 
-#define ngx_http_v2_write_uint32(p, s)                                        \
-    ((p)[0] = (u_char) ((s) >> 24),                                           \
-     (p)[1] = (u_char) ((s) >> 16),                                           \
-     (p)[2] = (u_char) ((s) >> 8),                                            \
-     (p)[3] = (u_char)  (s),                                                  \
-     (p) + sizeof(uint32_t))
+static ngx_inline u_char *
+ngx_http_v2_write_uint32(u_char *p, ngx_uint_t s)
+{
+    uint32_t  v = htonl((uint32_t) s);
 
-#endif
+    ngx_memcpy(p, &v, sizeof(uint32_t));
+
+    return p + sizeof(uint32_t);
+}
 
 #define ngx_http_v2_write_len_and_type(p, l, t)                               \
     ngx_http_v2_write_uint32_aligned(p, (l) << 8 | (t))
