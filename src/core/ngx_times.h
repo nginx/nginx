@@ -13,6 +13,10 @@
 #include <ngx_core.h>
 
 
+typedef uint64_t  ngx_usec_t;
+typedef int64_t   ngx_usec_int_t;
+
+
 typedef struct {
     time_t      sec;
     ngx_uint_t  msec;
@@ -20,6 +24,7 @@ typedef struct {
 } ngx_time_t;
 
 
+ngx_usec_t ngx_monotonic_usec(void);
 void ngx_time_init(void);
 void ngx_time_update(void);
 void ngx_time_sigsafe_update(void);

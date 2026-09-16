@@ -189,6 +189,8 @@ valid:
         qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
         qc->congestion.recovery_start = ngx_current_msec - 1;
 
+        ngx_memzero(&qc->pacing, sizeof(ngx_quic_pacing_t));
+
         ngx_quic_init_rtt(qc);
     }
 
