@@ -156,6 +156,8 @@ typedef struct {
     uint64_t                          send_offset;
     uint64_t                          send_max_data;
 
+    ngx_uint_t                        blocked;  /* unsigned  blocked:1; */
+
     uint64_t                          server_max_streams_uni;
     uint64_t                          server_max_streams_bidi;
     uint64_t                          server_streams_uni;
