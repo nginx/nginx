@@ -14,6 +14,15 @@
 #include <ngx_http.h>
 
 
+/*
+ * Maximum buffered length of a PRIORITY_UPDATE Priority Field Value.  The
+ * recognized RFC 9218 members ("u"/"i") need only ~10 bytes; the remainder
+ * is headroom for unknown extension members a peer may legitimately send,
+ * while keeping the per-stream buffer bounded.
+ */
+#define NGX_HTTP_V3_PRIORITY_VALUE_LEN  256
+
+
 typedef struct {
     ngx_uint_t                      state;
     uint64_t                        value;
@@ -32,6 +41,41 @@ typedef struct {
     uint64_t                        id;
     ngx_http_v3_parse_varlen_int_t  vlint;
 } ngx_http_v3_parse_settings_t;
+
+
+typedef struct {
+    ngx_uint_t                      state;
+    uint64_t                        element_id;
+    ngx_http_v3_parse_varlen_int_t  vlint;
+
+    /*
+     * The Priority Field Value is a structured-field dictionary that is
+     * parsed as a whole by the shared ngx_http_priority_parse(), exactly as
+     * the HTTP/2 and upstream code paths do.  Parsing it in one pass (rather
+     * than splitting on ',' ourselves) is what lets commas inside quoted
+     * strings, structured-field parameters (e.g. u=0;ext="..."), and unknown
+     * extension members all be handled correctly without dropping the
+     * recognized "u"/"i" members.  Because the frame may be delivered across
+     * several reads, the value bytes are buffered here until the frame
+     * completes.
+     *
+     * A legitimate priority value is tiny: the only members RFC 9218 defines
+     * are "u" (urgency, "u=0".."u=7") and "i" (incremental, "i" or "i=?1"),
+     * so a fully-populated recognized value is at most "u=7, i=?1" (10 bytes
+     * including optional whitespace).  RFC 9218 does, however, permit unknown
+     * dictionary members, which a peer may legitimately include; the buffer
+     * is therefore sized well beyond the recognized members
+     * (NGX_HTTP_V3_PRIORITY_VALUE_LEN bytes) so that values carrying
+     * reasonable unknown extensions are still accepted, while the amount of
+     * unparsed data held per stream stays bounded.  A value that does not fit
+     * the buffer is treated as excessive load rather than silently truncated
+     * -- silent truncation could turn a well-formed value into a different,
+     * valid-looking one and apply a priority the peer never signalled.
+     */
+    u_char                          value[NGX_HTTP_V3_PRIORITY_VALUE_LEN];
+    ngx_uint_t                      value_len;
+    unsigned                        value_overflow:1;
+} ngx_http_v3_parse_priority_t;
 
 
 typedef struct {
@@ -104,6 +148,7 @@ typedef struct {
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
     ngx_http_v3_parse_settings_t    settings;
+    ngx_http_v3_parse_priority_t    priority;
 } ngx_http_v3_parse_control_t;
 
 
