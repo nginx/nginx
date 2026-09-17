@@ -85,13 +85,13 @@ ngx_time_update(void)
     time_t           sec;
     ngx_uint_t       msec;
     ngx_time_t      *tp;
-    struct timeval   tv;
+    ngx_timeval_t    tv;
 
     if (!ngx_trylock(&ngx_time_lock)) {
         return;
     }
 
-    ngx_gettimeofday(&tv);
+    ngx_gettimeofday64(&tv);
 
     sec = tv.tv_sec;
     msec = tv.tv_usec / 1000;
@@ -218,13 +218,13 @@ ngx_time_sigsafe_update(void)
     ngx_tm_t         tm;
     time_t           sec;
     ngx_time_t      *tp;
-    struct timeval   tv;
+    ngx_timeval_t    tv;
 
     if (!ngx_trylock(&ngx_time_lock)) {
         return;
     }
 
-    ngx_gettimeofday(&tv);
+    ngx_gettimeofday64(&tv);
 
     sec = tv.tv_sec;
 
