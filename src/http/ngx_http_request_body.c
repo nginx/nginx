@@ -11,6 +11,8 @@
 
 
 static void ngx_http_read_client_request_body_handler(ngx_http_request_t *r);
+static void ngx_http_request_body_timeout(ngx_event_t *ev);
+static void ngx_http_request_body_cleanup(void *data);
 static ngx_int_t ngx_http_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_copy_pipelined_header(ngx_http_request_t *r,
     ngx_buf_t *buf);
@@ -37,6 +39,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_chain_t                out;
+    ngx_event_t               *ev;
+    ngx_http_cleanup_t        *cln;
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
@@ -68,6 +72,7 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
      *     rb->free = NULL;
      *     rb->busy = NULL;
      *     rb->chunked = NULL;
+     *     rb->total_timeout = NULL;
      *     rb->received = 0;
      *     rb->filter_need_buffering = 0;
      *     rb->last_sent = 0;
@@ -83,6 +88,26 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
         r->request_body_no_buffering = 0;
         post_handler(r);
         return NGX_OK;
+    }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (clcf->client_body_total_timeout) {
+        cln = ngx_http_cleanup_add(r, sizeof(ngx_event_t));
+        if (cln == NULL) {
+            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+            goto done;
+        }
+
+        ev = cln->data;
+        ngx_memzero(ev, sizeof(ngx_event_t));
+        ev->data = r->connection;
+        ev->handler = ngx_http_request_body_timeout;
+        ev->log = r->connection->log;
+        cln->handler = ngx_http_request_body_cleanup;
+        rb->total_timeout = ev;
+
+        ngx_add_timer(ev, clcf->client_body_total_timeout);
     }
 
 #if (NGX_HTTP_V2)
@@ -287,6 +312,45 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
 
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         ngx_http_finalize_request(r, rc);
+    }
+}
+
+
+static void
+ngx_http_request_body_timeout(ngx_event_t *ev)
+{
+    ngx_connection_t    *c;
+    ngx_http_request_t  *r;
+
+    c = ev->data;
+    r = c->data;
+    r = r->main;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                  "client request body timed out");
+
+    c->timedout = 1;
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        r->stream->skip_data = 1;
+    }
+#endif
+
+    ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+    ngx_http_run_posted_requests(c);
+}
+
+
+static void
+ngx_http_request_body_cleanup(void *data)
+{
+    ngx_event_t  *ev = data;
+
+    if (ev->timer_set) {
+        ngx_del_timer(ev);
     }
 }
 
@@ -1318,6 +1382,10 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             rb->last_saved = 1;
+
+            if (rb->total_timeout && rb->total_timeout->timer_set) {
+                ngx_del_timer(rb->total_timeout);
+            }
         }
 
         tl = ngx_alloc_chain_link(r->pool);
