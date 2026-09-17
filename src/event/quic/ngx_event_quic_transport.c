@@ -2003,12 +2003,17 @@ ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
 
     tp->max_idle_timeout = qcf->idle_timeout;
 
-    tp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_SIZE;
+    tp->max_udp_payload_size = qcf->max_udp_payload_size;
 
     nstreams = qcf->max_concurrent_streams_bidi
                + qcf->max_concurrent_streams_uni;
 
     tp->initial_max_data = nstreams * qcf->stream_buffer_size;
+
+    if (qcf->initial_max_data) {
+        tp->initial_max_data = ngx_min(tp->initial_max_data,
+                                       qcf->initial_max_data);
+    }
     tp->initial_max_stream_data_bidi_local = qcf->stream_buffer_size;
     tp->initial_max_stream_data_bidi_remote = qcf->stream_buffer_size;
     tp->initial_max_stream_data_uni = qcf->stream_buffer_size;
