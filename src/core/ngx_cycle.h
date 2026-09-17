@@ -83,6 +83,8 @@ struct ngx_cycle_s {
     ngx_str_t                 error_log;
     ngx_str_t                 lock_file;
     ngx_str_t                 hostname;
+
+    uint64_t                  generation;
 };
 
 
