@@ -1143,8 +1143,9 @@ ngx_quic_parse_frame(ngx_quic_header_t *pkt, u_char *start, u_char *end,
 #if (NGX_DEBUG)
     f->pnum = pkt->pn;
 #endif
+    f->len = p - start;
 
-    return p - start;
+    return f->len;
 
 error:
 
