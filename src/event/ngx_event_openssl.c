@@ -2119,7 +2119,20 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
     sc->session_ctx = ssl->ctx;
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
-    if (SSL_CTX_get_max_early_data(ssl->ctx)) {
+    /*
+     * On server-side connections, always attempt SSL_read_early_data():
+     * if the SNI-selected server ends up with max_early_data == 0, or
+     * no early data is offered, SSL_read_early_data() returns
+     * SSL_READ_EARLY_DATA_FINISH and we fall back to a normal
+     * handshake.  Deferring this choice to the SNI callback isn't
+     * possible because the callback runs mid-way through
+     * SSL_do_handshake().
+     *
+     * Client-side connections (e.g. proxy_pass https://) must not set
+     * this: SSL_read_early_data() is a server-only API for reading
+     * incoming 0-RTT from a peer.
+     */
+    if (!(flags & NGX_SSL_CLIENT)) {
         sc->try_early_data = 1;
     }
 #endif
