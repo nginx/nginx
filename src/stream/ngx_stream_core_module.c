@@ -124,7 +124,7 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       ngx_conf_set_size_slot,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_core_srv_conf_t, preread_buffer_size),
-      NULL },
+      &ngx_conf_size_nonzero_post },
 
     { ngx_string("preread_timeout"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,

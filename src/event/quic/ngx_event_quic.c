@@ -319,9 +319,9 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
     qc->congestion.recovery_start = ngx_current_msec - 1;
 
-    qc->max_frames = (conf->max_concurrent_streams_uni
-                      + conf->max_concurrent_streams_bidi)
-                     * conf->stream_buffer_size / 2000;
+    qc->max_frames = ngx_max(10000, (conf->max_concurrent_streams_uni
+                                     + conf->max_concurrent_streams_bidi)
+                                    * conf->stream_buffer_size / 2000);
 
     if (pkt->validated && pkt->retried) {
         qc->tp.retry_scid.len = pkt->dcid.len;
