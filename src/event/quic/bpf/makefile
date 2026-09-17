@@ -1,4 +1,7 @@
-CFLAGS=-O2 -Wall
+
+# Copyright (C) Nginx, Inc.
+
+CFLAGS=-O2 -Wall $(MAKE_CFLAGS)
 
 LICENSE=BSD
 

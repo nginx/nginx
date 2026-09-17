@@ -1171,7 +1171,9 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_QUIC)
         if (ls[i].quic) {
-            continue;
+            if (!ngx_quic_bpf_enabled(cycle)) {
+                continue;
+            }
         }
 #endif
 
