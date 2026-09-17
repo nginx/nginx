@@ -245,6 +245,10 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
         uniq = 0;
     }
 
+    if (cf->dynamic) {
+        return type->create(&id, err, &data);
+    }
+
     /* try to use a reference from the old cycle */
 
     old_cache = ngx_ssl_cache_get_old_conf(cf->cycle);
