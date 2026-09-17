@@ -2669,9 +2669,9 @@ ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
     const X509_NAME  *name;
 
     serial = X509_get_serialNumber(ctx->cert);
-    length = ASN1_STRING_length(serial);
+    length = i2d_ASN1_INTEGER(serial, NULL);
 
-    if (length > 20) {
+    if (length <= 2 || length > 23) {
         return NGX_ERROR;
     }
 
@@ -2696,7 +2696,7 @@ ngx_ssl_ocsp_create_key(ngx_ssl_ocsp_ctx_t *ctx)
 
     p += 20;
 
-    ngx_memcpy(p, ASN1_STRING_get0_data(serial), length);
+    (void) i2d_ASN1_INTEGER(serial, &p);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ctx->log, 0,
                    "ssl ocsp key %xV", &ctx->key);
