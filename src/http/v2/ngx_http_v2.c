@@ -3820,6 +3820,46 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_PROCESS_REQUEST_STATE;
 
+    if (r->headers_in.connection) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent \"Connection\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        goto failed;
+    }
+
+    if (r->headers_in.keep_alive) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent \"Keep-Alive\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        goto failed;
+    }
+
+    if (r->headers_in.transfer_encoding) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent \"Transfer-Encoding\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        goto failed;
+    }
+
+    if (r->headers_in.upgrade) {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent \"Upgrade\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        goto failed;
+    }
+
+    if (r->headers_in.te
+        && (r->headers_in.te->next
+            || r->headers_in.te->value.len != 8
+            || ngx_strncasecmp(r->headers_in.te->value.data,
+                               (u_char *) "trailers", 8) != 0))
+    {
+        ngx_log_error(NGX_LOG_INFO, fc->log, 0,
+                      "client sent invalid \"TE\" header");
+        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
+        goto failed;
+    }
+
     if (r->headers_in.server.len == 0) {
         ngx_log_error(NGX_LOG_INFO, fc->log, 0,
                       "client sent neither \":authority\" nor \"Host\" header");
