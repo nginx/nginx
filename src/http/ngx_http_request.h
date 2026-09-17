@@ -98,6 +98,7 @@
 #define NGX_HTTP_PROXY_AUTH_REQUIRED       407
 #define NGX_HTTP_REQUEST_TIME_OUT          408
 #define NGX_HTTP_CONFLICT                  409
+#define NGX_HTTP_GONE                      410
 #define NGX_HTTP_LENGTH_REQUIRED           411
 #define NGX_HTTP_PRECONDITION_FAILED       412
 #define NGX_HTTP_REQUEST_ENTITY_TOO_LARGE  413
