@@ -851,6 +851,12 @@ found:
         return;
     }
 
+    if (u->init_peer && u->init_peer(r) != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return;
+    }
+
     u->peer.start_time = ngx_current_msec;
 
     if (u->conf->next_upstream_tries
