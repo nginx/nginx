@@ -686,7 +686,7 @@ if [ $HTTP = YES ]; then
         ngx_module_incs=
         ngx_module_deps=
         ngx_module_srcs=src/http/modules/ngx_http_geoip_module.c
-        ngx_module_libs=GEOIP
+        ngx_module_libs="GEOIP MMDB"
         ngx_module_link=$HTTP_GEOIP
 
         . auto/module
@@ -1207,7 +1207,7 @@ if [ $STREAM != NO ]; then
         ngx_module_name=ngx_stream_geoip_module
         ngx_module_deps=
         ngx_module_srcs=src/stream/ngx_stream_geoip_module.c
-        ngx_module_libs=GEOIP
+        ngx_module_libs="GEOIP MMDB"
         ngx_module_link=$STREAM_GEOIP
 
         . auto/module
