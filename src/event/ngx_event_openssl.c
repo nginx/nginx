@@ -2319,11 +2319,22 @@ ngx_ssl_handshake(ngx_connection_t *c)
 
     err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
+    if (sslerr == SSL_ERROR_SYSCALL && ERR_peek_error() == 0 && err == 0) {
+
+        /*
+         * OpenSSL up to 3.0 returns SSL_ERROR_SYSCALL
+         * without an error queue and with errno set to 0
+         * if connection is closed cleanly
+         */
+
+        sslerr = SSL_ERROR_ZERO_RETURN;
+    }
+
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
     c->read->eof = 1;
 
-    if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
+    if (sslerr == SSL_ERROR_ZERO_RETURN) {
         ngx_connection_error(c, err,
                              "peer closed connection in SSL handshake");
 
@@ -2466,11 +2477,22 @@ ngx_ssl_try_early_data(ngx_connection_t *c)
 
     err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
 
+    if (sslerr == SSL_ERROR_SYSCALL && ERR_peek_error() == 0 && err == 0) {
+
+        /*
+         * OpenSSL up to 3.0 returns SSL_ERROR_SYSCALL
+         * without an error queue and with errno set to 0
+         * if connection is closed cleanly
+         */
+
+        sslerr = SSL_ERROR_ZERO_RETURN;
+    }
+
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
     c->read->eof = 1;
 
-    if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
+    if (sslerr == SSL_ERROR_ZERO_RETURN) {
         ngx_connection_error(c, err,
                              "peer closed connection in SSL handshake");
 
@@ -2979,10 +3001,21 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
         return NGX_AGAIN;
     }
 
+    if (sslerr == SSL_ERROR_SYSCALL && ERR_peek_error() == 0 && err == 0) {
+
+        /*
+         * OpenSSL up to 3.0 returns SSL_ERROR_SYSCALL
+         * without an error queue and with errno set to 0
+         * if connection is closed cleanly
+         */
+
+        sslerr = SSL_ERROR_ZERO_RETURN;
+    }
+
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
 
-    if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
+    if (sslerr == SSL_ERROR_ZERO_RETURN) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "peer shutdown SSL cleanly");
         return NGX_DONE;
@@ -3208,6 +3241,12 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
 {
     int        n, sslerr;
     ngx_err_t  err;
+
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
 
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
     if (c->ssl->in_early) {
@@ -3439,6 +3478,12 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
     int        sslerr, flags;
     ssize_t    n;
     ngx_err_t  err;
+
+    if (c->ssl->last == NGX_ERROR) {
+        c->write->ready = 0;
+        c->write->error = 1;
+        return NGX_ERROR;
+    }
 
     ngx_ssl_clear_error(c->log);
 
@@ -3738,11 +3783,22 @@ ngx_ssl_shutdown(ngx_connection_t *c)
             return NGX_AGAIN;
         }
 
-        if (sslerr == SSL_ERROR_ZERO_RETURN || ERR_peek_error() == 0) {
-            goto done;
+        err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+
+        if (sslerr == SSL_ERROR_SYSCALL && ERR_peek_error() == 0 && err == 0) {
+
+            /*
+             * OpenSSL up to 3.0 returns SSL_ERROR_SYSCALL
+             * without an error queue and with errno set to 0
+             * if connection is closed cleanly
+             */
+
+            sslerr = SSL_ERROR_ZERO_RETURN;
         }
 
-        err = (sslerr == SSL_ERROR_SYSCALL) ? ngx_errno : 0;
+        if (sslerr == SSL_ERROR_ZERO_RETURN) {
+            goto done;
+        }
 
         ngx_ssl_connection_error(c, sslerr, err, "SSL_shutdown() failed");
 
