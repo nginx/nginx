@@ -63,7 +63,6 @@ struct ngx_http_proxy_v2_stream_s {
     ngx_str_t                        value;
 
     u_char                          *field_end;
-    ngx_buf_tag_t                    output_tag;
     size_t                           header_limit;
     size_t                           field_length;
     size_t                           field_rest;
@@ -86,6 +85,11 @@ struct ngx_http_proxy_v2_stream_s {
 struct ngx_http_proxy_v2_session_s {
     ngx_connection_t                *connection;
     ngx_http_proxy_v2_stream_t      *stream;
+
+    ngx_chain_t                     *out;
+    ngx_chain_t                     *free;
+    ngx_chain_t                     *busy;
+    ngx_buf_tag_t                    output_tag;
 
     ngx_http_proxy_v2_state_e        state;
     ngx_uint_t                       frame_state;
@@ -124,7 +128,8 @@ ngx_int_t ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *session,
     ngx_buf_t *b);
 ngx_int_t ngx_http_proxy_v2_process_control_frame(
     ngx_http_proxy_v2_session_t *session, ngx_buf_t *b);
-ngx_chain_t *ngx_http_proxy_v2_get_buf(ngx_http_proxy_v2_stream_t *stream);
+ngx_int_t ngx_http_proxy_v2_send_connection_window_update(
+    ngx_http_proxy_v2_session_t *session);
 
 
 #endif /* _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_ */
