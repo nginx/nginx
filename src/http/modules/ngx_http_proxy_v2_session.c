@@ -54,6 +54,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
 
     (*session)->connection = c;
     (*session)->stream = NULL;
+    (*session)->state = ngx_http_proxy_v2_st_start;
     (*session)->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     (*session)->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     (*session)->recv_window = NGX_HTTP_V2_MAX_WINDOW;
@@ -103,6 +104,102 @@ ngx_http_proxy_v2_detach_stream(ngx_http_proxy_v2_stream_t *stream)
     }
 
     stream->session = NULL;
+}
+
+
+ngx_int_t
+ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *session,
+    ngx_buf_t *b)
+{
+    u_char                     ch, *p;
+    ngx_http_proxy_v2_state_e  state;
+
+    state = session->state;
+
+    for (p = b->pos; p < b->last; p++) {
+        ch = *p;
+
+#if 0
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, session->connection->log, 0,
+                       "http proxy frame byte: %02Xd, s:%d", ch, state);
+#endif
+
+        switch (state) {
+
+        case ngx_http_proxy_v2_st_start:
+            session->rest = ch << 16;
+            state = ngx_http_proxy_v2_st_length_2;
+            break;
+
+        case ngx_http_proxy_v2_st_length_2:
+            session->rest |= ch << 8;
+            state = ngx_http_proxy_v2_st_length_3;
+            break;
+
+        case ngx_http_proxy_v2_st_length_3:
+            session->rest |= ch;
+
+            if (session->rest > NGX_HTTP_V2_DEFAULT_FRAME_SIZE) {
+                ngx_log_error(NGX_LOG_ERR, session->connection->log, 0,
+                              "upstream sent too large http2 frame: %uz",
+                              session->rest);
+                return NGX_ERROR;
+            }
+
+            state = ngx_http_proxy_v2_st_type;
+            break;
+
+        case ngx_http_proxy_v2_st_type:
+            session->type = ch;
+            state = ngx_http_proxy_v2_st_flags;
+            break;
+
+        case ngx_http_proxy_v2_st_flags:
+            session->flags = ch;
+            state = ngx_http_proxy_v2_st_stream_id;
+            break;
+
+        case ngx_http_proxy_v2_st_stream_id:
+            session->stream_id = (ch & 0x7f) << 24;
+            state = ngx_http_proxy_v2_st_stream_id_2;
+            break;
+
+        case ngx_http_proxy_v2_st_stream_id_2:
+            session->stream_id |= ch << 16;
+            state = ngx_http_proxy_v2_st_stream_id_3;
+            break;
+
+        case ngx_http_proxy_v2_st_stream_id_3:
+            session->stream_id |= ch << 8;
+            state = ngx_http_proxy_v2_st_stream_id_4;
+            break;
+
+        case ngx_http_proxy_v2_st_stream_id_4:
+            session->stream_id |= ch;
+
+            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, session->connection->log, 0,
+                           "http proxy frame: %d, len: %uz, f:%d, i:%ui",
+                           session->type, session->rest, session->flags,
+                           session->stream_id);
+
+            b->pos = p + 1;
+
+            session->state = ngx_http_proxy_v2_st_payload;
+            session->frame_state = 0;
+
+            return NGX_OK;
+
+        /* suppress warning */
+        case ngx_http_proxy_v2_st_payload:
+        case ngx_http_proxy_v2_st_padding:
+            break;
+        }
+    }
+
+    b->pos = p;
+    session->state = state;
+
+    return NGX_AGAIN;
 }
 
 
