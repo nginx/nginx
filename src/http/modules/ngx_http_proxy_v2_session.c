@@ -15,7 +15,7 @@ static void ngx_http_proxy_v2_session_cleanup(void *data);
 
 ngx_int_t
 ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
-    ngx_http_proxy_v2_session_t **session, ngx_uint_t *stream_id)
+    ngx_http_proxy_v2_session_t **session)
 {
     ngx_connection_t    *c;
     ngx_pool_cleanup_t  *cln;
@@ -40,9 +40,6 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
             return NGX_ERROR;
         }
 
-        (*session)->last_stream_id += 2;
-        *stream_id = (*session)->last_stream_id;
-
         return NGX_OK;
     }
 
@@ -56,14 +53,56 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
     *session = cln->data;
 
     (*session)->connection = c;
+    (*session)->stream = NULL;
     (*session)->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     (*session)->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     (*session)->recv_window = NGX_HTTP_V2_MAX_WINDOW;
-    (*session)->last_stream_id = 1;
-
-    *stream_id = 1;
+    (*session)->last_stream_id = 0;
 
     return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_proxy_v2_attach_stream(ngx_http_proxy_v2_session_t *session,
+    ngx_http_proxy_v2_stream_t *stream)
+{
+    if (session->stream != NULL) {
+        ngx_log_error(NGX_LOG_ERR, session->connection->log, 0,
+                      "http2 session already has an active stream");
+        return NGX_ERROR;
+    }
+
+    if (session->last_stream_id == 0) {
+        session->last_stream_id = 1;
+
+    } else {
+        session->last_stream_id += 2;
+    }
+
+    stream->session = session;
+    stream->id = session->last_stream_id;
+    stream->send_window = session->init_window;
+    stream->recv_window = NGX_HTTP_V2_MAX_WINDOW;
+
+    session->stream = stream;
+
+    return NGX_OK;
+}
+
+
+void
+ngx_http_proxy_v2_detach_stream(ngx_http_proxy_v2_stream_t *stream)
+{
+    ngx_http_proxy_v2_session_t  *session;
+
+    session = stream->session;
+
+    if (session != NULL && session->stream == stream) {
+        session->stream = NULL;
+    }
+
+    stream->session = NULL;
 }
 
 
