@@ -41,6 +41,8 @@ typedef enum {
 
 
 struct ngx_http_proxy_v2_stream_s {
+    ngx_rbtree_node_t                node;
+
     ngx_http_request_t              *request;
     ngx_http_proxy_v2_session_t     *session;
 
@@ -83,13 +85,16 @@ struct ngx_http_proxy_v2_stream_s {
     unsigned                         done:1;
     unsigned                         status:1;
     unsigned                         rst:1;
+    unsigned                         registered:1;
     unsigned                         connection_created:1;
 };
 
 
 struct ngx_http_proxy_v2_session_s {
     ngx_connection_t                *connection;
-    ngx_http_proxy_v2_stream_t      *stream;
+    ngx_rbtree_t                     streams;
+    ngx_rbtree_node_t                streams_sentinel;
+    ngx_http_proxy_v2_stream_t      *active_stream;
 
     ngx_chain_t                     *out;
     ngx_chain_t                     *free;
@@ -139,9 +144,13 @@ struct ngx_http_proxy_v2_session_s {
 
 ngx_int_t ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
     ngx_http_proxy_v2_session_t **session);
-ngx_int_t ngx_http_proxy_v2_attach_stream(ngx_http_proxy_v2_session_t *session,
+ngx_int_t ngx_http_proxy_v2_register_stream(
+    ngx_http_proxy_v2_session_t *session, ngx_http_proxy_v2_stream_t *stream);
+ngx_int_t ngx_http_proxy_v2_activate_stream(
+    ngx_http_proxy_v2_session_t *session, ngx_http_proxy_v2_stream_t *stream);
+void ngx_http_proxy_v2_unregister_stream(ngx_http_proxy_v2_stream_t *stream);
+void ngx_http_proxy_v2_deactivate_stream(
     ngx_http_proxy_v2_stream_t *stream);
-void ngx_http_proxy_v2_detach_stream(ngx_http_proxy_v2_stream_t *stream);
 ngx_int_t ngx_http_proxy_v2_create_stream_connection(
     ngx_http_proxy_v2_stream_t *stream, ngx_http_upstream_t *u,
     size_t buffer_size);

@@ -3152,9 +3152,17 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
         }
 
         ctx->stream.request = r;
-        if (ngx_http_proxy_v2_attach_stream(ctx->session, &ctx->stream)
+        if (ngx_http_proxy_v2_register_stream(ctx->session, &ctx->stream)
             != NGX_OK)
         {
+            ctx->session = NULL;
+            return NULL;
+        }
+
+        if (ngx_http_proxy_v2_activate_stream(ctx->session, &ctx->stream)
+            != NGX_OK)
+        {
+            ngx_http_proxy_v2_unregister_stream(&ctx->stream);
             ctx->session = NULL;
             return NULL;
         }
@@ -3163,7 +3171,7 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
                                                        u->conf->buffer_size)
             != NGX_OK)
         {
-            ngx_http_proxy_v2_detach_stream(&ctx->stream);
+            ngx_http_proxy_v2_unregister_stream(&ctx->stream);
             ctx->session = NULL;
             return NULL;
         }
@@ -3338,7 +3346,8 @@ ngx_http_proxy_v2_abort_request(ngx_http_request_t *r)
 static void
 ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
-    ngx_http_proxy_v2_ctx_t  *ctx;
+    ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_session_t  *session;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize proxy http2 request");
@@ -3346,11 +3355,13 @@ ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
     if (ctx != NULL) {
-        if (ctx->session && !ngx_http_proxy_v2_session_reusable(ctx->session)) {
-            r->upstream->keepalive = 0;
-        }
+        session = ctx->session;
 
         ngx_http_proxy_v2_restore(r, ctx);
+
+        if (session && !ngx_http_proxy_v2_session_reusable(session)) {
+            r->upstream->keepalive = 0;
+        }
     }
 
     return;
