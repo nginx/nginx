@@ -12,6 +12,19 @@ typedef struct ngx_http_proxy_v2_session_s  ngx_http_proxy_v2_session_t;
 typedef struct ngx_http_proxy_v2_stream_s   ngx_http_proxy_v2_stream_t;
 
 
+typedef struct {
+    u_char                          length_0;
+    u_char                          length_1;
+    u_char                          length_2;
+    u_char                          type;
+    u_char                          flags;
+    u_char                          stream_id_0;
+    u_char                          stream_id_1;
+    u_char                          stream_id_2;
+    u_char                          stream_id_3;
+} ngx_http_proxy_v2_frame_t;
+
+
 typedef enum {
     ngx_http_proxy_v2_st_start = 0,
     ngx_http_proxy_v2_st_length_2,
@@ -37,6 +50,7 @@ struct ngx_http_proxy_v2_stream_s {
     ngx_chain_t                     *busy;
 
     ngx_uint_t                       id;
+    ngx_uint_t                       error;
 
     off_t                            length;
 
@@ -49,6 +63,7 @@ struct ngx_http_proxy_v2_stream_s {
     ngx_str_t                        value;
 
     u_char                          *field_end;
+    ngx_buf_tag_t                    output_tag;
     size_t                           header_limit;
     size_t                           field_length;
     size_t                           field_rest;
@@ -85,6 +100,18 @@ struct ngx_http_proxy_v2_session_s {
     size_t                           send_window;
     size_t                           recv_window;
     ngx_uint_t                       last_stream_id;
+
+    ngx_uint_t                       pings;
+    ngx_uint_t                       settings;
+    ngx_uint_t                       setting_id;
+    ngx_uint_t                       setting_value;
+    ngx_uint_t                       window_update;
+    ngx_uint_t                       error;
+    ngx_uint_t                       goaway_stream_id;
+
+    u_char                           ping_data[8];
+
+    unsigned                         goaway:1;
 };
 
 
@@ -95,6 +122,9 @@ ngx_int_t ngx_http_proxy_v2_attach_stream(ngx_http_proxy_v2_session_t *session,
 void ngx_http_proxy_v2_detach_stream(ngx_http_proxy_v2_stream_t *stream);
 ngx_int_t ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *session,
     ngx_buf_t *b);
+ngx_int_t ngx_http_proxy_v2_process_control_frame(
+    ngx_http_proxy_v2_session_t *session, ngx_buf_t *b);
+ngx_chain_t *ngx_http_proxy_v2_get_buf(ngx_http_proxy_v2_stream_t *stream);
 
 
 #endif /* _NGX_HTTP_PROXY_V2_SESSION_H_INCLUDED_ */
