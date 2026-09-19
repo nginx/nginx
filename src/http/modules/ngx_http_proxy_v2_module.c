@@ -17,6 +17,9 @@ typedef struct {
 
     ngx_http_proxy_v2_session_t   *session;
     ngx_http_proxy_v2_stream_t     stream;
+
+    ngx_event_free_peer_pt         free;
+
 } ngx_http_proxy_v2_ctx_t;
 
 
@@ -49,6 +52,10 @@ static ngx_chain_t *ngx_http_proxy_v2_get_buf(
     ngx_http_proxy_v2_stream_t *stream);
 static ngx_http_proxy_v2_ctx_t *
     ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r);
+static void ngx_http_proxy_v2_restore(ngx_http_request_t *r,
+    ngx_http_proxy_v2_ctx_t *ctx);
+static void ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
+    ngx_uint_t state);
 
 static void ngx_http_proxy_v2_abort_request(ngx_http_request_t *r);
 static void ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r,
@@ -915,6 +922,8 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    ngx_http_proxy_v2_restore(r, ctx);
+
     free = ctx->stream.free;
 
     ngx_memzero(&ctx->stream, sizeof(ngx_http_proxy_v2_stream_t));
@@ -1387,6 +1396,8 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
+            ctx->session->frame_validated = 0;
+
             /*
              * RFC 7540 says that implementations MUST discard frames
              * that have unknown or unsupported types.  However, extension
@@ -1853,7 +1864,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                      */
 
                     if (ctx->stream.out || ctx->session->out) {
-                        ngx_post_event(u->peer.connection->write,
+                        ngx_post_event(ctx->session->connection->write,
                                        &ngx_posted_events);
                         return NGX_AGAIN;
                     }
@@ -1890,6 +1901,8 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                               ctx->session->type);
                 return NGX_ERROR;
             }
+
+            ctx->session->frame_validated = 0;
 
             if (ctx->session->type == NGX_HTTP_V2_DATA_FRAME) {
 
@@ -1932,7 +1945,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                         return NGX_ERROR;
                     }
 
-                    ngx_post_event(u->peer.connection->write,
+                    ngx_post_event(ctx->session->connection->write,
                                    &ngx_posted_events);
                 }
             }
@@ -3145,9 +3158,79 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
             ctx->session = NULL;
             return NULL;
         }
+
+        if (ngx_http_proxy_v2_create_stream_connection(&ctx->stream, u,
+                                                       u->conf->buffer_size)
+            != NGX_OK)
+        {
+            ngx_http_proxy_v2_detach_stream(&ctx->stream);
+            ctx->session = NULL;
+            return NULL;
+        }
+
+        ctx->free = u->peer.free;
+        u->peer.free = ngx_http_proxy_v2_free_peer;
     }
 
     return ctx;
+}
+
+
+ngx_http_proxy_v2_stream_t *
+ngx_http_proxy_v2_get_stream(ngx_http_request_t *r)
+{
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    return ctx ? &ctx->stream : NULL;
+}
+
+
+static void
+ngx_http_proxy_v2_restore(ngx_http_request_t *r,
+    ngx_http_proxy_v2_ctx_t *ctx)
+{
+    ngx_http_upstream_t  *u;
+
+    if (ctx == NULL || !ctx->stream.connection_created) {
+        return;
+    }
+
+    u = r->upstream;
+    ngx_http_proxy_v2_restore_connection(&ctx->stream, u);
+
+    if (ctx->free) {
+        u->peer.free = ctx->free;
+        ctx->free = NULL;
+    }
+
+    ctx->session = NULL;
+}
+
+
+static void
+ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
+    ngx_uint_t state)
+{
+    ngx_http_request_t       *r;
+    ngx_http_proxy_v2_ctx_t  *ctx;
+    ngx_event_free_peer_pt    free;
+
+    r = pc->connection->data;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    if (ctx == NULL) {
+        return;
+    }
+
+    free = ctx->free;
+
+    ngx_http_proxy_v2_restore(r, ctx);
+
+    if (free) {
+        free(pc, data, state);
+    }
 }
 
 
@@ -3245,8 +3328,7 @@ ngx_http_proxy_v2_abort_request(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
     if (ctx != NULL) {
-        ngx_http_proxy_v2_detach_stream(&ctx->stream);
-        ctx->session = NULL;
+        ngx_http_proxy_v2_restore(r, ctx);
     }
 
     return;
@@ -3264,8 +3346,11 @@ ngx_http_proxy_v2_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
     if (ctx != NULL) {
-        ngx_http_proxy_v2_detach_stream(&ctx->stream);
-        ctx->session = NULL;
+        if (ctx->session && !ngx_http_proxy_v2_session_reusable(ctx->session)) {
+            r->upstream->keepalive = 0;
+        }
+
+        ngx_http_proxy_v2_restore(r, ctx);
     }
 
     return;
