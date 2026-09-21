@@ -5415,7 +5415,7 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
                                (size_t) ASN1_STRING_length(str),
                                ASN1_STRING_data(str));
 
-                if (ngx_ssl_check_name(name, str) == NGX_OK) {
+                if (addr == NULL && ngx_ssl_check_name(name, str) == NGX_OK) {
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                    "SSL subjectAltName: match");
                     GENERAL_NAMES_free(altnames);
@@ -5478,6 +5478,12 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
      * in Subject.  While RFC2818 requires to only check "most specific"
      * CN, both Apache and OpenSSL check all CNs, and so do we.
      */
+
+    if (addr) {
+        ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "SSL commonName: no match");
+        goto failed;
+    }
 
     sname = X509_get_subject_name(cert);
 
