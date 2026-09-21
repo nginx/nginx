@@ -224,6 +224,7 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         sw_cs,              /* cipher_suites */
         sw_cm_len,          /* compression_methods length */
         sw_cm,              /* compression_methods */
+        sw_ext_len,         /* extensions length */
         sw_ext,             /* extension */
         sw_ext_header,      /* extension_type, extension_data length */
         sw_sni_len,         /* SNI length */
@@ -330,10 +331,19 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
                 return NGX_OK;
             }
 
-            state = sw_ext;
+            state = sw_ext_len;
             dst = p;
             size = 2;
             break;
+
+        case sw_ext_len:
+            if (left != (size_t) (p[0] << 8) + p[1]) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: extensions length error");
+                return NGX_DECLINED;
+            }
+
+            /* fall through */
 
         case sw_ext:
             if (left == 0) {
@@ -346,6 +356,8 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             break;
 
         case sw_ext_header:
+            ext = (p[2] << 8) + p[3];
+
             if (p[0] == 0 && p[1] == 0 && ctx->host.data == NULL) {
                 /* SNI extension */
                 state = sw_sni_len;
@@ -372,11 +384,17 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
 
             state = sw_ext;
             dst = NULL;
-            size = (p[2] << 8) + p[3];
+            size = ext;
             break;
 
         case sw_sni_len:
-            ext = (p[0] << 8) + p[1];
+            if (ext < 5 || ext != 2 + (size_t) (p[0] << 8) + p[1]) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: SNI format error");
+                return NGX_DECLINED;
+            }
+            ext -= 2;
+
             state = sw_sni_host_head;
             dst = p;
             size = 3;
@@ -416,7 +434,12 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             break;
 
         case sw_alpn_len:
-            ext = (p[0] << 8) + p[1];
+            if (ext < 4 || ext != 2 + (size_t) (p[0] << 8) + p[1]) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: ALPN format error");
+                return NGX_DECLINED;
+            }
+            ext -= 2;
 
             ctx->alpn.data = ngx_pnalloc(ctx->pool, ext);
             if (ctx->alpn.data == NULL) {
@@ -469,6 +492,14 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             break;
 
         case sw_supver_len:
+            size = p[0];
+
+            if (ext < 3 || ext != 1 + size) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: supported_versions format error");
+                return NGX_DECLINED;
+            }
+
             ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: supported_versions");
 
@@ -478,7 +509,6 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
 
             state = sw_ext;
             dst = NULL;
-            size = p[0];
             break;
         }
 
