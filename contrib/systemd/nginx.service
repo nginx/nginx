@@ -1,0 +1,18 @@
+# Example systemd unit for self-built nginx. Adjust /usr/sbin/nginx path as needed.
+[Unit]
+Description=nginx
+Documentation=https://nginx.org/en/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/nginx -t -q
+ExecStart=/usr/sbin/nginx -g 'daemon off;'
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -QUIT $MAINPID
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
