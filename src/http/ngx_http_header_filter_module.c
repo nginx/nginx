@@ -177,6 +177,22 @@ ngx_http_header_filter(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+    status = r->headers_out.status;
+
+    /* 1xx responses should not reach here */
+    if (status >= 100
+        && status < NGX_HTTP_OK
+        && (status != NGX_HTTP_SWITCHING_PROTOCOLS
+            || r->upstream == NULL
+            || !r->upstream->upgrade))
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "Unsupported 1xx status code %ui", status);
+        ngx_http_filter_finalize_request(r, NULL,
+                                         NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
     r->header_sent = 1;
 
     if (r != r->main) {
