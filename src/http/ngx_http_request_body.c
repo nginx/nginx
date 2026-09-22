@@ -319,8 +319,9 @@ ngx_http_read_client_request_body_handler(ngx_http_request_t *r)
 static void
 ngx_http_request_body_timeout(ngx_event_t *ev)
 {
-    ngx_connection_t    *c;
-    ngx_http_request_t  *r;
+    ngx_connection_t          *c;
+    ngx_http_request_t        *r;
+    ngx_http_core_loc_conf_t  *clcf;
 
     c = ev->data;
     r = c->data;
@@ -339,7 +340,22 @@ ngx_http_request_body_timeout(ngx_event_t *ev)
     }
 #endif
 
-    ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+    if (r->upstream && r->upstream->cleanup) {
+        ngx_http_upstream_finalize_request(r, r->upstream,
+                                           NGX_HTTP_REQUEST_TIME_OUT);
+
+    } else {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        /* termination cleanups may close the request before return */
+        if (clcf->post_action.data == NULL
+            || (r->post_action && r->uri_changes == 0))
+        {
+            r->main->count++;
+        }
+
+        ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+    }
     ngx_http_run_posted_requests(c);
 }
 
