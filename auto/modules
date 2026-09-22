@@ -703,6 +703,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_CONDITION = YES ]; then
+        ngx_module_name=ngx_http_condition_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_condition_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_CONDITION
+
+        . auto/module
+    fi
+
     if [ $HTTP_SPLIT_CLIENTS = YES ]; then
         ngx_module_name=ngx_http_split_clients_module
         ngx_module_incs=
@@ -1219,6 +1230,16 @@ if [ $STREAM != NO ]; then
         ngx_module_srcs=src/stream/ngx_stream_map_module.c
         ngx_module_libs=
         ngx_module_link=$STREAM_MAP
+
+        . auto/module
+    fi
+
+    if [ $STREAM_CONDITION = YES ]; then
+        ngx_module_name=ngx_stream_condition_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_condition_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_CONDITION
 
         . auto/module
     fi

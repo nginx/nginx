@@ -84,6 +84,7 @@ HTTP_STATUS=NO
 HTTP_GEO=YES
 HTTP_GEOIP=NO
 HTTP_MAP=YES
+HTTP_CONDITION=YES
 HTTP_SPLIT_CLIENTS=YES
 HTTP_REFERER=YES
 HTTP_REWRITE=YES
@@ -131,6 +132,7 @@ STREAM_ACCESS=YES
 STREAM_GEO=YES
 STREAM_GEOIP=NO
 STREAM_MAP=YES
+STREAM_CONDITION=YES
 STREAM_SPLIT_CLIENTS=YES
 STREAM_RETURN=YES
 STREAM_PASS=YES
@@ -281,6 +283,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --without-http_status_module)    HTTP_STATUS=NO             ;;
         --without-http_geo_module)       HTTP_GEO=NO                ;;
         --without-http_map_module)       HTTP_MAP=NO                ;;
+        --without-http_condition_module) HTTP_CONDITION=NO          ;;
         --without-http_split_clients_module) HTTP_SPLIT_CLIENTS=NO  ;;
         --without-http_referer_module)   HTTP_REFERER=NO            ;;
         --without-http_rewrite_module)   HTTP_REWRITE=NO            ;;
@@ -355,6 +358,8 @@ use the \"--with-mail_ssl_module\" option instead"
         --without-stream_access_module)  STREAM_ACCESS=NO           ;;
         --without-stream_geo_module)     STREAM_GEO=NO              ;;
         --without-stream_map_module)     STREAM_MAP=NO              ;;
+        --without-stream_condition_module)
+                                         STREAM_CONDITION=NO        ;;
         --without-stream_split_clients_module)
                                          STREAM_SPLIT_CLIENTS=NO    ;;
         --without-stream_return_module)  STREAM_RETURN=NO           ;;
