@@ -214,6 +214,7 @@ struct ngx_http_v2_stream_s {
     ngx_queue_t                      queue;
 
     ngx_array_t                     *cookies;
+    ngx_array_t                     *priorities;
 
     ngx_http_priority_state_t        priority;
 
@@ -228,6 +229,7 @@ struct ngx_http_v2_stream_s {
     unsigned                         rst_sent:1;
     unsigned                         no_flow_control:1;
     unsigned                         skip_data:1;
+    unsigned                         priority_update:1;
 };
 
 
