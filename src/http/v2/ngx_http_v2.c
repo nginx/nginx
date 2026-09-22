@@ -160,6 +160,9 @@ static ngx_int_t ngx_http_v2_construct_request_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_cookie(ngx_http_request_t *r,
     ngx_http_v2_header_t *header);
 static ngx_int_t ngx_http_v2_construct_cookie_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_v2_priority(ngx_http_request_t *r,
+    ngx_http_v2_header_t *header);
+static ngx_int_t ngx_http_v2_process_priority(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_construct_host_header(ngx_http_request_t *r);
 static void ngx_http_v2_run_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v2_process_request_body(ngx_http_request_t *r,
@@ -1354,6 +1357,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (node->priority_set) {
         stream->priority.client = node->priority;
         node->priority_set = 0;
+        stream->priority_update = 1;
 
         ngx_http_priority_state_update(&stream->priority);
 
@@ -1741,6 +1745,7 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_core_main_conf_t  *cmcf;
 
     static ngx_str_t cookie = ngx_string("cookie");
+    static ngx_str_t priority = ngx_string("priority");
 
     header = &h2c->state.header;
 
@@ -1836,6 +1841,15 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
                           "client sent invalid header: \"%V\"", &header->name);
 
             return ngx_http_v2_state_header_complete(h2c, pos, end);
+        }
+    }
+
+    if (header->name.len == priority.len
+        && ngx_memcmp(header->name.data, priority.data, priority.len) == 0)
+    {
+        if (ngx_http_v2_priority(r, header) != NGX_OK) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_INTERNAL_ERROR);
         }
     }
 
@@ -2201,6 +2215,7 @@ ngx_http_v2_state_priority_update(ngx_http_v2_connection_t *h2c, u_char *pos,
     } else if (node && node->stream) {
         stream = node->stream;
         stream->priority.client = priority;
+        stream->priority_update = 1;
         ngx_http_priority_state_update(&stream->priority);
     }
 
@@ -3905,6 +3920,111 @@ ngx_http_v2_construct_cookie_header(ngx_http_request_t *r)
 
 
 static ngx_int_t
+ngx_http_v2_priority(ngx_http_request_t *r, ngx_http_v2_header_t *header)
+{
+    ngx_str_t    *val;
+    ngx_array_t  *priorities;
+
+    priorities = r->stream->priorities;
+
+    if (priorities == NULL) {
+        priorities = ngx_array_create(r->pool, 1, sizeof(ngx_str_t));
+        if (priorities == NULL) {
+            return NGX_ERROR;
+        }
+
+        r->stream->priorities = priorities;
+    }
+
+    val = ngx_array_push(priorities);
+    if (val == NULL) {
+        return NGX_ERROR;
+    }
+
+    val->len = header->value.len;
+    val->data = header->value.data;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v2_process_priority(ngx_http_request_t *r)
+{
+    u_char               *p;
+    size_t                len;
+    ngx_str_t             value, *vals;
+    ngx_uint_t            i;
+    ngx_array_t          *priorities;
+    ngx_http_priority_t   priority;
+
+    priorities = r->stream->priorities;
+
+    if (priorities == NULL) {
+        return NGX_OK;
+    }
+
+    /*
+     * RFC 9218, Section 7: a PRIORITY_UPDATE frame overrides the Priority
+     * header field, so ignore the header once a frame has been applied.
+     */
+
+    if (r->stream->priority_update) {
+        return NGX_OK;
+    }
+
+    vals = priorities->elts;
+
+    if (priorities->nelts == 1) {
+        value = vals[0];
+
+    } else {
+
+        /* combine the field lines into a single value, "v1, v2, ..." */
+
+        len = 0;
+
+        for (i = 0; i < priorities->nelts; i++) {
+            len += vals[i].len + 2;
+        }
+
+        len -= 2;
+
+        p = ngx_pnalloc(r->pool, len);
+        if (p == NULL) {
+            ngx_http_v2_close_stream(r->stream,
+                                     NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
+
+        value.data = p;
+        value.len = len;
+
+        for (i = 0; /* void */ ; i++) {
+            p = ngx_cpymem(p, vals[i].data, vals[i].len);
+
+            if (i == priorities->nelts - 1) {
+                break;
+            }
+
+            *p++ = ','; *p++ = ' ';
+        }
+    }
+
+    if (ngx_http_priority_parse(&value, &priority) != NGX_OK) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http2 ignoring malformed priority header");
+        return NGX_OK;
+    }
+
+    r->stream->priority.client = priority;
+    ngx_http_priority_state_update(&r->stream->priority);
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_v2_construct_host_header(ngx_http_request_t *r)
 {
     ngx_table_elt_t            *h;
@@ -3977,6 +4097,10 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     }
 
     if (ngx_http_v2_construct_cookie_header(r) != NGX_OK) {
+        goto failed;
+    }
+
+    if (ngx_http_v2_process_priority(r) != NGX_OK) {
         goto failed;
     }
 
