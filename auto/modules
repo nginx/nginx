@@ -107,6 +107,12 @@ if [ $HTTP = YES ]; then
     fi
 
 
+    if [ $HTTP_V2 = YES ]; then
+        HTTP_DEPS="$HTTP_DEPS $HTTP_PRIORITY_DEPS"
+        HTTP_SRCS="$HTTP_SRCS $HTTP_PRIORITY_SRCS"
+    fi
+
+
     # the module order is important
     #     ngx_http_static_module
     #     ngx_http_gzip_static_module
