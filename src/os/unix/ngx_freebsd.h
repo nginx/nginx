@@ -17,7 +17,6 @@ extern int         ngx_freebsd_kern_osreldate;
 extern int         ngx_freebsd_hw_ncpu;
 extern u_long      ngx_freebsd_net_inet_tcp_sendspace;
 
-extern ngx_uint_t  ngx_freebsd_sendfile_nbytes_bug;
 extern ngx_uint_t  ngx_freebsd_use_tcp_nopush;
 extern ngx_uint_t  ngx_debug_malloc;
 
