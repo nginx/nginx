@@ -27,16 +27,17 @@
 #define NGX_HTTP_V2_FRAME_HEADER_SIZE    9
 
 /* frame types */
-#define NGX_HTTP_V2_DATA_FRAME           0x0
-#define NGX_HTTP_V2_HEADERS_FRAME        0x1
-#define NGX_HTTP_V2_PRIORITY_FRAME       0x2
-#define NGX_HTTP_V2_RST_STREAM_FRAME     0x3
-#define NGX_HTTP_V2_SETTINGS_FRAME       0x4
-#define NGX_HTTP_V2_PUSH_PROMISE_FRAME   0x5
-#define NGX_HTTP_V2_PING_FRAME           0x6
-#define NGX_HTTP_V2_GOAWAY_FRAME         0x7
-#define NGX_HTTP_V2_WINDOW_UPDATE_FRAME  0x8
-#define NGX_HTTP_V2_CONTINUATION_FRAME   0x9
+#define NGX_HTTP_V2_DATA_FRAME             0x00
+#define NGX_HTTP_V2_HEADERS_FRAME          0x01
+#define NGX_HTTP_V2_PRIORITY_FRAME         0x02
+#define NGX_HTTP_V2_RST_STREAM_FRAME       0x03
+#define NGX_HTTP_V2_SETTINGS_FRAME         0x04
+#define NGX_HTTP_V2_PUSH_PROMISE_FRAME     0x05
+#define NGX_HTTP_V2_PING_FRAME             0x06
+#define NGX_HTTP_V2_GOAWAY_FRAME           0x07
+#define NGX_HTTP_V2_WINDOW_UPDATE_FRAME    0x08
+#define NGX_HTTP_V2_CONTINUATION_FRAME     0x09
+#define NGX_HTTP_V2_PRIORITY_UPDATE_FRAME  0x10
 
 /* frame flags */
 #define NGX_HTTP_V2_NO_FLAG              0x00
@@ -183,6 +184,8 @@ struct ngx_http_v2_node_s {
     ngx_uint_t                       weight;
     double                           rel_weight;
     ngx_http_v2_stream_t            *stream;
+    ngx_http_priority_t              priority;
+    ngx_uint_t                       priority_set; /* unsigned priority_set:1 */
 };
 
 
@@ -211,6 +214,8 @@ struct ngx_http_v2_stream_s {
     ngx_queue_t                      queue;
 
     ngx_array_t                     *cookies;
+
+    ngx_http_priority_state_t        priority;
 
     ngx_pool_t                      *pool;
 
