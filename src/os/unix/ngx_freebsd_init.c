@@ -116,7 +116,8 @@ ngx_os_specific_init(ngx_log_t *log)
             return NGX_ERROR;
         }
 
-        ngx_freebsd_kern_ostype[size - 1] = '\0';
+        ngx_freebsd_kern_ostype[sizeof(ngx_freebsd_kern_ostype) - 1]
+            = '\0';
     }
 
     size = sizeof(ngx_freebsd_kern_osrelease);
@@ -129,7 +130,8 @@ ngx_os_specific_init(ngx_log_t *log)
             return NGX_ERROR;
         }
 
-        ngx_freebsd_kern_osrelease[size - 1] = '\0';
+        ngx_freebsd_kern_osrelease[sizeof(ngx_freebsd_kern_osrelease) - 1]
+            = '\0';
     }
 
 
