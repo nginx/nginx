@@ -838,8 +838,6 @@ ngx_proxy_protocol_v2_eval_ssl(ngx_connection_t *c, ngx_array_t *tlvs,
 static ngx_int_t
 ngx_proxy_protocol_v2_authority(ngx_connection_t *c, ngx_str_t *out)
 {
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
     const char  *sni;
 
     sni = SSL_get_servername(c->ssl->connection, TLSEXT_NAMETYPE_host_name);
@@ -849,11 +847,8 @@ ngx_proxy_protocol_v2_authority(ngx_connection_t *c, ngx_str_t *out)
 
     out->data = (u_char *) sni;
     out->len = ngx_strlen(sni);
-    return NGX_OK;
 
-#else
-    return NGX_DECLINED;
-#endif
+    return NGX_OK;
 }
 
 

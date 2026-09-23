@@ -880,8 +880,6 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
 }
 
 
-#ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-
 int
 ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
@@ -994,11 +992,8 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
         SSL_set_verify_depth(ssl_conn, SSL_CTX_get_verify_depth(sscf->ssl.ctx));
 
-#if OPENSSL_VERSION_NUMBER >= 0x009080dfL
-        /* only in 0.9.8m+ */
         SSL_clear_options(ssl_conn, SSL_get_options(ssl_conn) &
                                     ~SSL_CTX_get_options(sscf->ssl.ctx));
-#endif
 
         SSL_set_options(ssl_conn, SSL_CTX_get_options(sscf->ssl.ctx));
 
@@ -1033,8 +1028,6 @@ error:
     *ad = SSL_AD_INTERNAL_ERROR;
     return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
-
-#endif
 
 
 #ifdef SSL_R_CERT_CB_ERROR
@@ -2485,7 +2478,7 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
 
     hc = r->http_connection;
 
-#if (NGX_HTTP_SSL && defined SSL_CTRL_SET_TLSEXT_HOSTNAME)
+#if (NGX_HTTP_SSL)
 
     if (hc->ssl_servername) {
         if (hc->ssl_servername->len == host->len
@@ -2516,7 +2509,7 @@ ngx_http_set_virtual_server(ngx_http_request_t *r, ngx_str_t *host)
         return NGX_ERROR;
     }
 
-#if (NGX_HTTP_SSL && defined SSL_CTRL_SET_TLSEXT_HOSTNAME)
+#if (NGX_HTTP_SSL)
 
     if (hc->ssl_servername) {
         ngx_http_ssl_srv_conf_t  *sscf;
@@ -2583,7 +2576,7 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
 
         sn = virtual_names->regex;
 
-#if (NGX_HTTP_SSL && defined SSL_CTRL_SET_TLSEXT_HOSTNAME)
+#if (NGX_HTTP_SSL)
 
         if (r == NULL) {
             ngx_http_connection_t  *hc;
@@ -2615,7 +2608,7 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
             return NGX_DECLINED;
         }
 
-#endif /* NGX_HTTP_SSL && defined SSL_CTRL_SET_TLSEXT_HOSTNAME */
+#endif
 
         for (i = 0; i < virtual_names->nregex; i++) {
 
