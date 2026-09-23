@@ -42,6 +42,7 @@ Enterprise distributions, commercial support and training are available from [F5
   - [Location of binary and installation](#location-of-binary-and-installation)
   - [Running and testing the installed binary](#running-and-testing-the-installed-binary)
 - [Asking questions and reporting issues](#asking-questions-and-reporting-issues)
+- [Join the community call](#join-the-community-call)
 - [Contributing code](#contributing-code)
 - [Additional help and resources](#additional-help-and-resources)
 - [Changelog](#changelog)
@@ -214,6 +215,13 @@ The output of which should start with:
 
 # Asking questions and reporting issues
 See our [Support](SUPPORT.md) guidelines for information on how discuss the codebase, ask troubleshooting questions, and report issues.
+
+# Join the community call
+We host a quarterly NGINX Community Call. This is an open, interactive meeting for users, contributors, and the NGINX team to collaborate in the open. Expect roadmap discussions, demos, a walkthrough of noteworthy PRs and issues, and a "Bring Your Config" Q&A.
+
+All experience levels are welcome, and beginners are encouraged to attend. If you have a use case, bug, success story, or just want to get more involved with the project, come by and say hi!
+
+The next call will take place on **Wednesday, July 22, 2026** at **9:00 AM PT / 12:00 PM ET / 4:00 PM GMT**. You can join through [this Zoom link](https://f5.zoom.us/j/91031737379?pwd=l0wQEELYVVtW0baiBfsCWWw3rAspTm.1). For more details, check the [NGINX Community Call](https://community.nginx.org/t/nginx-community-call/9520) topic on the community forum.
 
 # Contributing code
 Please see the [Contributing](CONTRIBUTING.md) guide for information on how to contribute code.
