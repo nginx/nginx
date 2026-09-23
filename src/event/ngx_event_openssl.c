@@ -174,12 +174,14 @@ ngx_ssl_init(ngx_log_t *log)
     if (OPENSSL_INIT_set_config_appname(init, "nginx") == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0,
                       "OPENSSL_INIT_set_config_appname() failed");
+        OPENSSL_INIT_free(init);
         return NGX_ERROR;
     }
 #endif
 
     if (OPENSSL_init_ssl(opts, init) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
+        OPENSSL_INIT_free(init);
         return NGX_ERROR;
     }
 
@@ -2133,6 +2135,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 
     if (SSL_set_fd(sc->connection, c->fd) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_fd() failed");
+        SSL_free(sc->connection);
         return NGX_ERROR;
     }
 
@@ -2149,6 +2152,7 @@ ngx_ssl_create_connection(ngx_ssl_t *ssl, ngx_connection_t *c, ngx_uint_t flags)
 
     if (SSL_set_ex_data(sc->connection, ngx_ssl_connection_index, c) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, c->log, 0, "SSL_set_ex_data() failed");
+        SSL_free(sc->connection);
         return NGX_ERROR;
     }
 
