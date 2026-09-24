@@ -584,7 +584,8 @@ ngx_http_v3_process_request(ngx_event_t *rev)
 
         h3c->payload_bytes += ngx_http_v3_encode_field_l(NULL,
                                                    &st->field_rep.field.name,
-                                                   &st->field_rep.field.value);
+                                                   &st->field_rep.field.value,
+                                                   NULL);
 
         if (ngx_http_v3_process_header(r, &st->field_rep.field.name,
                                        &st->field_rep.field.value)
