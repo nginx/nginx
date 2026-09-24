@@ -3953,6 +3953,7 @@ ngx_http_v2_run_request(ngx_http_request_t *r)
     h2c = r->stream->connection;
 
     h2c->payload_bytes += r->request_length;
+    r->request_header_length = r->request_length;
 
     ngx_http_process_request(r);
 
