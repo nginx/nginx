@@ -50,8 +50,6 @@
 #define NGX_HTTP_V2_MAX_WINDOW           ((1U << 31) - 1)
 #define NGX_HTTP_V2_DEFAULT_WINDOW       65535
 
-#define NGX_HTTP_V2_DEFAULT_WEIGHT       16
-
 
 typedef struct ngx_http_v2_connection_s   ngx_http_v2_connection_t;
 typedef struct ngx_http_v2_node_s         ngx_http_v2_node_t;
@@ -135,7 +133,6 @@ struct ngx_http_v2_connection_s {
     ngx_uint_t                       idle;
     ngx_uint_t                       new_streams;
     ngx_uint_t                       refused_streams;
-    ngx_uint_t                       priority_limit;
 
     size_t                           send_window;
     size_t                           recv_window;
@@ -158,7 +155,6 @@ struct ngx_http_v2_connection_s {
 
     ngx_http_v2_out_frame_t         *last_out;
 
-    ngx_queue_t                      dependencies;
     ngx_queue_t                      closed;
 
     ngx_uint_t                       closed_nodes;
@@ -176,13 +172,7 @@ struct ngx_http_v2_connection_s {
 struct ngx_http_v2_node_s {
     ngx_uint_t                       id;
     ngx_http_v2_node_t              *index;
-    ngx_http_v2_node_t              *parent;
-    ngx_queue_t                      queue;
-    ngx_queue_t                      children;
     ngx_queue_t                      reuse;
-    ngx_uint_t                       rank;
-    ngx_uint_t                       weight;
-    double                           rel_weight;
     ngx_http_v2_stream_t            *stream;
     ngx_http_priority_t              priority;
     ngx_uint_t                       priority_set; /* unsigned priority_set:1 */
@@ -248,6 +238,29 @@ struct ngx_http_v2_out_frame_s {
 };
 
 
+/* a non-incremental response completes sooner, equal priority is FIFO */
+
+static ngx_inline ngx_uint_t
+ngx_http_v2_stream_precedes(ngx_http_v2_stream_t *s,
+    ngx_http_v2_stream_t *stream)
+{
+    ngx_http_priority_t  *a, *b;
+
+    a = &s->priority.effective;
+    b = &stream->priority.effective;
+
+    if (a->urgency != b->urgency) {
+        return a->urgency < b->urgency;
+    }
+
+    if (a->incremental != b->incremental) {
+        return !a->incremental;
+    }
+
+    return s->node->id <= stream->node->id;
+}
+
+
 static ngx_inline void
 ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
     ngx_http_v2_out_frame_t *frame)
@@ -260,11 +273,7 @@ ngx_http_v2_queue_frame(ngx_http_v2_connection_t *h2c,
             break;
         }
 
-        if ((*out)->stream->node->rank < frame->stream->node->rank
-            || ((*out)->stream->node->rank == frame->stream->node->rank
-                && (*out)->stream->node->rel_weight
-                   >= frame->stream->node->rel_weight))
-        {
+        if (ngx_http_v2_stream_precedes((*out)->stream, frame->stream)) {
             break;
         }
     }
