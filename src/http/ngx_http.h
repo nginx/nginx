@@ -65,6 +65,18 @@ struct ngx_http_chunked_s {
     ngx_uint_t           state;
     off_t                size;
     off_t                length;
+
+    /* declared size of the chunk currently draining */
+    off_t                chunk_total;
+
+    /* cumulative real chunk-data bytes drained for the whole request */
+    off_t                data_len;
+
+    /* cumulative chunk-extension bytes seen for the whole request */
+    off_t                ext_len;
+
+    /* length of the trailer header line currently being parsed */
+    off_t                trailer_len;
 };
 
 
