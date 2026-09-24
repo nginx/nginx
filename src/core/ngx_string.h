@@ -192,8 +192,6 @@ ngx_int_t ngx_decode_base64(ngx_str_t *dst, ngx_str_t *src);
 ngx_int_t ngx_decode_base64url(ngx_str_t *dst, ngx_str_t *src);
 
 uint32_t ngx_utf8_decode(u_char **p, size_t n);
-size_t ngx_utf8_length(u_char *p, size_t n);
-u_char *ngx_utf8_cpystrn(u_char *dst, u_char *src, size_t n, size_t len);
 
 
 #define NGX_ESCAPE_URI            0
