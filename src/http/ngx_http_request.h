@@ -47,6 +47,10 @@
 #define NGX_HTTP_CONNECTION_CLOSE          1
 #define NGX_HTTP_CONNECTION_KEEP_ALIVE     2
 
+#define NGX_HTTP_STREAM_CONNECT_NONE       0
+#define NGX_HTTP_STREAM_CONNECT_TUNNEL     1
+#define NGX_HTTP_STREAM_CONNECT_WEBSOCKET  2
+
 
 #define NGX_NONE                           1
 
@@ -577,6 +581,8 @@ struct ngx_http_request_s {
 
     unsigned                          background:1;
     unsigned                          health_check:1;
+    unsigned                          stream_connect:2;
+    unsigned                          stream_connect_upgraded:1;
 
     /* used to parse HTTP headers */
 
@@ -620,7 +626,9 @@ typedef struct {
 
 #define ngx_http_ephemeral(r)   (void *) (&r->uri_start)
 
-#define ngx_http_proxy_auth(r)  ((r)->method == NGX_HTTP_CONNECT)
+#define ngx_http_proxy_auth(r)                                                \
+    ((r)->method == NGX_HTTP_CONNECT                                          \
+     && (r)->stream_connect <= NGX_HTTP_STREAM_CONNECT_TUNNEL)
 
 
 extern ngx_http_header_t       ngx_http_headers_in[];
