@@ -272,3 +272,6 @@ HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 HTTP_HUFF_SRCS="src/http/ngx_http_huff_decode.c
                 src/http/ngx_http_huff_encode.c"
+
+HTTP_PRIORITY_DEPS=src/http/ngx_http_priority.h
+HTTP_PRIORITY_SRCS=src/http/ngx_http_priority.c
