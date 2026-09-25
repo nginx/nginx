@@ -1356,7 +1356,17 @@ ngx_quic_frame_sendto(ngx_connection_t *c, ngx_quic_frame_t *frame,
 
     ctx->pnum++;
 
-    sent = ngx_quic_send(c, res.data, res.len, path->sockaddr, path->socklen);
+#if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
+    if (qc->conf->gso_enabled) {
+        sent = ngx_quic_send_segments(c, res.data, res.len, path->sockaddr,
+                                      path->socklen, res.len);
+    } else
+#endif
+    {
+        sent = ngx_quic_send(c, res.data, res.len, path->sockaddr,
+                             path->socklen);
+    }
+
     if (sent < 0) {
         ngx_quic_free_frame(c, frame);
         return sent;
