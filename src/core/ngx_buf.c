@@ -241,7 +241,7 @@ ngx_chain_coalesce_file(ngx_chain_t **in, off_t limit)
         if (size > limit - total) {
             size = limit - total;
 
-            aligned = (cl->buf->file_pos + size + ngx_pagesize - 1)
+            aligned = (cl->buf->file_pos + size + (off_t)ngx_pagesize - 1)
                        & ~((off_t) ngx_pagesize - 1);
 
             if (aligned <= cl->buf->file_last) {
