@@ -2162,7 +2162,7 @@ ngx_http_v2_state_settings(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
-    if (h2c->state.flags == NGX_HTTP_V2_ACK_FLAG) {
+    if (h2c->state.flags & NGX_HTTP_V2_ACK_FLAG) {
 
         if (h2c->state.length != 0) {
             ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
