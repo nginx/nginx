@@ -266,6 +266,7 @@ struct ngx_quic_connection_s {
     ngx_queue_t                       free_frames;
     ngx_buf_t                        *free_bufs;
     ngx_buf_t                        *free_shadow_bufs;
+    ngx_quic_gaps_t                  *free_gaps;
 
     ngx_uint_t                        nframes;
     ngx_uint_t                        max_frames;
