@@ -218,6 +218,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_http_log_ctx_t        *ctx;
     ngx_http_connection_t     *hc;
     ngx_http_core_srv_conf_t  *cscf;
+    ngx_http_core_loc_conf_t  *clcf;
 #if (NGX_HAVE_INET6)
     struct sockaddr_in6       *sin6;
     ngx_http_in6_addr_t       *addr6;
@@ -307,6 +308,10 @@ ngx_http_init_connection(ngx_connection_t *c)
 
     /* the default server configuration for the address:port */
     hc->conf_ctx = hc->addr_conf->default_server->ctx;
+
+    clcf = ngx_http_get_module_loc_conf(hc->conf_ctx, ngx_http_core_module);
+
+    ngx_set_connection_log(c, clcf->error_log);
 
     ctx = ngx_palloc(c->pool, sizeof(ngx_http_log_ctx_t));
     if (ctx == NULL) {
