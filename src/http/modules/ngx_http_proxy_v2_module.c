@@ -1684,6 +1684,19 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_UPSTREAM_EARLY_HINTS;
                 }
 
+                /*
+                 * Flush pending control frames before the upstream is
+                 * finalized for responses without a body.
+                 */
+
+                if (ctx->end_stream && ctx->out) {
+                    if (ngx_http_proxy_v2_body_output_filter(r, NULL)
+                        == NGX_ERROR)
+                    {
+                        return NGX_ERROR;
+                    }
+                }
+
                 if (ctx->end_stream
                     && ctx->in == NULL
                     && ctx->out == NULL
