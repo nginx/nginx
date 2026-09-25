@@ -1623,6 +1623,12 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         return 0;
     }
 
+#if !(NGX_WIN32)
+    if (err == NGX_EIO && c->log_error == NGX_ERROR_IGNORE_EIO) {
+        return 0;
+    }
+#endif
+
     if (err == 0
         || err == NGX_ECONNRESET
 #if (NGX_WIN32)
@@ -1640,6 +1646,7 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
     {
         switch (c->log_error) {
 
+        case NGX_ERROR_IGNORE_EIO:
         case NGX_ERROR_IGNORE_EMSGSIZE:
         case NGX_ERROR_IGNORE_EINVAL:
         case NGX_ERROR_IGNORE_ECONNRESET:

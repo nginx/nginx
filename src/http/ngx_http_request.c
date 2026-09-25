@@ -3756,6 +3756,13 @@ ngx_http_set_lingering_close(ngx_connection_t *c)
             c->ssl->handler = ngx_http_set_lingering_close;
             return;
         }
+
+        /*
+         * with kernel TLS, recv() fails with EIO
+         * on the "close notify" alert from the client
+         */
+
+        c->log_error = NGX_ERROR_IGNORE_EIO;
     }
 #endif
 
