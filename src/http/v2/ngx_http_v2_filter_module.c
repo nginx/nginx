@@ -1227,6 +1227,7 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
             }
 
             if (trailers != NGX_HTTP_V2_NO_TRAILERS) {
+                trailers->blocked = 0;
                 cl->buf->last_buf = 0;
             }
         }
@@ -1732,7 +1733,9 @@ ngx_http_v2_filter_cleanup(void *data)
         if (frame->stream == stream && !frame->blocked) {
             *fn = frame->next;
 
-            window += frame->length;
+            if (frame->handler == ngx_http_v2_data_frame_handler) {
+                window += frame->length;
+            }
 
             if (--stream->queued == 0) {
                 break;
