@@ -131,6 +131,7 @@ static void ngx_http_upstream_sticky_notify_peer(
 static ngx_int_t ngx_http_upstream_sticky_cookie_insert(
     ngx_peer_connection_t *pc, ngx_http_upstream_sticky_peer_data_t *stp);
 static ngx_int_t ngx_http_upstream_sticky_samesite(ngx_str_t *value);
+static ngx_int_t ngx_http_upstream_sticky_valid_domain(ngx_str_t *value);
 
 
 static ngx_http_upstream_sticky_sess_node_t *
@@ -600,6 +601,15 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         {
             return NGX_ERROR;
         }
+
+        if (stcf->cookie_domain->lengths && domain.len
+            && ngx_http_upstream_sticky_valid_domain(&domain) != NGX_OK)
+        {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                          "sticky: invalid cookie domain value \"%V\", "
+                          "omitting \"Domain\" attribute", &domain);
+            ngx_str_set(&domain, "");
+        }
     }
 
     if (domain.len) {
@@ -731,6 +741,32 @@ ngx_http_upstream_sticky_samesite(ngx_str_t *value)
     }
 
     return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_sticky_valid_domain(ngx_str_t *value)
+{
+    size_t  i;
+    u_char  c;
+
+    /* RFC 6265 4.1.1 domain: LDH subset (letters, digits, '-', '.'). */
+
+    for (i = 0; i < value->len; i++) {
+        c = value->data[i];
+
+        if ((c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c >= '0' && c <= '9')
+            || c == '-' || c == '.')
+        {
+            continue;
+        }
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
