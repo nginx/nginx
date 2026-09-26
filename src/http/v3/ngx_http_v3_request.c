@@ -1602,7 +1602,7 @@ ngx_http_v3_request_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         while (cl->buf->pos < cl->buf->last) {
 
-            if (st->length == 0) {
+            if (st->length == 0 || st->type != NGX_HTTP_V3_FRAME_DATA) {
                 p = cl->buf->pos;
 
                 rc = ngx_http_v3_parse_data(r->connection, st, cl->buf);
