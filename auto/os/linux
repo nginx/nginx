@@ -88,6 +88,24 @@ if [ $ngx_found = yes ]; then
     . auto/feature
 
 
+    # EPIOCSPARAMS (epoll NAPI busy poll parameters) appeared in Linux 6.9
+
+    ngx_feature="EPIOCSPARAMS"
+    ngx_feature_name="NGX_HAVE_EPOLL_BUSY_POLL"
+    ngx_feature_run=no
+    ngx_feature_incs="#include <sys/epoll.h>
+                      #include <sys/ioctl.h>"
+    ngx_feature_path=
+    ngx_feature_libs=
+    ngx_feature_test="int efd = 0;
+                      struct epoll_params ep;
+                      ep.busy_poll_usecs = 0;
+                      ep.busy_poll_budget = 0;
+                      ep.prefer_busy_poll = 0;
+                      ioctl(efd, EPIOCSPARAMS, &ep)"
+    . auto/feature
+
+
     # eventfd()
 
     ngx_feature="eventfd()"
