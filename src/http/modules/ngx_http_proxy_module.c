@@ -169,6 +169,7 @@ static ngx_conf_bitmask_t  ngx_http_proxy_next_upstream_masks[] = {
     { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
     { ngx_string("http_429"), NGX_HTTP_UPSTREAM_FT_HTTP_429 },
     { ngx_string("updating"), NGX_HTTP_UPSTREAM_FT_UPDATING },
+    { ngx_string("no_live"), NGX_HTTP_UPSTREAM_FT_NOLIVE },
     { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF },
     { ngx_null_string, 0 }
 };
@@ -587,6 +588,13 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       ngx_conf_set_msec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.next_upstream_timeout),
+      NULL },
+
+    { ngx_string("proxy_next_upstream_delay"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, upstream.next_upstream_delay),
       NULL },
 
     { ngx_string("proxy_pass_header"),
@@ -3589,6 +3597,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     conf->upstream.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
+    conf->upstream.next_upstream_delay = NGX_CONF_UNSET_MSEC;
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
     conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
@@ -3736,6 +3745,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_msec_value(conf->upstream.next_upstream_timeout,
                               prev->upstream.next_upstream_timeout, 0);
+
+    ngx_conf_merge_msec_value(conf->upstream.next_upstream_delay,
+                              prev->upstream.next_upstream_delay, 0);
 
     ngx_conf_merge_size_value(conf->upstream.send_lowat,
                               prev->upstream.send_lowat, 0);
