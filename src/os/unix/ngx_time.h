@@ -17,6 +17,7 @@ typedef ngx_rbtree_key_t      ngx_msec_t;
 typedef ngx_rbtree_key_int_t  ngx_msec_int_t;
 
 typedef struct tm             ngx_tm_t;
+typedef struct timeval        ngx_timeval_t;
 
 #define ngx_tm_sec            tm_sec
 #define ngx_tm_min            tm_min
@@ -58,7 +59,8 @@ void ngx_localtime(time_t s, ngx_tm_t *tm);
 void ngx_libc_localtime(time_t s, struct tm *tm);
 void ngx_libc_gmtime(time_t s, struct tm *tm);
 
-#define ngx_gettimeofday(tp)  (void) gettimeofday(tp, NULL);
+#define ngx_gettimeofday(tp)    (void) gettimeofday(tp, NULL);
+#define ngx_gettimeofday64(tp)  (void) gettimeofday(tp, NULL);
 #define ngx_msleep(ms)        (void) usleep(ms * 1000)
 #define ngx_sleep(s)          (void) sleep(s)
 
