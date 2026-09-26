@@ -514,17 +514,28 @@ ngx_kqueue_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_event_t      *ev;
     ngx_queue_t      *queue;
     struct timespec   ts, *tp;
+    ngx_usec_t        precise;
 
     n = (int) nchanges;
     nchanges = 0;
 
-    if (timer == NGX_TIMER_INFINITE) {
+    precise = ngx_event_find_precise_timer();
+
+    if (timer == NGX_TIMER_INFINITE && precise == NGX_PRECISE_TIMER_INFINITE) {
         tp = NULL;
 
     } else {
 
-        ts.tv_sec = timer / 1000;
-        ts.tv_nsec = (timer % 1000) * 1000000;
+        if (precise == NGX_PRECISE_TIMER_INFINITE
+            || (timer != NGX_TIMER_INFINITE && timer <= precise / 1000))
+        {
+            ts.tv_sec = timer / 1000;
+            ts.tv_nsec = (timer % 1000) * 1000000;
+
+        } else {
+            ts.tv_sec = precise / 1000000;
+            ts.tv_nsec = (precise % 1000000) * 1000;
+        }
 
         /*
          * 64-bit Darwin kernel has the bug: kernel level ts.tv_nsec is
