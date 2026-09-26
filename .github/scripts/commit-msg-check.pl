@@ -13,6 +13,27 @@ use warnings;
 
 my $E = "❌ ";
 
+my @TRAILERS = qw(
+	Acked-by
+	Assisted-by
+	Cc
+	Closes
+	Co-authored-by
+	Debugged-by
+	Fixes
+	Link
+	Message-ID
+	Origin
+	Related
+	Reported-by
+	Requested-by
+	Reviewed-by
+	Signed-off-by
+	Suggested-by
+	Tested-by
+);
+my $trailer_re = qr/^(?:@{[ join('|', @TRAILERS) ]}): \S/m;
+
 # 72 characters is a natural choice. It provides 4 characters of
 # left/right margin on a standard 80 character wide terminal in
 # git-log(1) etc standard output.
@@ -56,19 +77,49 @@ sub chk_body_blank_line {
 	}
 }
 
-sub chk_body_trailers {
-	my $prev_line = "";
+sub _last_block_ok {
+	my @lines = @_;
+	my $in_annot = 0;
 
-	foreach (split(/\n/, $body)) {
-		if (/^[a-zA-Z-]*: /) {
-			if ($prev_line ne "") {
-				print $E . "Commit tags/trailers should be separated from the commit message body by a blank line\n";
-			}
-
-			last;
+	foreach my $l (@lines) {
+		if ($in_annot) {
+			$in_annot = 0 if $l =~ /\]\s*$/;
+			next;
 		}
+		next if $l =~ /$trailer_re/;
+		if ($l =~ /^\[/) {
+			$in_annot = ($l !~ /\]\s*$/);
+			next;
+		}
+		return 0;
+	}
 
-		$prev_line = $_;
+	return !$in_annot;
+}
+
+sub chk_body_trailers {
+	my @paragraphs = split(/\n[ \t]*\n/, $body);
+
+	return unless @paragraphs;
+	return unless $body =~ /$trailer_re/m;
+
+	my $last = pop @paragraphs;
+	my @last_lines = grep { /\S/ } split(/\n/, $last);
+	my $last_ok = @last_lines && _last_block_ok(@last_lines);
+
+	# A trailer-shape line in any earlier paragraph is either a
+	# stranded trailer or a blank line inside the trailer block.
+	foreach my $p (@paragraphs) {
+		foreach my $l (split(/\n/, $p)) {
+			if ($l =~ /$trailer_re/) {
+				print $E . "Trailers must be a single contiguous block at the end of the message\n";
+				return;
+			}
+		}
+	}
+
+	if (!$last_ok) {
+		print $E . "Trailer block should contain only trailers or [bracketed annotations]\n";
 	}
 }
 
@@ -80,7 +131,7 @@ sub chk_body_line_length {
 		}
 
 		# Stop after hitting commit tags/trailers
-		if (/^[a-zA-Z-]*: /) {
+		if (/$trailer_re/) {
 			last;
 		}
 
