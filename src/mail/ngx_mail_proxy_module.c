@@ -13,13 +13,14 @@
 
 
 typedef struct {
-    ngx_flag_t  enable;
-    ngx_flag_t  pass_error_message;
-    ngx_flag_t  xclient;
-    ngx_flag_t  smtp_auth;
-    ngx_uint_t  proxy_protocol;
-    size_t      buffer_size;
-    ngx_msec_t  timeout;
+    ngx_flag_t    enable;
+    ngx_flag_t    pass_error_message;
+    ngx_flag_t    xclient;
+    ngx_flag_t    smtp_auth;
+    ngx_uint_t    proxy_protocol;
+    ngx_array_t  *proxy_protocol_v2_tlvs;
+    size_t        buffer_size;
+    ngx_msec_t    timeout;
 } ngx_mail_proxy_conf_t;
 
 
@@ -38,6 +39,8 @@ static void ngx_mail_proxy_close_session(ngx_mail_session_t *s);
 static void *ngx_mail_proxy_create_conf(ngx_conf_t *cf);
 static char *ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static char *ngx_mail_proxy_protocol_v2_tlv(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
 
 
 static ngx_conf_enum_t  ngx_mail_proxy_protocol_versions[] = {
@@ -98,6 +101,13 @@ static ngx_command_t  ngx_mail_proxy_commands[] = {
       NGX_MAIL_SRV_CONF_OFFSET,
       offsetof(ngx_mail_proxy_conf_t, proxy_protocol),
       &ngx_mail_proxy_protocol_versions },
+
+    { ngx_string("proxy_protocol_v2_tlv"),
+      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE2,
+      ngx_mail_proxy_protocol_v2_tlv,
+      NGX_MAIL_SRV_CONF_OFFSET,
+      0,
+      NULL },
 
       ngx_null_command
 };
@@ -914,11 +924,12 @@ ngx_mail_proxy_write_handler(ngx_event_t *wev)
 static ngx_int_t
 ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
 {
-    u_char            *p;
-    size_t             size;
-    ssize_t            n;
-    ngx_connection_t  *c;
-    static u_char      buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
+    u_char                 *p;
+    size_t                  size;
+    ssize_t                 n;
+    ngx_connection_t       *c;
+    ngx_mail_proxy_conf_t  *pcf;
+    static u_char           buf[NGX_PROXY_PROTOCOL_MAX_HEADER];
 
     s->connection->log->action = "sending PROXY protocol header to upstream";
 
@@ -926,8 +937,10 @@ ngx_mail_proxy_send_proxy_protocol(ngx_mail_session_t *s)
                    "mail proxy send PROXY protocol header");
 
     if (s->proxy->proxy_protocol == 2) {
-        p = ngx_proxy_protocol_v2_write(s->connection, buf,
-                                        buf + sizeof(buf), NULL);
+        pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
+
+        p = ngx_proxy_protocol_v2_write(s->connection, buf, buf + sizeof(buf),
+                                        pcf->proxy_protocol_v2_tlvs);
 
     } else {
         p = ngx_proxy_protocol_write(s->connection, buf,
@@ -1402,6 +1415,7 @@ ngx_mail_proxy_create_conf(ngx_conf_t *cf)
     pcf->xclient = NGX_CONF_UNSET;
     pcf->smtp_auth = NGX_CONF_UNSET;
     pcf->proxy_protocol = NGX_CONF_UNSET_UINT;
+    pcf->proxy_protocol_v2_tlvs = NGX_CONF_UNSET_PTR;
     pcf->buffer_size = NGX_CONF_UNSET_SIZE;
     pcf->timeout = NGX_CONF_UNSET_MSEC;
 
@@ -1420,9 +1434,61 @@ ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->xclient, prev->xclient, 1);
     ngx_conf_merge_value(conf->smtp_auth, prev->smtp_auth, 0);
     ngx_conf_merge_uint_value(conf->proxy_protocol, prev->proxy_protocol, 0);
+    ngx_conf_merge_ptr_value(conf->proxy_protocol_v2_tlvs,
+                             prev->proxy_protocol_v2_tlvs, NULL);
     ngx_conf_merge_size_value(conf->buffer_size, prev->buffer_size,
                               (size_t) ngx_pagesize);
     ngx_conf_merge_msec_value(conf->timeout, prev->timeout, 24 * 60 * 60000);
+
+    return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_mail_proxy_protocol_v2_tlv(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    ngx_mail_proxy_conf_t *pcf = conf;
+
+    ngx_str_t                       *value;
+    ngx_uint_t                       i, type;
+    ngx_proxy_protocol_tlv_value_t  *tlv;
+
+    value = cf->args->elts;
+
+    if (ngx_proxy_protocol_v2_tlv_type(&value[1], &type) != NGX_OK) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid PROXY protocol v2 TLV type \"%V\", "
+                           "expected a two-digit hexadecimal number "
+                           "from \"0xe0\" to \"0xff\"", &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    if (pcf->proxy_protocol_v2_tlvs == NGX_CONF_UNSET_PTR) {
+        pcf->proxy_protocol_v2_tlvs = ngx_array_create(cf->pool, 4,
+                                       sizeof(ngx_proxy_protocol_tlv_value_t));
+        if (pcf->proxy_protocol_v2_tlvs == NULL) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    tlv = pcf->proxy_protocol_v2_tlvs->elts;
+
+    for (i = 0; i < pcf->proxy_protocol_v2_tlvs->nelts; i++) {
+        if (tlv[i].type == type) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "duplicate PROXY protocol v2 TLV type \"%V\"",
+                               &value[1]);
+            return NGX_CONF_ERROR;
+        }
+    }
+
+    tlv = ngx_array_push(pcf->proxy_protocol_v2_tlvs);
+    if (tlv == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    tlv->type = type;
+    tlv->value = value[2];
 
     return NGX_CONF_OK;
 }
