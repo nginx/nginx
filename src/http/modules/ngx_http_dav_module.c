@@ -582,27 +582,18 @@ ngx_http_dav_copy_move_handler(ngx_http_request_t *r)
         return NGX_HTTP_BAD_REQUEST;
     }
 
-#if (NGX_HTTP_SSL)
-
-    if (r->connection->ssl) {
-        if (ngx_strncmp(dest->value.data, "https://", sizeof("https://") - 1)
-            != 0)
-        {
-            goto invalid_destination;
-        }
-
+    if (ngx_strncmp(dest->value.data, "https://", sizeof("https://") - 1)
+        == 0)
+    {
         host = dest->value.data + sizeof("https://") - 1;
 
-    } else
-#endif
+    } else if (ngx_strncmp(dest->value.data, "http://", sizeof("http://") - 1)
+               == 0)
     {
-        if (ngx_strncmp(dest->value.data, "http://", sizeof("http://") - 1)
-            != 0)
-        {
-            goto invalid_destination;
-        }
-
         host = dest->value.data + sizeof("http://") - 1;
+
+    } else {
+        goto invalid_destination;
     }
 
     if (ngx_strncmp(host, r->headers_in.server.data, len) != 0) {
