@@ -1239,7 +1239,7 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
                 continue;
             }
 
-            if (fi.st_uid != user) {
+            if (ngx_is_file(&fi) && fi.st_uid != user) {
                 if (chown((const char *) file[i].name.data, user, -1) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                                   "chown(\"%s\", %d) failed",
@@ -1255,8 +1255,9 @@ ngx_reopen_files(ngx_cycle_t *cycle, ngx_uid_t user)
                 }
             }
 
-            if ((fi.st_mode & (S_IRUSR|S_IWUSR)) != (S_IRUSR|S_IWUSR)) {
-
+            if (ngx_is_file(&fi)
+                && (fi.st_mode & (S_IRUSR|S_IWUSR)) != (S_IRUSR|S_IWUSR))
+            {
                 fi.st_mode |= (S_IRUSR|S_IWUSR);
 
                 if (chmod((const char *) file[i].name.data, fi.st_mode) == -1) {
