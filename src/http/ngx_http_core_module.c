@@ -2901,6 +2901,10 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
     ngx_addr_t   paddr;
     ngx_uint_t   found;
 
+    if (xfflen < 2) {
+        return NGX_DECLINED;
+    }
+
     found = 0;
 
     do {
