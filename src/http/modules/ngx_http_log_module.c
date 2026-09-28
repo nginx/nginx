@@ -312,9 +312,7 @@ ngx_http_log_handler(ngx_http_request_t *r)
         if (log[l].syslog_peer) {
 
             /* length of syslog's PRI and HEADER message parts */
-            len += sizeof("<255>Jan 01 00:00:00 ") - 1
-                   + ngx_cycle->hostname.len + 1
-                   + log[l].syslog_peer->tag.len + 2;
+            len += ngx_syslog_header_len(log[l].syslog_peer);
 
             goto alloc_line;
         }
