@@ -8,7 +8,9 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   buildbot:
     uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@main
+    secrets: inherit
