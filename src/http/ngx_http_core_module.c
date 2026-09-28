@@ -2919,12 +2919,13 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
             }
         }
 
-        for ( /* void */ ; p > xff; p--) {
+        for ( /* void */ ; p >= xff; p--) {
             if (*p == ' ' || *p == ',') {
-                p++;
                 break;
             }
         }
+
+        p++;
 
         if (ngx_parse_addr_port(r->pool, &paddr, p, xfflen - (p - xff))
             != NGX_OK)
