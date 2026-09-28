@@ -6,6 +6,11 @@ on:
       - master
       - 'stable-1.*'
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   buildbot:
     uses: nginx/ci-self-hosted/.github/workflows/nginx-buildbot.yml@main
+    secrets: inherit
