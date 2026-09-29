@@ -269,8 +269,8 @@ ngx_http_json_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
     uintptr_t data)
 {
     ngx_int_t                   rc;
+    ngx_str_t                   json;
     ngx_uint_t                  oi, si;
-    ngx_json_ctx_t              jctx;
     ngx_http_json_state_t       state;
     ngx_http_json_source_t     *src, *srcs;
     ngx_http_json_variable_t   *jv;
@@ -336,13 +336,11 @@ ngx_http_json_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v,
         return NGX_ERROR;
     }
 
-    ngx_json_ctx_init(&jctx, r->pool);
+    json.len = vv->len;
+    json.data = vv->data;
 
-    jctx.handler = ngx_http_json_handler;
-    jctx.data = &state;
-    jctx.max_depth = jmcf->max_depth;
-
-    rc = ngx_json_parse_ctx(&jctx, vv->data, vv->len);
+    rc = ngx_json_parse(r->pool, &json, jmcf->max_depth, ngx_http_json_handler,
+                        &state);
 
     if (rc == NGX_OK) {
         *v = *cached;

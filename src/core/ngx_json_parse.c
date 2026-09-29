@@ -666,8 +666,8 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
 
 ngx_int_t
-ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_json_handler_pt handler,
-    void *data)
+ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_uint_t max_depth,
+    ngx_json_handler_pt handler, void *data)
 {
     ngx_json_ctx_t  jctx;
 
@@ -675,6 +675,10 @@ ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_json_handler_pt handler,
 
     jctx.data = data;
     jctx.handler = handler;
+
+    if (max_depth) {
+        jctx.max_depth = max_depth;
+    }
 
     return ngx_json_parse_ctx(&jctx, json->data, json->len);
 }

@@ -105,7 +105,7 @@ struct ngx_json_ctx_s {
 void ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool);
 ngx_int_t ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len);
 ngx_int_t ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json,
-    ngx_json_handler_pt handler, void *data);
+    ngx_uint_t max_depth, ngx_json_handler_pt handler, void *data);
 
 
 #endif /* _NGX_JSON_PARSE_H_INCLUDED_ */
