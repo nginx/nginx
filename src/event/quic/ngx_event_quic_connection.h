@@ -48,6 +48,9 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 #include <ngx_event_quic_ack.h>
 #include <ngx_event_quic_output.h>
 #include <ngx_event_quic_socket.h>
+#if (NGX_QUIC_BPF)
+#include <ngx_event_quic_bpf.h>
+#endif
 
 
 /* RFC 9002, 6.2.2.  Handshakes and New Paths: kInitialRtt */

@@ -1085,7 +1085,6 @@ ngx_quic_send_retry(ngx_connection_t *c, ngx_quic_conf_t *conf,
     pkt.odcid = inpkt->dcid;
     pkt.dcid = inpkt->scid;
 
-    /* TODO: generate routable dcid */
     if (RAND_bytes(dcid, NGX_QUIC_SERVER_CID_LEN) != 1) {
         return NGX_ERROR;
     }
