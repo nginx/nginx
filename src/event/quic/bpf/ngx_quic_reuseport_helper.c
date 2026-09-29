@@ -44,15 +44,6 @@ char _license[] SEC("license") = LICENSE;
 #define NGX_QUIC_SERVER_CID_LEN  20
 
 
-#define advance_data(nbytes)                                                  \
-    offset += nbytes;                                                         \
-    if (start + offset > end) {                                               \
-        debugmsg("cannot read %ld bytes at offset %ld", nbytes, offset);      \
-        goto failed;                                                          \
-    }                                                                         \
-    data = start + offset - 1;
-
-
 #define ngx_quic_parse_uint64(p)                                              \
     (((__u64)(p)[0] << 56) |                                                  \
      ((__u64)(p)[1] << 48) |                                                  \
@@ -75,38 +66,54 @@ int ngx_quic_select_socket_by_dcid(struct sk_reuseport_md *ctx)
 {
     int             rc;
     __u64           key;
-    size_t          len, offset;
-    unsigned char  *start, *end, *data, *dcid;
+    size_t          offset;
+    unsigned char  *start, *end, *dcid, byte, buf[NGX_QUIC_SERVER_CID_LEN];
 
-    start = ctx->data;
+    start = (unsigned char *) ctx->data;
     end = (unsigned char *) ctx->data_end;
-    offset = 0;
+    offset = sizeof(struct udphdr);
 
-    advance_data(sizeof(struct udphdr)); /* data at UDP header */
-    advance_data(1); /* data at QUIC flags */
+    if (start + offset >= end) {
 
-    if (data[0] & NGX_QUIC_PKT_LONG) {
-
-        advance_data(4); /* data at QUIC version */
-        advance_data(1); /* data at DCID len */
-
-        len = data[0];   /* read DCID length */
-
-        if (len < 8) {
-            /* it's useless to search for key in such short DCID */
-            return SK_PASS;
+        if (bpf_skb_load_bytes(ctx, offset, &byte, 1)) {
+            goto failed;
         }
 
     } else {
-        len = NGX_QUIC_SERVER_CID_LEN;
+        byte = start[offset];
     }
 
-    dcid = &data[1];
-    advance_data(len); /* we expect the packet to have full DCID */
+    if (byte & NGX_QUIC_PKT_LONG) {
 
-    /* make verifier happy */
-    if (dcid + sizeof(__u64) > end) {
-        goto failed;
+        offset += 5;
+
+        if (start + offset >= end) {
+
+            if (bpf_skb_load_bytes(ctx, offset, &byte, 1)) {
+                goto failed;
+            }
+
+        } else {
+            byte = start[offset];
+        }
+
+        if (byte != NGX_QUIC_SERVER_CID_LEN) {
+            return SK_PASS;
+        }
+    }
+
+    offset++;
+
+    if (start + offset + NGX_QUIC_SERVER_CID_LEN > end) {
+
+        if (bpf_skb_load_bytes(ctx, offset, buf, NGX_QUIC_SERVER_CID_LEN)) {
+            goto failed;
+        }
+
+        dcid = buf;
+
+    } else {
+        dcid = start + offset;
     }
 
     key = ngx_quic_parse_uint64(dcid);
