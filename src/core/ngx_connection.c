@@ -1623,6 +1623,12 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
         return 0;
     }
 
+#if (NGX_LINUX)
+    if (err == NGX_EIO && c->ktls_recv) {
+        return 0;
+    }
+#endif
+
     if (err == 0
         || err == NGX_ECONNRESET
 #if (NGX_WIN32)

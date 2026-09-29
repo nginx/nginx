@@ -200,6 +200,8 @@ struct ngx_connection_s {
     unsigned            busy_count:2;
 #endif
 
+    unsigned            ktls_recv:1;
+
 #if (NGX_THREADS || NGX_COMPAT)
     ngx_thread_task_t  *sendfile_task;
 #endif
