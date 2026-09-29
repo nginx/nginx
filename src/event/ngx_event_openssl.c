@@ -3811,6 +3811,19 @@ failed:
 
 done:
 
+#if (defined BIO_get_ktls_recv && NGX_LINUX)
+
+    /*
+     * with kernel TLS, recv() fails with EIO on a record
+     * other than application data, such as "close notify"
+     */
+
+    if (BIO_get_ktls_recv(SSL_get_rbio(c->ssl->connection)) == 1) {
+        c->ktls_recv = 1;
+    }
+
+#endif
+
     if (c->ssl->shutdown_without_free) {
         c->ssl->shutdown_without_free = 0;
         c->recv = ngx_recv;

@@ -20,6 +20,7 @@ typedef int               ngx_err_t;
 #define NGX_ENOPATH       ENOENT
 #define NGX_ESRCH         ESRCH
 #define NGX_EINTR         EINTR
+#define NGX_EIO           EIO
 #define NGX_ECHILD        ECHILD
 #define NGX_ENOMEM        ENOMEM
 #define NGX_EACCES        EACCES
