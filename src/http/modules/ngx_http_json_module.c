@@ -75,8 +75,8 @@ static char *ngx_http_json_insert_path(ngx_conf_t *cf,
     ngx_http_json_node_t *root, ngx_uint_t dest, ngx_str_t *path);
 static ngx_http_json_node_t *ngx_http_json_child(ngx_conf_t *cf,
     ngx_http_json_node_t *parent, ngx_http_json_seg_t *seg);
-static ngx_int_t ngx_http_json_handler(ngx_json_ctx_t *ctx,
-    ngx_json_event_e event, ngx_str_t *token);
+static ngx_int_t ngx_http_json_handler(ngx_json_event_e event,
+    ngx_str_t *token, void *data);
 static void ngx_http_json_inc_index(ngx_http_json_state_t *state);
 static ngx_http_json_node_t *ngx_http_json_lookup_key(
     ngx_http_json_node_t *parent, ngx_str_t *key);
@@ -671,8 +671,7 @@ ngx_http_json_child(ngx_conf_t *cf, ngx_http_json_node_t *parent,
 
 
 static ngx_int_t
-ngx_http_json_handler(ngx_json_ctx_t *ctx, ngx_json_event_e event,
-    ngx_str_t *token)
+ngx_http_json_handler(ngx_json_event_e event, ngx_str_t *token, void *data)
 {
     ngx_str_t               slice, value;
     ngx_uint_t              is_member;
@@ -680,7 +679,7 @@ ngx_http_json_handler(ngx_json_ctx_t *ctx, ngx_json_event_e event,
     ngx_http_json_state_t  *state;
     ngx_http_json_frame_t  *top;
 
-    state = ctx->data;
+    state = data;
 
     top = NULL;
     if (state->stack.nelts) {
@@ -749,7 +748,7 @@ ngx_http_json_handler(ngx_json_ctx_t *ctx, ngx_json_event_e event,
             state->current_key = *token;
 
         } else {
-            state->current_key.data = ngx_pstrdup(ctx->pool, token);
+            state->current_key.data = ngx_pstrdup(state->r->pool, token);
             if (state->current_key.data == NULL) {
                 return NGX_ERROR;
             }

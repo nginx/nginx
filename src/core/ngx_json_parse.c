@@ -718,7 +718,7 @@ ngx_json_emit(ngx_json_ctx_t *ctx, ngx_json_event_e event, u_char *data,
 
     token.data = data;
     token.len = len;
-    rc = ctx->handler(ctx, event, &token);
+    rc = ctx->handler(event, &token, ctx->data);
 
     if (rc == NGX_JSON_SKIP) {
 

@@ -78,8 +78,8 @@ typedef enum {
 typedef struct ngx_json_ctx_s  ngx_json_ctx_t;
 
 
-typedef ngx_int_t (*ngx_json_handler_pt)(ngx_json_ctx_t *ctx,
-    ngx_json_event_e event, ngx_str_t *token);
+typedef ngx_int_t (*ngx_json_handler_pt)(ngx_json_event_e event,
+    ngx_str_t *token, void *data);
 
 
 struct ngx_json_ctx_s {
