@@ -358,16 +358,30 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         case sw_ext_header:
             ext = (p[2] << 8) + p[3];
 
-            if (p[0] == 0 && p[1] == 0 && ctx->host.data == NULL) {
+            if (p[0] == 0 && p[1] == 0) {
                 /* SNI extension */
+
+                if (ctx->host.data != NULL) {
+                    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                                   "ssl preread: duplicate SNI");
+                    return NGX_DECLINED;
+                }
+
                 state = sw_sni_len;
                 dst = p;
                 size = 2;
                 break;
             }
 
-            if (p[0] == 0 && p[1] == 16 && ctx->alpn.data == NULL) {
+            if (p[0] == 0 && p[1] == 16) {
                 /* ALPN extension */
+
+                if (ctx->alpn.data != NULL) {
+                    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                                   "ssl preread: duplicate ALPN");
+                    return NGX_DECLINED;
+                }
+
                 state = sw_alpn_len;
                 dst = p;
                 size = 2;
