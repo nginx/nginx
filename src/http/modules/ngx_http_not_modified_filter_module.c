@@ -77,15 +77,12 @@ ngx_http_not_modified_header_filter(ngx_http_request_t *r)
 
     if (r->headers_in.if_modified_since || r->headers_in.if_none_match) {
 
-        if (r->headers_in.if_modified_since
-            && ngx_http_test_if_modified(r))
-        {
-            return ngx_http_next_header_filter(r);
-        }
+        if (r->headers_in.if_none_match) {
+            if (!ngx_http_test_if_match(r, r->headers_in.if_none_match, 1)) {
+                return ngx_http_next_header_filter(r);
+            }
 
-        if (r->headers_in.if_none_match
-            && !ngx_http_test_if_match(r, r->headers_in.if_none_match, 1))
-        {
+        } else if (ngx_http_test_if_modified(r)) {
             return ngx_http_next_header_filter(r);
         }
 
