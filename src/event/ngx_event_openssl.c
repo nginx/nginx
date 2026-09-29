@@ -4445,6 +4445,14 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
 #endif
 
+    session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
+
+    /* do not cache sessions with too long session id */
+
+    if (session_id_length > 32) {
+        return 0;
+    }
+
     len = i2d_SSL_SESSION(sess, NULL);
 
     /* do not cache too big session */
@@ -4455,14 +4463,6 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     p = ngx_ssl_session_buffer;
     i2d_SSL_SESSION(sess, &p);
-
-    session_id = (u_char *) SSL_SESSION_get_id(sess, &session_id_length);
-
-    /* do not cache sessions with too long session id */
-
-    if (session_id_length > 32) {
-        return 0;
-    }
 
     c = ngx_ssl_get_connection(ssl_conn);
 
@@ -4538,6 +4538,8 @@ ngx_ssl_new_session(ngx_ssl_conn_t *ssl_conn, ngx_ssl_session_t *sess)
 
     ngx_shmtx_unlock(&shpool->mutex);
 
+    ngx_explicit_memzero(ngx_ssl_session_buffer, len);
+
     return 0;
 
 failed:
@@ -4547,6 +4549,8 @@ failed:
     }
 
     ngx_shmtx_unlock(&shpool->mutex);
+
+    ngx_explicit_memzero(ngx_ssl_session_buffer, len);
 
     if (cache->fail_time != ngx_time()) {
         cache->fail_time = ngx_time();
@@ -4629,6 +4633,8 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
 
                 p = ngx_ssl_session_buffer;
                 sess = d2i_SSL_SESSION(NULL, &p, slen);
+
+                ngx_explicit_memzero(ngx_ssl_session_buffer, slen);
 
                 return sess;
             }
