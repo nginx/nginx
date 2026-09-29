@@ -149,7 +149,7 @@ ngx_quic_bpf_create_conf(ngx_cycle_t *cycle)
      * some module, i.e. perl
      */
     env = (u_char *) getenv(NGX_QUIC_BPF_VARNAME);
-    if (env != NULL) {
+    if (env != NULL && *env != '\0') {
         len = ngx_strlen(env);
         bcf->env = ngx_pnalloc(cycle->pool, len + 1);
         if (bcf->env == NULL) {
