@@ -118,7 +118,7 @@ static ngx_http_module_t  ngx_http_rewrite_module_ctx = {
 
 
 ngx_module_t  ngx_http_rewrite_module = {
-    NGX_MODULE_V1,
+    NGX_DYNAMIC_MODULE_V1,
     &ngx_http_rewrite_module_ctx,          /* module context */
     ngx_http_rewrite_commands,             /* module directives */
     NGX_HTTP_MODULE,                       /* module type */
@@ -558,8 +558,17 @@ ngx_http_rewrite_if(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
+    ngx_memcpy(ctx->loc_conf, pctx->loc_conf,
+               sizeof(void *) * ngx_http_max_module);
+
     for (i = 0; cf->cycle->modules[i]; i++) {
         if (cf->cycle->modules[i]->type != NGX_HTTP_MODULE) {
+            continue;
+        }
+
+        if (cf->dynamic
+            && !(cf->cycle->modules[i]->flags & NGX_DYNAMIC_MODULE))
+        {
             continue;
         }
 
