@@ -214,6 +214,8 @@ typedef struct {
     unsigned                esmtp:1;
     unsigned                auth_method:3;
     unsigned                auth_wait:1;
+    unsigned                smtp_auth:1;
+    unsigned                smtp_auth_set:1;
 
     ngx_str_t               login;
     ngx_str_t               passwd;
