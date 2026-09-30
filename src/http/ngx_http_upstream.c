@@ -425,6 +425,10 @@ static ngx_http_variable_t  ngx_http_upstream_vars[] = {
       ngx_http_upstream_status_variable, 0,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
 
+    { ngx_string("upstream_resolve_time"), NULL,
+      ngx_http_upstream_response_time_variable, 3,
+      NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
     { ngx_string("upstream_connect_time"), NULL,
       ngx_http_upstream_response_time_variable, 2,
       NGX_HTTP_VAR_NOCACHEABLE, 0 },
@@ -744,6 +748,9 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         uscf = u->conf->upstream;
 
     } else {
+
+        u->resolved->start_time = ngx_current_msec;
+        u->resolved->resolve_time = (ngx_msec_t) -1;
 
 #if (NGX_HTTP_SSL)
         u->ssl_name = u->resolved->host;
@@ -1300,6 +1307,10 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     ngx_resolve_name_done(ctx);
     ur->ctx = NULL;
 
+    if (u->resolved && u->resolved->resolve_time == (ngx_msec_t) -1) {
+        u->resolved->resolve_time = ngx_current_msec - u->resolved->start_time;
+    }
+
     u->peer.start_time = ngx_current_msec;
 
     if (u->conf->next_upstream_tries
@@ -1596,6 +1607,12 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_memzero(u->state, sizeof(ngx_http_upstream_state_t));
 
     u->start_time = ngx_current_msec;
+
+    u->state->resolve_time = (ngx_msec_t) -1;
+    if (u->resolved && u->resolved->resolve_time != (ngx_msec_t) -1) {
+        u->state->resolve_time = u->resolved->resolve_time;
+        u->resolved->resolve_time = (ngx_msec_t) -1;
+    }
 
     u->state->response_time = (ngx_msec_t) -1;
     u->state->connect_time = (ngx_msec_t) -1;
@@ -4794,6 +4811,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
         u->resolved->ctx = NULL;
+
+        if (u->resolved->resolve_time == (ngx_msec_t) -1) {
+            u->resolved->resolve_time = ngx_current_msec - u->resolved->start_time;
+        }
     }
 
     if (u->state && u->state->response_time == (ngx_msec_t) -1) {
@@ -6118,6 +6139,26 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
     v->not_found = 0;
 
     if (r->upstream_states == NULL || r->upstream_states->nelts == 0) {
+        if (data == 3
+            && r->upstream
+            && r->upstream->resolved
+            && r->upstream->resolved->resolve_time != (ngx_msec_t) -1)
+        {
+            ms = (ngx_msec_int_t) r->upstream->resolved->resolve_time;
+            ms = ngx_max(ms, 0);
+
+            p = ngx_pnalloc(r->pool, NGX_TIME_T_LEN + 4);
+            if (p == NULL) {
+                return NGX_ERROR;
+            }
+
+            v->data = p;
+            v->len = ngx_sprintf(p, "%T.%03M", (time_t) ms / 1000, ms % 1000)
+                     - p;
+
+            return NGX_OK;
+        }
+
         v->not_found = 1;
         return NGX_OK;
     }
@@ -6141,6 +6182,9 @@ ngx_http_upstream_response_time_variable(ngx_http_request_t *r,
 
         } else if (data == 2) {
             ms = state[i].connect_time;
+
+        } else if (data == 3) {
+            ms = state[i].resolve_time;
 
         } else {
             ms = state[i].response_time;
