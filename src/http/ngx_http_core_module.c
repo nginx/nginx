@@ -5034,7 +5034,7 @@ ngx_http_core_error_page(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         if (value[i].len > 1) {
             overwrite = ngx_atoi(&value[i].data[1], value[i].len - 1);
 
-            if (overwrite == NGX_ERROR) {
+            if (overwrite == NGX_ERROR || overwrite > 999) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid value \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
