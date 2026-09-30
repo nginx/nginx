@@ -2258,6 +2258,7 @@ ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx)
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 ctx->header_start = p;
@@ -2279,6 +2280,7 @@ ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx)
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 ctx->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -2296,6 +2298,7 @@ ngx_ssl_ocsp_parse_header_line(ngx_ssl_ocsp_ctx_t *ctx)
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
