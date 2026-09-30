@@ -263,9 +263,6 @@ ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         ngx_time_update();
     }
 
-    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
-                   "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
-
     if (timer != INFINITE) {
         delta = ngx_current_msec - delta;
 
@@ -294,6 +291,8 @@ ngx_iocp_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
         return NGX_ERROR;
     }
 
+    ngx_log_debug4(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "iocp: %d b:%d k:%d ov:%p", rc, bytes, key, ovlp);
 
     ev = ovlp->event;
 
