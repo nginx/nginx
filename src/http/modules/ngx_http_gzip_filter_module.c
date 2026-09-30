@@ -55,12 +55,15 @@ typedef struct {
     unsigned             redo:1;
     unsigned             done:1;
     unsigned             nomem:1;
+    unsigned             yield:1;
     unsigned             buffering:1;
     unsigned             zlib_ng:1;
     unsigned             state_allocated:1;
 
     size_t               zin;
     size_t               zout;
+
+    size_t               limit;
 
     z_stream             zstream;
     ngx_http_request_t  *request;
@@ -299,10 +302,11 @@ ngx_http_gzip_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
-    int                   rc;
-    ngx_uint_t            flush;
-    ngx_chain_t          *cl;
-    ngx_http_gzip_ctx_t  *ctx;
+    int                        rc;
+    ngx_uint_t                 flush;
+    ngx_chain_t               *cl;
+    ngx_http_gzip_ctx_t       *ctx;
+    ngx_http_core_loc_conf_t  *clcf;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_gzip_filter_module);
 
@@ -357,6 +361,15 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         r->connection->buffered |= NGX_HTTP_GZIP_BUFFERED;
     }
 
+    if (ctx->yield) {
+
+        if (r->connection->write->posted) {
+            return NGX_AGAIN;
+        }
+
+        ctx->yield = 0;
+    }
+
     if (ctx->nomem) {
 
         /* flush busy buffers */
@@ -375,6 +388,8 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     } else {
         flush = ctx->busy ? 1 : 0;
     }
+
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
     for ( ;; ) {
 
@@ -444,6 +459,23 @@ ngx_http_gzip_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         if (ctx->done) {
             return rc;
+        }
+
+        /*
+         * compressing a large response which the client reads fast enough
+         * never blocks, so limit the input compressed in one iteration
+         * of the event loop, similarly to sendfile_max_chunk
+         */
+
+        if (clcf->sendfile_max_chunk
+            && ctx->zstream.total_in - ctx->limit >= clcf->sendfile_max_chunk
+            && r->connection->write->ready
+            && !r->connection->write->delayed)
+        {
+            ctx->limit = ctx->zstream.total_in;
+            ctx->yield = 1;
+            ngx_post_event(r->connection->write, &ngx_posted_next_events);
+            return NGX_AGAIN;
         }
     }
 
