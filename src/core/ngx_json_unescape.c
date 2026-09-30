@@ -20,10 +20,10 @@ static ngx_inline u_char *ngx_json_utf8_encode(u_char *dst,
 
 
 ngx_int_t
-ngx_json_unescape_string(ngx_str_t *str)
+ngx_json_unescape_string(ngx_str_t *dst, ngx_str_t *src)
 {
     size_t       size;
-    u_char      *d, *s, *start, ch;
+    u_char      *d, *s, ch;
     uint32_t     codepoint, high_surrogate;
     ngx_int_t    n;
     ngx_uint_t   hex_left;
@@ -59,21 +59,22 @@ ngx_json_unescape_string(ngx_str_t *str)
      * The pair decodes to U+10000 + (high - 0xD800) * 0x400
      *                              + (low  - 0xDC00).
      * The input is an unquoted JSON string body (the bytes between the
-     * surrounding double quotes); it is decoded in place.
+     * surrounding double quotes).
      */
 
-    if (str->len == 0) {
+    if (src->len == 0) {
+        dst->len = 0;
         return NGX_OK;
     }
 
-    if (str->data == NULL) {
+    if (dst->len < src->len) {
         return NGX_ERROR;
     }
 
-    start = str->data;
-    size = str->len;
+    s = src->data;
+    d = dst->data;
+    size = src->len;
 
-    d = s = start;
 
     state = sw_usual;
     codepoint = 0;
@@ -227,8 +228,7 @@ ngx_json_unescape_string(ngx_str_t *str)
         return NGX_ERROR;
     }
 
-    str->data = start;
-    str->len = d - start;
+    dst->len = d - dst->data;
 
     return NGX_OK;
 }

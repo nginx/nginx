@@ -13,12 +13,17 @@
 
 
 /*
- * Decode JSON escape sequences (RFC 8259, Section 7) in place.  The input
- * is an unquoted JSON string body (no surrounding double quotes); on success
- * str->len is updated to the decoded length.  Returns NGX_OK, or NGX_ERROR
- * on a malformed escape or invalid input.
+ * Decode JSON escape sequences (RFC 8259, Section 7).  The input
+ * is an unquoted JSON string body (no surrounding double quotes).
+ *
+ * On entry, dst->len is the capacity of dst->data and must be at least
+ * src->len.
+ * On success, dst->len is the decoded length.
+ *
+ * Returns NGX_OK, or NGX_ERROR on a malformed escape or invalid input.
  */
-ngx_int_t ngx_json_unescape_string(ngx_str_t *str);
+ngx_int_t ngx_json_unescape_string(ngx_str_t *dst, ngx_str_t *src);
+
 ngx_int_t ngx_json_hex_digit(u_char ch);
 
 
