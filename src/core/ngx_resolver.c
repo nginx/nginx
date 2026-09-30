@@ -2194,7 +2194,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         type = (an->type_hi << 8) + an->type_lo;
         class = (an->class_hi << 8) + an->class_lo;
         len = (an->len_hi << 8) + an->len_lo;
-        ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
+        ttl = ((uint32_t) an->ttl[0] << 24) + (an->ttl[1] << 16)
             + (an->ttl[2] << 8) + (an->ttl[3]);
 
         if (class != 1) {
@@ -2356,7 +2356,7 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
             if (type == NGX_RESOLVE_A) {
 
-                addr[j] = htonl((buf[i] << 24) + (buf[i + 1] << 16)
+                addr[j] = htonl(((uint32_t) buf[i] << 24) + (buf[i + 1] << 16)
                                 + (buf[i + 2] << 8) + (buf[i + 3]));
 
                 if (++j == naddrs) {
@@ -2736,7 +2736,7 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
         type = (an->type_hi << 8) + an->type_lo;
         class = (an->class_hi << 8) + an->class_lo;
         len = (an->len_hi << 8) + an->len_lo;
-        ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
+        ttl = ((uint32_t) an->ttl[0] << 24) + (an->ttl[1] << 16)
             + (an->ttl[2] << 8) + (an->ttl[3]);
 
         if (class != 1) {
@@ -3301,7 +3301,7 @@ valid:
         type = (an->type_hi << 8) + an->type_lo;
         class = (an->class_hi << 8) + an->class_lo;
         len = (an->len_hi << 8) + an->len_lo;
-        ttl = (an->ttl[0] << 24) + (an->ttl[1] << 16)
+        ttl = ((uint32_t) an->ttl[0] << 24) + (an->ttl[1] << 16)
             + (an->ttl[2] << 8) + (an->ttl[3]);
 
         if (class != 1) {
