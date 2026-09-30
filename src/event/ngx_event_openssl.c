@@ -2515,6 +2515,7 @@ void
 ngx_ssl_handshake_log(ngx_connection_t *c)
 {
     char         buf[129], *s, *d;
+    ngx_str_t    curve;
 #if OPENSSL_VERSION_NUMBER >= 0x10000000L
     const
 #endif
@@ -2547,9 +2548,16 @@ ngx_ssl_handshake_log(ngx_connection_t *c)
 
         *d = '\0';
 
-        ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "SSL: %s, cipher: \"%s\"",
-                       SSL_get_version(c->ssl->connection), &buf[1]);
+        if (ngx_ssl_get_curve(c, c->pool, &curve) == NGX_OK && curve.len) {
+            ngx_log_debug3(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "SSL: %s, cipher: \"%s\", group: \"%V\"",
+                           SSL_get_version(c->ssl->connection), &buf[1],
+                           &curve);
+        } else {
+            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                           "SSL: %s, cipher: \"%s\"",
+                           SSL_get_version(c->ssl->connection), &buf[1]);
+        }
 
         if (SSL_session_reused(c->ssl->connection)) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
