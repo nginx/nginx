@@ -19,6 +19,10 @@
  * on a malformed escape or invalid input.
  */
 ngx_int_t ngx_json_unescape_string(ngx_str_t *str);
+
+/* Like ngx_json_unescape_string(), but preserves the input bytes. */
+ngx_int_t ngx_json_unescape_dup(ngx_pool_t *pool, ngx_str_t *dst,
+    ngx_str_t *src);
 ngx_int_t ngx_json_hex_digit(u_char ch);
 
 
