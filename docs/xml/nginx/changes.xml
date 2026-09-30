@@ -5,6 +5,229 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.7" date="2026-10-14">
+
+<change type="security">
+<para lang="ru">
+при использовании директивы alias
+могло произойти переполнение буфера в рабочем процессе,
+если URI запроса был изменён директивой rewrite
+и затем отображался в путь к файлу
+(CVE-2026-15176).
+</para>
+<para lang="en">
+a buffer overflow might occur in a worker process
+when using the "alias" directive
+if the request URI was changed by the "rewrite" directive
+and was then mapped to a file path
+(CVE-2026-15176).
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при вычислении строковых выражений с переменными
+могло произойти переполнение буфера в рабочем процессе,
+что затрагивало определение корневого каталога документов
+и логгирование запросов в модулях http и stream
+(CVE-2026-93479).<br/>
+Спасибо Matt Suiche из Tolmo Inc.
+</para>
+<para lang="en">
+a buffer overflow might occur in a worker process
+while evaluating string expressions with variables,
+which affected the document root calculation
+and request logging in the http and stream modules
+(CVE-2026-93479).<br/>
+Thanks to Matt Suiche of Tolmo Inc.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3 часть неизвестного фрейма
+могла быть обработана как тело запроса,
+что могло приводить к обходу ограничения client_max_body_size
+или к вставке данных в проксируемый запрос
+(CVE-2026-95101).<br/>
+Спасибо Hansol Lee из GOTROOT.
+</para>
+<para lang="en">
+when using HTTP/3 a part of an unknown frame
+might be treated as the request body,
+which might result in bypassing the "client_max_body_size" limit
+or injecting data in the proxied request
+(CVE-2026-95101).<br/>
+Thanks to Hansol Lee of GOTROOT.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании ротации ключей TLS session tickets
+один из ключей оставался неинициализированным,
+что могло позволить подделать сессию
+(CVE-2026-97629).<br/>
+Спасибо PhiNode Labs.
+</para>
+<para lang="en">
+when using TLS session ticket key rotation,
+one of the keys was left uninitialized,
+which might allow to forge a session
+(CVE-2026-97629).<br/>
+Thanks to PhiNode Labs.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании асинхронного файлового ввода-вывода (AIO)
+в некоторых конфигурациях
+могло произойти обращение к ранее освобождённой памяти,
+если на SSI-странице использовались команды "include virtual"
+(CVE-2026-97205).<br/>
+Спасибо cyberlancer.
+</para>
+<para lang="en">
+when using asynchronous file I/O (AIO),
+use-after-free might occur in certain configurations
+if the SSI page has "include virtual" commands
+(CVE-2026-97205).<br/>
+Thanks to cyberlancer.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+модули ngx_http_geoip_module и ngx_stream_geoip_module
+теперь поддерживают базы в формате MaxMind DB (MMDB).
+</para>
+<para lang="en">
+the ngx_http_geoip_module and ngx_stream_geoip_module
+now support databases in the MaxMind DB (MMDB) format.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь SSL-сертификаты бэкендов
+можно проверять по IP-адресу.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now backend SSL certificates
+can be verified by IP address.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="feature">
+<para lang="ru">
+теперь QUIC поддерживает переконфигурацию
+и обновление исполняемого файла
+при использовании директивы quic_bpf.
+</para>
+<para lang="en">
+now QUIC supports reconfiguration and binary upgrade
+when using the "quic_bpf" directive.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+в модуле ngx_http_v2_module
+теперь используется схема приоритетов RFC 9218,
+а сигналы приоритетов RFC 7540 игнорируются.
+</para>
+<para lang="en">
+the ngx_http_v2_module now uses
+the RFC 9218 prioritization scheme,
+and RFC 7540 priority signals are ignored.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault
+или могли появляться сообщения "request count is zero",
+если заголовок "X-Accel-Redirect" попадал в кэш
+и закэшированный ответ затем отдавался клиенту.<br/>
+Спасибо Jiří Setnička и Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+or "request count is zero" alerts might appear in logs
+if the "X-Accel-Redirect" header line was cached
+and the cached response was then served to a client.<br/>
+Thanks to Jiří Setnička and Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе мог произойти segmentation fault,
+если модуль ngx_http_dav_module использовался
+для обработки методов COPY и MOVE
+в location с директивой alias.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+if the ngx_http_dav_module was used
+to handle COPY and MOVE methods
+in a location with the "alias" directive.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+QUIC-соединения могли закрываться
+с сообщением "quic flood detected" в логах,
+если в директиве http3_stream_buffer_size
+было указано небольшое значение;
+ошибка появилась в 1.27.5.
+</para>
+<para lang="en">
+QUIC connections might be closed
+with the "quic flood detected" message in logs
+if the "http3_stream_buffer_size" directive
+was set to a small value;
+the bug had appeared in 1.27.5.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+закрытие SSL-соединения без close_notify
+считалось корректным завершением работы,
+в том числе при сбросе соединения;
+теперь в этом случае в логах появляются сообщения "SSL_read() failed".<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+closing an SSL connection without close_notify
+was treated as a clean shutdown,
+including the case when the connection was reset;
+now "SSL_read() failed" errors appear in logs in this case.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в логах могли появляться сообщения "[crit] SSL_write() failed",
+если при чтении из SSL-соединения произошла ошибка.
+</para>
+<para lang="en">
+"[crit] SSL_write() failed" messages might appear in logs
+when an error occurred while reading from an SSL connection.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.6" date="2026-09-15">
 
 <change type="security">
