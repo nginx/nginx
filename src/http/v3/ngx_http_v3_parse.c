@@ -1875,6 +1875,7 @@ ngx_http_v3_parse_data(ngx_connection_t *c, ngx_http_v3_parse_data_t *st,
                 return rc;
             }
 
+            st->length = 0;
             st->state = sw_type;
             break;
         }
