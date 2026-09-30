@@ -24,7 +24,9 @@ typedef enum {
     NGX_JSON_ARRAY_OPEN,
     NGX_JSON_ARRAY_CLOSE,
     NGX_JSON_KEY,
+    NGX_JSON_KEY_ESCAPED,
     NGX_JSON_VALUE_STRING,
+    NGX_JSON_VALUE_STRING_ESCAPED,
     NGX_JSON_VALUE_NUMBER,
     NGX_JSON_VALUE_BOOL,
     NGX_JSON_VALUE_NULL
@@ -98,7 +100,8 @@ struct ngx_json_ctx_s {
     ngx_json_handler_pt    handler;
     void                  *data;
 
-    unsigned               in_key; /* unsigned in_key:1 */
+    ngx_uint_t             in_key;           /* unsigned in_key:1; */
+    ngx_uint_t             escaped;          /* unsigned escaped:1; */
 };
 
 
