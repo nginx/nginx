@@ -721,6 +721,7 @@ overwrite_done:
     r->uri = duri;
 
     if (ngx_http_map_uri_to_path(r, &copy.path, &root, 0) == NULL) {
+        r->uri = uri;
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
