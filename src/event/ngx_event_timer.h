@@ -18,14 +18,21 @@
 
 #define NGX_TIMER_LAZY_DELAY  300
 
+#define NGX_PRECISE_TIMER_INFINITE  (ngx_usec_t) -1
+
 
 ngx_int_t ngx_event_timer_init(ngx_log_t *log);
 ngx_msec_t ngx_event_find_timer(void);
+ngx_usec_t ngx_event_find_precise_timer(void);
+ngx_msec_t ngx_event_timer_timeout(ngx_msec_t timer);
+/* Relative precise timers must be at most NGX_MAX_INT_T_VALUE usec. */
+void ngx_event_add_precise_timer(ngx_event_t *ev, ngx_usec_t timer);
 void ngx_event_expire_timers(void);
 ngx_int_t ngx_event_no_timers_left(void);
 
 
 extern ngx_rbtree_t  ngx_event_timer_rbtree;
+extern ngx_rbtree_t  ngx_event_precise_timer_rbtree;
 
 
 static ngx_inline void
@@ -35,7 +42,9 @@ ngx_event_del_timer(ngx_event_t *ev)
                    "event timer del: %d: %M",
                     ngx_event_ident(ev->data), ev->timer.key);
 
-    ngx_rbtree_delete(&ngx_event_timer_rbtree, &ev->timer);
+    ngx_rbtree_delete(ev->timer_precise ? &ngx_event_precise_timer_rbtree
+                                      : &ngx_event_timer_rbtree,
+                      &ev->timer);
 
 #if (NGX_DEBUG)
     ev->timer.left = NULL;
@@ -44,6 +53,7 @@ ngx_event_del_timer(ngx_event_t *ev)
 #endif
 
     ev->timer_set = 0;
+    ev->timer_precise = 0;
 }
 
 
@@ -52,6 +62,10 @@ ngx_event_add_timer(ngx_event_t *ev, ngx_msec_t timer)
 {
     ngx_msec_t      key;
     ngx_msec_int_t  diff;
+
+    if (ev->timer_set && ev->timer_precise) {
+        ngx_del_timer(ev);
+    }
 
     key = ngx_current_msec + timer;
 
