@@ -521,7 +521,18 @@ ngx_http_priority_parse_number(u_char **pos, u_char *end, ngx_int_t *type,
 
     n = ngx_atoi(start, last - start);
     if (n == NGX_ERROR) {
-        return NGX_ERROR;
+
+        /*
+         * A syntactically valid Integer (RFC 8941 allows up to 15 digits) can
+         * exceed ngx_int_t where it is 32-bit.  Such a value cannot be a valid
+         * urgency, so treat it as an out-of-range Integer to be ignored rather
+         * than a syntax error that fails the whole field.
+         */
+
+        *type = NGX_HTTP_PRIORITY_OTHER;
+        *value = 0;
+        *pos = last;
+        return NGX_OK;
     }
 
     *type = NGX_HTTP_PRIORITY_INTEGER;
