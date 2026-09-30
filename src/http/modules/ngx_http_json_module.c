@@ -392,6 +392,7 @@ ngx_http_json_insert_path(ngx_conf_t *cf, ngx_http_json_node_t *root,
 {
     u_char                *p, *last, *start, *dst;
     ngx_int_t              index;
+    ngx_str_t              raw;
     ngx_uint_t            *term;
     ngx_http_json_seg_t    seg;
     ngx_http_json_node_t  *node;
@@ -523,14 +524,15 @@ ngx_http_json_insert_path(ngx_conf_t *cf, ngx_http_json_node_t *root,
                     return NGX_CONF_ERROR;
                 }
 
-                ngx_memcpy(dst, start, p - start);
+                raw.data = start;
+                raw.len = p - start;
 
                 seg.is_index = 0;
                 seg.key.data = dst;
                 seg.key.len = p - start;
                 seg.index = 0;
 
-                if (ngx_json_unescape_string(&seg.key) != NGX_OK) {
+                if (ngx_json_unescape_string(&seg.key, &raw) != NGX_OK) {
                     goto invalid;
                 }
 
@@ -751,14 +753,15 @@ ngx_http_json_handler(ngx_json_ctx_t *ctx, ngx_json_event_e event,
             state->current_key = *token;
 
         } else {
-            state->current_key.data = ngx_pstrdup(ctx->pool, token);
+            state->current_key.data = ngx_pnalloc(ctx->pool, token->len);
             if (state->current_key.data == NULL) {
                 return NGX_ERROR;
             }
 
             state->current_key.len = token->len;
 
-            if (ngx_json_unescape_string(&state->current_key) != NGX_OK) {
+            if (ngx_json_unescape_string(&state->current_key, token) != NGX_OK)
+            {
                 return NGX_ERROR;
             }
         }
@@ -904,6 +907,18 @@ ngx_http_json_store(ngx_http_json_state_t *state, ngx_http_json_node_t *node,
         val.len = 0;
         val.data = (u_char *) "";
 
+    } else if (unescape) {
+        val.data = ngx_pnalloc(state->r->pool, value->len);
+        if (val.data == NULL) {
+            return NGX_ERROR;
+        }
+
+        val.len = value->len;
+
+        if (ngx_json_unescape_string(&val, value) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
     } else {
         val.data = ngx_pstrdup(state->r->pool, value);
         if (val.data == NULL) {
@@ -911,10 +926,6 @@ ngx_http_json_store(ngx_http_json_state_t *state, ngx_http_json_node_t *node,
         }
 
         val.len = value->len;
-
-        if (unescape && ngx_json_unescape_string(&val) != NGX_OK) {
-            return NGX_ERROR;
-        }
     }
 
     for (i = 0; i < node->ndests; i++) {
