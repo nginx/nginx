@@ -83,6 +83,7 @@ typedef struct {
     void                  *data;
 
     unsigned               in_key;
+    unsigned               escaped;          /* the string holds an escape */
 } ngx_json_ctx_t;
 
 
@@ -119,6 +120,7 @@ ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool)
     ctx->stack = NULL;
 
     ctx->in_key = 0;
+    ctx->escaped = 0;
 }
 
 
@@ -128,6 +130,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
     u_char            *p, *last, *start;
     ngx_int_t          rc, hd;
     ngx_uint_t         skip_depth;
+    ngx_json_event_e   event;
     ngx_json_state_e   state;
 
     if (len == 0) {
@@ -197,6 +200,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
             if (*p == '"') {
                 ctx->in_key = 1;
+                ctx->escaped = 0;
                 start = p + 1;
                 state = ngx_json_string;
                 break;
@@ -283,6 +287,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
             if (*p == '"') {
                 ctx->in_key = 0;
+                ctx->escaped = 0;
                 start = p + 1;
                 state = ngx_json_string;
                 break;
@@ -354,7 +359,10 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             if (*p == '"') {
 
                 if (ctx->in_key) {
-                    rc = ngx_json_emit(ctx, NGX_JSON_KEY, start, p - start);
+                    event = ctx->escaped ? NGX_JSON_KEY_ESCAPED
+                                         : NGX_JSON_KEY;
+
+                    rc = ngx_json_emit(ctx, event, start, p - start);
                     if (rc != NGX_OK) {
                         return rc;
                     }
@@ -363,8 +371,10 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
                     state = ngx_json_object_name_separator;
 
                 } else {
-                    rc = ngx_json_emit(ctx, NGX_JSON_VALUE_STRING, start,
-                                      p - start);
+                    event = ctx->escaped ? NGX_JSON_VALUE_STRING_ESCAPED
+                                         : NGX_JSON_VALUE_STRING;
+
+                    rc = ngx_json_emit(ctx, event, start, p - start);
                     if (rc != NGX_OK) {
                         return rc;
                     }
@@ -376,6 +386,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             }
 
             if (*p == '\\') {
+                ctx->escaped = 1;
                 state = ngx_json_escaped;
                 break;
             }
@@ -805,12 +816,14 @@ ngx_json_emit(ngx_json_ctx_t *ctx, ngx_json_event_e event, u_char *data,
         switch (event) {
 
         case NGX_JSON_KEY:
+        case NGX_JSON_KEY_ESCAPED:
         case NGX_JSON_OBJECT_OPEN:
         case NGX_JSON_ARRAY_OPEN:
             ctx->skip_until_depth = ctx->depth;
             break;
 
         case NGX_JSON_VALUE_STRING:
+        case NGX_JSON_VALUE_STRING_ESCAPED:
         case NGX_JSON_VALUE_NUMBER:
         case NGX_JSON_VALUE_BOOL:
         case NGX_JSON_VALUE_NULL:
