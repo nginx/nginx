@@ -1,0 +1,16 @@
+name: windows-zip
+
+on:
+  push:
+    tags:
+      - 'release-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  windows-zip:
+    uses: nginx/ci-self-hosted/.github/workflows/nginx-windows-zip.yml@main
+    secrets: inherit
