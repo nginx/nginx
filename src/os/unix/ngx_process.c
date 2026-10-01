@@ -87,7 +87,7 @@ ngx_pid_t
 ngx_spawn_process(ngx_cycle_t *cycle, ngx_spawn_proc_pt proc, void *data,
     char *name, ngx_int_t respawn)
 {
-    u_long     on;
+    int        on;
     ngx_pid_t  pid;
     ngx_int_t  s;
 
