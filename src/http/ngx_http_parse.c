@@ -14,6 +14,14 @@ static ngx_table_elt_t *ngx_http_parse_multi_header_lines_internal(
     ngx_http_request_t *r, ngx_table_elt_t *headers, ngx_str_t *name,
     ngx_str_t *value, u_char sep);
 
+static ngx_inline ngx_uint_t ngx_http_chunked_tchar(u_char ch);
+
+/* cap chunk-extension bytes relative to real data bytes already drained */
+#define NGX_HTTP_CHUNKED_EXT_ALLOWANCE      4096
+
+/* maximum length of a single trailer header line */
+#define NGX_HTTP_CHUNKED_TRAILER_MAX_LINE   4096
+
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
@@ -2102,6 +2110,39 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
 }
 
 
+static ngx_inline ngx_uint_t
+ngx_http_chunked_tchar(u_char ch)
+{
+    if ((ch >= '0' && ch <= '9')
+        || (ch >= 'A' && ch <= 'Z')
+        || (ch >= 'a' && ch <= 'z'))
+    {
+        return 1;
+    }
+
+    switch (ch) {
+    case '!':
+    case '#':
+    case '$':
+    case '%':
+    case '&':
+    case '\'':
+    case '*':
+    case '+':
+    case '-':
+    case '.':
+    case '^':
+    case '_':
+    case '`':
+    case '|':
+    case '~':
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+
 ngx_table_elt_t *
 ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
     ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
@@ -2239,6 +2280,9 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
 
     if (state == sw_chunk_data && ctx->size == 0) {
         state = sw_after_data;
+
+        /* chunk fully drained, credit its size to the ratio budget */
+        ctx->data_len += ctx->chunk_total;
     }
 
     rc = NGX_AGAIN;
@@ -2304,6 +2348,8 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             }
 
+            ctx->chunk_total = ctx->size;
+
             switch (ch) {
             case CR:
                 state = sw_chunk_extension_almost_done;
@@ -2326,6 +2372,12 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto invalid;
+            default:
+                if (++ctx->ext_len > ctx->data_len
+                                     + NGX_HTTP_CHUNKED_EXT_ALLOWANCE)
+                {
+                    goto invalid;
+                }
             }
             break;
 
@@ -2364,6 +2416,12 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto invalid;
+            default:
+                if (++ctx->ext_len > ctx->data_len
+                                     + NGX_HTTP_CHUNKED_EXT_ALLOWANCE)
+                {
+                    goto invalid;
+                }
             }
             break;
 
@@ -2385,6 +2443,10 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
             case LF:
                 goto invalid;
             default:
+                if (!ngx_http_chunked_tchar(ch)) {
+                    goto invalid;
+                }
+                ctx->trailer_len = 1;
                 state = sw_trailer_header;
             }
             break;
@@ -2402,6 +2464,14 @@ ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
                 break;
             case LF:
                 goto invalid;
+            default:
+                if (ch < 0x20 && ch != '\t') {
+                    goto invalid;
+                }
+
+                if (++ctx->trailer_len > NGX_HTTP_CHUNKED_TRAILER_MAX_LINE) {
+                    goto invalid;
+                }
             }
             break;
 
