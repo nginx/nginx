@@ -25,6 +25,8 @@ typedef struct {
 
 static void ngx_mail_proxy_block_read(ngx_event_t *rev);
 static void ngx_mail_proxy_pop3_handler(ngx_event_t *rev);
+static ngx_int_t ngx_mail_proxy_check_pop3_credential(ngx_mail_session_t *s,
+    ngx_str_t *value);
 static void ngx_mail_proxy_imap_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_smtp_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_write_handler(ngx_event_t *wev);
@@ -289,6 +291,11 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
 
         s->connection->log->action = "sending user name to upstream";
 
+        if (ngx_mail_proxy_check_pop3_credential(s, &s->login) != NGX_OK) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
+
         line.len = sizeof("USER ")  - 1 + s->login.len + 2;
         line.data = ngx_pnalloc(c->pool, line.len);
         if (line.data == NULL) {
@@ -307,6 +314,11 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
         ngx_log_debug0(NGX_LOG_DEBUG_MAIL, rev->log, 0, "mail proxy send pass");
 
         s->connection->log->action = "sending password to upstream";
+
+        if (ngx_mail_proxy_check_pop3_credential(s, &s->passwd) != NGX_OK) {
+            ngx_mail_proxy_internal_server_error(s);
+            return;
+        }
 
         line.len = sizeof("PASS ")  - 1 + s->passwd.len + 2;
         line.data = ngx_pnalloc(c->pool, line.len);
@@ -368,6 +380,32 @@ ngx_mail_proxy_pop3_handler(ngx_event_t *rev)
 
     s->proxy->buffer->pos = s->proxy->buffer->start;
     s->proxy->buffer->last = s->proxy->buffer->start;
+}
+
+
+static ngx_int_t
+ngx_mail_proxy_check_pop3_credential(ngx_mail_session_t *s, ngx_str_t *value)
+{
+    /*
+     * POP3 USER/PASS arguments are terminated by CRLF and the protocol
+     * has no way to carry a CR or LF within them; such a byte in a
+     * credential (only possible via a SASL-decoded value) would be relayed
+     * as an additional command line into the authenticated upstream session.
+     * The auth server is the authority on credential validity, but since the
+     * downstream protocol cannot represent these bytes, reject them here
+     * rather than emit a request that is known to be invalid.  IMAP (counted
+     * literals) and SMTP (base64 AUTH) are not affected.
+     */
+
+    if (ngx_strlchr(value->data, value->data + value->len, CR) != NULL
+        || ngx_strlchr(value->data, value->data + value->len, LF) != NULL)
+    {
+        ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
+                      "upstream POP3 credential contains CR or LF");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
