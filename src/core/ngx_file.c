@@ -382,6 +382,10 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     path->name = value[1];
 
+    if (path->name.len == 0) {
+        return "invalid value";
+    }
+
     if (path->name.data[path->name.len - 1] == '/') {
         path->name.len--;
     }
@@ -394,6 +398,10 @@ ngx_conf_set_path_slot(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     path->line = cf->conf_file->line;
 
     for (i = 0, n = 2; n < cf->args->nelts; i++, n++) {
+        if (i >= NGX_MAX_PATH_LEVEL) {
+            return "invalid value";
+        }
+
         level = ngx_atoi(value[n].data, value[n].len);
         if (level == NGX_ERROR || level == 0) {
             return "invalid value";
