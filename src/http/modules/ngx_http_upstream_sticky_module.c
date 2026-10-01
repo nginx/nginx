@@ -681,7 +681,9 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         p = ngx_copy(p, samesite.data, samesite.len);
     }
 
-    p = ngx_cpymem(p, stcf->cookie_path.data, stcf->cookie_path.len);
+    if (stcf->cookie_path.len) {
+        p = ngx_cpymem(p, stcf->cookie_path.data, stcf->cookie_path.len);
+    }
 
     cookie = stp->cookie;
 
