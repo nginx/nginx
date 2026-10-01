@@ -158,32 +158,19 @@ static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table_lc[256] =
 
 #if (NGX_PTR_SIZE == 8)
 
-#if (NGX_HAVE_LITTLE_ENDIAN)
-
-#if (NGX_HAVE_GCC_BSWAP64)
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = __builtin_bswap64(buf))
+#if !(NGX_HAVE_LITTLE_ENDIAN)
+#define ngx_http_huff_encode_hton(buf)  (buf)
+#elif (NGX_HAVE_GCC_BSWAP64)
+#define ngx_http_huff_encode_hton(buf)  __builtin_bswap64(buf)
 #else
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    ((dst)[0] = (u_char) ((buf) >> 56),                                       \
-     (dst)[1] = (u_char) ((buf) >> 48),                                       \
-     (dst)[2] = (u_char) ((buf) >> 40),                                       \
-     (dst)[3] = (u_char) ((buf) >> 32),                                       \
-     (dst)[4] = (u_char) ((buf) >> 24),                                       \
-     (dst)[5] = (u_char) ((buf) >> 16),                                       \
-     (dst)[6] = (u_char) ((buf) >> 8),                                        \
-     (dst)[7] = (u_char)  (buf))
-#endif
-
-#else /* !NGX_HAVE_LITTLE_ENDIAN */
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = (buf))
+#define ngx_http_huff_encode_hton(buf)                                        \
+    ((uint64_t) htonl((uint32_t) (buf)) << 32                                 \
+     | htonl((uint32_t) ((buf) >> 32)))
 #endif
 
 #else /* NGX_PTR_SIZE == 4 */
 
-#define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint32_t *) (dst) = htonl(buf))
+#define ngx_http_huff_encode_hton(buf)  htonl(buf)
 
 #endif
 
@@ -224,7 +211,8 @@ ngx_http_huff_encode(u_char *src, size_t len, u_char *dst, ngx_uint_t lower)
 
         buf |= code >> pending;
 
-        ngx_http_huff_encode_buf(&dst[hlen], buf);
+        buf = ngx_http_huff_encode_hton(buf);
+        ngx_memcpy(&dst[hlen], &buf, sizeof(buf));
 
         hlen += sizeof(buf);
 
