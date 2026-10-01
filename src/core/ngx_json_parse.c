@@ -20,8 +20,11 @@
 #define NGX_JSON_NOT_SKIPPING  (ngx_uint_t) -1
 #define ngx_json_skipping(d)   ((d) != NGX_JSON_NOT_SKIPPING)
 #define ngx_json_ws(c)  ((c) == ' ' || (c) == '\t' || (c) == CR || (c) == LF)
+#define ngx_json_digit(c)  ((c) >= '0' && (c) <= '9')
 
 
+static ngx_inline u_char *ngx_json_skip_ws(u_char *p, u_char *last);
+static ngx_inline u_char *ngx_json_skip_digits(u_char *p, u_char *last);
 static ngx_inline ngx_int_t ngx_json_end_number(ngx_json_ctx_t *ctx,
     u_char *start, u_char *end, ngx_json_state_e *state);
 static ngx_inline ngx_int_t ngx_json_emit(ngx_json_ctx_t *ctx,
@@ -31,6 +34,66 @@ static ngx_inline ngx_int_t ngx_json_close(ngx_json_ctx_t *ctx,
     ngx_json_event_e event, ngx_json_state_e *state, u_char *p);
 static ngx_int_t ngx_json_push_state(ngx_json_ctx_t *ctx,
     ngx_json_container_e container);
+
+
+/*
+ * Bytes that end a run of ordinary string characters: the closing quote,
+ * the escape character, and the control characters, which RFC 8259 requires
+ * to be escaped.  Everything else is copied through, so a string can be
+ * scanned in bulk rather than one state machine round per byte.
+ */
+
+static const uint8_t  ngx_json_string_stop[256] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  /* 0x00 - 0x0f */
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  /* 0x10 - 0x1f */
+    0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* 0x20 - 0x2f  "  */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* 0x30 - 0x3f */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* 0x40 - 0x4f */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,  /* 0x50 - 0x5f  \  */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* 0x60 - 0x6f */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* 0x70 - 0x7f */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
+/*
+ * Insignificant whitespace comes in runs (indentation, "key" : value), and
+ * none of it changes the state.  Consume the whole run at the point where a
+ * state has already accepted the first whitespace byte, so that indented
+ * documents do not pay a switch dispatch per space.  The digit runs that
+ * make up the bulk of a number are handled the same way.
+ *
+ * Both look at p[1] and stop before last, so the caller's p++ still lands on
+ * the byte after the run.
+ */
+
+static ngx_inline u_char *
+ngx_json_skip_ws(u_char *p, u_char *last)
+{
+    while (p + 1 < last && ngx_json_ws(p[1])) {
+        p++;
+    }
+
+    return p;
+}
+
+
+static ngx_inline u_char *
+ngx_json_skip_digits(u_char *p, u_char *last)
+{
+    while (p + 1 < last && ngx_json_digit(p[1])) {
+        p++;
+    }
+
+    return p;
+}
 
 
 void
@@ -100,6 +163,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_start:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -109,6 +173,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_object:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -125,6 +190,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_object_next:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -139,6 +205,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_object_name_separator:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -151,6 +218,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_object_value_separator:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -172,6 +240,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_array_value_separator:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -193,6 +262,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_array:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -209,6 +279,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_value:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
@@ -284,6 +355,22 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             return NGX_DECLINED;
 
         case ngx_json_string:
+
+            /*
+             * Ordinary characters are the bulk of a string, and none of them
+             * changes the state.  Run over them here instead of paying a
+             * switch dispatch per byte.
+             */
+
+            while (!ngx_json_string_stop[*p] && p + 1 < last) {
+                p++;
+            }
+
+            if (!ngx_json_string_stop[*p]) {
+                /* ordinary character at the end of the buffer */
+                break;
+            }
+
             if (*p == '"') {
 
                 if (ctx->in_key) {
@@ -444,7 +531,8 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             break;
 
         case ngx_json_number_int:
-            if (*p >= '0' && *p <= '9') {
+            if (ngx_json_digit(*p)) {
+                p = ngx_json_skip_digits(p, last);
                 break;
             }
 
@@ -477,7 +565,8 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             return NGX_DECLINED;
 
         case ngx_json_number_frac_digit:
-            if (*p >= '0' && *p <= '9') {
+            if (ngx_json_digit(*p)) {
+                p = ngx_json_skip_digits(p, last);
                 break;
             }
 
@@ -517,7 +606,8 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             return NGX_DECLINED;
 
         case ngx_json_number_exp_digit:
-            if (*p >= '0' && *p <= '9') {
+            if (ngx_json_digit(*p)) {
+                p = ngx_json_skip_digits(p, last);
                 break;
             }
 
@@ -630,6 +720,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
         case ngx_json_done:
             if (ngx_json_ws(*p)) {
+                p = ngx_json_skip_ws(p, last);
                 break;
             }
 
