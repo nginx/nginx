@@ -147,7 +147,7 @@ ngx_control_preinit(void)
 ngx_int_t
 ngx_control_init(u_char *addr)
 {
-    int        reuseaddr;
+    int        value;
     ngx_fd_t   fd;
     ngx_url_t  u;
 
@@ -200,9 +200,18 @@ ngx_control_init(u_char *addr)
         return NGX_ERROR;
     }
 
-    if (fcntl(fd, F_SETFL, O_ASYNC|O_NONBLOCK) == -1) {
+    if (ngx_nonblocking(fd) == -1) {
         ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_socket_errno,
-                      "control: fcntl(O_ASYNC|O_NONBLOCK) failed");
+                      "control: " ngx_nonblocking_n " failed");
+        ngx_close_socket(fd);
+        return NGX_ERROR;
+    }
+
+    value = 1;
+
+    if (ioctl(fd, FIOASYNC, &value) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_socket_errno,
+                      "control: ioctl(FIOASYNC) failed");
         ngx_close_socket(fd);
         return NGX_ERROR;
     }
@@ -214,10 +223,10 @@ ngx_control_init(u_char *addr)
         return NGX_ERROR;
     }
 
-    reuseaddr = 1;
+    value = 1;
 
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-                   (const void *) &reuseaddr, sizeof(int))
+                   (const void *) &value, sizeof(int))
         == -1)
     {
         ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, ngx_socket_errno,
@@ -451,6 +460,7 @@ ngx_control_close(ngx_control_request_t *r)
 static void
 ngx_control_handle_accept(void)
 {
+    int                     value;
     ngx_fd_t                fd;
     ngx_err_t               err;
     struct pollfd          *pfd;
@@ -499,9 +509,18 @@ ngx_control_handle_accept(void)
             continue;
         }
 
-        if (fcntl(r->fd, F_SETFL, O_ASYNC|O_NONBLOCK) == -1) {
+        if (ngx_nonblocking(r->fd) == -1) {
             ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                          "control: fcntl(O_ASYNC|O_NONBLOCK) failed");
+                          "control: " ngx_nonblocking_n " failed");
+            ngx_close_socket(r->fd);
+            continue;
+        }
+
+        value = 1;
+
+        if (ioctl(r->fd, FIOASYNC, &value) == -1) {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                          "control: ioctl(FIOASYNC) failed");
             ngx_close_socket(r->fd);
             continue;
         }
