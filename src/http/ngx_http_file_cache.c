@@ -657,10 +657,24 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
 
         ngx_shmtx_lock(&cache->shpool->mutex);
 
+        if (c->node->updating &&
+                ngx_active_workers_pids[c->node->updating_updater_process_slot]
+                    != c->node->updating_updater_process_pid) {
+            /*
+               if the active pid in the index is different from 
+               the initiator, it means the original worker has
+               crashed. reset the updating flag so another worker
+               can handle the cache update.
+            */
+            c->node->updating = 0;
+        }
+
         if (c->node->updating) {
             rc = NGX_HTTP_CACHE_UPDATING;
 
         } else {
+            c->node->updating_updater_process_slot = ngx_process_slot;
+            c->node->updating_updater_process_pid = ngx_pid;
             c->node->updating = 1;
             c->updating = 1;
             c->lock_time = c->node->lock_time;
