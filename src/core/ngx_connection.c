@@ -150,6 +150,9 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 #if (NGX_HAVE_REUSEPORT)
     int                        reuseport;
 #endif
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+    int                        transparent;
+#endif
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
@@ -416,6 +419,31 @@ ngx_set_inherited_sockets(ngx_cycle_t *cycle)
 
         ls[i].deferred_accept = 1;
 #endif
+
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+        transparent = 0;
+        olen = sizeof(int);
+        if (getsockopt(ls[i].fd, SOL_IP, IP_TRANSPARENT, &transparent, &olen)
+            == -1)
+        {
+            err = ngx_socket_errno;
+
+            if (err == NGX_EOPNOTSUPP || err == NGX_ENOPROTOOPT) {
+                continue;
+            }
+
+            ngx_log_error(NGX_LOG_NOTICE, cycle->log, err,
+                          "getsockopt(IP_TRANSPARENT) for %V failed, ignored",
+                          &ls[i].addr_text);
+            continue;
+        }
+
+        if (olen < sizeof(int) || transparent == 0) {
+            continue;
+        }
+
+        ls[i].transparent = 1;
+#endif
     }
 
     return NGX_OK;
@@ -586,6 +614,22 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
                     return NGX_ERROR;
                 }
 #endif
+            }
+#endif
+
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+            if (ls[i].transparent) {
+                int  transparent = 1;
+
+                if (setsockopt(s, SOL_IP, IP_TRANSPARENT,
+                               (const void *) &transparent, sizeof(int))
+                    == -1)
+                {
+                    ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                                "setsockopt(IP_TRANSPARENT) for %V failed, "
+                                "ignored",
+                                &ls[i].addr_text);
+                }
             }
 #endif
 
