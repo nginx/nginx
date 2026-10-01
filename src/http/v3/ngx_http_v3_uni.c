@@ -396,7 +396,7 @@ failed:
 ngx_int_t
 ngx_http_v3_send_settings(ngx_connection_t *c)
 {
-    u_char                  *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 6];
+    u_char                  *p, buf[NGX_HTTP_V3_VARLEN_INT_LEN * 8];
     size_t                   n;
     ngx_connection_t        *cc;
     ngx_http_v3_session_t   *h3c;
@@ -417,6 +417,12 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
     n += ngx_http_v3_encode_varlen_int(NULL, NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
     n += ngx_http_v3_encode_varlen_int(NULL, h3scf->max_blocked_streams);
 
+    if (h3scf->extended_connect) {
+        n += ngx_http_v3_encode_varlen_int(NULL,
+                                    NGX_HTTP_V3_PARAM_ENABLE_CONNECT_PROTOCOL);
+        n += ngx_http_v3_encode_varlen_int(NULL, 1);
+    }
+
     p = (u_char *) ngx_http_v3_encode_varlen_int(buf,
                                                  NGX_HTTP_V3_FRAME_SETTINGS);
     p = (u_char *) ngx_http_v3_encode_varlen_int(p, n);
@@ -426,6 +432,13 @@ ngx_http_v3_send_settings(ngx_connection_t *c)
     p = (u_char *) ngx_http_v3_encode_varlen_int(p,
                                             NGX_HTTP_V3_PARAM_BLOCKED_STREAMS);
     p = (u_char *) ngx_http_v3_encode_varlen_int(p, h3scf->max_blocked_streams);
+
+    if (h3scf->extended_connect) {
+        p = (u_char *) ngx_http_v3_encode_varlen_int(p,
+                                    NGX_HTTP_V3_PARAM_ENABLE_CONNECT_PROTOCOL);
+        p = (u_char *) ngx_http_v3_encode_varlen_int(p, 1);
+    }
+
     n = p - buf;
 
     h3c = ngx_http_v3_get_session(c);
