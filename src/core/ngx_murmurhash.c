@@ -19,7 +19,7 @@ ngx_murmur_hash2(u_char *data, size_t len)
         k  = data[0];
         k |= data[1] << 8;
         k |= data[2] << 16;
-        k |= data[3] << 24;
+        k |= (uint32_t) data[3] << 24;
 
         k *= 0x5bd1e995;
         k ^= k >> 24;
