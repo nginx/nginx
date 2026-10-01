@@ -1147,7 +1147,10 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
-    if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS) {
+    if (rc == NGX_AGAIN
+        || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS
+        || rc == NGX_HTTP_UPSTREAM_RETRY)
+    {
         rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
@@ -2614,6 +2617,12 @@ done:
 
     if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_INVALID_HEADER);
+        return;
+    }
+
+    if (rc == NGX_HTTP_UPSTREAM_RETRY) {
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR
+                                     | NGX_HTTP_UPSTREAM_FT_UNPROCESSED);
         return;
     }
 
@@ -4606,10 +4615,13 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
 {
     ngx_msec_t  timeout;
-    ngx_uint_t  status, state;
+    ngx_uint_t  status, state, unprocessed;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
+
+    unprocessed = ft_type & NGX_HTTP_UPSTREAM_FT_UNPROCESSED;
+    ft_type &= ~NGX_HTTP_UPSTREAM_FT_UNPROCESSED;
 
     if (u->peer.sockaddr) {
 
@@ -4617,7 +4629,8 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
             u->state->bytes_sent = u->peer.connection->sent;
         }
 
-        if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_403
+        if (unprocessed
+            || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_403
             || ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404)
         {
             state = NGX_PEER_NEXT;
@@ -4639,9 +4652,24 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "upstream timed out");
     }
 
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
-        /* TODO: inform balancer instead */
-        u->peer.tries++;
+    if (ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
+
+        if (unprocessed) {
+
+            /*
+             * Restore one exhausted try so a single peer can be retried on
+             * a new connection.  Do this once to avoid an endless loop.
+             */
+
+            if (u->peer.tries == 0 && !u->unprocessed_retried) {
+                u->peer.tries++;
+                u->unprocessed_retried = 1;
+            }
+
+        } else if (u->peer.cached) {
+            /* TODO: inform balancer instead */
+            u->peer.tries++;
+        }
     }
 
     switch (ft_type) {
@@ -4690,7 +4718,8 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     timeout = u->conf->next_upstream_timeout;
 
-    if (u->request_sent
+    if (!unprocessed
+        && u->request_sent
         && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
     {
         ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
