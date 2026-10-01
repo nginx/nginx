@@ -48,5 +48,8 @@ extern volatile ngx_str_t    ngx_cached_syslog_time;
  */
 extern volatile ngx_msec_t  ngx_current_msec;
 
+/* microseconds elapsed since some unspecified point in the past */
+extern volatile ngx_usec_t  ngx_current_usec;
+
 
 #endif /* _NGX_TIMES_H_INCLUDED_ */
