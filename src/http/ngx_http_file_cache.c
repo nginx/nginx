@@ -1329,7 +1329,9 @@ ngx_http_file_cache_set_header(ngx_http_request_t *r, u_char *buf)
 
     if (c->etag.len <= NGX_HTTP_CACHE_ETAG_LEN) {
         h->etag_len = (u_char) c->etag.len;
-        ngx_memcpy(h->etag, c->etag.data, c->etag.len);
+        if (c->etag.len) {
+            ngx_memcpy(h->etag, c->etag.data, c->etag.len);
+        }
     }
 
     if (c->vary.len) {
