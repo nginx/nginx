@@ -115,7 +115,8 @@ ngx_os_specific_init(ngx_log_t *log)
                 return NGX_ERROR;
             }
 
-            ngx_darwin_kern_ostype[size - 1] = '\0';
+            ngx_darwin_kern_ostype[sizeof(ngx_darwin_kern_ostype) - 1]
+                = '\0';
         }
     }
 
@@ -135,7 +136,8 @@ ngx_os_specific_init(ngx_log_t *log)
                 return NGX_ERROR;
             }
 
-            ngx_darwin_kern_osrelease[size - 1] = '\0';
+            ngx_darwin_kern_osrelease[sizeof(ngx_darwin_kern_osrelease) - 1]
+                = '\0';
         }
     }
 
