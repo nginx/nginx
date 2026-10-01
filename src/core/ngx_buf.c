@@ -56,7 +56,7 @@ ngx_alloc_chain_link(ngx_pool_t *pool)
         return cl;
     }
 
-    cl = ngx_palloc(pool, sizeof(ngx_chain_t));
+    cl = ngx_pcalloc(pool, sizeof(ngx_chain_t));
     if (cl == NULL) {
         return NULL;
     }
