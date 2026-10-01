@@ -17,13 +17,76 @@
 
 static ngx_inline u_char *ngx_json_utf8_encode(u_char *dst,
     uint32_t codepoint);
+static ngx_int_t ngx_json_unescape_internal(u_char *dst, u_char *src,
+    size_t size, size_t *len);
 
 
 ngx_int_t
 ngx_json_unescape_string(ngx_str_t *str)
 {
-    size_t       size;
-    u_char      *d, *s, *start, ch;
+    size_t      size, len;
+    u_char     *start;
+    ngx_int_t   rc;
+
+    if (str->len == 0) {
+        return NGX_OK;
+    }
+
+    if (str->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    start = str->data;
+    size = str->len;
+
+    /* in-place: output overwrites the (shrinking) input body */
+
+    rc = ngx_json_unescape_internal(start, start, size, &len);
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
+    str->data = start;
+    str->len = len;
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_json_unescape_dup(ngx_pool_t *pool, ngx_str_t *dst, ngx_str_t *src)
+{
+    size_t      len;
+    u_char     *buf;
+    ngx_int_t   rc;
+
+    if (src->len != 0 && src->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    /* the output is never longer than the input */
+
+    buf = ngx_pnalloc(pool, src->len);
+    if (buf == NULL) {
+        return NGX_ERROR;
+    }
+
+    rc = ngx_json_unescape_internal(buf, src->data, src->len, &len);
+    if (rc != NGX_OK) {
+        return rc;
+    }
+
+    dst->data = buf;
+    dst->len = len;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_json_unescape_internal(u_char *dst, u_char *src, size_t size, size_t *len)
+{
+    u_char      *d, *s, ch;
     uint32_t     codepoint, high_surrogate;
     ngx_int_t    n;
     ngx_uint_t   hex_left;
@@ -59,21 +122,11 @@ ngx_json_unescape_string(ngx_str_t *str)
      * The pair decodes to U+10000 + (high - 0xD800) * 0x400
      *                              + (low  - 0xDC00).
      * The input is an unquoted JSON string body (the bytes between the
-     * surrounding double quotes); it is decoded in place.
+     * surrounding double quotes).
      */
 
-    if (str->len == 0) {
-        return NGX_OK;
-    }
-
-    if (str->data == NULL) {
-        return NGX_ERROR;
-    }
-
-    start = str->data;
-    size = str->len;
-
-    d = s = start;
+    d = dst;
+    s = src;
 
     state = sw_usual;
     codepoint = 0;
@@ -227,8 +280,7 @@ ngx_json_unescape_string(ngx_str_t *str)
         return NGX_ERROR;
     }
 
-    str->data = start;
-    str->len = d - start;
+    *len = d - dst;
 
     return NGX_OK;
 }

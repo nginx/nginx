@@ -22,6 +22,74 @@
 #define ngx_json_ws(c)  ((c) == ' ' || (c) == '\t' || (c) == CR || (c) == LF)
 
 
+typedef enum {
+    ngx_json_start = 0,
+    ngx_json_done,
+    ngx_json_object,
+    ngx_json_object_next,
+    ngx_json_object_name_separator,
+    ngx_json_value,
+    ngx_json_object_value_separator,
+    ngx_json_array_value_separator,
+    ngx_json_array,
+    ngx_json_string,
+    ngx_json_number_minus,
+    ngx_json_number_int,
+    ngx_json_number_int_zero,
+    ngx_json_number_frac,
+    ngx_json_number_frac_digit,
+    ngx_json_number_exp,
+    ngx_json_number_exp_plusminus,
+    ngx_json_number_exp_digit,
+    ngx_json_escaped,
+    ngx_json_escaped_hex,       /* first \uXXXX: reading the four hex digits */
+    ngx_json_surrogate_start,   /* expect '\' beginning the low surrogate */
+    ngx_json_surrogate_u,       /* expect 'u' of the low surrogate */
+    ngx_json_surrogate_hex,     /* low \uXXXX: reading the four hex digits */
+    ngx_json_true_t,
+    ngx_json_true_tr,
+    ngx_json_true_tru,
+    ngx_json_false_f,
+    ngx_json_false_fa,
+    ngx_json_false_fal,
+    ngx_json_false_fals,
+    ngx_json_null_n,
+    ngx_json_null_nu,
+    ngx_json_null_nul
+} ngx_json_state_e;
+
+
+typedef enum {
+    ngx_json_ctx_none = 0,
+    ngx_json_ctx_object,
+    ngx_json_ctx_array
+} ngx_json_container_e;
+
+
+typedef struct {
+    ngx_json_state_e       state;
+
+    ngx_json_container_e  *stack;
+    ngx_uint_t             depth;
+    ngx_uint_t             max_depth;
+
+    uint32_t               codepoint;
+    ngx_uint_t             hex_left;         /* hex digits still expected */
+
+    ngx_uint_t             skip_until_depth;
+
+    ngx_pool_t            *pool;
+    ngx_json_handler_pt    handler;
+    void                  *data;
+
+    unsigned               in_key;
+    unsigned               escaped;          /* the string holds an escape */
+} ngx_json_ctx_t;
+
+
+static void ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool);
+static ngx_int_t ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data,
+    size_t len);
 static ngx_inline ngx_int_t ngx_json_end_number(ngx_json_ctx_t *ctx,
     u_char *start, u_char *end, ngx_json_state_e *state);
 static ngx_inline ngx_int_t ngx_json_emit(ngx_json_ctx_t *ctx,
@@ -33,7 +101,7 @@ static ngx_int_t ngx_json_push_state(ngx_json_ctx_t *ctx,
     ngx_json_container_e container);
 
 
-void
+static void
 ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool)
 {
     ctx->state = ngx_json_start;
@@ -52,15 +120,17 @@ ngx_json_ctx_init(ngx_json_ctx_t *ctx, ngx_pool_t *pool)
     ctx->stack = NULL;
 
     ctx->in_key = 0;
+    ctx->escaped = 0;
 }
 
 
-ngx_int_t
+static ngx_int_t
 ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 {
     u_char            *p, *last, *start;
     ngx_int_t          rc, hd;
     ngx_uint_t         skip_depth;
+    ngx_json_event_e   event;
     ngx_json_state_e   state;
 
     if (len == 0) {
@@ -130,6 +200,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
             if (*p == '"') {
                 ctx->in_key = 1;
+                ctx->escaped = 0;
                 start = p + 1;
                 state = ngx_json_string;
                 break;
@@ -216,6 +287,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
             if (*p == '"') {
                 ctx->in_key = 0;
+                ctx->escaped = 0;
                 start = p + 1;
                 state = ngx_json_string;
                 break;
@@ -287,7 +359,10 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             if (*p == '"') {
 
                 if (ctx->in_key) {
-                    rc = ngx_json_emit(ctx, NGX_JSON_KEY, start, p - start);
+                    event = ctx->escaped ? NGX_JSON_KEY_ESCAPED
+                                         : NGX_JSON_KEY;
+
+                    rc = ngx_json_emit(ctx, event, start, p - start);
                     if (rc != NGX_OK) {
                         return rc;
                     }
@@ -296,8 +371,10 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
                     state = ngx_json_object_name_separator;
 
                 } else {
-                    rc = ngx_json_emit(ctx, NGX_JSON_VALUE_STRING, start,
-                                      p - start);
+                    event = ctx->escaped ? NGX_JSON_VALUE_STRING_ESCAPED
+                                         : NGX_JSON_VALUE_STRING;
+
+                    rc = ngx_json_emit(ctx, event, start, p - start);
                     if (rc != NGX_OK) {
                         return rc;
                     }
@@ -309,6 +386,7 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
             }
 
             if (*p == '\\') {
+                ctx->escaped = 1;
                 state = ngx_json_escaped;
                 break;
             }
@@ -666,8 +744,8 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
 
 
 ngx_int_t
-ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_json_handler_pt handler,
-    void *data)
+ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_uint_t max_depth,
+    ngx_json_handler_pt handler, void *data)
 {
     ngx_json_ctx_t  jctx;
 
@@ -675,6 +753,10 @@ ngx_json_parse(ngx_pool_t *pool, ngx_str_t *json, ngx_json_handler_pt handler,
 
     jctx.data = data;
     jctx.handler = handler;
+
+    if (max_depth) {
+        jctx.max_depth = max_depth;
+    }
 
     return ngx_json_parse_ctx(&jctx, json->data, json->len);
 }
@@ -714,7 +796,7 @@ ngx_json_emit(ngx_json_ctx_t *ctx, ngx_json_event_e event, u_char *data,
 
     token.data = data;
     token.len = len;
-    rc = ctx->handler(ctx, event, &token);
+    rc = ctx->handler(event, &token, ctx->data);
 
     if (rc == NGX_JSON_SKIP) {
 
@@ -734,12 +816,14 @@ ngx_json_emit(ngx_json_ctx_t *ctx, ngx_json_event_e event, u_char *data,
         switch (event) {
 
         case NGX_JSON_KEY:
+        case NGX_JSON_KEY_ESCAPED:
         case NGX_JSON_OBJECT_OPEN:
         case NGX_JSON_ARRAY_OPEN:
             ctx->skip_until_depth = ctx->depth;
             break;
 
         case NGX_JSON_VALUE_STRING:
+        case NGX_JSON_VALUE_STRING_ESCAPED:
         case NGX_JSON_VALUE_NUMBER:
         case NGX_JSON_VALUE_BOOL:
         case NGX_JSON_VALUE_NULL:
