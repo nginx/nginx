@@ -642,12 +642,14 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
 #if (NGX_HTTP_V2)
     if (r->stream) {
         r->stream->skip_data = 1;
+        r->discard_body = 1;
         return NGX_OK;
     }
 #endif
 
 #if (NGX_HTTP_V3)
     if (r->http_version == NGX_HTTP_VERSION_30) {
+        r->discard_body = 1;
         return NGX_OK;
     }
 #endif
