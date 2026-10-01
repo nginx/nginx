@@ -43,6 +43,12 @@
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
+#if (NGX_QUIC_QLOG)
+#define NGX_QUIC_QLOG_LEVEL_CORE             0
+#define NGX_QUIC_QLOG_LEVEL_BASE             1
+#define NGX_QUIC_QLOG_LEVEL_EXTRA            2
+#endif
+
 
 typedef ngx_int_t (*ngx_quic_init_pt)(ngx_connection_t *c);
 typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
@@ -93,6 +99,15 @@ typedef struct {
     ngx_int_t                      stream_close_code;
     ngx_int_t                      stream_reject_code_uni;
     ngx_int_t                      stream_reject_code_bidi;
+
+#if (NGX_QUIC_QLOG)
+    ngx_flag_t                     qlog_enabled;
+    ngx_str_t                      qlog_path;
+    ngx_uint_t                     qlog_sample_n;
+    size_t                         qlog_max_size;
+    ngx_uint_t                     qlog_importance;
+    ngx_array_t                   *qlog_allow; /* array of ngx_cidr_t */
+#endif
 
     ngx_quic_init_pt               init;
     ngx_quic_shutdown_pt           shutdown;
