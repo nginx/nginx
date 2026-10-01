@@ -4462,6 +4462,9 @@ ngx_http_grpc_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 }
 
 
+static ngx_str_t  ngx_http_grpc_trailers = ngx_string("trailers");
+
+
 static ngx_int_t
 ngx_http_grpc_internal_trailers_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
@@ -4475,8 +4478,7 @@ ngx_http_grpc_internal_trailers_variable(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    if (ngx_strlcasestrn(te->value.data, te->value.data + te->value.len,
-                         (u_char *) "trailers", 8 - 1)
+    if (ngx_http_parse_multi_header_lines(r, te, &ngx_http_grpc_trailers, NULL)
         == NULL)
     {
         v->not_found = 1;
