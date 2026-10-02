@@ -43,44 +43,6 @@ int ngx_socket_nread(ngx_socket_t s, int *n);
 #define ngx_close_socket_n  "closesocket()"
 
 
-#ifndef WSAID_ACCEPTEX
-
-typedef BOOL (PASCAL FAR * LPFN_ACCEPTEX)(
-    IN SOCKET sListenSocket,
-    IN SOCKET sAcceptSocket,
-    IN PVOID lpOutputBuffer,
-    IN DWORD dwReceiveDataLength,
-    IN DWORD dwLocalAddressLength,
-    IN DWORD dwRemoteAddressLength,
-    OUT LPDWORD lpdwBytesReceived,
-    IN LPOVERLAPPED lpOverlapped
-    );
-
-#define WSAID_ACCEPTEX                                                       \
-    {0xb5367df1,0xcbac,0x11cf,{0x95,0xca,0x00,0x80,0x5f,0x48,0xa1,0x92}}
-
-#endif
-
-
-#ifndef WSAID_GETACCEPTEXSOCKADDRS
-
-typedef VOID (PASCAL FAR * LPFN_GETACCEPTEXSOCKADDRS)(
-    IN PVOID lpOutputBuffer,
-    IN DWORD dwReceiveDataLength,
-    IN DWORD dwLocalAddressLength,
-    IN DWORD dwRemoteAddressLength,
-    OUT struct sockaddr **LocalSockaddr,
-    OUT LPINT LocalSockaddrLength,
-    OUT struct sockaddr **RemoteSockaddr,
-    OUT LPINT RemoteSockaddrLength
-    );
-
-#define WSAID_GETACCEPTEXSOCKADDRS                                           \
-        {0xb5367df2,0xcbac,0x11cf,{0x95,0xca,0x00,0x80,0x5f,0x48,0xa1,0x92}}
-
-#endif
-
-
 #ifndef WSAID_TRANSMITFILE
 
 #ifndef TF_DISCONNECT
@@ -197,8 +159,6 @@ typedef BOOL (PASCAL FAR * LPFN_DISCONNECTEX) (
 #endif
 
 
-extern LPFN_ACCEPTEX              ngx_acceptex;
-extern LPFN_GETACCEPTEXSOCKADDRS  ngx_getacceptexsockaddrs;
 extern LPFN_TRANSMITFILE          ngx_transmitfile;
 extern LPFN_TRANSMITPACKETS       ngx_transmitpackets;
 extern LPFN_CONNECTEX             ngx_connectex;
