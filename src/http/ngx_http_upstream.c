@@ -5604,9 +5604,9 @@ static ngx_int_t
 ngx_http_upstream_process_priority(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset)
 {
-#if (NGX_HTTP_V2)
-    ngx_http_priority_t    priority;
-    ngx_http_v2_stream_t  *stream;
+#if (NGX_HTTP_V2) || (NGX_HTTP_V3)
+    ngx_http_priority_t         priority;
+    ngx_http_priority_state_t  *ps;
 
     if (r != r->main) {
         return NGX_OK;
@@ -5614,9 +5614,23 @@ ngx_http_upstream_process_priority(ngx_http_request_t *r,
 
     /* RFC 9218, Section 8: server hints override the client's values */
 
-    stream = r->stream;
+    ps = NULL;
 
-    if (stream == NULL) {
+#if (NGX_HTTP_V2)
+    if (r->stream != NULL) {
+        ps = &r->stream->priority;
+    }
+#endif
+
+#if (NGX_HTTP_V3)
+    /* HTTP/3 keeps the request's priority state on its v3_parse context */
+
+    if (r->connection->quic != NULL && r->v3_parse != NULL) {
+        ps = &r->v3_parse->priority;
+    }
+#endif
+
+    if (ps == NULL) {
         return NGX_OK;
     }
 
@@ -5626,13 +5640,20 @@ ngx_http_upstream_process_priority(ngx_http_request_t *r,
         return NGX_OK;
     }
 
-    stream->priority.server = priority;
-    ngx_http_priority_state_update(&stream->priority);
+    ps->server = priority;
+    ngx_http_priority_state_update(ps);
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http upstream priority: u=%ud i=%ud",
-                   stream->priority.effective.urgency,
-                   stream->priority.effective.incremental);
+                   ps->effective.urgency,
+                   ps->effective.incremental);
+
+#if (NGX_HTTP_V3)
+    if (r->connection->quic != NULL) {
+        ngx_quic_set_stream_priority(r->connection, ps->effective.urgency,
+                                     ps->effective.incremental);
+    }
+#endif
 #endif
 
     return NGX_OK;
