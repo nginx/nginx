@@ -54,8 +54,6 @@ ngx_mail_init_connection(ngx_connection_t *c)
          * There are several addresses on this port and one of them
          * is the "*:port" wildcard so getsockname() is needed to determine
          * the server address.
-         *
-         * AcceptEx() already gave this address.
          */
 
         if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {

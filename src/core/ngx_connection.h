@@ -44,8 +44,6 @@ struct ngx_listening_s {
     ngx_log_t          *logp;
 
     size_t              pool_size;
-    /* should be here because of the AcceptEx() preread */
-    size_t              post_accept_buffer_size;
 
     ngx_listening_t    *previous;
     ngx_connection_t   *connection;

@@ -43,15 +43,11 @@ static u_int               osviex;
 static OSVERSIONINFOEX     osvi;
 
 /* Should these pointers be per protocol ? */
-LPFN_ACCEPTEX              ngx_acceptex;
-LPFN_GETACCEPTEXSOCKADDRS  ngx_getacceptexsockaddrs;
 LPFN_TRANSMITFILE          ngx_transmitfile;
 LPFN_TRANSMITPACKETS       ngx_transmitpackets;
 LPFN_CONNECTEX             ngx_connectex;
 LPFN_DISCONNECTEX          ngx_disconnectex;
 
-static GUID ax_guid = WSAID_ACCEPTEX;
-static GUID as_guid = WSAID_GETACCEPTEXSOCKADDRS;
 static GUID tf_guid = WSAID_TRANSMITFILE;
 static GUID tp_guid = WSAID_TRANSMITPACKETS;
 static GUID cx_guid = WSAID_CONNECTEX;
@@ -154,8 +150,8 @@ ngx_os_init(ngx_log_t *log)
     ngx_max_wsabufs = 1024 * 1024;
 
     /*
-     * get AcceptEx(), GetAcceptExSockAddrs(), TransmitFile(),
-     * TransmitPackets(), ConnectEx(), and DisconnectEx() addresses
+     * get TransmitFile(), TransmitPackets(), ConnectEx(),
+     * and DisconnectEx() addresses
      */
 
     s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -163,25 +159,6 @@ ngx_os_init(ngx_log_t *log)
         ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
                       ngx_socket_n " failed");
         return NGX_ERROR;
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &ax_guid, sizeof(GUID),
-                 &ngx_acceptex, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_ACCEPTEX) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &as_guid, sizeof(GUID),
-                 &ngx_getacceptexsockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
-                 &bytes, NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_GETACCEPTEXSOCKADDRS) failed");
     }
 
     if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tf_guid, sizeof(GUID),

@@ -3572,11 +3572,6 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
         p->buf_to_file->temporary = 1;
     }
 
-    if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
-        /* the posted aio operation may corrupt a shadow buffer */
-        p->single_buf = 1;
-    }
-
     /* TODO: p->free_bufs = 0 if use ngx_create_chain_of_bufs() */
     p->free_bufs = 1;
 

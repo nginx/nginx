@@ -16,17 +16,6 @@
 #define NGX_INVALID_INDEX  0xd0d0d0d0
 
 
-#if (NGX_HAVE_IOCP)
-
-typedef struct {
-    WSAOVERLAPPED    ovlp;
-    ngx_event_t     *event;
-    int              error;
-} ngx_event_ovlp_t;
-
-#endif
-
-
 struct ngx_event_s {
     void            *data;
 
@@ -92,8 +81,6 @@ struct ngx_event_s {
      *   write:      available space in buffer when event is ready
      *               or lowat when event is set with NGX_LOWAT_EVENT flag
      *
-     * iocp: TODO
-     *
      * otherwise:
      *   accept:     1 if accept many, 0 otherwise
      *   read:       bytes to read when event is ready, -1 if not known
@@ -103,10 +90,6 @@ struct ngx_event_s {
 
     ngx_event_handler_pt  handler;
 
-
-#if (NGX_HAVE_IOCP)
-    ngx_event_ovlp_t ovlp;
-#endif
 
     ngx_uint_t       index;
 
@@ -239,11 +222,6 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
  * Obsolete.
  */
 #define NGX_USE_AIO_EVENT        0x00000100
-
-/*
- * Need to add socket or handle only once: i/o completion port.
- */
-#define NGX_USE_IOCP_EVENT       0x00000200
 
 /*
  * The event filter has no opaque data and requires file descriptors table:
@@ -381,13 +359,6 @@ extern ngx_uint_t            ngx_use_epoll_rdhup;
 #endif /* NGX_HAVE_KQUEUE */
 
 
-#if (NGX_HAVE_IOCP)
-#define NGX_IOCP_ACCEPT      0
-#define NGX_IOCP_IO          1
-#define NGX_IOCP_CONNECT     2
-#endif
-
-
 #if (NGX_TEST_BUILD_EPOLL)
 #define NGX_EXCLUSIVE_EVENT  0
 #endif
@@ -493,7 +464,6 @@ extern ngx_module_t           ngx_event_core_module;
              (*(ngx_get_conf(conf_ctx, ngx_events_module))) [module.ctx_index]
 
 
-
 void ngx_event_accept(ngx_event_t *ev);
 ngx_int_t ngx_trylock_accept_mutex(ngx_cycle_t *cycle);
 ngx_int_t ngx_enable_accept_events(ngx_cycle_t *cycle);
@@ -508,13 +478,6 @@ ngx_int_t ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags);
 ngx_int_t ngx_handle_write_event(ngx_event_t *wev, size_t lowat);
 
 
-#if (NGX_WIN32)
-void ngx_event_acceptex(ngx_event_t *ev);
-ngx_int_t ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n);
-u_char *ngx_acceptex_log_error(ngx_log_t *log, u_char *buf, size_t len);
-#endif
-
-
 ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 
 
@@ -525,10 +488,6 @@ ngx_int_t ngx_send_lowat(ngx_connection_t *c, size_t lowat);
 #include <ngx_event_timer.h>
 #include <ngx_event_posted.h>
 #include <ngx_event_udp.h>
-
-#if (NGX_WIN32)
-#include <ngx_iocp_module.h>
-#endif
 
 
 #endif /* _NGX_EVENT_H_INCLUDED_ */

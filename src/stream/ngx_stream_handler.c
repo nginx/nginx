@@ -50,7 +50,7 @@ ngx_stream_init_connection(ngx_connection_t *c)
          * is the "*:port" wildcard so getsockname() is needed to determine
          * the server address.
          *
-         * AcceptEx() and recvmsg() already gave this address.
+         * recvmsg() already gave this address.
          */
 
         if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
