@@ -226,12 +226,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 /* use the free bufs if they exist */
 
                 chain = p->free_raw_bufs;
-                if (p->single_buf) {
-                    p->free_raw_bufs = p->free_raw_bufs->next;
-                    chain->next = NULL;
-                } else {
-                    p->free_raw_bufs = NULL;
-                }
+                p->free_raw_bufs = NULL;
 
             } else if (p->allocated < p->bufs.num) {
 
@@ -293,12 +288,7 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
                 }
 
                 chain = p->free_raw_bufs;
-                if (p->single_buf) {
-                    p->free_raw_bufs = p->free_raw_bufs->next;
-                    chain->next = NULL;
-                } else {
-                    p->free_raw_bufs = NULL;
-                }
+                p->free_raw_bufs = NULL;
 
             } else {
 
@@ -326,10 +316,6 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
             }
 
             if (n == NGX_AGAIN) {
-                if (p->single_buf) {
-                    ngx_event_pipe_remove_shadow_links(chain->buf);
-                }
-
                 break;
             }
 

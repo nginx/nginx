@@ -131,9 +131,6 @@ EVENTPORT_SRCS=src/event/modules/ngx_eventport_module.c
 EPOLL_MODULE=ngx_epoll_module
 EPOLL_SRCS=src/event/modules/ngx_epoll_module.c
 
-IOCP_MODULE=ngx_iocp_module
-IOCP_SRCS=src/event/modules/ngx_iocp_module.c
-
 FILE_AIO_SRCS="src/os/unix/ngx_file_aio_read.c"
 LINUX_AIO_SRCS="src/os/unix/ngx_linux_aio_read.c"
 
@@ -261,8 +258,7 @@ WIN32_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/win32/ngx_user.c \
             src/os/win32/ngx_dlopen.c \
             src/os/win32/ngx_event_log.c \
-            src/os/win32/ngx_process_cycle.c \
-            src/event/ngx_event_acceptex.c"
+            src/os/win32/ngx_process_cycle.c"
 
 NGX_WIN32_ICONS="src/os/win32/nginx.ico"
 NGX_WIN32_RC="src/os/win32/nginx.rc"

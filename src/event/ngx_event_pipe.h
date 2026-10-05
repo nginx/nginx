@@ -56,7 +56,6 @@ struct ngx_event_pipe_s {
 
     unsigned           read:1;
     unsigned           cacheable:1;
-    unsigned           single_buf:1;
     unsigned           free_bufs:1;
     unsigned           upstream_done:1;
     unsigned           upstream_error:1;

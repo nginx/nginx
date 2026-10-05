@@ -608,20 +608,18 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
 #endif
             /* TODO: close on exit */
 
-            if (!(ngx_event_flags & NGX_USE_IOCP_EVENT)) {
-                if (ngx_nonblocking(s) == -1) {
+            if (ngx_nonblocking(s) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
+                              ngx_nonblocking_n " %V failed",
+                              &ls[i].addr_text);
+
+                if (ngx_close_socket(s) == -1) {
                     ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                  ngx_nonblocking_n " %V failed",
+                                  ngx_close_socket_n " %V failed",
                                   &ls[i].addr_text);
-
-                    if (ngx_close_socket(s) == -1) {
-                        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                                      ngx_close_socket_n " %V failed",
-                                      &ls[i].addr_text);
-                    }
-
-                    return NGX_ERROR;
                 }
+
+                return NGX_ERROR;
             }
 
             ngx_log_debug2(NGX_LOG_DEBUG_CORE, log, 0,
@@ -1130,10 +1128,6 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     ngx_uint_t         i;
     ngx_listening_t   *ls;
     ngx_connection_t  *c;
-
-    if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
-        return;
-    }
 
     ngx_accept_mutex_held = 0;
     ngx_use_accept_mutex = 0;
