@@ -17,6 +17,8 @@ static void ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis, ngx_uint_t padding);
 static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis);
+static void ngx_merge_sort_merge(u_char *base, size_t n1, size_t n2,
+    size_t size, ngx_int_t (*cmp)(const void *, const void *), u_char *buf);
 
 
 void
@@ -2103,6 +2105,79 @@ ngx_sort(void *base, size_t n, size_t size,
     }
 
     ngx_free(p);
+}
+
+
+/*
+ * ngx_merge_sort() is a stable sort with O(n log n) comparisons
+ * for any input; buf must have room for at least n / 2 elements
+ */
+
+void
+ngx_merge_sort(void *base, size_t n, size_t size,
+    ngx_int_t (*cmp)(const void *, const void *), void *buf)
+{
+    size_t  n1;
+
+    if (n < 2) {
+        return;
+    }
+
+    n1 = n / 2;
+
+    ngx_merge_sort(base, n1, size, cmp, buf);
+    ngx_merge_sort((u_char *) base + n1 * size, n - n1, size, cmp, buf);
+
+    ngx_merge_sort_merge(base, n1, n - n1, size, cmp, buf);
+}
+
+
+static void
+ngx_merge_sort_merge(u_char *base, size_t n1, size_t n2, size_t size,
+    ngx_int_t (*cmp)(const void *, const void *), u_char *buf)
+{
+    u_char  *l, *le, *r, *re, *d;
+
+    r = base + n1 * size;
+
+    /* the runs are already in order */
+
+    if (cmp(r - size, r) <= 0) {
+        return;
+    }
+
+    /*
+     * the left run is moved aside, then both runs are merged
+     * from the start of base: the output never overtakes the
+     * unread part of the right run, so the right run stays in place
+     */
+
+    ngx_memcpy(buf, base, n1 * size);
+
+    l = buf;
+    le = buf + n1 * size;
+    re = r + n2 * size;
+    d = base;
+
+    while (l < le && r < re) {
+
+        /* on equal elements the left one goes first: stable */
+
+        if (cmp(r, l) < 0) {
+            ngx_memcpy(d, r, size);
+            r += size;
+
+        } else {
+            ngx_memcpy(d, l, size);
+            l += size;
+        }
+
+        d += size;
+    }
+
+    /* the rest of the right run, if any, is already in place */
+
+    ngx_memcpy(d, l, le - l);
 }
 
 
