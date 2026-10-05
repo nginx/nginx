@@ -83,6 +83,7 @@ static char *ngx_http_gzip_disable(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_int_t ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r,
     ngx_addr_t *addr, u_char *xff, size_t xfflen, ngx_array_t *proxies,
     int recursive);
+static ngx_int_t ngx_http_cmp_header_links(const void *one, const void *two);
 #if (NGX_HAVE_OPENAT)
 static char *ngx_http_disable_symlinks(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -2941,16 +2942,41 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
 ngx_int_t
 ngx_http_link_multi_headers(ngx_http_request_t *r)
 {
-    ngx_uint_t        i, j;
-    ngx_list_part_t  *part, *ppart;
-    ngx_table_elt_t  *header, *pheader, **ph;
+    ngx_uint_t        i, n;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header, **headers;
 
     if (r->headers_in.multi_linked) {
         return NGX_OK;
     }
 
+    n = 0;
+    part = &r->headers_in.headers.part;
+
+    while (part) {
+        n += part->nelts;
+        part = part->next;
+    }
+
+    /*
+     * n headers, followed by n / 2 elements for ngx_merge_sort();
+     * allocated before headers are modified, to keep them intact
+     * on failure
+     */
+
+    headers = NULL;
+
+    if (n > 1) {
+        headers = ngx_alloc((n + n / 2) * sizeof(ngx_table_elt_t *),
+                            r->connection->log);
+        if (headers == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
     r->headers_in.multi_linked = 1;
 
+    n = 0;
     part = &r->headers_in.headers.part;
     header = part->elts;
 
@@ -2968,47 +2994,49 @@ ngx_http_link_multi_headers(ngx_http_request_t *r)
 
         header[i].next = NULL;
 
-        /*
-         * search for previous headers with the same name;
-         * if there are any, link to them
-         */
-
-        ppart = &r->headers_in.headers.part;
-        pheader = ppart->elts;
-
-        for (j = 0; /* void */; j++) {
-
-            if (j >= ppart->nelts) {
-                if (ppart->next == NULL) {
-                    break;
-                }
-
-                ppart = ppart->next;
-                pheader = ppart->elts;
-                j = 0;
-            }
-
-            if (part == ppart && i == j) {
-                break;
-            }
-
-            if (header[i].key.len == pheader[j].key.len
-                && ngx_strncasecmp(header[i].key.data, pheader[j].key.data,
-                                   header[i].key.len)
-                   == 0)
-            {
-                ph = &pheader[j].next;
-                while (*ph) { ph = &(*ph)->next; }
-                *ph = &header[i];
-
-                r->headers_in.multi = 1;
-
-                break;
-            }
+        if (headers) {
+            headers[n++] = &header[i];
         }
     }
 
+    if (headers == NULL) {
+        return NGX_OK;
+    }
+
+    /*
+     * sort headers by name, preserving the original order
+     * of headers with the same name, and link adjacent ones
+     */
+
+    ngx_merge_sort(headers, n, sizeof(ngx_table_elt_t *),
+                   ngx_http_cmp_header_links, headers + n);
+
+    for (i = 1; i < n; i++) {
+        if (ngx_http_cmp_header_links(&headers[i - 1], &headers[i]) == 0) {
+            headers[i - 1]->next = headers[i];
+            r->headers_in.multi = 1;
+        }
+    }
+
+    ngx_free(headers);
+
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_cmp_header_links(const void *one, const void *two)
+{
+    ngx_table_elt_t  *first, *second;
+
+    first = *(ngx_table_elt_t **) one;
+    second = *(ngx_table_elt_t **) two;
+
+    if (first->key.len != second->key.len) {
+        return first->key.len < second->key.len ? -1 : 1;
+    }
+
+    return ngx_strncasecmp(first->key.data, second->key.data, first->key.len);
 }
 
 
