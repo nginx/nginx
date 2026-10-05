@@ -42,21 +42,6 @@ typedef struct {
 static u_int               osviex;
 static OSVERSIONINFOEX     osvi;
 
-/* Should these pointers be per protocol ? */
-LPFN_ACCEPTEX              ngx_acceptex;
-LPFN_GETACCEPTEXSOCKADDRS  ngx_getacceptexsockaddrs;
-LPFN_TRANSMITFILE          ngx_transmitfile;
-LPFN_TRANSMITPACKETS       ngx_transmitpackets;
-LPFN_CONNECTEX             ngx_connectex;
-LPFN_DISCONNECTEX          ngx_disconnectex;
-
-static GUID ax_guid = WSAID_ACCEPTEX;
-static GUID as_guid = WSAID_GETACCEPTEXSOCKADDRS;
-static GUID tf_guid = WSAID_TRANSMITFILE;
-static GUID tp_guid = WSAID_TRANSMITPACKETS;
-static GUID cx_guid = WSAID_CONNECTEX;
-static GUID dx_guid = WSAID_DISCONNECTEX;
-
 
 #if (NGX_LOAD_WSAPOLL)
 ngx_wsapoll_pt             WSAPoll;
@@ -67,8 +52,6 @@ ngx_uint_t                 ngx_have_wsapoll;
 ngx_int_t
 ngx_os_init(ngx_log_t *log)
 {
-    DWORD         bytes;
-    SOCKET        s;
     WSADATA       wsd;
     ngx_err_t     err;
     ngx_time_t   *tp;
@@ -152,82 +135,6 @@ ngx_os_init(ngx_log_t *log)
 
     /* STUB: ngx_uint_t max */
     ngx_max_wsabufs = 1024 * 1024;
-
-    /*
-     * get AcceptEx(), GetAcceptExSockAddrs(), TransmitFile(),
-     * TransmitPackets(), ConnectEx(), and DisconnectEx() addresses
-     */
-
-    s = ngx_socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if (s == (ngx_socket_t) -1) {
-        ngx_log_error(NGX_LOG_EMERG, log, ngx_socket_errno,
-                      ngx_socket_n " failed");
-        return NGX_ERROR;
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &ax_guid, sizeof(GUID),
-                 &ngx_acceptex, sizeof(LPFN_ACCEPTEX), &bytes, NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_ACCEPTEX) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &as_guid, sizeof(GUID),
-                 &ngx_getacceptexsockaddrs, sizeof(LPFN_GETACCEPTEXSOCKADDRS),
-                 &bytes, NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_GETACCEPTEXSOCKADDRS) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tf_guid, sizeof(GUID),
-                 &ngx_transmitfile, sizeof(LPFN_TRANSMITFILE), &bytes,
-                 NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_TRANSMITFILE) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &tp_guid, sizeof(GUID),
-                 &ngx_transmitpackets, sizeof(LPFN_TRANSMITPACKETS), &bytes,
-                 NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_TRANSMITPACKETS) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &cx_guid, sizeof(GUID),
-                 &ngx_connectex, sizeof(LPFN_CONNECTEX), &bytes,
-                 NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_CONNECTEX) failed");
-    }
-
-    if (WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER, &dx_guid, sizeof(GUID),
-                 &ngx_disconnectex, sizeof(LPFN_DISCONNECTEX), &bytes,
-                 NULL, NULL)
-        == -1)
-    {
-        ngx_log_error(NGX_LOG_NOTICE, log, ngx_socket_errno,
-                      "WSAIoctl(SIO_GET_EXTENSION_FUNCTION_POINTER, "
-                               "WSAID_DISCONNECTEX) failed");
-    }
-
-    if (ngx_close_socket(s) == -1) {
-        ngx_log_error(NGX_LOG_ALERT, log, ngx_socket_errno,
-                      ngx_close_socket_n " failed");
-    }
 
 #if (NGX_LOAD_WSAPOLL)
     {
