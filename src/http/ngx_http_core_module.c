@@ -84,6 +84,8 @@ static ngx_int_t ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r,
     ngx_addr_t *addr, u_char *xff, size_t xfflen, ngx_array_t *proxies,
     int recursive);
 static ngx_int_t ngx_http_cmp_header_links(const void *one, const void *two);
+static ngx_int_t ngx_http_cmp_linked_headers(const void *one,
+    const void *two);
 #if (NGX_HAVE_OPENAT)
 static char *ngx_http_disable_symlinks(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -3037,6 +3039,92 @@ ngx_http_cmp_header_links(const void *one, const void *two)
     }
 
     return ngx_strncasecmp(first->key.data, second->key.data, first->key.len);
+}
+
+
+/*
+ * collects headers linked to previous headers with identical names,
+ * sorted by address for ngx_http_find_linked_header(); linked must
+ * have room for all headers, and buf for a half of them
+ */
+
+ngx_uint_t
+ngx_http_sort_linked_headers(ngx_http_request_t *r, ngx_table_elt_t **linked,
+    void *buf)
+{
+    ngx_uint_t        i, n;
+    ngx_list_part_t  *part;
+    ngx_table_elt_t  *header;
+
+    n = 0;
+    part = &r->headers_in.headers.part;
+    header = part->elts;
+
+    for (i = 0; /* void */; i++) {
+
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            header = part->elts;
+            i = 0;
+        }
+
+        if (header[i].next) {
+            linked[n++] = header[i].next;
+        }
+    }
+
+    ngx_merge_sort(linked, n, sizeof(ngx_table_elt_t *),
+                   ngx_http_cmp_linked_headers, buf);
+
+    return n;
+}
+
+
+static ngx_int_t
+ngx_http_cmp_linked_headers(const void *one, const void *two)
+{
+    ngx_table_elt_t  *first, *second;
+
+    first = *(ngx_table_elt_t **) one;
+    second = *(ngx_table_elt_t **) two;
+
+    if (first == second) {
+        return 0;
+    }
+
+    return ((uintptr_t) first < (uintptr_t) second) ? -1 : 1;
+}
+
+
+ngx_uint_t
+ngx_http_find_linked_header(ngx_table_elt_t **linked, ngx_uint_t n,
+    ngx_table_elt_t *header)
+{
+    ngx_uint_t  i, left, right;
+
+    left = 0;
+    right = n;
+
+    while (left < right) {
+        i = left + (right - left) / 2;
+
+        if (linked[i] == header) {
+            return 1;
+        }
+
+        if ((uintptr_t) linked[i] < (uintptr_t) header) {
+            left = i + 1;
+
+        } else {
+            right = i;
+        }
+    }
+
+    return 0;
 }
 
 
