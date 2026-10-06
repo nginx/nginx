@@ -4044,6 +4044,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         n = *p++;
 
         if (n == 0) {
+            if (len > 254) {
+                err = "too long name in DNS response";
+                goto invalid;
+            }
+
             goto done;
         }
 
