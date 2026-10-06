@@ -3721,7 +3721,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     ngx_resolver_qs_t   *qs;
     ngx_resolver_hdr_t  *query;
 
-    if (name->len == 0) {
+    if (name->len == 0 || name->len > 253) {
         return NGX_DECLINED;
     }
 
@@ -3790,7 +3790,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
             len++;
 
         } else {
-            if (len == 0 || len > 255) {
+            if (len == 0 || len > 63) {
                 return NGX_DECLINED;
             }
 
@@ -3801,7 +3801,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         p--;
     }
 
-    if (len == 0 || len > 255) {
+    if (len == 0 || len > 63) {
         return NGX_DECLINED;
     }
 
@@ -3849,7 +3849,7 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     ngx_resolver_qs_t   *qs;
     ngx_resolver_hdr_t  *query;
 
-    if (name->len == 0) {
+    if (name->len == 0 || name->len > 253) {
         return NGX_DECLINED;
     }
 
@@ -3906,7 +3906,7 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
             len++;
 
         } else {
-            if (len == 0 || len > 255) {
+            if (len == 0 || len > 63) {
                 return NGX_DECLINED;
             }
 
@@ -3917,7 +3917,7 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         p--;
     }
 
-    if (len == 0 || len > 255) {
+    if (len == 0 || len > 63) {
         return NGX_DECLINED;
     }
 
