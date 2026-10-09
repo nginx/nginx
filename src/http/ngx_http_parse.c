@@ -2069,10 +2069,12 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
                 goto skip;
             }
 
-            if (start == end || *start++ != '=') {
+            if (start == end || *start != '=') {
                 /* the invalid header value */
                 goto skip;
             }
+
+            start++;
 
             while (start < end && *start == ' ') { start++; }
 
