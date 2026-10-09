@@ -839,8 +839,17 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
         }
 
         if (initgroups(ccf->username, ccf->group) == -1) {
-            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
-                          "initgroups(%s, %d) failed",
+
+            if (ngx_errno != NGX_EPERM) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "initgroups(%s, %d) failed",
+                              ccf->username, ccf->group);
+                /* fatal */
+                exit(2);
+            }
+
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "initgroups(%s, %d) failed, ignored",
                           ccf->username, ccf->group);
         }
 
