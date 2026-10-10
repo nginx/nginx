@@ -1040,7 +1040,7 @@ ngx_fs_size(u_char *name)
                            &total_free_bytes)
         == 0)
     {
-        return 0;
+        return NGX_MAX_OFF_T_VALUE;
     }
 
     return (off_t) total_bytes.QuadPart;

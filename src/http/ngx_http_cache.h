@@ -164,7 +164,6 @@ struct ngx_http_file_cache_s {
 
     off_t                            min_free;
     ngx_int_t                        min_free_percent;
-    off_t                            total_fs_size;
     off_t                            max_size;
     size_t                           bsize;
 
