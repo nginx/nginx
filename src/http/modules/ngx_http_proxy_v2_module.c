@@ -42,6 +42,7 @@ typedef struct {
 
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
+    ngx_uint_t                     rst_error;
     ngx_uint_t                     window_update;
     ngx_uint_t                     setting_id;
     ngx_uint_t                     setting_value;
@@ -153,8 +154,9 @@ static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
     ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
     ngx_str_t *s);
-static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(
+    ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
+    ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_goaway(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_window_update(
@@ -1518,7 +1520,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
         /* frame payload */
 
         if (sess->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
-            rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
+            rc = ngx_http_proxy_v2_parse_rst_stream(sess, stream, b);
 
             if (rc == NGX_AGAIN) {
                 return NGX_AGAIN;
@@ -2270,7 +2272,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
         if (sess->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
 
-            rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
+            rc = ngx_http_proxy_v2_parse_rst_stream(sess, stream, b);
 
             if (rc == NGX_AGAIN) {
                 return NGX_AGAIN;
@@ -3431,12 +3433,11 @@ ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r, ngx_str_t *s)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+ngx_http_proxy_v2_parse_rst_stream(ngx_http_proxy_v2_session_t *sess,
+    ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b)
 {
-    u_char                        ch, *p, *last;
-    ngx_http_proxy_v2_stream_t   *stream;
-    ngx_http_proxy_v2_session_t  *sess;
+    u_char      ch, *p, *last;
+    ngx_log_t  *log;
     enum {
         sw_start = 0,
         sw_error_2,
@@ -3444,8 +3445,7 @@ ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
         sw_error_4
     } state;
 
-    stream = ctx->stream;
-    sess = stream->session;
+    log = sess->connection->log;
 
     if (b->last - b->pos < (ssize_t) sess->rest) {
         last = b->last;
@@ -3454,11 +3454,11 @@ ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
         last = b->pos + sess->rest;
     }
 
-    state = ctx->frame_state;
+    state = sess->frame_state;
 
     if (state == sw_start) {
         if (sess->rest != 4) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent rst stream frame "
                           "with invalid length: %uz",
                           sess->rest);
@@ -3470,45 +3470,47 @@ ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
         ch = *p;
 
 #if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http proxy rst byte: %02Xd s:%d", ch, state);
 #endif
 
         switch (state) {
 
         case sw_start:
-            stream->error = (ngx_uint_t) ch << 24;
+            sess->rst_error = (ngx_uint_t) ch << 24;
             state = sw_error_2;
             break;
 
         case sw_error_2:
-            stream->error |= ch << 16;
+            sess->rst_error |= ch << 16;
             state = sw_error_3;
             break;
 
         case sw_error_3:
-            stream->error |= ch << 8;
+            sess->rst_error |= ch << 8;
             state = sw_error_4;
             break;
 
         case sw_error_4:
-            stream->error |= ch;
+            sess->rst_error |= ch;
             state = sw_start;
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy error: %ui", stream->error);
 
             break;
         }
     }
 
     sess->rest -= p - b->pos;
-    ctx->frame_state = state;
+    sess->frame_state = state;
     b->pos = p;
 
     if (sess->rest > 0) {
         return NGX_AGAIN;
     }
+
+    stream->error = sess->rst_error;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "http proxy error: %ui", stream->error);
 
     sess->state = ngx_http_proxy_v2_st_start;
 
@@ -4247,6 +4249,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 
     sess->goaway_last_stream_id = 0;
     sess->goaway_error = 0;
+    sess->rst_error = 0;
     sess->window_update = 0;
     sess->setting_id = 0;
     sess->setting_value = 0;
