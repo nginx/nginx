@@ -161,7 +161,7 @@ static ngx_int_t ngx_http_proxy_v2_parse_goaway(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_window_update(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
-    ngx_uint_t *frame_state, ngx_uint_t *window_update);
+    ngx_uint_t *window_update);
 static ngx_int_t ngx_http_proxy_v2_parse_settings(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_ping(
@@ -1907,7 +1907,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 {
     ssize_t                       window_delta;
     ngx_int_t                     rc;
-    ngx_uint_t                   *frame_state, *window_update;
+    ngx_uint_t                   *window_update;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
@@ -1954,16 +1954,13 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
     if (sess->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
 
         if (sess->stream_id) {
-            frame_state = &ctx->frame_state;
             window_update = &stream->window_update;
 
         } else {
-            frame_state = &sess->frame_state;
             window_update = &sess->window_update;
         }
 
-        rc = ngx_http_proxy_v2_parse_window_update(sess, b, frame_state,
-                                                 window_update);
+        rc = ngx_http_proxy_v2_parse_window_update(sess, b, window_update);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -3641,7 +3638,7 @@ ngx_http_proxy_v2_parse_goaway(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 
 static ngx_int_t
 ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
-    ngx_buf_t *b, ngx_uint_t *frame_state, ngx_uint_t *window_update)
+    ngx_buf_t *b, ngx_uint_t *window_update)
 {
     u_char      ch, *p, *last;
     ngx_log_t  *log;
@@ -3661,7 +3658,7 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
         last = b->pos + sess->rest;
     }
 
-    state = *frame_state;
+    state = sess->frame_state;
 
     if (state == sw_start) {
         if (sess->rest != 4) {
@@ -3684,29 +3681,29 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
         switch (state) {
 
         case sw_start:
-            *window_update = (ch & 0x7f) << 24;
+            sess->window_update = (ch & 0x7f) << 24;
             state = sw_size_2;
             break;
 
         case sw_size_2:
-            *window_update |= ch << 16;
+            sess->window_update |= ch << 16;
             state = sw_size_3;
             break;
 
         case sw_size_3:
-            *window_update |= ch << 8;
+            sess->window_update |= ch << 8;
             state = sw_size_4;
             break;
 
         case sw_size_4:
-            *window_update |= ch;
+            sess->window_update |= ch;
             state = sw_start;
             break;
         }
     }
 
     sess->rest -= p - b->pos;
-    *frame_state = state;
+    sess->frame_state = state;
     b->pos = p;
 
     if (sess->rest > 0) {
@@ -3716,13 +3713,15 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
     sess->state = ngx_http_proxy_v2_st_start;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
-                   "http proxy window update: %ui", *window_update);
+                   "http proxy window update: %ui", sess->window_update);
 
-    if (*window_update == 0) {
+    if (sess->window_update == 0) {
         ngx_log_error(NGX_LOG_ERR, log, 0,
                       "upstream sent zero window update");
         return NGX_ERROR;
     }
+
+    *window_update = sess->window_update;
 
     return NGX_OK;
 }
