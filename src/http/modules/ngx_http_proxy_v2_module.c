@@ -34,6 +34,7 @@ typedef struct ngx_http_proxy_v2_stream_s  ngx_http_proxy_v2_stream_t;
 typedef struct {
     ngx_connection_t              *connection;
     ngx_http_proxy_v2_stream_t    *active_stream;
+    ngx_event_handler_pt           write_handler;
 
     ngx_chain_writer_ctx_t         writer;
     ngx_chain_t                   *out;
@@ -180,6 +181,9 @@ static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_output_stream(
     ngx_http_proxy_v2_stream_t *stream);
+static void ngx_http_proxy_v2_write_handler(ngx_event_t *ev);
+static ngx_event_handler_pt ngx_http_proxy_v2_set_write_handler(
+    ngx_connection_t *c, ngx_event_handler_pt handler);
 static ngx_int_t ngx_http_proxy_v2_send(ngx_http_proxy_v2_session_t *sess);
 static void ngx_http_proxy_v2_post_write(ngx_http_proxy_v2_session_t *sess);
 static ngx_uint_t ngx_http_proxy_v2_output_pending(
@@ -1126,13 +1130,20 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
     sess = stream->session;
 
+    if (sess->connection->error) {
+        return NGX_ERROR;
+    }
+
     if (in) {
         if (ngx_chain_add_copy(stream->pool, &stream->in, in) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        ngx_http_proxy_v2_post_write(sess);
     }
 
-    rc = ngx_http_proxy_v2_send(sess);
+    rc = stream->in || ngx_http_proxy_v2_output_pending(sess)
+         ? NGX_AGAIN : NGX_OK;
 
     if (stream->done) {
 
@@ -1421,6 +1432,78 @@ ngx_http_proxy_v2_output_stream(ngx_http_proxy_v2_stream_t *stream)
 }
 
 
+static void
+ngx_http_proxy_v2_write_handler(ngx_event_t *ev)
+{
+    ngx_connection_t             *c;
+    ngx_event_handler_pt          handler;
+    ngx_http_proxy_v2_session_t  *sess;
+
+    c = ev->data;
+    sess = ngx_http_proxy_v2_find_session(c);
+    handler = sess->write_handler;
+
+    if (ev->timedout || c->error) {
+        goto notify;
+    }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_read_handler && !c->read->ready) {
+
+        /* SSL_write() needs input, not another writable-socket wakeup */
+
+        if (ev->posted) {
+            ngx_delete_posted_event(ev);
+        }
+
+        if (ngx_handle_write_event(ev, 0) == NGX_OK) {
+            return;
+        }
+
+        c->error = 1;
+        goto notify;
+    }
+#endif
+
+    if (ngx_http_proxy_v2_send(sess) == NGX_ERROR) {
+        c->error = 1;
+    }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_read_handler && ev->posted) {
+        ngx_delete_posted_event(ev);
+    }
+#endif
+
+notify:
+
+    /* the request adapter can retry or finalize and release both pools */
+
+    handler(ev);
+}
+
+
+static ngx_event_handler_pt
+ngx_http_proxy_v2_set_write_handler(ngx_connection_t *c,
+    ngx_event_handler_pt handler)
+{
+    ngx_event_handler_pt  previous;
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_write_handler) {
+        previous = c->ssl->saved_write_handler;
+        c->ssl->saved_write_handler = handler;
+        return previous;
+    }
+#endif
+
+    previous = c->write->handler;
+    c->write->handler = handler;
+
+    return previous;
+}
+
+
 /* NGX_OK means submitted output is drained, not that the body has arrived. */
 
 static ngx_int_t
@@ -1503,6 +1586,16 @@ ngx_http_proxy_v2_send(ngx_http_proxy_v2_session_t *sess)
 static void
 ngx_http_proxy_v2_post_write(ngx_http_proxy_v2_session_t *sess)
 {
+#if (NGX_HTTP_SSL)
+    ngx_connection_t  *c;
+
+    c = sess->connection;
+
+    if (c->ssl && c->ssl->saved_read_handler && !c->read->ready) {
+        return;
+    }
+#endif
+
     ngx_post_event(sess->connection->write, &ngx_posted_events);
 }
 
@@ -4635,8 +4728,15 @@ ngx_http_proxy_v2_get_stream(ngx_http_request_t *r)
     sess->last_stream_id = stream->id;
     sess->active_stream = stream;
     sess->writer.limit = r->upstream->writer.limit;
+    sess->write_handler = ngx_http_proxy_v2_set_write_handler(sess->connection,
+                                              ngx_http_proxy_v2_write_handler);
     r->upstream->peer.free = ngx_http_proxy_v2_free_peer;
     ctx->stream = stream;
+
+    if (!r->upstream->request_sent) {
+        /* read-first attachment still needs the initial request submission */
+        ngx_http_proxy_v2_post_write(sess);
+    }
 
     return stream;
 }
@@ -4673,6 +4773,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 
     sess->connection = c;
     sess->active_stream = NULL;
+    sess->write_handler = NULL;
 
     ngx_memzero(&sess->writer, sizeof(ngx_chain_writer_ctx_t));
     sess->writer.last = &sess->writer.out;
@@ -4740,6 +4841,12 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     sess = ngx_http_proxy_v2_find_session(c);
     stream = sess->active_stream;
     free_peer = stream->free_peer;
+
+    if (c->write->posted) {
+        ngx_delete_posted_event(c->write);
+    }
+
+    (void) ngx_http_proxy_v2_set_write_handler(c, sess->write_handler);
 
     if (stream->in || !stream->output_closed
         || ngx_http_proxy_v2_output_pending(sess) || c->error)
