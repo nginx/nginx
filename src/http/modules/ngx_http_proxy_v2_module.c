@@ -39,6 +39,8 @@ typedef struct {
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
     ngx_uint_t                     window_update;
+    ngx_uint_t                     setting_id;
+    ngx_uint_t                     setting_value;
     u_char                         ping_data[8];
 
     size_t                         init_window;
@@ -77,9 +79,6 @@ typedef struct {
 
     ngx_uint_t                     error;
     ngx_uint_t                     window_update;
-
-    ngx_uint_t                     setting_id;
-    ngx_uint_t                     setting_value;
 
     ngx_uint_t                     index;
     ngx_str_t                      name;
@@ -150,8 +149,8 @@ static ngx_int_t ngx_http_proxy_v2_parse_goaway(
 static ngx_int_t ngx_http_proxy_v2_parse_window_update(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
     ngx_uint_t *frame_state, ngx_uint_t *window_update);
-static ngx_int_t ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_parse_settings(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_ping(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 
@@ -1883,6 +1882,7 @@ static ngx_int_t
 ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
+    ssize_t                       window_delta;
     ngx_int_t                     rc;
     ngx_uint_t                   *frame_state, *window_update;
     ngx_http_upstream_t          *u;
@@ -1980,17 +1980,52 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
     if (sess->type == NGX_HTTP_V2_SETTINGS_FRAME) {
 
-        rc = ngx_http_proxy_v2_parse_settings(r, ctx, b);
+        for ( ;; ) {
+            rc = ngx_http_proxy_v2_parse_settings(sess, b);
 
-        if (rc == NGX_AGAIN) {
-            return NGX_AGAIN;
+            if (rc == NGX_AGAIN) {
+                return NGX_AGAIN;
+            }
+
+            if (rc == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            if (rc == NGX_DONE) {
+                break;
+            }
+
+            /* consume the setting before the parser reuses its result */
+
+            if (sess->setting_id == 0x04) {
+                /* SETTINGS_INITIAL_WINDOW_SIZE */
+
+                window_delta = (ssize_t) sess->setting_value
+                               - (ssize_t) sess->init_window;
+
+                if (ctx->send_window > 0
+                    && window_delta > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
+                                       - ctx->send_window)
+                {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent settings frame "
+                                  "with too large initial window size: %ui",
+                                  sess->setting_value);
+                    return NGX_ERROR;
+                }
+
+                sess->init_window = sess->setting_value;
+                ctx->send_window += window_delta;
+            }
         }
 
-        if (rc == NGX_ERROR) {
-            return NGX_ERROR;
+        if (!(sess->flags & NGX_HTTP_V2_ACK_FLAG)) {
+            if (ngx_http_proxy_v2_send_settings_ack(r, ctx) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
 
-        if (ctx->in) {
+        if (ctx->in || ctx->out) {
             ngx_post_event(u->peer.connection->write, &ngx_posted_events);
         }
 
@@ -2009,7 +2044,9 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        if (ngx_http_proxy_v2_send_ping_ack(r, ctx, sess->ping_data) != NGX_OK) {
+        if (ngx_http_proxy_v2_send_ping_ack(r, ctx, sess->ping_data)
+            != NGX_OK)
+        {
             return NGX_ERROR;
         }
 
@@ -3658,13 +3695,17 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
 }
 
 
+/*
+ * NGX_OK returns one setting in the session; consume it before calling again.
+ * NGX_DONE marks frame completion, including empty SETTINGS and SETTINGS ACK.
+ */
+
 static ngx_int_t
-ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+ngx_http_proxy_v2_parse_settings(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b)
 {
-    u_char                        ch, *p, *last;
-    ssize_t                       window_update;
-    ngx_http_proxy_v2_session_t  *sess;
+    u_char      ch, *p, *last;
+    ngx_log_t  *log;
     enum {
         sw_start = 0,
         sw_id,
@@ -3675,7 +3716,7 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
         sw_value_4
     } state;
 
-    sess = ctx->session;
+    log = sess->connection->log;
 
     if (b->last - b->pos < (ssize_t) sess->rest) {
         last = b->last;
@@ -3684,12 +3725,12 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
         last = b->pos + sess->rest;
     }
 
-    state = ctx->frame_state;
+    state = sess->frame_state;
 
     if (state == sw_start) {
 
         if (sess->stream_id) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent settings frame "
                           "with non-zero stream id: %ui",
                           sess->stream_id);
@@ -3697,11 +3738,11 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
         }
 
         if (sess->flags & NGX_HTTP_V2_ACK_FLAG) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0,
                            "http proxy settings ack");
 
             if (sess->rest != 0) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, log, 0,
                               "upstream sent settings frame "
                               "with ack flag and non-zero length: %uz",
                               sess->rest);
@@ -3710,29 +3751,25 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
 
             sess->state = ngx_http_proxy_v2_st_start;
 
-            return NGX_OK;
+            return NGX_DONE;
         }
 
         if (sess->rest % 6 != 0) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent settings frame "
                           "with invalid length: %uz",
                           sess->rest);
             return NGX_ERROR;
         }
 
-        if (ctx->free == NULL && ctx->settings++ > 1000) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too many settings frames");
-            return NGX_ERROR;
-        }
+        state = sw_id;
     }
 
     for (p = b->pos; p < last; p++) {
         ch = *p;
 
 #if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http proxy settings byte: %02Xd s:%d", ch, state);
 #endif
 
@@ -3740,84 +3777,58 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
 
         case sw_start:
         case sw_id:
-            ctx->setting_id = ch << 8;
+            sess->setting_id = ch << 8;
             state = sw_id_2;
             break;
 
         case sw_id_2:
-            ctx->setting_id |= ch;
+            sess->setting_id |= ch;
             state = sw_value;
             break;
 
         case sw_value:
-            ctx->setting_value = (ngx_uint_t) ch << 24;
+            sess->setting_value = (ngx_uint_t) ch << 24;
             state = sw_value_2;
             break;
 
         case sw_value_2:
-            ctx->setting_value |= ch << 16;
+            sess->setting_value |= ch << 16;
             state = sw_value_3;
             break;
 
         case sw_value_3:
-            ctx->setting_value |= ch << 8;
+            sess->setting_value |= ch << 8;
             state = sw_value_4;
             break;
 
         case sw_value_4:
-            ctx->setting_value |= ch;
-            state = sw_id;
+            sess->setting_value |= ch;
 
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
                            "http proxy setting: %ui %ui",
-                           ctx->setting_id, ctx->setting_value);
+                           sess->setting_id, sess->setting_value);
 
-            /*
-             * The following settings are defined by the protocol:
-             *
-             * SETTINGS_HEADER_TABLE_SIZE, SETTINGS_ENABLE_PUSH,
-             * SETTINGS_MAX_CONCURRENT_STREAMS, SETTINGS_INITIAL_WINDOW_SIZE,
-             * SETTINGS_MAX_FRAME_SIZE, SETTINGS_MAX_HEADER_LIST_SIZE
-             *
-             * Only SETTINGS_INITIAL_WINDOW_SIZE seems to be needed in
-             * a simple client.
-             */
-
-            if (ctx->setting_id == 0x04) {
-                /* SETTINGS_INITIAL_WINDOW_SIZE */
-
-                if (ctx->setting_value > NGX_HTTP_V2_MAX_WINDOW) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent settings frame "
-                                  "with too large initial window size: %ui",
-                                  ctx->setting_value);
-                    return NGX_ERROR;
-                }
-
-                window_update = ctx->setting_value
-                                - sess->init_window;
-                sess->init_window = ctx->setting_value;
-
-                if (ctx->send_window > 0
-                    && window_update > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
-                                       - ctx->send_window)
-                {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent settings frame "
-                                  "with too large initial window size: %ui",
-                                  ctx->setting_value);
-                    return NGX_ERROR;
-                }
-
-                ctx->send_window += window_update;
+            if (sess->setting_id == 0x04
+                && sess->setting_value > NGX_HTTP_V2_MAX_WINDOW)
+            {
+                ngx_log_error(NGX_LOG_ERR, log, 0,
+                              "upstream sent settings frame "
+                              "with too large initial window size: %ui",
+                              sess->setting_value);
+                return NGX_ERROR;
             }
 
-            break;
+            p++;
+            sess->rest -= p - b->pos;
+            sess->frame_state = sw_id;
+            b->pos = p;
+
+            return NGX_OK;
         }
     }
 
     sess->rest -= p - b->pos;
-    ctx->frame_state = state;
+    sess->frame_state = state;
     b->pos = p;
 
     if (sess->rest > 0) {
@@ -3826,7 +3837,7 @@ ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
 
     sess->state = ngx_http_proxy_v2_st_start;
 
-    return ngx_http_proxy_v2_send_settings_ack(r, ctx);
+    return NGX_DONE;
 }
 
 
@@ -3929,6 +3940,12 @@ ngx_http_proxy_v2_send_settings_ack(ngx_http_request_t *r,
 
     for (cl = ctx->out, ll = &ctx->out; cl; cl = cl->next) {
         ll = &cl->next;
+    }
+
+    if (ctx->free == NULL && ctx->settings++ > 1000) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent too many settings frames");
+        return NGX_ERROR;
     }
 
     cl = ngx_http_proxy_v2_get_buf(r, ctx);
@@ -4189,6 +4206,8 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
     sess->goaway_last_stream_id = 0;
     sess->goaway_error = 0;
     sess->window_update = 0;
+    sess->setting_id = 0;
+    sess->setting_value = 0;
     ngx_memzero(sess->ping_data, sizeof(sess->ping_data));
 
     sess->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
