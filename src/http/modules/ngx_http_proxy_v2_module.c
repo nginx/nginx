@@ -38,6 +38,7 @@ typedef struct {
 
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
+    ngx_uint_t                     window_update;
     u_char                         ping_data[8];
 
     size_t                         init_window;
@@ -146,8 +147,9 @@ static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_goaway(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
-static ngx_int_t ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_parse_window_update(
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
+    ngx_uint_t *frame_state, ngx_uint_t *window_update);
 static ngx_int_t ngx_http_proxy_v2_parse_settings(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_ping(
@@ -1882,6 +1884,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
     ngx_int_t                     rc;
+    ngx_uint_t                   *frame_state, *window_update;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_session_t  *sess;
 
@@ -1925,7 +1928,17 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
     if (sess->type == NGX_HTTP_V2_WINDOW_UPDATE_FRAME) {
 
-        rc = ngx_http_proxy_v2_parse_window_update(r, ctx, b);
+        if (sess->stream_id) {
+            frame_state = &ctx->frame_state;
+            window_update = &ctx->window_update;
+
+        } else {
+            frame_state = &sess->frame_state;
+            window_update = &sess->window_update;
+        }
+
+        rc = ngx_http_proxy_v2_parse_window_update(sess, b, frame_state,
+                                                 window_update);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -1933,6 +1946,29 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
+        }
+
+        if (sess->stream_id) {
+
+            if (*window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
+                                  - ctx->send_window)
+            {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent too large window update");
+                return NGX_ERROR;
+            }
+
+            ctx->send_window += *window_update;
+
+        } else {
+
+            if (*window_update > NGX_HTTP_V2_MAX_WINDOW - sess->send_window) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent too large window update");
+                return NGX_ERROR;
+            }
+
+            sess->send_window += *window_update;
         }
 
         if (ctx->in) {
@@ -3534,11 +3570,11 @@ ngx_http_proxy_v2_parse_goaway(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+ngx_http_proxy_v2_parse_window_update(ngx_http_proxy_v2_session_t *sess,
+    ngx_buf_t *b, ngx_uint_t *frame_state, ngx_uint_t *window_update)
 {
-    u_char                        ch, *p, *last;
-    ngx_http_proxy_v2_session_t  *sess;
+    u_char      ch, *p, *last;
+    ngx_log_t  *log;
     enum {
         sw_start = 0,
         sw_size_2,
@@ -3546,7 +3582,7 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
         sw_size_4
     } state;
 
-    sess = ctx->session;
+    log = sess->connection->log;
 
     if (b->last - b->pos < (ssize_t) sess->rest) {
         last = b->last;
@@ -3555,11 +3591,11 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
         last = b->pos + sess->rest;
     }
 
-    state = ctx->frame_state;
+    state = *frame_state;
 
     if (state == sw_start) {
         if (sess->rest != 4) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent window update frame "
                           "with invalid length: %uz",
                           sess->rest);
@@ -3571,36 +3607,36 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
         ch = *p;
 
 #if 0
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http proxy window update byte: %02Xd s:%d", ch, state);
 #endif
 
         switch (state) {
 
         case sw_start:
-            ctx->window_update = (ch & 0x7f) << 24;
+            *window_update = (ch & 0x7f) << 24;
             state = sw_size_2;
             break;
 
         case sw_size_2:
-            ctx->window_update |= ch << 16;
+            *window_update |= ch << 16;
             state = sw_size_3;
             break;
 
         case sw_size_3:
-            ctx->window_update |= ch << 8;
+            *window_update |= ch << 8;
             state = sw_size_4;
             break;
 
         case sw_size_4:
-            ctx->window_update |= ch;
+            *window_update |= ch;
             state = sw_start;
             break;
         }
     }
 
     sess->rest -= p - b->pos;
-    ctx->frame_state = state;
+    *frame_state = state;
     b->pos = p;
 
     if (sess->rest > 0) {
@@ -3609,38 +3645,13 @@ ngx_http_proxy_v2_parse_window_update(ngx_http_request_t *r,
 
     sess->state = ngx_http_proxy_v2_st_start;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy window update: %ui", ctx->window_update);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0,
+                   "http proxy window update: %ui", *window_update);
 
-    if (ctx->window_update == 0) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    if (*window_update == 0) {
+        ngx_log_error(NGX_LOG_ERR, log, 0,
                       "upstream sent zero window update");
         return NGX_ERROR;
-    }
-
-    if (sess->stream_id) {
-
-        if (ctx->window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
-                                 - ctx->send_window)
-        {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too large window update");
-            return NGX_ERROR;
-        }
-
-        ctx->send_window += ctx->window_update;
-
-    } else {
-
-        if (ctx->window_update > NGX_HTTP_V2_MAX_WINDOW
-                                 - sess->send_window)
-        {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent too large window update");
-            return NGX_ERROR;
-        }
-
-        sess->send_window += ctx->window_update;
     }
 
     return NGX_OK;
@@ -4177,6 +4188,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 
     sess->goaway_last_stream_id = 0;
     sess->goaway_error = 0;
+    sess->window_update = 0;
     ngx_memzero(sess->ping_data, sizeof(sess->ping_data));
 
     sess->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
