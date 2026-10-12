@@ -198,6 +198,8 @@ static ngx_int_t ngx_http_proxy_v2_process_trailers(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_v2_filter_init(void *data);
 static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
+static ngx_int_t ngx_http_proxy_v2_process_body(ngx_event_pipe_t *p,
+    ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_process_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_skip_frame(
@@ -1955,8 +1957,6 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
     size_t                        size;
     ngx_int_t                     rc;
     ngx_uint_t                    empty;
-    ngx_buf_t                    *buf;
-    ngx_chain_t                  *cl;
     ngx_http_request_t           *r;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_ctx_t      *ctx;
@@ -1990,16 +1990,78 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
 
     size = ngx_http_proxy_v2_read_body(stream, b->start, b->end - b->start);
 
-    if (size) {
-        if (ctx->length != -1) {
-            if ((off_t) size > ctx->length) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent response body larger "
-                              "than indicated content length");
-                return NGX_ERROR;
-            }
+    b->pos = b->start;
+    b->last = b->pos + size;
 
-            ctx->length -= size;
+    rc = ngx_http_proxy_v2_process_body(p, b);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_http_proxy_v2_send_window_update(stream) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    if (sess->out) {
+        ngx_http_proxy_v2_post_write(sess);
+
+    } else if (rc == NGX_OK) {
+        p->length = 0;
+
+        if (stream->in == NULL
+            && stream->output_closed
+            && !ngx_http_proxy_v2_output_pending(sess)
+            && !sess->goaway
+            && sess->state == ngx_http_proxy_v2_st_start)
+        {
+            u->keepalive = 1;
+        }
+    }
+
+    if (size == 0 && !empty) {
+        if (ngx_event_pipe_add_free_buf(p, b) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+/*
+ * Consume decoded payload and retained trailers without processing frames.
+ * NGX_OK completes the response; NGX_AGAIN accepts the payload and waits
+ * for more response results.
+ */
+
+static ngx_int_t
+ngx_http_proxy_v2_process_body(ngx_event_pipe_t *p, ngx_buf_t *b)
+{
+    size_t                       size;
+    ngx_int_t                    rc;
+    ngx_buf_t                   *buf;
+    ngx_chain_t                 *cl;
+    ngx_http_request_t          *r;
+    ngx_http_proxy_v2_ctx_t     *ctx;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    r = p->input_ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    stream = ctx->stream;
+    size = b->pos == b->last ? 0 : (size_t) (b->last - b->pos);
+
+    if (size) {
+        if (ctx->length != -1 && (off_t) size > ctx->length) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent response body larger "
+                          "than indicated content length");
+            return NGX_ERROR;
         }
 
         cl = ngx_chain_get_free_buf(p->pool, &p->free);
@@ -2010,8 +2072,8 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         buf = cl->buf;
         ngx_memzero(buf, sizeof(ngx_buf_t));
 
-        buf->pos = b->start;
-        buf->last = b->start + size;
+        buf->pos = b->pos;
+        buf->last = b->last;
         buf->start = b->start;
         buf->end = b->end;
         buf->tag = p->tag;
@@ -2031,6 +2093,10 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         p->last_in = &cl->next;
 
         /* STUB */ buf->num = b->num;
+
+        if (ctx->length != -1) {
+            ctx->length -= size;
+        }
 
         stream->body_processed += size;
     }
@@ -2054,33 +2120,7 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         stream->done = 1;
     }
 
-    if (ngx_http_proxy_v2_send_window_update(stream) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (sess->out) {
-        ngx_http_proxy_v2_post_write(sess);
-
-    } else if (stream->done) {
-        p->length = 0;
-
-        if (stream->in == NULL
-            && stream->output_closed
-            && !ngx_http_proxy_v2_output_pending(sess)
-            && !sess->goaway
-            && sess->state == ngx_http_proxy_v2_st_start)
-        {
-            u->keepalive = 1;
-        }
-    }
-
-    if (size == 0 && !empty) {
-        if (ngx_event_pipe_add_free_buf(p, b) != NGX_OK) {
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
+    return stream->done ? NGX_OK : NGX_AGAIN;
 }
 
 
