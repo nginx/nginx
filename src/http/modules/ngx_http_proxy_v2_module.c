@@ -265,6 +265,8 @@ static ngx_int_t ngx_http_proxy_v2_process_stream_frame(
 static ngx_int_t ngx_http_proxy_v2_process_window_update(
     ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
     ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_set_initial_window(
+    ngx_http_proxy_v2_session_t *sess, size_t window);
 static ngx_int_t ngx_http_proxy_v2_skip_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 
@@ -2806,7 +2808,9 @@ ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
             return rc;
         }
 
-        if (stream->in) {
+        if (stream->in && !stream->failure_type && !stream->rst
+            && !stream->output_stopped)
+        {
             ngx_http_proxy_v2_post_write(sess);
         }
 
@@ -2824,17 +2828,17 @@ static ngx_int_t
 ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
     ngx_buf_t *b, ngx_uint_t new_frame)
 {
-    ssize_t                     window_delta;
     ngx_int_t                   rc;
     ngx_log_t                  *log;
     ngx_http_proxy_v2_stream_t  *stream;
 
     log = sess->connection->log;
-    stream = sess->active_stream;
 
     switch (sess->type) {
 
     case NGX_HTTP_V2_GOAWAY_FRAME:
+
+        stream = sess->active_stream;
 
         if (new_frame) {
             if (sess->stream_id) {
@@ -2898,9 +2902,7 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
             return rc;
         }
 
-        if (stream && stream->in) {
-            ngx_http_proxy_v2_post_write(sess);
-        }
+        ngx_http_proxy_v2_post_write(sess);
 
         return NGX_OK;
 
@@ -2950,24 +2952,11 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
             if (sess->setting_id == 0x04) {
                 /* SETTINGS_INITIAL_WINDOW_SIZE */
 
-                window_delta = (ssize_t) sess->setting_value
-                               - (ssize_t) sess->init_window;
-
-                if (stream && stream->send_window > 0
-                    && window_delta > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
-                                       - stream->send_window)
+                if (ngx_http_proxy_v2_set_initial_window(sess,
+                                                        sess->setting_value)
+                    != NGX_OK)
                 {
-                    ngx_log_error(NGX_LOG_ERR, log, 0,
-                                  "upstream sent settings frame "
-                                  "with too large initial window size: %ui",
-                                  sess->setting_value);
                     return NGX_ERROR;
-                }
-
-                sess->init_window = sess->setting_value;
-
-                if (stream) {
-                    stream->send_window += window_delta;
                 }
             }
         }
@@ -2978,7 +2967,7 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
             }
         }
 
-        if ((stream && stream->in) || sess->out) {
+        if (sess->out) {
             ngx_http_proxy_v2_post_write(sess);
         }
 
@@ -3047,6 +3036,10 @@ ngx_http_proxy_v2_process_window_update(ngx_http_proxy_v2_session_t *sess,
     }
 
     if (stream) {
+        if (stream->output_stopped) {
+            return NGX_OK;
+        }
+
         if (*window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
                               - stream->send_window)
         {
@@ -3066,6 +3059,50 @@ ngx_http_proxy_v2_process_window_update(ngx_http_proxy_v2_session_t *sess,
 
         sess->send_window += *window_update;
     }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_set_initial_window(ngx_http_proxy_v2_session_t *sess,
+    size_t window)
+{
+    ssize_t                     delta;
+    ngx_rbtree_node_t           *node;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    delta = (ssize_t) window - (ssize_t) sess->init_window;
+    node = sess->streams.root;
+
+    if (node != sess->streams.sentinel) {
+        for (node = ngx_rbtree_min(node, sess->streams.sentinel);
+             node;
+             node = ngx_rbtree_next(&sess->streams, node))
+        {
+            stream = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t, node);
+
+            if (stream->failure_type || stream->rst || stream->output_stopped
+                || (stream->input_closed && stream->output_closed))
+            {
+                continue;
+            }
+
+            if (stream->send_window > 0
+                && delta > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
+                           - stream->send_window)
+            {
+                ngx_log_error(NGX_LOG_ERR, sess->connection->log, 0,
+                              "upstream sent settings frame "
+                              "with too large initial window size: %uz", window);
+                return NGX_ERROR;
+            }
+
+            stream->send_window += delta;
+        }
+    }
+
+    sess->init_window = window;
 
     return NGX_OK;
 }
@@ -5099,7 +5136,7 @@ ngx_http_proxy_v2_send_window_update(ngx_http_proxy_v2_stream_t *stream)
 
     connection = sess->recv_window <= NGX_HTTP_V2_DEFAULT_WINDOW / 2
                  ? sess->recv_credit : 0;
-    window = !stream->input_closed
+    window = !stream->input_closed && !stream->rst && !stream->failure_type
              && stream->recv_window <= NGX_HTTP_V2_DEFAULT_WINDOW / 2
              ? stream->recv_credit : 0;
 
