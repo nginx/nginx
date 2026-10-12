@@ -64,9 +64,11 @@ static ngx_int_t ngx_control_show_processes(ngx_control_request_t *r);
 static ngx_int_t ngx_control_show_version(ngx_control_request_t *r);
 static ngx_int_t ngx_control_reload_config(ngx_control_request_t *r);
 static ngx_int_t ngx_control_print_config(ngx_control_request_t *r);
+static ngx_int_t ngx_control_check_config(ngx_control_request_t *r);
 static void ngx_control_log_capture(ngx_log_t *log, ngx_uint_t l,
     u_char *buf, size_t len);
 
+static void ngx_control_check_config_child(ngx_control_request_t *r);
 static ngx_int_t ngx_control_parse_request_line(ngx_control_request_t *r);
 static ngx_int_t ngx_control_send_json(ngx_control_request_t *r, ngx_int_t code,
     ngx_data_item_t *obj);
@@ -679,6 +681,17 @@ ngx_control_content(ngx_control_request_t *r)
         }
 
         break;
+
+    case 23:
+        if (ngx_strncmp(p, "/1/control/config/check", len) == 0) {
+            if (r->method != NGX_CTRL_GET) {
+                return ngx_control_send_response(r, NGX_CTRL_NOT_ALLOWED, NULL);
+            }
+
+            return ngx_control_check_config(r);
+        }
+
+        break;
     }
 
     return ngx_control_send_response(r, NGX_CTRL_NOT_FOUND, NULL);
@@ -957,6 +970,104 @@ ngx_control_json_logs(ngx_array_t *logs)
     ngx_data_add_item(obj, &logs_field, log_list);
 
     return obj;
+}
+
+
+static void
+ngx_control_check_config_child(ngx_control_request_t *r)
+{
+    ngx_int_t         status;
+    ngx_log_t         log, *tmp;
+    ngx_cycle_t      *cycle;
+    ngx_array_t       log_store;
+    ngx_data_item_t  *obj;
+
+    /* this function is run as a child process */
+
+    ngx_test_config = 1;
+    status = NGX_CTRL_OK;
+
+    if (ngx_array_init(&log_store, r->pool, 3, sizeof(ngx_str_t)) != NGX_OK) {
+        _exit(1);
+    }
+
+    ngx_memzero(&log, sizeof(ngx_log_t));
+    log.wdata = &log_store;
+    log.writer = ngx_control_log_capture;
+    log.log_level = NGX_LOG_DEBUG;
+
+    tmp = ngx_cycle->log;
+    log.next = tmp;
+    ngx_cycle->log = &log;
+
+    cycle = ngx_init_cycle((ngx_cycle_t *) ngx_cycle);
+
+    if (cycle == NULL) {
+        status = NGX_CTRL_UNPROCESSABLE;
+        ngx_cycle->log = tmp;
+
+    } else {
+        r->pool->log = ngx_cycle->log;
+    }
+
+    obj = ngx_control_json_logs(&log_store);
+    if (obj == NULL) {
+        _exit(1);
+    }
+
+    if (ngx_control_send_json(r, status, obj) == NGX_ERROR) {
+        _exit(1);
+    }
+
+    /* make sure response written fully before exiting */
+    while (ngx_control_pollfd[r->index].revents & POLLOUT) {
+        switch (ngx_control_handle_write(r)) {
+        case NGX_ERROR:
+            _exit(1);
+        case NGX_DONE:
+            _exit(0);
+        default:
+            continue;
+        }
+    }
+
+    _exit(0);
+}
+
+
+static ngx_int_t
+ngx_control_check_config(ngx_control_request_t *r)
+{
+    int        status;
+    ngx_pid_t  pid, waited_pid;
+
+    pid = fork();
+    if (pid) {
+        if (pid < 0) {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                          "control: fork() failed");
+            return NGX_ERROR;
+        }
+
+        waited_pid = waitpid(pid, &status, 0);
+        if (waited_pid != pid) {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, waited_pid,
+                          "control: waitpid() failed");
+            return NGX_ERROR;
+        }
+
+        /* if child process exited prematurely with error */
+        if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+            /* logging happened from child */
+            return NGX_ERROR;
+        }
+
+    } else {
+        ngx_control_check_config_child(r);
+        /* there is no return from above function */
+    }
+
+    return NGX_DONE;
 }
 
 
