@@ -69,7 +69,7 @@ typedef struct {
     u_char                         type;
     u_char                         flags;
 
-    ngx_uint_t                     goaway_last_stream_id;
+    ngx_uint_t                     goaway_stream_id;
     ngx_uint_t                     goaway_error;
     ngx_uint_t                     rst_error;
     ngx_uint_t                     window_update;
@@ -93,6 +93,7 @@ typedef struct {
     size_t                         recv_window;
     size_t                         recv_credit;
     ngx_uint_t                     last_stream_id;
+    ngx_uint_t                     goaway_last_stream_id;
 
     unsigned                       preface_sent:1;
     unsigned                       goaway:1;
@@ -2834,6 +2835,7 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
 {
     ngx_int_t                   rc;
     ngx_log_t                  *log;
+    ngx_rbtree_node_t           *node;
     ngx_http_proxy_v2_stream_t  *stream;
 
     log = sess->connection->log;
@@ -2841,8 +2843,6 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
     switch (sess->type) {
 
     case NGX_HTTP_V2_GOAWAY_FRAME:
-
-        stream = sess->active_stream;
 
         if (new_frame) {
             if (sess->stream_id) {
@@ -2866,24 +2866,49 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
             return rc;
         }
 
-        /*
-         * If stream_id is lower than one we use, our
-         * request won't be processed and needs to be retried.
-         * If stream_id is greater or equal to the one we use,
-         * we can continue normally (except we can't use this
-         * connection for additional requests).  If there is
-         * a real error, the connection will be closed.
-         */
+        /* a later GOAWAY must not reopen previously excluded streams */
 
-        if (stream && sess->goaway_last_stream_id < stream->id) {
+        if (!sess->goaway
+            || sess->goaway_stream_id < sess->goaway_last_stream_id)
+        {
+            sess->goaway_last_stream_id = sess->goaway_stream_id;
+        }
+
+        sess->goaway = 1;
+
+        node = sess->streams.root;
+
+        if (node == sess->streams.sentinel) {
+            return NGX_OK;
+        }
+
+        for (node = ngx_rbtree_min(node, sess->streams.sentinel);
+             node;
+             node = ngx_rbtree_next(&sess->streams, node))
+        {
+            stream = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t, node);
+
+            if (stream->id <= sess->goaway_last_stream_id
+                || stream->failure_type || stream->rst)
+            {
+                continue;
+            }
+
+            if (stream->input_closed) {
+                /* retain a complete response even if the peer excludes it */
+
+                ngx_http_proxy_v2_stop_stream_output(stream);
+                continue;
+            }
 
             /* TODO: we can retry non-idempotent requests */
 
             ngx_log_error(NGX_LOG_ERR, log, 0,
-                          "upstream sent goaway with error %ui",
-                          sess->goaway_error);
+                          "upstream sent goaway with error %ui for stream %ui",
+                          sess->goaway_error, stream->id);
 
-            return NGX_ERROR;
+            ngx_http_proxy_v2_fail_stream(stream,
+                                          NGX_HTTP_PROXY_V2_FAILURE_PROTOCOL);
         }
 
         return NGX_OK;
@@ -4717,22 +4742,22 @@ ngx_http_proxy_v2_parse_goaway(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
         switch (state) {
 
         case sw_start:
-            sess->goaway_last_stream_id = (ch & 0x7f) << 24;
+            sess->goaway_stream_id = (ch & 0x7f) << 24;
             state = sw_last_stream_id_2;
             break;
 
         case sw_last_stream_id_2:
-            sess->goaway_last_stream_id |= ch << 16;
+            sess->goaway_stream_id |= ch << 16;
             state = sw_last_stream_id_3;
             break;
 
         case sw_last_stream_id_3:
-            sess->goaway_last_stream_id |= ch << 8;
+            sess->goaway_stream_id |= ch << 8;
             state = sw_last_stream_id_4;
             break;
 
         case sw_last_stream_id_4:
-            sess->goaway_last_stream_id |= ch;
+            sess->goaway_stream_id |= ch;
             state = sw_error;
             break;
 
@@ -4771,9 +4796,8 @@ ngx_http_proxy_v2_parse_goaway(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, sess->connection->log, 0,
                    "http proxy goaway: %ui, stream %ui",
-                   sess->goaway_error, sess->goaway_last_stream_id);
+                   sess->goaway_error, sess->goaway_stream_id);
 
-    sess->goaway = 1;
     sess->state = ngx_http_proxy_v2_st_start;
 
     return NGX_OK;
@@ -5330,7 +5354,7 @@ ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    if (sess->active_stream || sess->failed || sess->closed) {
+    if (sess->active_stream || sess->goaway || sess->failed || sess->closed) {
         return NGX_ERROR;
     }
 
