@@ -267,12 +267,15 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
 ngx_int_t
 ngx_handle_read_event(ngx_event_t *rev, ngx_uint_t flags)
 {
-#if (NGX_QUIC)
-
     ngx_connection_t  *c;
 
     c = rev->data;
 
+    if (c->logical) {
+        return NGX_OK;
+    }
+
+#if (NGX_QUIC)
     if (c->quic) {
         return NGX_OK;
     }
@@ -350,6 +353,10 @@ ngx_handle_write_event(ngx_event_t *wev, size_t lowat)
     ngx_connection_t  *c;
 
     c = wev->data;
+
+    if (c->logical) {
+        return NGX_OK;
+    }
 
 #if (NGX_QUIC)
     if (c->quic) {
