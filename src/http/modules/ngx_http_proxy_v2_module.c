@@ -1697,7 +1697,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
                ? NGX_AGAIN : NGX_ERROR;
     }
 
-    if (sess->closed || stream->output_stopped) {
+    if (sess->closed || stream->rst || stream->output_stopped) {
         return NGX_AGAIN;
     }
 
@@ -2796,7 +2796,11 @@ ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
             ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream rejected request with error %ui",
                           stream->error);
-            return NGX_ERROR;
+            ngx_http_proxy_v2_fail_stream(stream,
+                                          NGX_HTTP_PROXY_V2_FAILURE_PROTOCOL);
+
+        } else {
+            ngx_http_proxy_v2_stop_stream_output(stream);
         }
 
         return NGX_OK;
