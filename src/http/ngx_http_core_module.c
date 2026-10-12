@@ -2029,6 +2029,8 @@ ngx_http_map_uri_to_path(ngx_http_request_t *r, ngx_str_t *path,
             return NULL;
         }
 
+        path->data[path->len - reserved] = '\0';
+
         if (ngx_get_full_name(r->pool, (ngx_str_t *) &ngx_cycle->prefix, path)
             != NGX_OK)
         {
