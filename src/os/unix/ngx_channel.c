@@ -80,7 +80,22 @@ ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
 
     if (n == -1) {
         err = ngx_errno;
-        if (err == NGX_EAGAIN) {
+        /*
+         * EACCESS failure can be temporal,
+         * nginx should re-try instead of
+         * of tearing down the connection.
+         * pf(4) on OpenBSD may drop the packet
+         * just because of probability or because
+         * of bandwidth control.
+         * May be better course of action would be
+         * to pretend the packet has been sent and
+         * let QUIC stack to figure out the packet
+         * got lost in transfer. Like treat local
+         * packet drop in sendmsg() as packet being
+         * dropped by remote router along the network
+         * path.
+         */
+        if (err == NGX_EAGAIN || err = EACCES) {
             return NGX_AGAIN;
         }
 
