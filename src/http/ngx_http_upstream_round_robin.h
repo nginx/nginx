@@ -14,6 +14,17 @@
 #include <ngx_http.h>
 
 
+#if (NGX_HTTP_UPSTREAM_SID)
+#define NGX_HTTP_UPSTREAM_SID_LEN    32  /* md5 in hex */
+#endif
+
+#define NGX_HTTP_UPSTREAM_FAILED     1
+
+#if (NGX_HTTP_UPSTREAM_STICKY)
+#define NGX_HTTP_UPSTREAM_DRAINING   8
+#endif
+
+
 typedef struct ngx_http_upstream_rr_peers_s  ngx_http_upstream_rr_peers_t;
 typedef struct ngx_http_upstream_rr_peer_s   ngx_http_upstream_rr_peer_t;
 
@@ -62,6 +73,10 @@ struct ngx_http_upstream_rr_peer_s {
     int                             ssl_session_len;
 #endif
 
+#if (NGX_HTTP_UPSTREAM_SID || NGX_COMPAT)
+    unsigned                        route:1;
+#endif
+
 #if (NGX_HTTP_UPSTREAM_ZONE)
     unsigned                        zombie:1;
 
@@ -70,9 +85,22 @@ struct ngx_http_upstream_rr_peer_s {
     ngx_http_upstream_host_t       *host;
 #endif
 
+#if (NGX_HTTP_UPSTREAM_SID || NGX_COMPAT)
+    ngx_str_t                       sid;
+#endif
+
     ngx_http_upstream_rr_peer_t    *next;
 
-    NGX_COMPAT_BEGIN(15)
+#if (NGX_HTTP_UPSTREAM_LEAST_TIME || NGX_COMPAT)
+    ngx_msec_t                      header_time;
+    ngx_msec_t                      response_time;
+    ngx_msec_t                      inflight_time;
+    ngx_msec_t                      inflight_last;
+    ngx_msec_t                      inflight_reqs_changed;
+    ngx_uint_t                      inflight_reqs;
+#endif
+
+    NGX_COMPAT_BEGIN(7)
     NGX_COMPAT_END
 };
 
@@ -151,6 +179,9 @@ ngx_http_upstream_rr_peer_free_locked(ngx_http_upstream_rr_peers_t *peers,
 
     ngx_slab_free_locked(peers->shpool, peer->sockaddr);
     ngx_slab_free_locked(peers->shpool, peer->name.data);
+#if (NGX_HTTP_UPSTREAM_SID)
+    ngx_slab_free_locked(peers->shpool, peer->sid.data);
+#endif
 
     if (peer->server.data) {
         ngx_slab_free_locked(peers->shpool, peer->server.data);
@@ -216,6 +247,12 @@ typedef struct {
 } ngx_http_upstream_rr_peer_data_t;
 
 
+/* exponential moving average + rounding */
+#define ngx_http_upstream_response_time_avg(avg, v)                            \
+    *(avg) = (*(avg) ? (0.5 + ((double) (v) * 0.05 + (double) (*(avg)) * 0.95))\
+                     : (v))
+
+
 ngx_int_t ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
     ngx_http_upstream_srv_conf_t *us);
 ngx_int_t ngx_http_upstream_init_round_robin_peer(ngx_http_request_t *r,
@@ -226,6 +263,8 @@ ngx_int_t ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc,
     void *data);
 void ngx_http_upstream_free_round_robin_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t state);
+void ngx_http_upstream_free_round_robin_peer_locked(ngx_peer_connection_t *pc,
+    void *data, ngx_uint_t state);
 
 #if (NGX_HTTP_SSL)
 ngx_int_t
@@ -233,6 +272,20 @@ ngx_int_t
     void *data);
 void ngx_http_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
     void *data);
+#endif
+
+#if (NGX_HTTP_UPSTREAM_SID)
+
+#define ngx_http_upstream_copy_round_robin_sid(dst, src)                      \
+    ngx_http_upstream_init_round_robin_sid(dst,                               \
+                                           (src)->route ? &(src)->sid : NULL)
+
+void ngx_http_upstream_init_round_robin_sid(ngx_http_upstream_rr_peer_t *peer,
+    ngx_str_t *route);
+ngx_http_upstream_rr_peer_t *ngx_http_upstream_get_rr_peer_by_sid(
+    ngx_http_upstream_rr_peer_data_t *rrp, ngx_str_t *hint, ngx_uint_t *p,
+    ngx_uint_t lock);
+
 #endif
 
 

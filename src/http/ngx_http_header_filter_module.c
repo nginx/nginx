@@ -91,7 +91,7 @@ static ngx_str_t ngx_http_status_lines[] = {
     ngx_string("404 Not Found"),
     ngx_string("405 Not Allowed"),
     ngx_string("406 Not Acceptable"),
-    ngx_null_string,  /* "407 Proxy Authentication Required" */
+    ngx_string("407 Proxy Authentication Required"),
     ngx_string("408 Request Time-out"),
     ngx_string("409 Conflict"),
     ngx_string("410 Gone"),

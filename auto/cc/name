@@ -57,7 +57,7 @@ elif `$CC -v 2>&1 | grep 'gcc version' >/dev/null 2>&1`; then
     NGX_CC_NAME=gcc
     echo " + using GNU C compiler"
 
-    NGX_CC_VER=`$CC -v 2>&1 | sed -n -e 's/^.*gcc version \(.*\)/\1/p'`
+    NGX_CC_VER=`$CC -v 2>&1 | sed -n -e 's/^gcc version \(.*\)/\1/p'`
     echo " + gcc version: $NGX_CC_VER"
 
     have=NGX_COMPILER value="\"gcc $NGX_CC_VER\"" . auto/define

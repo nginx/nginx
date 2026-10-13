@@ -25,6 +25,7 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_crc.h \
            src/core/ngx_crc32.h \
            src/core/ngx_murmurhash.h \
+           src/core/ngx_siphash.h \
            src/core/ngx_md5.h \
            src/core/ngx_sha1.h \
            src/core/ngx_rbtree.h \
@@ -40,6 +41,10 @@ CORE_DEPS="src/core/nginx.h \
            src/core/ngx_resolver.h \
            src/core/ngx_open_file_cache.h \
            src/core/ngx_crypt.h \
+           src/core/ngx_data.h \
+           src/core/ngx_json.h \
+           src/core/ngx_json_parse.h \
+           src/core/ngx_json_unescape.h \
            src/core/ngx_proxy_protocol.h \
            src/core/ngx_syslog.h"
 
@@ -60,6 +65,7 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_file.c \
            src/core/ngx_crc32.c \
            src/core/ngx_murmurhash.c \
+           src/core/ngx_siphash.c \
            src/core/ngx_md5.c \
            src/core/ngx_sha1.c \
            src/core/ngx_rbtree.c \
@@ -77,6 +83,10 @@ CORE_SRCS="src/core/nginx.c \
            src/core/ngx_resolver.c \
            src/core/ngx_open_file_cache.c \
            src/core/ngx_crypt.c \
+           src/core/ngx_data.c \
+           src/core/ngx_json.c \
+           src/core/ngx_json_parse.c \
+           src/core/ngx_json_unescape.c \
            src/core/ngx_proxy_protocol.c \
            src/core/ngx_syslog.c"
 
@@ -182,6 +192,9 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
             src/os/unix/ngx_dlopen.c \
             src/os/unix/ngx_process_cycle.c"
 
+UNIX_CONTROL_API_DEPS=src/os/unix/ngx_control.h
+UNIX_CONTROL_API_SRCS=src/os/unix/ngx_control.c
+
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
 
 THREAD_POOL_MODULE=ngx_thread_pool_module
@@ -259,3 +272,6 @@ HTTP_FILE_CACHE_SRCS=src/http/ngx_http_file_cache.c
 
 HTTP_HUFF_SRCS="src/http/ngx_http_huff_decode.c
                 src/http/ngx_http_huff_encode.c"
+
+HTTP_PRIORITY_DEPS=src/http/ngx_http_priority.h
+HTTP_PRIORITY_SRCS=src/http/ngx_http_priority.c

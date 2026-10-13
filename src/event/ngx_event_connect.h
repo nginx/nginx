@@ -57,8 +57,14 @@ struct ngx_peer_connection_s {
 
     int                              type;
     int                              rcvbuf;
+    int                              sndbuf;
 
     ngx_log_t                       *log;
+
+#if (NGX_HTTP_UPSTREAM_SID || NGX_COMPAT)
+    ngx_str_t                       *hint;
+    ngx_str_t                       *sid;
+#endif
 
     unsigned                         cached:1;
     unsigned                         transparent:1;
@@ -68,7 +74,7 @@ struct ngx_peer_connection_s {
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;
 
-    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_BEGIN(1)
     NGX_COMPAT_END
 };
 

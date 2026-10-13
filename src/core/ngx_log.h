@@ -70,6 +70,9 @@ struct ngx_log_s {
     char                *action;
 
     ngx_log_t           *next;
+
+    NGX_COMPAT_BEGIN(5)
+    NGX_COMPAT_END
 };
 
 

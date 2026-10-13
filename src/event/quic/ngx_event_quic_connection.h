@@ -48,6 +48,9 @@ typedef struct ngx_quic_keys_s        ngx_quic_keys_t;
 #include <ngx_event_quic_ack.h>
 #include <ngx_event_quic_output.h>
 #include <ngx_event_quic_socket.h>
+#if (NGX_QUIC_BPF)
+#include <ngx_event_quic_bpf.h>
+#endif
 
 
 /* RFC 9002, 6.2.2.  Handshakes and New Paths: kInitialRtt */
@@ -314,6 +317,8 @@ ngx_int_t ngx_quic_apply_transport_params(ngx_connection_t *c,
 void ngx_quic_discard_ctx(ngx_connection_t *c, ngx_uint_t level);
 void ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc);
 void ngx_quic_shutdown_quic(ngx_connection_t *c);
+void ngx_quic_address_hash(struct sockaddr *sockaddr, socklen_t socklen,
+    ngx_uint_t no_port, u_char *salt, size_t saltlen, u_char buf[20]);
 
 #if (NGX_DEBUG)
 void ngx_quic_connstate_dbg(ngx_connection_t *c);

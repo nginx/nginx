@@ -61,16 +61,20 @@ locally and breaking changes logically into commits before submitting a PR
 - Each commit message should have a single-line subject line followed by verbose
 description after an empty line
 
-- Limit the subject line to 67 characters, and the rest of the commit message
-to 76 characters
+- Limit the subject and commit message body lines to 72 characters
 
 - Use subject line prefixes for commits that affect a specific portion of the
 code; examples include "Upstream:", "QUIC:", or "Core:"; see the commit history
 to get an idea of the prefixes used
 
-- Reference issues in the the subject line; if the commit fixes an issue,
-[name it](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue)
-accordingly
+- If the commit fixes an open issue then you can use the "Closes:" tag/trailer
+to reference it and have GitHub automatically close it once it's been merged.
+E.g.:
+
+  `Closes: https://github.com/nginx/nginx/issues/9999`
+
+  That should go at the end of the commit message, separated by a blank line,
+  along with any other tags.
 
 ### Before Submitting
 

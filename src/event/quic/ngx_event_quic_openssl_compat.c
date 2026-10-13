@@ -70,11 +70,16 @@ static ngx_int_t ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec,
     ngx_str_t *res);
 
 
-ngx_int_t
-ngx_quic_compat_init(ngx_conf_t *cf, SSL_CTX *ctx)
+void
+ngx_quic_compat_keylog_init(SSL_CTX *ctx)
 {
     SSL_CTX_set_keylog_callback(ctx, ngx_quic_compat_keylog_callback);
+}
 
+
+ngx_int_t
+ngx_quic_compat_ext_init(ngx_conf_t *cf, SSL_CTX *ctx)
+{
     if (SSL_CTX_has_client_custom_ext(ctx, NGX_QUIC_COMPAT_SSL_TP_EXT)) {
         return NGX_OK;
     }
@@ -213,8 +218,12 @@ ngx_quic_compat_keylog_callback(const SSL *ssl, const char *line)
         com->method->set_read_secret((SSL *) ssl, level, cipher, secret, n);
         com->read_record = 0;
 
-        (void) ngx_quic_compat_set_encryption_secret(c, &com->keys, level,
-                                                     cipher, secret, n);
+        if (ngx_quic_compat_set_encryption_secret(c, &com->keys, level,
+                                                  cipher, secret, n)
+            != NGX_OK)
+        {
+            qc->error = NGX_QUIC_ERR_INTERNAL_ERROR;
+        }
     }
 
     ngx_explicit_memzero(secret, n);
@@ -337,7 +346,7 @@ ngx_quic_compat_parse_transport_params_callback(SSL *ssl, unsigned int ext_type,
 
     c = ngx_ssl_get_connection(ssl);
     if (c->type != SOCK_DGRAM) {
-        return 0;
+        return 1;
     }
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -590,6 +599,10 @@ ngx_quic_compat_create_record(ngx_quic_compat_record_t *rec, ngx_str_t *res)
 #endif
 
     secret = &rec->keys->secret;
+
+    if (secret->ctx == NULL) {
+        return NGX_ERROR;
+    }
 
     ngx_memcpy(nonce, secret->iv.data, secret->iv.len);
     ngx_quic_compute_nonce(nonce, sizeof(nonce), rec->number);

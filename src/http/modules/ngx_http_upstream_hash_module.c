@@ -200,6 +200,17 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
     pc->cached = 0;
     pc->connection = NULL;
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    peer = ngx_http_upstream_get_rr_peer_by_sid(&hp->rrp, pc->hint, &p, 1);
+
+    if (peer) {
+        n = p / (8 * sizeof(uintptr_t));
+        m = (uintptr_t) 1 << p % (8 * sizeof(uintptr_t));
+
+        goto found;
+    }
+#endif
+
     for ( ;; ) {
 
         /*
@@ -273,12 +284,20 @@ ngx_http_upstream_get_hash_peer(ngx_peer_connection_t *pc, void *data)
         }
     }
 
+#if (NGX_HTTP_UPSTREAM_SID)
+found:
+#endif
+
     hp->rrp.current = peer;
     ngx_http_upstream_rr_peer_ref(hp->rrp.peers, peer);
 
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     pc->name = &peer->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &peer->sid;
+#endif
 
     peer->conns++;
 
@@ -591,6 +610,14 @@ ngx_http_upstream_get_chash_peer(ngx_peer_connection_t *pc, void *data)
     points = hcf->points;
     point = &points->point[0];
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    best = ngx_http_upstream_get_rr_peer_by_sid(&hp->rrp, pc->hint, &best_i, 0);
+
+    if (best) {
+        goto found;
+    }
+#endif
+
     for ( ;; ) {
         server = point[hp->hash % points->number].server;
 
@@ -670,6 +697,10 @@ found:
     pc->sockaddr = best->sockaddr;
     pc->socklen = best->socklen;
     pc->name = &best->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &best->sid;
+#endif
 
     best->conns++;
 

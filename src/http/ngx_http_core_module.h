@@ -88,6 +88,7 @@ typedef struct {
     int                        rcvbuf;
     int                        sndbuf;
     int                        type;
+    int                        protocol;
 #if (NGX_HAVE_SETFIB)
     int                        setfib;
 #endif
@@ -198,9 +199,13 @@ typedef struct {
 
     ngx_msec_t                  client_header_timeout;
 
+    ngx_uint_t                  max_headers;
+
     ngx_flag_t                  ignore_invalid_headers;
     ngx_flag_t                  merge_slashes;
     ngx_flag_t                  underscores_in_headers;
+
+    ngx_array_t                *client_body_early_read;
 
     unsigned                    listen:1;
 #if (NGX_PCRE)
@@ -314,6 +319,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_http_regex_t  *regex;
 #endif
 
+    ngx_uint_t    predicate;  /* variable index + 1 */
+
     unsigned      noname:1;   /* "if () {}" block or limit_except */
     unsigned      lmt_excpt:1;
     unsigned      named:1;
@@ -331,6 +338,7 @@ struct ngx_http_core_loc_conf_s {
 #if (NGX_PCRE)
     ngx_http_core_loc_conf_t       **regex_locations;
 #endif
+    ngx_http_core_loc_conf_t       **predicate_locations;
 
     /* pointer to the modules' loc_conf */
     void        **loc_conf;

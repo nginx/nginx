@@ -71,6 +71,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_crc.h>
 #include <ngx_crc32.h>
 #include <ngx_murmurhash.h>
+#include <ngx_siphash.h>
 #if (NGX_PCRE)
 #include <ngx_regex.h>
 #endif
@@ -78,6 +79,8 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_times.h>
 #include <ngx_rwlock.h>
 #include <ngx_shmtx.h>
+#include <ngx_data.h>
+#include <ngx_json.h>
 #include <ngx_slab.h>
 #include <ngx_inet.h>
 #include <ngx_cycle.h>
@@ -89,6 +92,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #endif
 #endif
 #include <ngx_process_cycle.h>
+#if (NGX_CONTROL_API)
+#include <ngx_control.h>
+#endif
 #include <ngx_conf_file.h>
 #include <ngx_module.h>
 #include <ngx_open_file_cache.h>

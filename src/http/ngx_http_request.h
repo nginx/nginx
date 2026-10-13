@@ -95,6 +95,7 @@
 #define NGX_HTTP_FORBIDDEN                 403
 #define NGX_HTTP_NOT_FOUND                 404
 #define NGX_HTTP_NOT_ALLOWED               405
+#define NGX_HTTP_PROXY_AUTH_REQUIRED       407
 #define NGX_HTTP_REQUEST_TIME_OUT          408
 #define NGX_HTTP_CONFLICT                  409
 #define NGX_HTTP_LENGTH_REQUIRED           411
@@ -183,6 +184,7 @@ typedef struct {
 
 typedef struct {
     ngx_list_t                        headers;
+    ngx_uint_t                        count;
 
     ngx_table_elt_t                  *host;
     ngx_table_elt_t                  *connection;
@@ -210,6 +212,7 @@ typedef struct {
 #endif
 
     ngx_table_elt_t                  *authorization;
+    ngx_table_elt_t                  *proxy_authorization;
 
     ngx_table_elt_t                  *keep_alive;
 
@@ -273,6 +276,7 @@ typedef struct {
     ngx_table_elt_t                  *content_range;
     ngx_table_elt_t                  *accept_ranges;
     ngx_table_elt_t                  *www_authenticate;
+    ngx_table_elt_t                  *proxy_authenticate;
     ngx_table_elt_t                  *expires;
     ngx_table_elt_t                  *etag;
 
@@ -614,7 +618,9 @@ typedef struct {
 } ngx_http_ephemeral_t;
 
 
-#define ngx_http_ephemeral(r)  (void *) (&r->uri_start)
+#define ngx_http_ephemeral(r)   (void *) (&r->uri_start)
+
+#define ngx_http_proxy_auth(r)  ((r)->method == NGX_HTTP_CONNECT)
 
 
 extern ngx_http_header_t       ngx_http_headers_in[];

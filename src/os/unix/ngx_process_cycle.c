@@ -174,6 +174,28 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
             live = ngx_reap_children(cycle);
         }
 
+#if (NGX_CONTROL_API)
+        if (ngx_sigio) {
+            ngx_sigio = 0;
+
+            if (ngx_control_handle_events() == NGX_DONE) {
+                cycle = (ngx_cycle_t *) ngx_cycle;
+                ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                                       ngx_core_module);
+                ngx_start_worker_processes(cycle, ccf->worker_processes,
+                                           NGX_PROCESS_JUST_RESPAWN);
+                ngx_start_cache_manager_processes(cycle, 1);
+
+                /* allow new processes to start */
+                ngx_msleep(100);
+
+                live = 1;
+                ngx_signal_worker_processes(cycle,
+                                        ngx_signal_value(NGX_SHUTDOWN_SIGNAL));
+            }
+        }
+#endif
+
         if (!live && (ngx_terminate || ngx_quit)) {
             ngx_master_process_exit(cycle);
         }
@@ -629,6 +651,10 @@ ngx_reap_children(ngx_cycle_t *cycle)
                                   ccf->oldpid.data, ccf->pid.data, ngx_argv[0]);
                 }
 
+#if (NGX_CONTROL_API)
+                ngx_control_reown();
+#endif
+
                 ngx_new_binary = 0;
                 if (ngx_noaccepting) {
                     ngx_restart = 1;
@@ -668,6 +694,10 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
     }
 
     ngx_close_listening_sockets(cycle);
+
+#if (NGX_CONTROL_API)
+    ngx_control_uninit();
+#endif
 
     /*
      * Copy ngx_cycle->log related data to the special static exit cycle,
@@ -759,6 +789,10 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
     ngx_cpuset_t     *cpu_affinity;
     struct rlimit     rlmt;
     ngx_core_conf_t  *ccf;
+
+#if (NGX_CONTROL_API)
+    ngx_control_close_sockets();
+#endif
 
     if (ngx_set_environment(cycle, NULL) == NULL) {
         /* fatal */
@@ -955,7 +989,8 @@ ngx_worker_process_exit(ngx_cycle_t *cycle)
                 && c[i].read
                 && !c[i].read->accept
                 && !c[i].read->channel
-                && !c[i].read->resolver)
+                && !c[i].read->resolver
+                && !c[i].read->quic)
             {
                 ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
                               "*%uA open socket #%d left in connection %ui",
@@ -1072,6 +1107,12 @@ ngx_channel_handler(ngx_event_t *ev)
                            "close channel s:%i pid:%P our:%P fd:%d",
                            ch.slot, ch.pid, ngx_processes[ch.slot].pid,
                            ngx_processes[ch.slot].channel[0]);
+
+            if (ngx_processes[ch.slot].channel[0] == -1
+                || ngx_processes[ch.slot].pid != ch.pid)
+            {
+                break;
+            }
 
             if (close(ngx_processes[ch.slot].channel[0]) == -1) {
                 ngx_log_error(NGX_LOG_ALERT, ev->log, ngx_errno,

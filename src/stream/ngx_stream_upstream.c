@@ -536,7 +536,7 @@ ngx_stream_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto not_supported;
             }
 
-            us->down = 1;
+            us->down = NGX_STREAM_UPSTREAM_FAILED;
 
             continue;
         }

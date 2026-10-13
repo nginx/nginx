@@ -447,6 +447,18 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #endif
         }
 
+        if (ngx_strcmp(value[i].data, "multipath") == 0) {
+#ifdef IPPROTO_MPTCP
+            ls->protocol = IPPROTO_MPTCP;
+            ls->bind = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "multipath is not supported "
+                               "on this platform, ignored");
+#endif
+            continue;
+        }
+
         if (ngx_strcmp(value[i].data, "ssl") == 0) {
 #if (NGX_MAIL_SSL)
             ngx_mail_ssl_conf_t  *sslcf;

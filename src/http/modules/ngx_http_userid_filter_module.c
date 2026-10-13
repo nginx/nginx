@@ -338,8 +338,8 @@ ngx_http_userid_get_uid(ngx_http_request_t *r, ngx_http_userid_conf_t *conf)
         ngx_http_set_ctx(r, ctx, ngx_http_userid_filter_module);
     }
 
-    cookie = ngx_http_parse_multi_header_lines(r, r->headers_in.cookie,
-                                               &conf->name, &ctx->cookie);
+    cookie = ngx_http_parse_cookie_lines(r, r->headers_in.cookie, &conf->name,
+                                         &ctx->cookie);
     if (cookie == NULL) {
         return ctx;
     }

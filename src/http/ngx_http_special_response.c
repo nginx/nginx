@@ -153,6 +153,14 @@ static char ngx_http_error_406_page[] =
 ;
 
 
+static char ngx_http_error_407_page[] =
+"<html>" CRLF
+"<head><title>407 Proxy Authentication Required</title></head>" CRLF
+"<body>" CRLF
+"<center><h1>407 Proxy Authentication Required</h1></center>" CRLF
+;
+
+
 static char ngx_http_error_408_page[] =
 "<html>" CRLF
 "<head><title>408 Request Time-out</title></head>" CRLF
@@ -364,7 +372,7 @@ static ngx_str_t ngx_http_error_pages[] = {
     ngx_string(ngx_http_error_404_page),
     ngx_string(ngx_http_error_405_page),
     ngx_string(ngx_http_error_406_page),
-    ngx_null_string,                     /* 407 */
+    ngx_string(ngx_http_error_407_page),
     ngx_string(ngx_http_error_408_page),
     ngx_string(ngx_http_error_409_page),
     ngx_string(ngx_http_error_410_page),

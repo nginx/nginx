@@ -385,6 +385,9 @@ ngx_http_upstream_zone_copy_peer(ngx_http_upstream_rr_peers_t *peers,
         ngx_memcpy(dst, src, sizeof(ngx_http_upstream_rr_peer_t));
         dst->sockaddr = NULL;
         dst->name.data = NULL;
+#if (NGX_HTTP_UPSTREAM_SID)
+        dst->sid.data = NULL;
+#endif
         dst->server.data = NULL;
         dst->host = NULL;
     }
@@ -399,9 +402,19 @@ ngx_http_upstream_zone_copy_peer(ngx_http_upstream_rr_peers_t *peers,
         goto failed;
     }
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    dst->sid.data = ngx_slab_calloc_locked(pool, NGX_HTTP_UPSTREAM_SID_LEN);
+    if (dst->sid.data == NULL) {
+        goto failed;
+    }
+#endif
+
     if (src) {
         ngx_memcpy(dst->sockaddr, src->sockaddr, src->socklen);
         ngx_memcpy(dst->name.data, src->name.data, src->name.len);
+#if (NGX_HTTP_UPSTREAM_SID)
+        ngx_memcpy(dst->sid.data, src->sid.data, src->sid.len);
+#endif
 
         dst->server.data = ngx_slab_alloc_locked(pool, src->server.len);
         if (dst->server.data == NULL) {
@@ -459,6 +472,12 @@ failed:
     if (dst->server.data) {
         ngx_slab_free_locked(pool, dst->server.data);
     }
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    if (dst->sid.data) {
+        ngx_slab_free_locked(pool, dst->sid.data);
+    }
+#endif
 
     if (dst->name.data) {
         ngx_slab_free_locked(pool, dst->name.data);
@@ -572,6 +591,10 @@ ngx_http_upstream_zone_preresolve(ngx_http_upstream_rr_peer_t *resolve,
                 peer->max_fails = template->max_fails;
                 peer->fail_timeout = template->fail_timeout;
                 peer->down = template->down;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+                ngx_http_upstream_copy_round_robin_sid(peer, template);
+#endif
 
                 (*peers->config)++;
 
@@ -965,6 +988,10 @@ again:
         peer->max_fails = template->max_fails;
         peer->fail_timeout = template->fail_timeout;
         peer->down = template->down;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        ngx_http_upstream_copy_round_robin_sid(peer, template);
+#endif
 
         *peerp = peer;
         peerp = &peer->next;

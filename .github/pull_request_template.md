@@ -1,10 +1,36 @@
-### Proposed changes
+## Problem
 
-Describe the use case and detail of the change. If this PR addresses an issue on GitHub, make sure to include a link to that issue using one of the [supported keywords](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue) in this PR's description or commit message.
+Briefly describe the issue or feature being addressed.
 
-### Checklist
+## Solution
 
-Before creating a PR, run through this checklist and mark each as complete:
+Explain your approach and any important design decisions.
 
-- [ ] I have read the [contributing guidelines](/CONTRIBUTING.md).
-- [ ] I have checked that NGINX compiles and runs after adding my changes.
+## Testing
+
+Describe how you tested the change (manual testing, automated tests,
+regression tests, etc.).
+
+- [ ] Manual Testing
+- [ ] Functional Testing ([nginx-tests](https://github.com/nginx/nginx-tests))
+
+**Closes:** #ISSUE\_NUMBER
+
+## Checklist
+
+Before submitting this PR, please confirm:
+
+- [ ] I have read the [CONTRIBUTING](https://github.com/nginx/nginx/blob/master/CONTRIBUTING.md) guidelines
+- [ ] I have added tests (if applicable) to validate my changes
+- [ ] All existing tests pass
+- [ ] I have updated documentation where necessary
+- [ ] My branch is rebased on the latest master
+- [ ] This PR targets the master branch from my fork
+- [ ] My commit message follows NGINX standards (imperative mood, clear
+      subject, references related issue if applicable, and contains only
+      relevant changes)
+
+## Release Notes
+
+If this change affects users, please add a short note here describing
+the impact for release documentation.

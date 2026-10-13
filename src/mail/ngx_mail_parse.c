@@ -539,6 +539,9 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
             break;
 
         case sw_literal:
+            if (s->literal_len > NGX_MAX_SIZE_T_VALUE / 10) {
+                goto invalid;
+            }
             if (ch >= '0' && ch <= '9') {
                 s->literal_len = s->literal_len * 10 + (ch - '0');
                 break;
@@ -598,20 +601,16 @@ ngx_mail_imap_parse_command(ngx_mail_session_t *s)
 
         case sw_end_literal_argument:
             switch (ch) {
-            case '{':
-                if (s->args.nelts <= 2) {
-                    state = sw_literal;
-                    break;
-                }
-                goto invalid;
+            case ' ':
+                state = sw_spaces_before_argument;
+                break;
             case CR:
                 state = sw_almost_done;
                 break;
             case LF:
                 goto done;
             default:
-                state = sw_spaces_before_argument;
-                break;
+                goto invalid;
             }
             break;
 

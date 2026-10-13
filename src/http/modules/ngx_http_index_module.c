@@ -126,6 +126,7 @@ ngx_http_index_handler(ngx_http_request_t *r)
     name = NULL;
     /* suppress MSVC warning */
     path.data = NULL;
+    e.status = 0;
 
     index = ilcf->indices->elts;
     for (i = 0; i < ilcf->indices->nelts; i++) {
@@ -180,18 +181,28 @@ ngx_http_index_handler(ngx_http_request_t *r)
         } else {
             e.ip = index[i].values->elts;
             e.pos = name;
+            e.end = name + allocated;
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
                 code((ngx_http_script_engine_t *) &e);
             }
 
+            if (e.status) {
+                return NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            if (ngx_http_script_check_length(&e, 1) != NGX_OK) {
+                return NGX_ERROR;
+            }
+
             if (*name == '/') {
-                uri.len = len - 1;
+                uri.len = e.pos - name;
                 uri.data = name;
                 return ngx_http_internal_redirect(r, &uri, &r->args);
             }
 
+            len = e.pos - name + 1;
             path.len = e.pos - path.data;
 
             *e.pos = '\0';

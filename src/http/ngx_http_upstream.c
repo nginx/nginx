@@ -139,6 +139,8 @@ static ngx_int_t
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_vary(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_process_priority(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t
@@ -155,6 +157,8 @@ static ngx_int_t ngx_http_upstream_rewrite_refresh(ngx_http_request_t *r,
 static ngx_int_t ngx_http_upstream_rewrite_set_cookie(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset);
+static ngx_int_t ngx_http_upstream_copy_upgrade(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
 static ngx_int_t ngx_http_upstream_add_variables(ngx_conf_t *cf);
@@ -278,6 +282,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_copy_allow_ranges,
                  offsetof(ngx_http_headers_out_t, accept_ranges), 1 },
 
+    { ngx_string("Upgrade"),
+                 ngx_http_upstream_ignore_header_line, 0,
+                 ngx_http_upstream_copy_upgrade, 0, 0 },
+
     { ngx_string("Content-Range"),
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_header_line,
@@ -329,6 +337,10 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_ignore_header_line, 0,
                  ngx_http_upstream_copy_header_line,
                  offsetof(ngx_http_headers_out_t, content_encoding), 0 },
+
+    { ngx_string("Priority"),
+                 ngx_http_upstream_process_priority, 0,
+                 ngx_http_upstream_copy_header_line, 0, 0 },
 
     { ngx_null_string, NULL, 0, NULL, 0, 0 }
 };
@@ -672,6 +684,14 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     if (u->conf->socket_keepalive) {
         u->peer.so_keepalive = 1;
+    }
+
+    if (u->conf->socket_rcvbuf) {
+        u->peer.rcvbuf = (int) u->conf->socket_rcvbuf;
+    }
+
+    if (u->conf->socket_sndbuf) {
+        u->peer.sndbuf = (int) u->conf->socket_sndbuf;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -2067,6 +2087,7 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
+    u->early_hints_length = 0;
     u->keepalive = 0;
     u->upgrade = 0;
     u->error = 0;
@@ -2243,6 +2264,11 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
         u->request_body_sent = 1;
 
         if (u->header_sent) {
+            return;
+        }
+
+        if (u->conf->ignore_input) {
+            ngx_http_upstream_process_header(r, u);
             return;
         }
 
@@ -2501,6 +2527,11 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 #endif
     }
 
+    if (u->conf->ignore_input) {
+        rc = u->process_header(r);
+        goto done;
+    }
+
     for ( ;; ) {
 
         n = c->recv(c, u->buffer.last, u->buffer.end - u->buffer.last);
@@ -2550,6 +2581,8 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         u->response_received = 1;
 
+again:
+
         rc = u->process_header(r);
 
         if (rc == NGX_AGAIN) {
@@ -2570,16 +2603,14 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             rc = ngx_http_upstream_process_early_hints(r, u);
 
             if (rc == NGX_OK) {
-                rc = u->process_header(r);
-
-                if (rc == NGX_AGAIN) {
-                    continue;
-                }
+                goto again;
             }
         }
 
         break;
     }
+
+done:
 
     if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_INVALID_HEADER);
@@ -2605,6 +2636,10 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         if (ngx_http_upstream_intercept_errors(r, u) == NGX_OK) {
             return;
         }
+    }
+
+    if (u->peer.notify) {
+        u->peer.notify(&u->peer, u->peer.data, NGX_HTTP_UPSTREAM_NOTIFY_HEADER);
     }
 
     if (ngx_http_upstream_process_headers(r, u) != NGX_OK) {
@@ -4593,6 +4628,10 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
         u->peer.free(&u->peer, u->peer.data, state);
         u->peer.sockaddr = NULL;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        u->peer.sid = NULL;
+#endif
     }
 
     if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
@@ -4776,6 +4815,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     if (u->peer.free && u->peer.sockaddr) {
         u->peer.free(&u->peer, u->peer.data, 0);
         u->peer.sockaddr = NULL;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        u->peer.sid = NULL;
+#endif
     }
 
     if (u->peer.connection) {
@@ -5558,6 +5601,45 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
 
 
 static ngx_int_t
+ngx_http_upstream_process_priority(ngx_http_request_t *r,
+    ngx_table_elt_t *h, ngx_uint_t offset)
+{
+#if (NGX_HTTP_V2)
+    ngx_http_priority_t    priority;
+    ngx_http_v2_stream_t  *stream;
+
+    if (r != r->main) {
+        return NGX_OK;
+    }
+
+    /* RFC 9218, Section 8: server hints override the client's values */
+
+    stream = r->stream;
+
+    if (stream == NULL) {
+        return NGX_OK;
+    }
+
+    if (ngx_http_priority_parse(&h->value, &priority) != NGX_OK
+        || !(priority.urgency_set || priority.incremental_set))
+    {
+        return NGX_OK;
+    }
+
+    stream->priority.server = priority;
+    ngx_http_priority_state_update(&stream->priority);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http upstream priority: u=%ud i=%ud",
+                   stream->priority.effective.urgency,
+                   stream->priority.effective.incremental);
+#endif
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_upstream_copy_header_line(ngx_http_request_t *r, ngx_table_elt_t *h,
     ngx_uint_t offset)
 {
@@ -5642,7 +5724,7 @@ ngx_http_upstream_copy_content_type(ngx_http_request_t *r, ngx_table_elt_t *h,
 
         last = h->value.data + h->value.len;
 
-        if (*(last - 1) == '"') {
+        if (last > p && *(last - 1) == '"') {
             last--;
         }
 
@@ -5840,6 +5922,27 @@ ngx_http_upstream_copy_allow_ranges(ngx_http_request_t *r,
     ho->next = NULL;
 
     r->headers_out.accept_ranges = ho;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_copy_upgrade(ngx_http_request_t *r, ngx_table_elt_t *h,
+    ngx_uint_t offset)
+{
+    ngx_table_elt_t  *ho;
+
+    if (r->http_version >= NGX_HTTP_VERSION_20) {
+        return NGX_OK;
+    }
+
+    ho = ngx_list_push(&r->headers_out.headers);
+    if (ho == NULL) {
+        return NGX_ERROR;
+    }
+
+    *ho = *h;
 
     return NGX_OK;
 }
@@ -6522,10 +6625,45 @@ ngx_http_upstream_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 goto not_supported;
             }
 
-            us->down = 1;
+            us->down = NGX_HTTP_UPSTREAM_FAILED;
 
             continue;
         }
+
+#if (NGX_HTTP_UPSTREAM_STICKY)
+        if (ngx_strcmp(value[i].data, "drain") == 0) {
+
+            if (!(uscf->flags & NGX_HTTP_UPSTREAM_DOWN)) {
+                goto not_supported;
+            }
+
+            us->down = NGX_HTTP_UPSTREAM_DRAINING;
+
+            continue;
+        }
+#endif
+
+#if (NGX_HTTP_UPSTREAM_SID)
+        if (ngx_strncmp(value[i].data, "route=", 6) == 0) {
+
+            us->sid.data = &value[i].data[6];
+            us->sid.len = value[i].len - 6;
+
+            if (us->sid.len == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "route is empty");
+                return NGX_CONF_ERROR;
+            }
+
+            if (us->sid.len > NGX_HTTP_UPSTREAM_SID_LEN) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "route is longer than %d",
+                                   NGX_HTTP_UPSTREAM_SID_LEN);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+#endif
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
         if (ngx_strcmp(value[i].data, "resolve") == 0) {

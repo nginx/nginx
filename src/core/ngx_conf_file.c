@@ -59,6 +59,9 @@ static ngx_uint_t argument_number[] = {
 };
 
 
+ngx_conf_post_t  ngx_conf_size_nonzero_post = { ngx_conf_check_size_nonzero };
+
+
 char *
 ngx_conf_param(ngx_conf_t *cf)
 {
@@ -217,6 +220,9 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
         type = parse_file;
 
         if (ngx_dump_config
+#if (NGX_CONTROL_API)
+            || ngx_control_api_enabled
+#endif
 #if (NGX_DEBUG)
             || 1
 #endif
@@ -566,7 +572,7 @@ ngx_conf_read_token(ngx_conf_t *cf)
                 } else {
                     ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                        "too long parameter \"%*s...\" started",
-                                       10, start);
+                                       (size_t) 10, start);
                     return NGX_ERROR;
                 }
 
@@ -1483,4 +1489,17 @@ ngx_conf_check_num_bounds(ngx_conf_t *cf, void *post, void *data)
                        bounds->low, bounds->high);
 
     return NGX_CONF_ERROR;
+}
+
+
+char *
+ngx_conf_check_size_nonzero(ngx_conf_t *cf, void *post, void *data)
+{
+    size_t  *sp = data;
+
+    if (*sp == 0) {
+        return "value must be nonzero";
+    }
+
+    return NGX_CONF_OK;
 }

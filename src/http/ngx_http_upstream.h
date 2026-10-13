@@ -57,6 +57,9 @@
 #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
 
 
+#define NGX_HTTP_UPSTREAM_NOTIFY_HEADER      0x1
+
+
 typedef struct {
     ngx_uint_t                       status;
     ngx_msec_t                       response_time;
@@ -68,6 +71,9 @@ typedef struct {
     off_t                            bytes_sent;
 
     ngx_str_t                       *peer;
+
+    NGX_COMPAT_BEGIN(2)
+    NGX_COMPAT_END
 } ngx_http_upstream_state_t;
 
 
@@ -110,8 +116,9 @@ typedef struct {
     ngx_str_t                        service;
 #endif
 
-    NGX_COMPAT_BEGIN(2)
-    NGX_COMPAT_END
+#if (NGX_HTTP_UPSTREAM_SID || NGX_COMPAT)
+    ngx_str_t                        sid;
+#endif
 } ngx_http_upstream_server_t;
 
 
@@ -201,6 +208,8 @@ typedef struct {
 
     ngx_http_upstream_local_t       *local;
     ngx_flag_t                       socket_keepalive;
+    size_t                           socket_rcvbuf;
+    size_t                           socket_sndbuf;
 
 #if (NGX_HTTP_CACHE)
     ngx_shm_zone_t                  *cache_zone;
@@ -236,6 +245,7 @@ typedef struct {
     unsigned                         intercept_404:1;
     unsigned                         change_buffering:1;
     unsigned                         preserve_output:1;
+    unsigned                         ignore_input:1;
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
     ngx_ssl_t                       *ssl;
@@ -253,7 +263,7 @@ typedef struct {
 
     ngx_str_t                        module;
 
-    NGX_COMPAT_BEGIN(6)
+    NGX_COMPAT_BEGIN(5)
     NGX_COMPAT_END
 } ngx_http_upstream_conf_t;
 

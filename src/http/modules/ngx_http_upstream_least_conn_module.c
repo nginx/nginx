@@ -138,6 +138,14 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     p = 0;
 #endif
 
+#if (NGX_HTTP_UPSTREAM_SID)
+    best = ngx_http_upstream_get_rr_peer_by_sid(rrp, pc->hint, &p, 0);
+
+    if (best) {
+        goto best_chosen;
+    }
+#endif
+
     for (peer = peers->peer, i = 0;
          peer;
          peer = peer->next, i++)
@@ -239,6 +247,10 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     best->current_weight -= total;
 
+#if (NGX_HTTP_UPSTREAM_SID)
+best_chosen:
+#endif
+
     if (now - best->checked > best->fail_timeout) {
         best->checked = now;
     }
@@ -246,6 +258,10 @@ ngx_http_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
     pc->sockaddr = best->sockaddr;
     pc->socklen = best->socklen;
     pc->name = &best->name;
+
+#if (NGX_HTTP_UPSTREAM_SID)
+    pc->sid = &best->sid;
+#endif
 
     best->conns++;
 

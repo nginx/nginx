@@ -241,6 +241,14 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.content_type.len) {
+
+        if (r->headers_out.content_type.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response header value: "
+                          "\"Content-Type: %V\"", &r->headers_out.content_type);
+            return NGX_ERROR;
+        }
+
         len += 1 + NGX_HTTP_V2_INT_OCTETS + r->headers_out.content_type.len;
 
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
@@ -263,6 +271,13 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
+
+        if (r->headers_out.location->value.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response header value: \"Location: %V\"",
+                          &r->headers_out.location->value);
+            return NGX_ERROR;
+        }
 
         if (r->headers_out.location->value.data[0] == '/'
             && clcf->absolute_redirect)
@@ -1431,10 +1446,7 @@ ngx_http_v2_waiting_queue(ngx_http_v2_connection_t *h2c,
     {
         s = ngx_queue_data(q, ngx_http_v2_stream_t, queue);
 
-        if (s->node->rank < stream->node->rank
-            || (s->node->rank == stream->node->rank
-                && s->node->rel_weight >= stream->node->rel_weight))
-        {
+        if (ngx_http_v2_stream_precedes(s, stream)) {
             break;
         }
     }

@@ -152,21 +152,17 @@ ngx_quic_cbs_recv_rcd(ngx_ssl_conn_t *ssl_conn,
     qc = ngx_quic_get_connection(c);
     ctx = ngx_quic_get_send_ctx(qc, qc->read_level);
 
-    for (cl = ctx->crypto.chain; cl; cl = cl->next) {
+    cl = ctx->crypto.chain;
+
+    if (cl == NULL || cl->buf->sync) {
+        *data = NULL;
+        *bytes_read = 0;
+
+    } else {
         b = cl->buf;
-
-        if (b->sync) {
-            /* hole */
-
-            *bytes_read = 0;
-
-            break;
-        }
 
         *data = b->pos;
         *bytes_read = b->last - b->pos;
-
-        break;
     }
 
     return 1;
@@ -640,6 +636,15 @@ ngx_quic_handle_crypto_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
 
     if (!ngx_quic_keys_available(qc->keys, pkt->level, 0)) {
         return NGX_OK;
+    }
+
+    if (c->ssl->handshaked) {
+        /* QUIC doesn't define post-handshake messages for a client */
+
+        qc->error = NGX_QUIC_ERR_CRYPTO(SSL_AD_UNEXPECTED_MESSAGE);
+        qc->error_reason = "unexpected CRYPTO frame";
+
+        return NGX_ERROR;
     }
 
     ctx = ngx_quic_get_send_ctx(qc, pkt->level);

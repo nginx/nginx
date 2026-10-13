@@ -64,6 +64,12 @@
 
 #if (OPENSSL_VERSION_NUMBER < 0x10002000L)
 #define SSL_is_server(s)        (s)->server
+#define X509_get_signature_nid(x)    OBJ_obj2nid((x)->sig_alg->algorithm)
+#endif
+
+
+#if (OPENSSL_VERSION_NUMBER < 0x1010000fL)
+#define ASN1_STRING_get0_data(x)     (x)->data
 #endif
 
 
@@ -331,6 +337,8 @@ ngx_int_t ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool,
 ngx_int_t ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_sigalg(ngx_connection_t *c, ngx_pool_t *pool,
+    ngx_str_t *s);
+ngx_int_t ngx_ssl_get_sigalgs(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);
 ngx_int_t ngx_ssl_get_session_id(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_str_t *s);

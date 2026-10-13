@@ -24,6 +24,7 @@ struct ngx_listening_s {
     ngx_str_t           addr_text;
 
     int                 type;
+    int                 protocol;
 
     int                 backlog;
     int                 rcvbuf;
@@ -74,6 +75,8 @@ struct ngx_listening_s {
     unsigned            add_reuseport:1;
     unsigned            keepalive:2;
     unsigned            quic:1;
+
+    unsigned            change_protocol:1;
 
     unsigned            deferred_accept:1;
     unsigned            delete_deferred:1;

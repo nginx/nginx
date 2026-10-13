@@ -10,6 +10,10 @@
 #include <ngx_http.h>
 
 
+static ngx_table_elt_t *ngx_http_parse_multi_header_lines_internal(
+    ngx_http_request_t *r, ngx_table_elt_t *headers, ngx_str_t *name,
+    ngx_str_t *value, u_char sep);
+
 static uint32_t  usual[] = {
     0x00000000, /* 0000 0000 0000 0000  0000 0000 0000 0000 */
 
@@ -116,6 +120,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         sw_host,
         sw_host_end,
         sw_host_ip_literal,
+        sw_port_start,
         sw_port,
         sw_after_slash_in_uri,
         sw_check_uri,
@@ -384,7 +389,7 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
         case sw_host_end:
 
             if (ch == ':') {
-                state = sw_port;
+                state = sw_port_start;
                 break;
             }
 
@@ -459,6 +464,19 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                 return NGX_HTTP_PARSE_INVALID_REQUEST;
             }
             break;
+
+        case sw_port_start:
+            state = sw_port;
+
+            if (ch >= '0' && ch <= '9') {
+                break;
+            }
+
+            if (r->method == NGX_HTTP_CONNECT) {
+                return NGX_HTTP_PARSE_INVALID_REQUEST;
+            }
+
+            /* fall through */
 
         case sw_port:
             if (ch >= '0' && ch <= '9') {
@@ -1685,6 +1703,8 @@ ngx_http_parse_status_line(ngx_http_request_t *r, ngx_buf_t *b,
 
         /* "HTTP/" */
         case sw_start:
+            status->line_start = p;
+
             switch (ch) {
             case 'H':
                 state = sw_H;
@@ -1998,6 +2018,24 @@ ngx_table_elt_t *
 ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
     ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
 {
+    return ngx_http_parse_multi_header_lines_internal(r, headers, name, value,
+                                                      ',');
+}
+
+
+ngx_table_elt_t *
+ngx_http_parse_cookie_lines(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value)
+{
+    return ngx_http_parse_multi_header_lines_internal(r, headers, name, value,
+                                                      ';');
+}
+
+
+static ngx_table_elt_t *
+ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
+    ngx_table_elt_t *headers, ngx_str_t *name, ngx_str_t *value, u_char sep)
+{
     u_char           *start, *last, *end, ch;
     ngx_table_elt_t  *h;
 
@@ -2024,7 +2062,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
             }
 
             if (value == NULL) {
-                if (start == end || *start == ',') {
+                if (start == end || *start == sep) {
                     return h;
                 }
 
@@ -2038,7 +2076,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
 
             while (start < end && *start == ' ') { start++; }
 
-            for (last = start; last < end && *last != ';'; last++) {
+            for (last = start; last < end && *last != sep; last++) {
                 /* void */
             }
 
@@ -2051,7 +2089,7 @@ ngx_http_parse_multi_header_lines(ngx_http_request_t *r,
 
             while (start < end) {
                 ch = *start++;
-                if (ch == ';' || ch == ',') {
+                if (ch == sep) {
                     break;
                 }
             }
@@ -2382,7 +2420,7 @@ data:
     ctx->state = state;
     b->pos = pos;
 
-    if (ctx->size > NGX_MAX_OFF_T_VALUE - 5) {
+    if (ctx->size > NGX_MAX_OFF_T_VALUE - 9) {
         goto invalid;
     }
 

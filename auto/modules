@@ -56,6 +56,23 @@ if [ $NGX_TEST_BUILD_SOLARIS_SENDFILEV = YES ]; then
 fi
 
 
+if [ $CONTROL_API = YES ]; then
+
+    if [ "$NGX_PLATFORM" = win32 ]; then
+        cat << END
+
+$0: --with-control-api is not supported on Windows
+
+END
+        exit 1
+    fi
+
+    have=NGX_CONTROL_API . auto/have
+    CORE_DEPS="$CORE_DEPS $UNIX_CONTROL_API_DEPS"
+    CORE_SRCS="$CORE_SRCS $UNIX_CONTROL_API_SRCS"
+fi
+
+
 if [ $HTTP = YES ]; then
     HTTP_MODULES=
     HTTP_DEPS=
@@ -104,6 +121,12 @@ if [ $HTTP = YES ]; then
 
     if [ $HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
         HTTP_SRCS="$HTTP_SRCS $HTTP_HUFF_SRCS"
+    fi
+
+
+    if [ $HTTP_V2 = YES ]; then
+        HTTP_DEPS="$HTTP_DEPS $HTTP_PRIORITY_DEPS"
+        HTTP_SRCS="$HTTP_SRCS $HTTP_PRIORITY_SRCS"
     fi
 
 
@@ -638,6 +661,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_JSON = YES ]; then
+        ngx_module_name=ngx_http_json_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_json_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_JSON
+
+        . auto/module
+    fi
+
     if [ $HTTP_GEO = YES ]; then
         have=NGX_HTTP_X_FORWARDED_FOR . auto/have
 
@@ -792,6 +826,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_TUNNEL = YES ]; then
+        ngx_module_name=ngx_http_tunnel_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_tunnel_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_TUNNEL
+
+        . auto/module
+    fi
+
     if [ $HTTP_PERL != NO ]; then
         ngx_module_name=ngx_http_perl_module
         ngx_module_incs=src/http/modules/perl
@@ -915,6 +960,19 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_HTTP_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_http_upstream_least_time_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_LEAST_TIME
+
+        . auto/module
+    fi
+
     if [ $HTTP_UPSTREAM_RANDOM = YES ]; then
         ngx_module_name=ngx_http_upstream_random_module
         ngx_module_incs=
@@ -946,6 +1004,20 @@ if [ $HTTP = YES ]; then
         ngx_module_srcs=src/http/modules/ngx_http_upstream_zone_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_UPSTREAM_ZONE
+
+        . auto/module
+    fi
+
+    if [ $HTTP_UPSTREAM_STICKY = YES ]; then
+        have=NGX_HTTP_UPSTREAM_STICKY . auto/have
+        have=NGX_HTTP_UPSTREAM_SID . auto/have
+
+        ngx_module_name=ngx_http_upstream_sticky_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_upstream_sticky_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_UPSTREAM_STICKY
 
         . auto/module
     fi
@@ -1217,6 +1289,18 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
+    if [ $STREAM_UPSTREAM_LEAST_TIME = YES ]; then
+        have=NGX_STREAM_UPSTREAM_LEAST_TIME . auto/have
+
+        ngx_module_name=ngx_stream_upstream_least_time_module
+        ngx_module_deps=
+        ngx_module_srcs=src/stream/ngx_stream_upstream_least_time_module.c
+        ngx_module_libs=
+        ngx_module_link=$STREAM_UPSTREAM_LEAST_TIME
+
+        . auto/module
+    fi
+
     if [ $STREAM_UPSTREAM_RANDOM = YES ]; then
         ngx_module_name=ngx_stream_upstream_random_module
         ngx_module_deps=
@@ -1371,11 +1455,11 @@ if [ $USE_OPENSSL_QUIC = YES ]; then
 
     . auto/module
 
-    if [ $QUIC_BPF = YES -a $SO_COOKIE_FOUND = YES ]; then
+    if [ $QUIC_BPF = YES ]; then
         ngx_module_type=CORE
         ngx_module_name=ngx_quic_bpf_module
         ngx_module_incs=
-        ngx_module_deps=
+        ngx_module_deps=src/event/quic/ngx_event_quic_bpf.h
         ngx_module_srcs="src/event/quic/ngx_event_quic_bpf.c \
                          src/event/quic/ngx_event_quic_bpf_code.c"
         ngx_module_libs=
