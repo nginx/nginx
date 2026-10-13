@@ -33,6 +33,7 @@ typedef struct {
     ngx_uint_t                     frame_state;
     size_t                         rest;
     ngx_uint_t                     stream_id;
+    ngx_uint_t                     header_stream_id;
     u_char                         type;
     u_char                         flags;
 
@@ -61,10 +62,32 @@ typedef struct {
     ngx_uint_t                     last_stream_id;
 
     unsigned                       goaway:1;
-    unsigned                       parsing_headers:1;
     unsigned                       literal:1;
     unsigned                       field_huffman:1;
 } ngx_http_proxy_v2_session_t;
+
+
+typedef struct ngx_http_proxy_v2_header_s  ngx_http_proxy_v2_header_t;
+
+struct ngx_http_proxy_v2_header_s {
+    ngx_str_t                      name;
+    ngx_str_t                      value;
+    ngx_http_proxy_v2_header_t    *next;
+};
+
+
+typedef struct ngx_http_proxy_v2_headers_s  ngx_http_proxy_v2_headers_t;
+
+struct ngx_http_proxy_v2_headers_s {
+    ngx_http_proxy_v2_header_t    *first;
+    ngx_http_proxy_v2_header_t    *last;
+    ngx_http_proxy_v2_header_t    *current;
+    ngx_http_proxy_v2_headers_t   *next;
+    ngx_uint_t                     count;
+    off_t                          body_offset;
+    size_t                         size;
+    unsigned                       end_stream:1;
+};
 
 
 typedef struct {
@@ -81,8 +104,18 @@ typedef struct {
     ngx_str_t                      name;
     ngx_str_t                      value;
 
+    ngx_http_proxy_v2_headers_t    *headers;
+    ngx_http_proxy_v2_headers_t    *last_headers;
+    ngx_http_proxy_v2_headers_t    *trailers;
+    ngx_http_proxy_v2_headers_t    *header_in;
+    ngx_uint_t                     header_count;
+    off_t                          body_parsed;
+    off_t                          body_processed;
+
     unsigned                       output_closed:1;
+    unsigned                       trailer:1;
     unsigned                       end_stream:1;
+    unsigned                       input_closed:1;
     unsigned                       done:1;
     unsigned                       rst:1;
 } ngx_http_proxy_v2_stream_t;
@@ -147,6 +180,10 @@ static ngx_int_t ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_proxy_v2_process_headers(ngx_http_request_t *r,
+    ngx_http_proxy_v2_stream_t *stream);
+static ngx_int_t ngx_http_proxy_v2_process_trailers(ngx_http_request_t *r,
+    ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_filter_init(void *data);
 static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
@@ -165,6 +202,8 @@ static ngx_int_t ngx_http_proxy_v2_parse_header(
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(
     ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
     ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_read_header(
+    ngx_http_proxy_v2_stream_t *stream, ngx_uint_t trailers);
 static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_parse_rst_stream(
@@ -1429,6 +1468,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
         if (ctx->in == NULL
             && ctx->out == NULL
+            && stream->header_count == 0
             && stream->output_closed
             && !ctx->output_blocked
             && !sess->goaway
@@ -1447,17 +1487,13 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 static ngx_int_t
 ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 {
-    u_char                         *pos;
-    ngx_str_t                      *status_line;
-    ngx_int_t                       rc, status;
-    ngx_buf_t                      *b;
-    ngx_table_elt_t                *h;
-    ngx_http_upstream_t            *u;
-    ngx_http_proxy_v2_ctx_t        *ctx;
-    ngx_http_upstream_header_t     *hh;
-    ngx_http_proxy_v2_stream_t     *stream;
-    ngx_http_proxy_v2_session_t    *sess;
-    ngx_http_upstream_main_conf_t  *umcf;
+    u_char                       *pos;
+    ngx_int_t                     rc;
+    ngx_buf_t                    *b;
+    ngx_http_upstream_t          *u;
+    ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_stream_t   *stream;
+    ngx_http_proxy_v2_session_t  *sess;
 
     u = r->upstream;
     b = &u->buffer;
@@ -1477,9 +1513,28 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
     }
 
     sess = stream->session;
-    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     for ( ;; ) {
+
+        rc = ngx_http_proxy_v2_process_headers(r, stream);
+
+        if (rc != NGX_AGAIN) {
+            if (rc == NGX_OK
+                && stream->end_stream
+                && ctx->in == NULL
+                && ctx->out == NULL
+                && stream->header_count == 0
+                && stream->output_closed
+                && !ctx->output_blocked
+                && !sess->goaway
+                && sess->state == ngx_http_proxy_v2_st_start
+                && b->last == b->pos)
+            {
+                u->keepalive = 1;
+            }
+
+            return rc;
+        }
 
         if (sess->state < ngx_http_proxy_v2_st_payload) {
 
@@ -1493,7 +1548,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                  * started parsing headers yet
                  */
 
-                if (!sess->parsing_headers) {
+                if (sess->header_stream_id == 0) {
                     b->pos = pos;
                     b->last = b->pos;
                 }
@@ -1507,21 +1562,9 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             sess->frame_state = 0;
 
-            /*
-             * RFC 7540 says that implementations MUST discard frames
-             * that have unknown or unsupported types.  However, extension
-             * frames that appear in the middle of a header block are
-             * not permitted.  Also, for obvious reasons CONTINUATION frames
-             * cannot appear before headers, and DATA frames are not expected
-             * to appear before all headers are parsed.
-             */
+            /* DATA frames are not expected before response headers */
 
-            if (sess->type == NGX_HTTP_V2_DATA_FRAME
-                || (sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
-                    && !sess->parsing_headers)
-                || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
-                    && sess->parsing_headers))
-            {
+            if (sess->type == NGX_HTTP_V2_DATA_FRAME) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent unexpected http2 frame: %d",
                               sess->type);
@@ -1588,9 +1631,47 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         /* headers */
 
+        rc = ngx_http_proxy_v2_parse_header(sess, stream, b);
+
+        if (rc == NGX_ERROR) {
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
+        if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+            continue;
+        }
+
+        if (sess->rest == 0) {
+            sess->state = ngx_http_proxy_v2_st_start;
+            continue;
+        }
+
+        return NGX_AGAIN;
+    }
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_process_headers(ngx_http_request_t *r,
+    ngx_http_proxy_v2_stream_t *stream)
+{
+    ngx_str_t                     *status_line;
+    ngx_int_t                      rc, status;
+    ngx_table_elt_t               *h;
+    ngx_http_upstream_t           *u;
+    ngx_http_proxy_v2_ctx_t       *ctx;
+    ngx_http_upstream_header_t    *hh;
+    ngx_http_upstream_main_conf_t *umcf;
+
+    u = r->upstream;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+    if (stream->headers) {
+
         for ( ;; ) {
 
-            rc = ngx_http_proxy_v2_parse_header(sess, stream, b);
+            rc = ngx_http_proxy_v2_read_header(stream, 0);
 
             if (rc == NGX_AGAIN) {
                 break;
@@ -1697,6 +1778,12 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
                 /* a whole header has been parsed successfully */
 
+                if (!ctx->status) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent no :status header");
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "http proxy header done");
 
@@ -1711,17 +1798,6 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_UPSTREAM_EARLY_HINTS;
                 }
 
-                if (stream->end_stream
-                    && ctx->in == NULL
-                    && ctx->out == NULL
-                    && stream->output_closed
-                    && !ctx->output_blocked
-                    && !sess->goaway
-                    && b->last == b->pos)
-                {
-                    u->keepalive = 1;
-                }
-
                 return NGX_OK;
             }
 
@@ -1732,16 +1808,9 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
-
-        /* rc == NGX_AGAIN */
-
-        if (sess->rest == 0) {
-            sess->state = ngx_http_proxy_v2_st_start;
-            continue;
-        }
-
-        return NGX_AGAIN;
     }
+
+    return NGX_AGAIN;
 }
 
 
@@ -1797,15 +1866,13 @@ static ngx_int_t
 ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
 {
     ngx_int_t                     rc;
+    ngx_uint_t                    empty;
     ngx_buf_t                    *buf, **prev;
     ngx_chain_t                  *cl;
     ngx_http_request_t           *r;
     ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
-
-    if (b->pos == b->last) {
-        return NGX_OK;
-    }
 
     r = p->input_ctx;
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
@@ -1814,7 +1881,14 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         return NGX_ERROR;
     }
 
-    sess = ctx->stream->session;
+    stream = ctx->stream;
+    sess = stream->session;
+    empty = (b->pos == b->last);
+
+    if (empty && stream->trailers == NULL) {
+        return NGX_OK;
+    }
+
     buf = NULL;
     prev = &b->shadow;
 
@@ -1873,6 +1947,9 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
                 buf->last = b->pos;
             }
 
+            stream->body_parsed += buf->last - buf->pos;
+            stream->body_processed += buf->last - buf->pos;
+
             if (ctx->length != -1) {
 
                 if (buf->last - buf->pos > ctx->length) {
@@ -1913,6 +1990,10 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
     }
 
     /* there is no data record in the buf, add it to free chain */
+
+    if (empty) {
+        return NGX_OK;
+    }
 
     if (ngx_event_pipe_add_free_buf(p, b) != NGX_OK) {
         return NGX_ERROR;
@@ -2120,11 +2201,78 @@ ngx_http_proxy_v2_skip_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 
 
 static ngx_int_t
+ngx_http_proxy_v2_process_trailers(ngx_http_request_t *r,
+    ngx_http_proxy_v2_stream_t *stream)
+{
+    ngx_int_t                 rc;
+    ngx_table_elt_t          *h;
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    for ( ;; ) {
+        rc = ngx_http_proxy_v2_read_header(stream, 1);
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (rc == NGX_OK) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy trailer: \"%V: %V\"",
+                           &stream->name, &stream->value);
+
+            if (stream->name.len && stream->name.data[0] == ':') {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent invalid trailer \"%V: %V\"",
+                              &stream->name, &stream->value);
+                return NGX_ERROR;
+            }
+
+            h = ngx_list_push(&r->upstream->headers_in.trailers);
+            if (h == NULL) {
+                return NGX_ERROR;
+            }
+
+            h->key = stream->name;
+            h->value = stream->value;
+            h->lowcase_key = h->key.data;
+            h->hash = ngx_hash_key(h->key.data, h->key.len);
+            continue;
+        }
+
+        if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "http proxy trailer done");
+
+            if (stream->end_stream) {
+                if (ctx->length > 0) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream prematurely closed stream");
+                    return NGX_ERROR;
+                }
+
+                stream->done = 1;
+                return NGX_OK;
+            }
+
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent trailer without end stream flag");
+            return NGX_ERROR;
+        }
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent invalid trailer");
+        return NGX_ERROR;
+    }
+}
+
+
+static ngx_int_t
 ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
     ngx_int_t                     rc;
-    ngx_table_elt_t              *h;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
@@ -2138,6 +2286,16 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
     sess = stream->session;
 
     for ( ;; ) {
+
+        rc = ngx_http_proxy_v2_process_trailers(r, stream);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK) {
+            continue;
+        }
 
         if (sess->state < ngx_http_proxy_v2_st_payload) {
 
@@ -2166,6 +2324,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                     }
 
                     if (ctx->in == NULL
+                        && stream->header_count == 0
                         && stream->output_closed
                         && !ctx->output_blocked
                         && !sess->goaway
@@ -2186,17 +2345,6 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
             sess->frame_state = 0;
             ctx->frame_state = 0;
-
-            if ((sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
-                 && !sess->parsing_headers)
-                || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
-                    && sess->parsing_headers))
-            {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent unexpected http2 frame: %d",
-                              sess->type);
-                return NGX_ERROR;
-            }
 
             if (sess->type == NGX_HTTP_V2_DATA_FRAME) {
 
@@ -2296,7 +2444,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
             stream->error = sess->rst_error;
 
-            if (stream->error || !stream->done) {
+            if (stream->error || !(stream->input_closed || stream->done)) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream rejected request with error %ui",
                               stream->error);
@@ -2332,74 +2480,15 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
         if (sess->type == NGX_HTTP_V2_HEADERS_FRAME
             || sess->type == NGX_HTTP_V2_CONTINUATION_FRAME)
         {
-            for ( ;; ) {
+            rc = ngx_http_proxy_v2_parse_header(sess, stream, b);
 
-                rc = ngx_http_proxy_v2_parse_header(sess, stream, b);
-
-                if (rc == NGX_AGAIN) {
-                    break;
-                }
-
-                if (rc == NGX_OK) {
-
-                    /* a header line has been parsed successfully */
-
-                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                                   "http proxy trailer: \"%V: %V\"",
-                                   &stream->name, &stream->value);
-
-                    if (stream->name.len && stream->name.data[0] == ':') {
-                        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                      "upstream sent invalid "
-                                      "trailer \"%V: %V\"",
-                                      &stream->name, &stream->value);
-                        return NGX_ERROR;
-                    }
-
-                    h = ngx_list_push(&u->headers_in.trailers);
-                    if (h == NULL) {
-                        return NGX_ERROR;
-                    }
-
-                    h->key = stream->name;
-                    h->value = stream->value;
-                    h->lowcase_key = h->key.data;
-                    h->hash = ngx_hash_key(h->key.data, h->key.len);
-
-                    continue;
-                }
-
-                if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
-
-                    /* a whole header has been parsed successfully */
-
-                    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                                   "http proxy trailer done");
-
-                    if (stream->end_stream) {
-                        stream->done = 1;
-                        break;
-                    }
-
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent trailer without "
-                                  "end stream flag");
-                    return NGX_ERROR;
-                }
-
-                /* there was error while a header line parsing */
-
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent invalid trailer");
-
+            if (rc == NGX_ERROR) {
                 return NGX_ERROR;
             }
 
             if (rc == NGX_HTTP_PARSE_HEADER_DONE) {
                 continue;
             }
-
-            /* rc == NGX_AGAIN */
 
             if (sess->rest == 0) {
                 sess->state = ngx_http_proxy_v2_st_start;
@@ -2560,6 +2649,20 @@ ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *sess,
         case ngx_http_proxy_v2_st_stream_id_4:
             sess->stream_id |= ch;
 
+            /* only CONTINUATION on the same stream can extend a header block */
+
+            if ((sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
+                 && (sess->header_stream_id == 0
+                     || sess->stream_id != sess->header_stream_id))
+                || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
+                    && sess->header_stream_id))
+            {
+                ngx_log_error(NGX_LOG_ERR, log, 0,
+                              "upstream sent unexpected http2 frame: %d",
+                              sess->type);
+                return NGX_ERROR;
+            }
+
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, log, 0,
                            "http proxy frame: %d, len: %uz, f:%d, i:%ui",
                            sess->type, sess->rest, sess->flags,
@@ -2589,10 +2692,12 @@ static ngx_int_t
 ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
     ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b)
 {
-    u_char      ch, *p, *last;
-    size_t      min;
-    ngx_int_t   rc;
-    ngx_log_t  *log;
+    u_char                       ch, *p, *last;
+    size_t                       min;
+    ngx_int_t                    rc;
+    ngx_log_t                   *log;
+    ngx_http_proxy_v2_header_t   *field;
+    ngx_http_proxy_v2_headers_t  *headers;
     enum {
         sw_start = 0,
         sw_padding_length,
@@ -2610,11 +2715,37 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
 
     if (state == sw_start) {
 
+        if (sess->stream_id == 0 || sess->stream_id != stream->id
+            || stream->input_closed || stream->trailers)
+        {
+            ngx_log_error(NGX_LOG_ERR, log, 0,
+                          "upstream sent headers for invalid stream %ui",
+                          sess->stream_id);
+            return NGX_ERROR;
+        }
+
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0,
                        "http proxy parse header: start");
 
         if (sess->type == NGX_HTTP_V2_HEADERS_FRAME) {
-            sess->parsing_headers = 1;
+            if (sess->header_stream_id || stream->header_in) {
+                return NGX_ERROR;
+            }
+
+            headers = ngx_pcalloc(stream->pool,
+                                 sizeof(ngx_http_proxy_v2_headers_t));
+            if (headers == NULL) {
+                return NGX_ERROR;
+            }
+
+            headers->body_offset = stream->body_parsed;
+            headers->size = sizeof(ngx_http_proxy_v2_frame_t) + sess->rest;
+            headers->end_stream =
+                               (sess->flags & NGX_HTTP_V2_END_STREAM_FLAG) != 0;
+            stream->header_in = headers;
+            stream->header_count++;
+
+            sess->header_stream_id = stream->id;
             sess->fragment_state = 0;
             sess->header_limit = stream->header_limit;
 
@@ -2629,10 +2760,6 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
                 return NGX_ERROR;
             }
 
-            if (sess->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
-                stream->end_stream = 1;
-            }
-
             if (sess->flags & NGX_HTTP_V2_PADDED_FLAG) {
                 state = sw_padding_length;
 
@@ -2644,7 +2771,18 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
             }
 
         } else if (sess->type == NGX_HTTP_V2_CONTINUATION_FRAME) {
+            if (sess->header_stream_id != stream->id
+                || stream->header_in == NULL)
+            {
+                return NGX_ERROR;
+            }
+
+            stream->header_in->size += sizeof(ngx_http_proxy_v2_frame_t)
+                                      + sess->rest;
             state = sw_fragment;
+
+        } else {
+            return NGX_ERROR;
         }
 
         sess->padding = 0;
@@ -2750,7 +2888,9 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
 
     if (state == sw_fragment) {
 
-        rc = ngx_http_proxy_v2_parse_fragment(sess, stream, b);
+        do {
+            rc = ngx_http_proxy_v2_parse_fragment(sess, stream, b);
+        } while (rc == NGX_OK);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -2758,10 +2898,6 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
 
         if (rc == NGX_ERROR) {
             return NGX_ERROR;
-        }
-
-        if (rc == NGX_OK) {
-            return NGX_OK;
         }
 
         /* rc == NGX_DONE */
@@ -2793,7 +2929,41 @@ ngx_http_proxy_v2_parse_header(ngx_http_proxy_v2_session_t *sess,
                 return NGX_ERROR;
             }
 
-            sess->parsing_headers = 0;
+            sess->header_stream_id = 0;
+
+            headers = stream->header_in;
+            headers->current = headers->first;
+
+            if (stream->trailer) {
+                stream->trailers = headers;
+
+            } else {
+                if (stream->last_headers) {
+                    stream->last_headers->next = headers;
+                } else {
+                    stream->headers = headers;
+                }
+
+                stream->last_headers = headers;
+
+                /* classify later blocks by receive progress, not consumption */
+
+                field = headers->first;
+                if (field && field->name.len == sizeof(":status") - 1
+                    && ngx_strncmp(field->name.data, ":status",
+                                   sizeof(":status") - 1) == 0
+                    && field->value.len == 3
+                    && ngx_atoi(field->value.data, 3) >= NGX_HTTP_OK)
+                {
+                    stream->trailer = 1;
+                }
+            }
+
+            stream->header_in = NULL;
+
+            if (headers->end_stream) {
+                stream->input_closed = 1;
+            }
 
             return NGX_HTTP_PARSE_HEADER_DONE;
         }
@@ -2811,10 +2981,12 @@ static ngx_int_t
 ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
     ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b)
 {
-    u_char      ch, *p, *last;
-    size_t      len, size;
-    ngx_log_t  *log;
-    ngx_uint_t  index, size_update;
+    u_char                        ch, *p, *last;
+    size_t                        len, size;
+    ngx_log_t                    *log;
+    ngx_uint_t                    index, size_update;
+    ngx_http_proxy_v2_header_t    *field;
+    ngx_http_proxy_v2_headers_t   *headers;
     enum {
         sw_start = 0,
         sw_index,
@@ -2833,6 +3005,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
     } state;
 
     log = sess->connection->log;
+
+    headers = stream->header_in;
 
     /* header block fragment */
 
@@ -3373,7 +3547,9 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
 
         len = sess->name.len + sess->value.len;
 
-        if (len > sess->header_limit) {
+        if (len > sess->header_limit
+            || headers->count == stream->header_limit)
+        {
             ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent too large http2 header");
             return NGX_ERROR;
@@ -3381,8 +3557,24 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
 
         sess->header_limit -= len;
 
-        stream->name = sess->name;
-        stream->value = sess->value;
+        field = ngx_palloc(stream->pool, sizeof(ngx_http_proxy_v2_header_t));
+        if (field == NULL) {
+            return NGX_ERROR;
+        }
+
+        field->name = sess->name;
+        field->value = sess->value;
+        field->next = NULL;
+
+        if (headers->last) {
+            headers->last->next = field;
+
+        } else {
+            headers->first = field;
+        }
+
+        headers->last = field;
+        headers->count++;
 
         ngx_str_null(&sess->name);
         ngx_str_null(&sess->value);
@@ -3400,6 +3592,54 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
     }
 
     return NGX_DONE;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_read_header(ngx_http_proxy_v2_stream_t *stream,
+    ngx_uint_t trailers)
+{
+    ngx_http_proxy_v2_header_t   *field;
+    ngx_http_proxy_v2_headers_t  *headers;
+
+    if (trailers) {
+        if (stream->headers) {
+            return NGX_AGAIN;
+        }
+
+        headers = stream->trailers;
+
+    } else {
+        headers = stream->headers;
+    }
+
+    if (headers == NULL || headers->body_offset > stream->body_processed) {
+        return NGX_AGAIN;
+    }
+
+    if (headers->current) {
+        field = headers->current;
+        headers->current = field->next;
+        stream->name = field->name;
+        stream->value = field->value;
+        return NGX_OK;
+    }
+
+    stream->end_stream = headers->end_stream;
+
+    if (trailers) {
+        stream->trailers = NULL;
+
+    } else {
+        stream->headers = headers->next;
+        if (stream->headers == NULL) {
+            stream->last_headers = NULL;
+        }
+    }
+
+    stream->header_count--;
+
+    return NGX_HTTP_PARSE_HEADER_DONE;
 }
 
 
@@ -4300,6 +4540,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
     sess->frame_state = 0;
     sess->rest = 0;
     sess->stream_id = 0;
+    sess->header_stream_id = 0;
     sess->type = 0;
     sess->flags = 0;
 
@@ -4327,7 +4568,6 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
     sess->recv_window = NGX_HTTP_V2_MAX_WINDOW;
     sess->last_stream_id = 0;
     sess->goaway = 0;
-    sess->parsing_headers = 0;
     sess->literal = 0;
     sess->field_huffman = 0;
 
