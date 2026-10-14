@@ -1198,7 +1198,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
             u->keepalive = 1;
         }
 
-        ngx_post_event(u->peer.connection->read, &ngx_posted_events);
+        ngx_post_event(u->connection->read, &ngx_posted_events);
     }
 
     return rc;
