@@ -459,6 +459,8 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
         }
     }
 
+    sscf = ngx_stream_get_module_srv_conf(s, ngx_stream_ssl_module);
+
     if (sscf->verify) {
         rc = SSL_get_verify_result(c->ssl->connection);
 
