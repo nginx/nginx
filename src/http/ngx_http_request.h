@@ -469,8 +469,8 @@ struct ngx_http_request_s {
     in_port_t                         port;
 
     unsigned                          count:16;
+    unsigned                          blocked:16;
     unsigned                          subrequests:8;
-    unsigned                          blocked:8;
 
     unsigned                          aio:1;
 
