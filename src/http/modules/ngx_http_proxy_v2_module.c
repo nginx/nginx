@@ -207,6 +207,8 @@ static void ngx_http_proxy_v2_post_write(ngx_http_proxy_v2_session_t *sess);
 static ngx_int_t ngx_http_proxy_v2_write(ngx_http_proxy_v2_session_t *sess);
 static ngx_uint_t ngx_http_proxy_v2_output_pending(
     ngx_http_proxy_v2_session_t *sess);
+static ngx_uint_t ngx_http_proxy_v2_can_reuse(
+    ngx_http_proxy_v2_stream_t *stream);
 static void ngx_http_proxy_v2_discard_output(ngx_http_proxy_v2_session_t *sess);
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_process_headers(ngx_http_request_t *r,
@@ -1192,14 +1194,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
         u->length = 0;
         u->pipe->length = 0;
 
-        if (stream->in == NULL
-            && !ngx_http_proxy_v2_output_pending(sess)
-            && stream->header_count == 0
-            && stream->output_closed
-            && !sess->connection->error
-            && !sess->goaway
-            && sess->state == ngx_http_proxy_v2_st_start)
-        {
+        if (ngx_http_proxy_v2_can_reuse(stream)) {
             u->keepalive = 1;
         }
 
@@ -1777,6 +1772,25 @@ ngx_http_proxy_v2_output_pending(ngx_http_proxy_v2_session_t *sess)
 }
 
 
+/* callers check response completion and unconsumed raw input */
+
+static ngx_uint_t
+ngx_http_proxy_v2_can_reuse(ngx_http_proxy_v2_stream_t *stream)
+{
+    ngx_http_proxy_v2_session_t  *sess;
+
+    sess = stream->session;
+
+    return stream->in == NULL
+           && !ngx_http_proxy_v2_output_pending(sess)
+           && stream->header_count == 0
+           && stream->output_closed
+           && !sess->connection->error
+           && !sess->goaway
+           && sess->state == ngx_http_proxy_v2_st_start;
+}
+
+
 static void
 ngx_http_proxy_v2_discard_output(ngx_http_proxy_v2_session_t *sess)
 {
@@ -1833,13 +1847,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
         if (rc != NGX_AGAIN) {
             if (rc == NGX_OK
                 && stream->end_stream
-                && stream->in == NULL
-                && !ngx_http_proxy_v2_output_pending(sess)
-                && stream->header_count == 0
-                && stream->output_closed
-                && !sess->connection->error
-                && !sess->goaway
-                && sess->state == ngx_http_proxy_v2_st_start
+                && ngx_http_proxy_v2_can_reuse(stream)
                 && b->last == b->pos)
             {
                 u->keepalive = 1;
@@ -2139,13 +2147,7 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
     } else if (rc == NGX_OK) {
         p->length = 0;
 
-        if (stream->in == NULL
-            && !ngx_http_proxy_v2_output_pending(sess)
-            && stream->output_closed
-            && !sess->connection->error
-            && !sess->goaway
-            && sess->state == ngx_http_proxy_v2_st_start)
-        {
+        if (ngx_http_proxy_v2_can_reuse(stream)) {
             u->keepalive = 1;
         }
     }
