@@ -4713,6 +4713,16 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
 
+    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT,
+                      "upstream timed out");
+    }
+
+    if (u->header_sent) {
+        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+        return;
+    }
+
     if (u->peer.sockaddr && u->connection) {
         u->state->bytes_sent = u->connection->sent;
     }
@@ -4727,11 +4737,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     }
 
     ngx_http_upstream_free_peer(u, state);
-
-    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT,
-                      "upstream timed out");
-    }
 
     if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
         /* TODO: inform balancer instead */
