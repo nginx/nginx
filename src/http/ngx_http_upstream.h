@@ -284,6 +284,7 @@ typedef struct {
 
     ngx_uint_t                       status_n;
     ngx_str_t                        status_line;
+    size_t                           header_size;
 
     ngx_table_elt_t                 *status;
     ngx_table_elt_t                 *date;

@@ -2276,14 +2276,9 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
             return;
         }
 
-        if (u->conf->ignore_input) {
-            ngx_http_upstream_process_header(r, u);
-            return;
-        }
-
         ngx_add_timer(c->read, u->conf->read_timeout);
 
-        if (c->read->ready) {
+        if (u->conf->ignore_input || c->read->ready) {
             ngx_http_upstream_process_header(r, u);
             return;
         }
@@ -2539,8 +2534,7 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     if (u->conf->ignore_input) {
-        rc = u->process_header(r);
-        goto done;
+        goto again;
     }
 
     for ( ;; ) {
@@ -2590,13 +2584,28 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         u->peer.cached = 0;
 #endif
 
-        u->response_received = 1;
-
 again:
+
+        u->response_received = 1;
 
         rc = u->process_header(r);
 
         if (rc == NGX_AGAIN) {
+
+            if (u->conf->ignore_input) {
+                if (c->read->eof) {
+                    ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                                  "upstream prematurely closed connection");
+                }
+
+                if (c->error || c->read->error || c->read->eof) {
+                    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+                    return;
+                }
+
+                c->read->ready = 0;
+                return;
+            }
 
             if (u->buffer.last == u->buffer.end) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
@@ -2620,8 +2629,6 @@ again:
 
         break;
     }
-
-done:
 
     if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_INVALID_HEADER);
@@ -2673,6 +2680,7 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
     ngx_http_upstream_t *u)
 {
     u_char            *p;
+    size_t             size;
     ngx_uint_t         i;
     ngx_list_part_t   *part;
     ngx_table_elt_t   *h, *ho;
@@ -2682,11 +2690,25 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
 
+    if (u->conf->ignore_input) {
+        size = u->headers_in.header_size;
+
+        if (size == 0) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "upstream returned early hints without header size");
+            return NGX_ERROR;
+        }
+
+    } else {
+        size = u->buffer.pos - u->buffer.start;
+    }
+
     if (u->conf->pass_early_hints) {
 
-        u->early_hints_length += u->buffer.pos - u->buffer.start;
-
-        if (u->early_hints_length <= (off_t) u->conf->buffer_size) {
+        if (size <= u->conf->buffer_size
+            && u->early_hints_length <= (off_t) (u->conf->buffer_size - size))
+        {
+            u->early_hints_length += size;
 
             part = &u->headers_in.headers.part;
             h = part->elts;
@@ -2730,6 +2752,8 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
             }
 
         } else {
+            u->early_hints_length = u->conf->buffer_size;
+
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "upstream sent too big early hints");
         }
@@ -2753,6 +2777,10 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
         != NGX_OK)
     {
         return NGX_ERROR;
+    }
+
+    if (u->conf->ignore_input) {
+        return NGX_OK;
     }
 
     p = u->buffer.pos;
