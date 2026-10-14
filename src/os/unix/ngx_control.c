@@ -786,7 +786,7 @@ ngx_control_handle_write(ngx_control_request_t *r)
 
             if (n <= 0) {
                 if (n == -1 && ngx_errno == NGX_EAGAIN) {
-                    ngx_control_pollfd[r->index].events |= POLLOUT;
+                    ngx_control_pollfd[r->index].revents |= POLLOUT;
                     return NGX_AGAIN;
                 }
 
