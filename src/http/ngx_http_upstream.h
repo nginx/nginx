@@ -383,6 +383,22 @@ struct ngx_http_upstream_s {
 #endif
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
+
+    /*
+     * Called once per attempt after TCP/TLS setup, before upstream request I/O.
+     * May replace connection with a protocol endpoint; peer.connection remains
+     * the physical connection.  Return NGX_OK with a valid connection,
+     * NGX_DECLINED to retry an unusable peer, or NGX_ERROR for an internal error.
+     *
+     * When replacing connection, the protocol initializes the endpoint's request
+     * data, I/O methods, event handlers and readiness, and updates
+     * writer.connection.  It takes over the physical handlers, removing or
+     * transferring pending timers and posted events.  The protocol must cancel
+     * endpoint timers and posted events before releasing the endpoint.
+     */
+
+    ngx_int_t                      (*init_connection)(ngx_http_request_t *r);
+
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
     void                           (*finalize_request)(ngx_http_request_t *r,
@@ -425,6 +441,7 @@ struct ngx_http_upstream_s {
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
+    unsigned                         connection_initialized:1;
 };
 
 
