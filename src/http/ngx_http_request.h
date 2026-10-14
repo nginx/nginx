@@ -11,7 +11,7 @@
 
 #define NGX_HTTP_MAX_URI_CHANGES           10
 #define NGX_HTTP_MAX_SUBREQUESTS           50
-#define NGX_HTTP_MAX_BLOCKED               250
+#define NGX_HTTP_MAX_BLOCKED               (65535 - 1000)
 
 /* must be 2^n */
 #define NGX_HTTP_LC_HEADER_LEN             32
@@ -469,8 +469,8 @@ struct ngx_http_request_s {
     in_port_t                         port;
 
     unsigned                          count:16;
+    unsigned                          blocked:16;
     unsigned                          subrequests:8;
-    unsigned                          blocked:8;
 
     unsigned                          aio:1;
 
