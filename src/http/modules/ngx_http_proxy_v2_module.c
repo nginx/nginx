@@ -30,12 +30,14 @@ typedef enum {
 
 typedef struct {
     ngx_connection_t              *connection;
+    ngx_event_handler_pt           write_handler;
 
     ngx_rbtree_t                   streams;
     ngx_rbtree_node_t              sentinel;
     ngx_uint_t                     nstreams;
 
     ngx_chain_writer_ctx_t         writer;
+    size_t                         send_lowat;
     ngx_chain_t                   *out;
     ngx_chain_t                  **last_out;
     ngx_chain_t                   *free;
@@ -195,6 +197,9 @@ static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_output_stream(
     ngx_http_proxy_v2_stream_t *stream);
+static void ngx_http_proxy_v2_write_handler(ngx_event_t *ev);
+static ngx_event_handler_pt ngx_http_proxy_v2_set_write_handler(
+    ngx_connection_t *c, ngx_event_handler_pt handler);
 static ngx_int_t ngx_http_proxy_v2_send(ngx_http_proxy_v2_session_t *sess);
 static ngx_uint_t ngx_http_proxy_v2_input_pending(
     ngx_http_proxy_v2_session_t *sess);
@@ -265,6 +270,8 @@ static ngx_http_proxy_v2_stream_t *
     ngx_http_proxy_v2_get_stream(ngx_http_request_t *r);
 static ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_find_stream(
     ngx_http_proxy_v2_session_t *sess, ngx_uint_t id);
+static ngx_http_proxy_v2_session_t *
+    ngx_http_proxy_v2_find_session(ngx_connection_t *c);
 static ngx_http_proxy_v2_session_t *
     ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc);
 static ngx_int_t ngx_http_proxy_v2_get_peer(ngx_peer_connection_t *pc,
@@ -1156,13 +1163,20 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
     sess = stream->session;
 
+    if (sess->connection->error) {
+        return NGX_ERROR;
+    }
+
     if (in) {
         if (ngx_chain_add_copy(stream->pool, &stream->in, in) != NGX_OK) {
             return NGX_ERROR;
         }
+
+        ngx_http_proxy_v2_post_write(sess);
     }
 
-    rc = ngx_http_proxy_v2_send(sess);
+    rc = stream->in || ngx_http_proxy_v2_output_pending(sess)
+         ? NGX_AGAIN : NGX_OK;
 
     if (stream->done) {
 
@@ -1454,6 +1468,113 @@ ngx_http_proxy_v2_output_stream(ngx_http_proxy_v2_stream_t *stream)
 }
 
 
+static void
+ngx_http_proxy_v2_write_handler(ngx_event_t *ev)
+{
+    size_t                        lowat;
+    ngx_int_t                     rc;
+    ngx_connection_t             *c;
+    ngx_event_handler_pt          handler;
+    ngx_http_proxy_v2_session_t  *sess;
+
+    c = ev->data;
+    sess = ngx_http_proxy_v2_find_session(c);
+    handler = sess->write_handler;
+
+    if (ev->timedout || c->error) {
+        goto notify;
+    }
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_read_handler && !c->read->ready) {
+
+        /* SSL_write() needs input, not another writable-socket wakeup */
+
+        if (ev->posted) {
+            ngx_delete_posted_event(ev);
+        }
+
+        if (ngx_handle_write_event(ev, 0) != NGX_OK) {
+            goto failed;
+        }
+
+        return;
+    }
+#endif
+
+    rc = ngx_http_proxy_v2_send(sess);
+
+    if (rc == NGX_ERROR) {
+        goto failed;
+    }
+
+    lowat = 0;
+
+    if (rc == NGX_AGAIN) {
+        lowat = sess->send_lowat;
+    }
+
+    if (ngx_handle_write_event(ev, lowat) != NGX_OK) {
+        goto failed;
+    }
+
+    if (rc == NGX_AGAIN && !ev->ready) {
+        goto done;
+    }
+
+    if (c->tcp_nopush == NGX_TCP_NOPUSH_SET) {
+        if (ngx_tcp_push(c->fd) == -1) {
+            ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
+                          ngx_tcp_push_n " failed");
+            goto failed;
+        }
+
+        c->tcp_nopush = NGX_TCP_NOPUSH_UNSET;
+    }
+
+done:
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_read_handler && ev->posted) {
+        ngx_delete_posted_event(ev);
+    }
+#endif
+
+notify:
+
+    /* the request adapter can retry or finalize and release both pools */
+
+    handler(ev);
+    return;
+
+failed:
+
+    c->error = 1;
+    goto done;
+}
+
+
+static ngx_event_handler_pt
+ngx_http_proxy_v2_set_write_handler(ngx_connection_t *c,
+    ngx_event_handler_pt handler)
+{
+    ngx_event_handler_pt  previous;
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl && c->ssl->saved_write_handler) {
+        previous = c->ssl->saved_write_handler;
+        c->ssl->saved_write_handler = handler;
+        return previous;
+    }
+#endif
+
+    previous = c->write->handler;
+    c->write->handler = handler;
+
+    return previous;
+}
+
+
 /* NGX_OK means submitted output is drained, not that the body has arrived. */
 
 static ngx_int_t
@@ -1580,6 +1701,16 @@ ngx_http_proxy_v2_input_pending(ngx_http_proxy_v2_session_t *sess)
 static void
 ngx_http_proxy_v2_post_write(ngx_http_proxy_v2_session_t *sess)
 {
+#if (NGX_HTTP_SSL)
+    ngx_connection_t  *c;
+
+    c = sess->connection;
+
+    if (c->ssl && c->ssl->saved_read_handler && !c->read->ready) {
+        return;
+    }
+#endif
+
     ngx_post_event(sess->connection->write, &ngx_posted_events);
 }
 
@@ -4775,6 +4906,7 @@ ngx_http_proxy_v2_get_stream(ngx_http_request_t *r)
     stream->header_limit = r->upstream->conf->buffer_size;
 
     sess->writer.limit = r->upstream->writer.limit;
+    sess->send_lowat = r->upstream->conf->send_lowat;
 
     stream->node.key = stream->id;
     ngx_rbtree_insert(&sess->streams, &stream->node);
@@ -4813,6 +4945,14 @@ ngx_http_proxy_v2_get_stream(ngx_http_request_t *r)
     }
 #endif
 
+    sess->write_handler = ngx_http_proxy_v2_set_write_handler(sess->connection,
+                                              ngx_http_proxy_v2_write_handler);
+
+    if (!r->upstream->request_sent) {
+        /* read-first attachment still needs the initial request submission */
+        ngx_http_proxy_v2_post_write(sess);
+    }
+
     return stream;
 }
 
@@ -4845,6 +4985,21 @@ ngx_http_proxy_v2_find_stream(ngx_http_proxy_v2_session_t *sess, ngx_uint_t id)
 
 
 static ngx_http_proxy_v2_session_t *
+ngx_http_proxy_v2_find_session(ngx_connection_t *c)
+{
+    ngx_pool_cleanup_t  *cln;
+
+    for (cln = c->pool->cleanup; cln; cln = cln->next) {
+        if (cln->handler == ngx_http_proxy_v2_session_cleanup) {
+            return cln->data;
+        }
+    }
+
+    return NULL;
+}
+
+
+static ngx_http_proxy_v2_session_t *
 ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 {
     ngx_connection_t             *c;
@@ -4855,10 +5010,9 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
 
     /* a physical connection has one session, whether active or cached */
 
-    for (cln = c->pool->cleanup; cln; cln = cln->next) {
-        if (cln->handler == ngx_http_proxy_v2_session_cleanup) {
-            return cln->data;
-        }
+    sess = ngx_http_proxy_v2_find_session(c);
+    if (sess) {
+        return sess;
     }
 
     if (pc->cached) {
@@ -4876,6 +5030,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
     sess = cln->data;
 
     sess->connection = c;
+    sess->write_handler = NULL;
     ngx_rbtree_init(&sess->streams, &sess->sentinel, ngx_rbtree_insert_value);
     sess->nstreams = 0;
 
@@ -4883,6 +5038,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc)
     sess->writer.last = &sess->writer.out;
     sess->writer.connection = c;
     sess->writer.pool = c->pool;
+    sess->send_lowat = 0;
     sess->out = NULL;
     sess->last_out = &sess->out;
     sess->free = NULL;
@@ -4946,14 +5102,33 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
 {
     ngx_http_proxy_v2_peer_t  *peer = data;
 
+    ngx_connection_t            *c;
     ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
 
     stream = peer->stream;
     sess = stream->session;
+    c = sess->connection;
+
+    if (c->write->posted) {
+        ngx_delete_posted_event(c->write);
+    }
+
+    (void) ngx_http_proxy_v2_set_write_handler(c, sess->write_handler);
+    sess->write_handler = NULL;
+
+#if (NGX_HTTP_SSL)
+    if (c->ssl
+        && (c->ssl->saved_read_handler || c->ssl->saved_write_handler))
+    {
+        /* keepalive replaces handlers without preserving TLS handoffs */
+
+        c->error = 1;
+    }
+#endif
 
     if (stream->in || !stream->output_closed) {
-        sess->connection->error = 1;
+        c->error = 1;
     }
 
     ngx_http_proxy_v2_discard_output(sess);
