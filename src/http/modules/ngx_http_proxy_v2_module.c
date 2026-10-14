@@ -271,6 +271,7 @@ static ngx_chain_t *ngx_http_proxy_v2_get_buf(
     ngx_http_proxy_v2_session_t *sess);
 static ngx_chain_t *ngx_http_proxy_v2_get_shadow(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *buf);
+static void ngx_http_proxy_v2_close_stream(ngx_http_proxy_v2_stream_t *stream);
 static ngx_http_proxy_v2_stream_t *
     ngx_http_proxy_v2_get_stream(ngx_http_request_t *r);
 static ngx_http_proxy_v2_stream_t *ngx_http_proxy_v2_find_stream(
@@ -4991,6 +4992,28 @@ ngx_http_proxy_v2_get_peer(ngx_peer_connection_t *pc, void *data)
 
 
 static void
+ngx_http_proxy_v2_close_stream(ngx_http_proxy_v2_stream_t *stream)
+{
+    ngx_http_proxy_v2_session_t  *sess;
+
+    sess = stream->session;
+
+    if (stream->in || !stream->output_closed) {
+        sess->connection->error = 1;
+    }
+
+    ngx_http_proxy_v2_discard_output(sess);
+    ngx_http_proxy_v2_discard_body(stream);
+    stream->in = NULL;
+
+    ngx_rbtree_delete(&sess->streams, &stream->node);
+    sess->nstreams--;
+
+    stream->session = NULL;
+}
+
+
+static void
 ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     ngx_uint_t state)
 {
@@ -5021,18 +5044,8 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     }
 #endif
 
-    if (stream->in || !stream->output_closed) {
-        c->error = 1;
-    }
+    ngx_http_proxy_v2_close_stream(stream);
 
-    ngx_http_proxy_v2_discard_output(sess);
-    ngx_http_proxy_v2_discard_body(stream);
-    stream->in = NULL;
-
-    ngx_rbtree_delete(&sess->streams, &stream->node);
-    sess->nstreams--;
-
-    stream->session = NULL;
     peer->stream = NULL;
 
     if (peer->ctx->stream == stream) {
