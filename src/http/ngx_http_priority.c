@@ -521,7 +521,13 @@ ngx_http_priority_parse_number(u_char **pos, u_char *end, ngx_int_t *type,
 
     n = ngx_atoi(start, last - start);
     if (n == NGX_ERROR) {
-        return NGX_ERROR;
+
+        /* a valid Integer exceeding ngx_int_t: parsed and discarded */
+
+        *type = NGX_HTTP_PRIORITY_OTHER;
+        *value = 0;
+        *pos = last;
+        return NGX_OK;
     }
 
     *type = NGX_HTTP_PRIORITY_INTEGER;
