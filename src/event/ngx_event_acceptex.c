@@ -29,7 +29,7 @@ ngx_event_acceptex(ngx_event_t *rev)
     if (rev->ovlp.error) {
         ngx_log_error(NGX_LOG_CRIT, c->log, rev->ovlp.error,
                       "AcceptEx() %V failed", &ls->addr_text);
-        return;
+        goto failed;
     }
 
     /* SO_UPDATE_ACCEPT_CONTEXT is required for shutdown() to work */
@@ -41,8 +41,7 @@ ngx_event_acceptex(ngx_event_t *rev)
         ngx_log_error(NGX_LOG_CRIT, c->log, ngx_socket_errno,
                       "setsockopt(SO_UPDATE_ACCEPT_CONTEXT) failed for %V",
                       &c->addr_text);
-        /* TODO: close socket */
-        return;
+        goto failed;
     }
 
     ngx_getacceptexsockaddrs(c->buffer->pos,
@@ -63,16 +62,14 @@ ngx_event_acceptex(ngx_event_t *rev)
     if (ls->addr_ntop) {
         c->addr_text.data = ngx_pnalloc(c->pool, ls->addr_text_max_len);
         if (c->addr_text.data == NULL) {
-            /* TODO: close socket */
-            return;
+            goto failed;
         }
 
         c->addr_text.len = ngx_sock_ntop(c->sockaddr, c->socklen,
                                          c->addr_text.data,
                                          ls->addr_text_max_len, 0);
         if (c->addr_text.len == 0) {
-            /* TODO: close socket */
-            return;
+            goto failed;
         }
     }
 
@@ -86,6 +83,10 @@ ngx_event_acceptex(ngx_event_t *rev)
 
     return;
 
+failed:
+
+    ngx_close_posted_connection(c);
+    (void) ngx_event_post_acceptex(ls, 1);
 }
 
 
@@ -119,6 +120,11 @@ ngx_event_post_acceptex(ngx_listening_t *ls, ngx_uint_t n)
         c = ngx_get_connection(s, &ls->log);
 
         if (c == NULL) {
+            if (ngx_close_socket(s) == -1) {
+                ngx_log_error(NGX_LOG_ALERT, &ls->log, ngx_socket_errno,
+                              ngx_close_socket_n " failed");
+            }
+
             return NGX_ERROR;
         }
 
