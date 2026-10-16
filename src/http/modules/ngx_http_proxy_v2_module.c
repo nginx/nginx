@@ -182,7 +182,10 @@ typedef struct {
     ngx_http_proxy_v2_headers_t    *trailers;
     ngx_uint_t                     header_count;
 
-    /* receive credit reserves space in this stream-owned ring buffer */
+    /*
+     * Stream credit reserves ring capacity independently of connection credit.
+     * The local attached-stream limit bounds total body buffering per session.
+     */
 
     u_char                        *body;
     size_t                         body_pos;
@@ -3324,7 +3327,13 @@ ngx_http_proxy_v2_process_closed_stream_frame(ngx_http_proxy_v2_session_t *sess,
 }
 
 
-/* A NULL destination discards DATA while preserving connection flow control. */
+/*
+ * For each receive window, recv_window + recv_credit + reserved DATA equals
+ * NGX_HTTP_V2_DEFAULT_WINDOW.  Connection reservations cover unread frame
+ * payload; stream reservations also include buffered body bytes.
+ *
+ * A NULL destination discards DATA while preserving connection flow control.
+ */
 
 static ngx_int_t
 ngx_http_proxy_v2_process_data(ngx_http_proxy_v2_session_t *sess,
@@ -3750,13 +3759,14 @@ ngx_http_proxy_v2_parse_data(ngx_http_proxy_v2_session_t *sess,
 
                 stream->body_size += size;
                 stream->body_parsed += size;
-
-            } else {
-                sess->recv_credit += size;
             }
 
             b->pos += size;
             sess->rest -= size;
+
+            /* buffered or discarded bytes release only connection capacity */
+
+            sess->recv_credit += size;
 
             if (sess->rest > sess->padding) {
                 return NGX_AGAIN;
@@ -3815,8 +3825,10 @@ ngx_http_proxy_v2_read_body(ngx_http_proxy_v2_stream_t *stream, u_char *data,
     stream->body_pos = (stream->body_pos + size) % NGX_HTTP_V2_DEFAULT_WINDOW;
     stream->body_size -= size;
     stream->body_read += size;
+
+    /* connection capacity was released when the DATA was buffered */
+
     stream->recv_credit += size;
-    stream->session->recv_credit += size;
 
     return size;
 }
@@ -3825,10 +3837,9 @@ ngx_http_proxy_v2_read_body(ngx_http_proxy_v2_stream_t *stream, u_char *data,
 static void
 ngx_http_proxy_v2_discard_body(ngx_http_proxy_v2_stream_t *stream)
 {
-    /* return buffered receive capacity before detaching from the session */
+    /* buffered DATA has already released its connection capacity */
 
     stream->recv_credit += stream->body_size;
-    stream->session->recv_credit += stream->body_size;
     stream->body_size = 0;
     stream->body_pos = 0;
 
@@ -6537,7 +6548,7 @@ ngx_http_proxy_v2_session_release(ngx_http_proxy_v2_session_t *sess)
             return;
         }
 
-        /* discarded receive capacity can unblock other attached streams */
+        /* flush pending connection credit while other streams remain attached */
 
         if (ngx_http_proxy_v2_send_window_update(sess, NULL) != NGX_OK) {
             c->error = 1;
@@ -6578,7 +6589,7 @@ ngx_http_proxy_v2_session_release(ngx_http_proxy_v2_session_t *sess)
         return;
     }
 
-    /* return discarded receive capacity without waiting for another request */
+    /* flush pending connection credit before entering the idle cache */
 
     if (ngx_http_proxy_v2_send_window_update(sess, NULL) != NGX_OK) {
         ngx_http_proxy_v2_session_close(sess);
