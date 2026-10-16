@@ -2768,6 +2768,16 @@ ngx_http_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
         return;
     }
 
+    if (r == r->main && r->request_body
+        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
+    {
+        if (r->request_body->total_timeout
+            && r->request_body->total_timeout->timer_set)
+        {
+            ngx_del_timer(r->request_body->total_timeout);
+        }
+    }
+
     if (r != r->main && r->post_subrequest) {
         rc = r->post_subrequest->handler(r, r->post_subrequest->data, rc);
     }
