@@ -543,6 +543,10 @@ ngx_http_script_compile(ngx_http_script_compile_t *sc)
                     continue;
                 }
 
+                if (ch == '-' && bracket) {
+                    continue;
+                }
+
                 break;
             }
 
