@@ -31,6 +31,7 @@ void *
 ngx_list_push(ngx_list_t *l)
 {
     void             *elt;
+    size_t            size;
     ngx_list_part_t  *last;
 
     last = l->last;
@@ -44,7 +45,11 @@ ngx_list_push(ngx_list_t *l)
             return NULL;
         }
 
-        last->elts = ngx_palloc(l->pool, l->nalloc * l->size);
+        if (ngx_list_calc_size(l->nalloc, l->size, &size) != NGX_OK) {
+            return NULL;
+        }
+
+        last->elts = ngx_palloc(l->pool, size);
         if (last->elts == NULL) {
             return NULL;
         }
@@ -56,7 +61,11 @@ ngx_list_push(ngx_list_t *l)
         l->last = last;
     }
 
-    elt = (char *) last->elts + l->size * last->nelts;
+    if (ngx_list_calc_size(last->nelts, l->size, &size) != NGX_OK) {
+        return NULL;
+    }
+
+    elt = (char *) last->elts + size;
     last->nelts++;
 
     return elt;
