@@ -58,7 +58,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
     }
 
     if (p->upstream
-        && p->upstream->fd != (ngx_socket_t) -1)
+        && (p->upstream->fd != (ngx_socket_t) -1 || p->upstream->logical))
     {
         rev = p->upstream->read;
 

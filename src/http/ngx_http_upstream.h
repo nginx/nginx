@@ -284,6 +284,7 @@ typedef struct {
 
     ngx_uint_t                       status_n;
     ngx_str_t                        status_line;
+    size_t                           header_size;
 
     ngx_table_elt_t                 *status;
     ngx_table_elt_t                 *date;
@@ -344,6 +345,7 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_handler_pt     write_event_handler;
 
     ngx_peer_connection_t            peer;
+    ngx_connection_t                *connection;
 
     ngx_event_pipe_t                *pipe;
 
@@ -381,6 +383,7 @@ struct ngx_http_upstream_s {
 #endif
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
+    ngx_int_t                      (*init_connection)(ngx_http_request_t *r);
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
     void                           (*finalize_request)(ngx_http_request_t *r,
@@ -423,6 +426,7 @@ struct ngx_http_upstream_s {
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
+    unsigned                         connection_initialized:1;
 };
 
 

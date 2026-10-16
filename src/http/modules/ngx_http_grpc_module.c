@@ -1705,7 +1705,7 @@ ngx_http_grpc_body_output_filter(void *data, ngx_chain_t *in)
             u->keepalive = 1;
         }
 
-        ngx_post_event(u->peer.connection->read, &ngx_posted_events);
+        ngx_post_event(u->connection->read, &ngx_posted_events);
     }
 
     return rc;
@@ -1867,7 +1867,7 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
             }
 
             if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+                ngx_post_event(u->connection->write, &ngx_posted_events);
             }
 
             continue;
@@ -1886,7 +1886,7 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
             }
 
             if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+                ngx_post_event(u->connection->write, &ngx_posted_events);
             }
 
             continue;
@@ -1904,7 +1904,7 @@ ngx_http_grpc_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+            ngx_post_event(u->connection->write, &ngx_posted_events);
             continue;
         }
 
@@ -2186,7 +2186,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                      */
 
                     if (ctx->out) {
-                        ngx_post_event(u->peer.connection->write,
+                        ngx_post_event(u->connection->write,
                                        &ngx_posted_events);
                         return NGX_AGAIN;
                     }
@@ -2259,7 +2259,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                         return NGX_ERROR;
                     }
 
-                    ngx_post_event(u->peer.connection->write,
+                    ngx_post_event(u->connection->write,
                                    &ngx_posted_events);
                 }
             }
@@ -2386,7 +2386,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             }
 
             if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+                ngx_post_event(u->connection->write, &ngx_posted_events);
             }
 
             continue;
@@ -2405,7 +2405,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
             }
 
             if (ctx->in) {
-                ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+                ngx_post_event(u->connection->write, &ngx_posted_events);
             }
 
             continue;
@@ -2423,7 +2423,7 @@ ngx_http_grpc_filter(void *data, ssize_t bytes)
                 return NGX_ERROR;
             }
 
-            ngx_post_event(u->peer.connection->write, &ngx_posted_events);
+            ngx_post_event(u->connection->write, &ngx_posted_events);
             continue;
         }
 
