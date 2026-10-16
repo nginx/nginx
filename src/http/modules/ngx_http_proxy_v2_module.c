@@ -163,7 +163,7 @@ typedef struct {
     ngx_http_proxy_v2_peer_t      *peer;
     ngx_pool_t                    *pool;
     ngx_uint_t                     id;
-    off_t                          recv_start;
+    off_t                          received;
 
     ngx_chain_t                   *in;
 
@@ -1692,7 +1692,6 @@ ngx_http_proxy_v2_read_handler(ngx_event_t *ev)
 
         b->last += n;
         received += n;
-        sess->received += n;
     }
 
     if (ngx_handle_read_event(ev, ev->eof ? NGX_CLOSE_EVENT : 0) != NGX_OK) {
@@ -2705,6 +2704,7 @@ ngx_http_proxy_v2_stream_closed(ngx_http_proxy_v2_stream_t *stream)
 static ngx_int_t
 ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 {
+    size_t                       received;
     ngx_int_t                    rc;
     ngx_log_t                   *log;
     ngx_uint_t                   new_frame, closed_stream;
@@ -2743,6 +2743,27 @@ ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
     }
 
     closed_stream = sess->frame_closed || sess->input_discard;
+
+    /*
+     * Attribute wire bytes only after the stream ID is known.  Count the
+     * header once and only the available payload of this frame, excluding
+     * closed-stream traffic and read-ahead beyond the current frame.
+     * Connection traffic only contributes to the session total.
+     */
+
+    if (!closed_stream) {
+        received = ngx_min((size_t) (b->last - b->pos), sess->rest);
+
+        if (new_frame) {
+            received += sizeof(ngx_http_proxy_v2_frame_t);
+        }
+
+        sess->received += received;
+
+        if (stream) {
+            stream->received += received;
+        }
+    }
 
     if (new_frame) {
         if (sess->rest > NGX_HTTP_V2_DEFAULT_FRAME_SIZE) {
@@ -5744,7 +5765,6 @@ ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
     stream->send_window = sess->init_window;
     stream->recv_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     stream->header_limit = r->upstream->conf->buffer_size;
-    stream->recv_start = sess->received;
 
     sc = &stream->connection;
 
@@ -6366,8 +6386,7 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     }
 
     if (stream) {
-        peer->upstream->state->bytes_received =
-                                       sess->received - stream->recv_start;
+        peer->upstream->state->bytes_received = stream->received;
 
         if ((state & NGX_PEER_FAILED) && sess->goaway && !sess->goaway_error
             && !sess->error && sess->goaway_last_stream_id < stream->id
