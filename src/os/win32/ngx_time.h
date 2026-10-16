@@ -15,6 +15,7 @@
 
 typedef ngx_rbtree_key_t      ngx_msec_t;
 typedef ngx_rbtree_key_int_t  ngx_msec_int_t;
+typedef uint64_t              ngx_usec_t;
 
 typedef SYSTEMTIME            ngx_tm_t;
 typedef FILETIME              ngx_mtime_t;
