@@ -158,11 +158,22 @@ static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table_lc[256] =
 
 #if (NGX_PTR_SIZE == 8)
 
+#if (NGX_HAVE_GCC_BSWAP64 || !NGX_HAVE_LITTLE_ENDIAN)
+
+static ngx_inline void
+ngx_http_huff_encode_store(u_char *dst, uint64_t buf)
+{
+    ngx_memcpy(dst, &buf, sizeof(uint64_t));
+}
+
+#endif
+
+
 #if (NGX_HAVE_LITTLE_ENDIAN)
 
 #if (NGX_HAVE_GCC_BSWAP64)
 #define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = __builtin_bswap64(buf))
+    ngx_http_huff_encode_store(dst, __builtin_bswap64(buf))
 #else
 #define ngx_http_huff_encode_buf(dst, buf)                                    \
     ((dst)[0] = (u_char) ((buf) >> 56),                                       \
@@ -177,13 +188,20 @@ static ngx_http_huff_encode_code_t  ngx_http_huff_encode_table_lc[256] =
 
 #else /* !NGX_HAVE_LITTLE_ENDIAN */
 #define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint64_t *) (dst) = (buf))
+    ngx_http_huff_encode_store(dst, (uint64_t) (buf))
 #endif
 
 #else /* NGX_PTR_SIZE == 4 */
 
+static ngx_inline void
+ngx_http_huff_encode_store(u_char *dst, uint32_t buf)
+{
+    ngx_memcpy(dst, &buf, sizeof(uint32_t));
+}
+
+
 #define ngx_http_huff_encode_buf(dst, buf)                                    \
-    (*(uint32_t *) (dst) = htonl(buf))
+    ngx_http_huff_encode_store(dst, htonl(buf))
 
 #endif
 
