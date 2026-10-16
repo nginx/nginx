@@ -5138,7 +5138,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         || ngx_strlcasestrn(start, last, (u_char *) "private", 7 - 1) != NULL)
     {
         u->headers_in.no_cache = 1;
-        return NGX_OK;
+        goto extensions;
     }
 
     p = ngx_strlcasestrn(start, last, (u_char *) "s-maxage=", 9 - 1);
@@ -5159,7 +5159,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
 
         if (n == 0) {
             u->headers_in.no_cache = 1;
-            return NGX_OK;
+            goto extensions;
         }
 
         r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time() + n,
