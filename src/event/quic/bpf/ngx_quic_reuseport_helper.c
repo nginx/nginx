@@ -14,7 +14,7 @@
 #endif
 
 
-#if defined(LICENSE_GPL)
+#if defined(LICENSE_GPL) && defined(NGX_BPF_DEBUGMSG)
 
 /*
  * To see debug:
