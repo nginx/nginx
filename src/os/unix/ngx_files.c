@@ -901,6 +901,18 @@ ngx_fs_available(u_char *name)
     return (off_t) fs.f_bavail * fs.f_bsize;
 }
 
+off_t
+ngx_fs_size(u_char *name)
+{
+    struct statfs fs;
+
+    if (statfs((char *) name, &fs) == -1) {
+        return NGX_MAX_OFF_T_VALUE;
+    }
+
+    return (off_t) fs.f_blocks * fs.f_bsize;
+}
+
 #elif (NGX_HAVE_STATVFS)
 
 size_t
@@ -938,6 +950,18 @@ ngx_fs_available(u_char *name)
     return (off_t) fs.f_bavail * fs.f_frsize;
 }
 
+off_t
+ngx_fs_size(u_char *name)
+{
+    struct statvfs fs;
+
+    if (statvfs((char *) name, &fs) == -1) {
+        return NGX_MAX_OFF_T_VALUE;
+    }
+
+    return (off_t) fs.f_blocks * fs.f_frsize;
+}
+
 #else
 
 size_t
@@ -949,6 +973,12 @@ ngx_fs_bsize(u_char *name)
 
 off_t
 ngx_fs_available(u_char *name)
+{
+    return NGX_MAX_OFF_T_VALUE;
+}
+
+off_t
+ngx_fs_size(u_char *name)
 {
     return NGX_MAX_OFF_T_VALUE;
 }
