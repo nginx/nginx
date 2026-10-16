@@ -842,6 +842,13 @@ ngx_worker_process_init(ngx_cycle_t *cycle, ngx_int_t worker)
             ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
                           "initgroups(%s, %d) failed",
                           ccf->username, ccf->group);
+
+            if (setgroups(0, NULL) == -1) {
+                ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                              "setgroups(0, NULL) failed");
+                /* fatal */
+                exit(2);
+            }
         }
 
 #if (NGX_HAVE_PR_SET_KEEPCAPS && NGX_HAVE_CAPABILITIES)
