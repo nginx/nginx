@@ -99,6 +99,15 @@ typedef struct {
 
 
 typedef struct {
+    ngx_uint_t                       max_cached;
+    ngx_uint_t                       requests;
+    ngx_msec_t                       time;
+    ngx_msec_t                       timeout;
+    ngx_uint_t                       local; /* unsigned  local:1; */
+} ngx_http_upstream_keepalive_conf_t;
+
+
+typedef struct {
     ngx_str_t                        name;
     ngx_addr_t                      *addrs;
     ngx_uint_t                       naddrs;
@@ -135,6 +144,8 @@ typedef struct {
 struct ngx_http_upstream_srv_conf_s {
     ngx_http_upstream_peer_t         peer;
     void                           **srv_conf;
+
+    ngx_http_upstream_keepalive_conf_t  *keepalive;
 
     ngx_array_t                     *servers;  /* ngx_http_upstream_server_t */
 
@@ -398,6 +409,7 @@ struct ngx_http_upstream_s {
      */
 
     ngx_int_t                      (*init_connection)(ngx_http_request_t *r);
+    ngx_http_upstream_init_peer_pt    init_peer;
 
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
@@ -442,6 +454,7 @@ struct ngx_http_upstream_s {
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
     unsigned                         connection_initialized:1;
+    unsigned                         peer_initialized:1;
 };
 
 
@@ -460,6 +473,7 @@ typedef struct {
 
 ngx_int_t ngx_http_upstream_create(ngx_http_request_t *r);
 void ngx_http_upstream_init(ngx_http_request_t *r);
+void ngx_http_upstream_handler(ngx_event_t *ev);
 ngx_int_t ngx_http_upstream_non_buffered_filter_init(void *data);
 ngx_int_t ngx_http_upstream_non_buffered_filter(void *data, ssize_t bytes);
 ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,

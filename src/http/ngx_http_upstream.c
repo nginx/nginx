@@ -1324,7 +1324,7 @@ failed:
 }
 
 
-static void
+void
 ngx_http_upstream_handler(ngx_event_t *ev)
 {
     ngx_connection_t     *c;
@@ -1585,6 +1585,16 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_int_t                  rc;
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
+
+    if (u->init_peer && !u->peer_initialized) {
+        if (u->init_peer(r, u->upstream) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        u->peer_initialized = 1;
+    }
 
     u->connection_initialized = 0;
 
