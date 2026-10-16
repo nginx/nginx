@@ -14,6 +14,7 @@
 #define NGX_HTTP_PROXY_V2_PROTOCOL_ERROR        0x1
 #define NGX_HTTP_PROXY_V2_FLOW_CTRL_ERROR       0x3
 #define NGX_HTTP_PROXY_V2_STREAM_CLOSED         0x5
+#define NGX_HTTP_PROXY_V2_ENHANCE_YOUR_CALM     0xb
 
 
 #define NGX_HTTP_PROXY_V2_MAX_OUTPUT_FRAMES  16
@@ -180,6 +181,7 @@ typedef struct {
     ngx_uint_t                     error;
 
     size_t                         header_limit;
+    size_t                         header_budget;  /* metadata left */
     ngx_str_t                      name;
     ngx_str_t                      value;
 
@@ -350,6 +352,8 @@ static ngx_int_t ngx_http_proxy_v2_parse_header(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_account_header(
+    ngx_http_proxy_v2_session_t *sess, size_t size);
 static ngx_int_t ngx_http_proxy_v2_copy_headers(
     ngx_http_proxy_v2_stream_t *stream, ngx_http_proxy_v2_headers_t *headers);
 static void ngx_http_proxy_v2_close_header(ngx_http_proxy_v2_session_t *sess);
@@ -3635,6 +3639,14 @@ ngx_http_proxy_v2_process_header_frame(ngx_http_proxy_v2_session_t *sess,
                 if (headers->end_stream) {
                     stream->input_closing = 1;
                 }
+
+                if (ngx_http_proxy_v2_account_header(sess,
+                          ngx_align(sizeof(ngx_http_proxy_v2_headers_t),
+                                    NGX_ALIGNMENT))
+                    != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
             }
 
         } else {
@@ -4785,26 +4797,37 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
         }
 
         sess->header_limit -= len;
+        headers->count++;
 
-        field = ngx_palloc(sess->header_pool,
-                          sizeof(ngx_http_proxy_v2_header_t));
-        if (field == NULL) {
+        /* reserve the request-owned copy before retaining a decoded field */
+
+        size = ngx_align(sizeof(ngx_http_proxy_v2_header_t) + len + 2,
+                         NGX_ALIGNMENT);
+
+        if (ngx_http_proxy_v2_account_header(sess, size) != NGX_OK) {
             return NGX_ERROR;
         }
 
-        field->name = sess->name;
-        field->value = sess->value;
-        field->next = NULL;
+        if (!sess->input_discard) {
+            field = ngx_palloc(sess->header_pool,
+                              sizeof(ngx_http_proxy_v2_header_t));
+            if (field == NULL) {
+                return NGX_ERROR;
+            }
 
-        if (headers->last) {
-            headers->last->next = field;
+            field->name = sess->name;
+            field->value = sess->value;
+            field->next = NULL;
 
-        } else {
-            headers->first = field;
+            if (headers->last) {
+                headers->last->next = field;
+
+            } else {
+                headers->first = field;
+            }
+
+            headers->last = field;
         }
-
-        headers->last = field;
-        headers->count++;
 
         ngx_str_null(&sess->name);
         ngx_str_null(&sess->value);
@@ -4822,6 +4845,43 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_proxy_v2_session_t *sess,
     }
 
     return NGX_DONE;
+}
+
+
+/*
+ * Charge retained protocol metadata for this upstream attempt, including hints
+ * and trailers.  Consumption does not free request-pool allocations, so this
+ * budget is never replenished.  Bounding blocks, fields and strings bounds the
+ * corresponding consumer metadata, independently of the temporary parser pool.
+ */
+
+static ngx_int_t
+ngx_http_proxy_v2_account_header(ngx_http_proxy_v2_session_t *sess, size_t size)
+{
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    if (sess->input_discard) {
+        return NGX_OK;
+    }
+
+    stream = ngx_http_proxy_v2_find_stream(sess, sess->header_stream_id);
+    if (stream == NULL) {
+        return NGX_ERROR;
+    }
+
+    if (size > stream->header_budget) {
+        ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
+                      "upstream sent too much http2 header metadata");
+
+        /* retain parser limits while discarding the rest of this block */
+
+        return ngx_http_proxy_v2_stream_error(stream,
+                                          NGX_HTTP_PROXY_V2_ENHANCE_YOUR_CALM);
+    }
+
+    stream->header_budget -= size;
+
+    return NGX_OK;
 }
 
 
@@ -5877,6 +5937,7 @@ ngx_http_proxy_v2_init_peer(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
 {
+    size_t                       size, budget;
     ngx_int_t                    rc;
     ngx_uint_t                   limit;
     ngx_connection_t            *c, *sc;
@@ -5899,6 +5960,24 @@ ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
     u = r->upstream;
     pc = &u->peer;
     peer = pc->data;
+
+    /*
+     * A block allows buffer_size fields and decoded bytes.  Cover their
+     * descriptors, two NULs per field and alignment, plus one block descriptor,
+     * so the cumulative budget also accepts any previously allowed block.
+     */
+
+    size = sizeof(ngx_http_proxy_v2_header_t) + NGX_ALIGNMENT + 2;
+    budget = ngx_align(sizeof(ngx_http_proxy_v2_headers_t), NGX_ALIGNMENT);
+
+    if (u->conf->buffer_size > ((size_t) -1 - budget) / size) {
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
+                      "\"proxy_buffer_size\" is too large "
+                      "for http2 header metadata budget");
+        return NGX_ERROR;
+    }
+
+    budget += u->conf->buffer_size * size;
 
     rc = ngx_http_proxy_v2_get_session(pc, &sess);
     if (rc != NGX_OK) {
@@ -5964,6 +6043,7 @@ ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
     stream->send_window = sess->init_window;
     stream->recv_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     stream->header_limit = r->upstream->conf->buffer_size;
+    stream->header_budget = budget;
 
     sc = &stream->connection;
 
