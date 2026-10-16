@@ -77,6 +77,7 @@ typedef struct {
     ngx_chain_t                  **last_out;
     ngx_chain_t                   *free;
     ngx_chain_t                   *busy;
+    ngx_uint_t                     detached_output_id;
     ngx_uint_t                     pings;
     ngx_uint_t                     settings;
 
@@ -124,6 +125,7 @@ typedef struct {
     unsigned                       preface_sent:1;
     unsigned                       error:1;
     unsigned                       goaway:1;
+    unsigned                       frame_closed:1;
     unsigned                       input_discard:1;
     unsigned                       literal:1;
     unsigned                       field_huffman:1;
@@ -296,11 +298,16 @@ static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
 static ngx_int_t ngx_http_proxy_v2_process_body(ngx_event_pipe_t *p,
     ngx_buf_t *b);
+static ngx_uint_t ngx_http_proxy_v2_stream_closed(
+    ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_process_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_process_connection_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, ngx_uint_t new_frame);
 static ngx_int_t ngx_http_proxy_v2_process_stream_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
+    ngx_buf_t *b, ngx_uint_t new_frame);
+static ngx_int_t ngx_http_proxy_v2_process_closed_stream_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
     ngx_buf_t *b, ngx_uint_t new_frame);
 static ngx_int_t ngx_http_proxy_v2_process_data(
@@ -2199,6 +2206,10 @@ ngx_http_proxy_v2_write(ngx_http_proxy_v2_session_t *sess)
         sess->connection->error = 1;
     }
 
+    if (!ngx_http_proxy_v2_output_pending(sess)) {
+        sess->detached_output_id = 0;
+    }
+
     return rc;
 }
 
@@ -2646,6 +2657,15 @@ ngx_http_proxy_v2_process_body(ngx_event_pipe_t *p, ngx_buf_t *b)
 }
 
 
+/* Protocol closure does not depend on request consumption or detachment. */
+
+static ngx_uint_t
+ngx_http_proxy_v2_stream_closed(ngx_http_proxy_v2_stream_t *stream)
+{
+    return stream->rst || (stream->input_closed && stream->output_closed);
+}
+
+
 /* NGX_OK completes one frame; NGX_AGAIN needs more input. */
 
 static ngx_int_t
@@ -2653,7 +2673,7 @@ ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 {
     ngx_int_t                    rc;
     ngx_log_t                   *log;
-    ngx_uint_t                   new_frame;
+    ngx_uint_t                   new_frame, closed_stream;
     ngx_http_proxy_v2_stream_t  *stream;
 
     log = &sess->log;
@@ -2669,7 +2689,28 @@ ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
         if (rc == NGX_ERROR) {
             goto failed;
         }
+    }
 
+    /* resolve the target again when resuming a fragmented frame */
+
+    stream = sess->stream_id
+             ? ngx_http_proxy_v2_find_stream(sess, sess->stream_id) : NULL;
+
+    /*
+     * Preserve the admission state across payload fragments.  Detachment
+     * switches an accepted destination to discard, never back to live input.
+     */
+
+    if (new_frame || stream == NULL) {
+        sess->frame_closed = stream
+                             ? ngx_http_proxy_v2_stream_closed(stream)
+                             : ((sess->stream_id & 1)
+                                && sess->stream_id <= sess->last_stream_id);
+    }
+
+    closed_stream = sess->frame_closed || sess->input_discard;
+
+    if (new_frame) {
         if (sess->rest > NGX_HTTP_V2_DEFAULT_FRAME_SIZE) {
             ngx_log_error(NGX_LOG_ERR, log, 0,
                           "upstream sent too large http2 frame: %uz",
@@ -2706,45 +2747,42 @@ ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
         goto done;
     }
 
-    /* resume accepted input without retaining its request destination */
-
-    stream = sess->stream_id
-             ? ngx_http_proxy_v2_find_stream(sess, sess->stream_id) : NULL;
-
-    if (sess->type == NGX_HTTP_V2_HEADERS_FRAME
-        || sess->type == NGX_HTTP_V2_CONTINUATION_FRAME)
+    if (sess->type == NGX_HTTP_V2_PRIORITY_FRAME
+        || sess->type > NGX_HTTP_V2_CONTINUATION_FRAME)
     {
-        rc = ngx_http_proxy_v2_process_header_frame(sess, stream, b, new_frame);
+        if (new_frame && sess->type == NGX_HTTP_V2_PRIORITY_FRAME
+            && (sess->stream_id == 0 || sess->rest != 5))
+        {
+            goto failed;
+        }
+
+        rc = ngx_http_proxy_v2_skip_frame(sess, b);
         goto done;
     }
 
-    if (!new_frame && sess->type == NGX_HTTP_V2_DATA_FRAME
-        && sess->input_discard)
-    {
-        /* the accepted frame has already reserved receive credit */
+    /* all remaining frame types require a non-zero stream ID */
 
-        rc = ngx_http_proxy_v2_process_data(sess, NULL, b, 0);
-        goto done;
-    }
-
-    if (sess->stream_id && stream == NULL) {
-        ngx_log_error(NGX_LOG_ERR, log, 0,
-                      "upstream sent frame for unknown stream %ui",
-                      sess->stream_id);
-        goto failed;
-    }
-
-    if (sess->stream_id == 0
-        && (sess->type == NGX_HTTP_V2_DATA_FRAME
-            || sess->type == NGX_HTTP_V2_RST_STREAM_FRAME))
-    {
+    if (sess->stream_id == 0) {
         ngx_log_error(NGX_LOG_ERR, log, 0,
                       "upstream sent http2 frame %d with zero stream id",
                       sess->type);
         goto failed;
     }
 
-    rc = ngx_http_proxy_v2_process_stream_frame(sess, stream, b, new_frame);
+    if (stream && !closed_stream) {
+        rc = ngx_http_proxy_v2_process_stream_frame(sess, stream, b, new_frame);
+        goto done;
+    }
+
+    if (!closed_stream) {
+        ngx_log_error(NGX_LOG_ERR, log, 0,
+                      "upstream sent frame for unknown stream %ui",
+                      sess->stream_id);
+        goto failed;
+    }
+
+    rc = ngx_http_proxy_v2_process_closed_stream_frame(sess, stream, b,
+                                                      new_frame);
 
 done:
 
@@ -2814,7 +2852,8 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
                                          node);
 
                 if (sess->goaway_last_stream_id < stream->id
-                    && !stream->connection.error)
+                    && !stream->connection.error
+                    && !ngx_http_proxy_v2_stream_closed(stream))
                 {
 
                     /* TODO: we can retry non-idempotent requests */
@@ -2913,6 +2952,10 @@ ngx_http_proxy_v2_process_connection_frame(ngx_http_proxy_v2_session_t *sess,
                         stream = ngx_rbtree_data(node,
                                                 ngx_http_proxy_v2_stream_t,
                                                 node);
+
+                        if (ngx_http_proxy_v2_stream_closed(stream)) {
+                            continue;
+                        }
 
                         if (stream->send_window > 0
                             && window_delta > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
@@ -3080,6 +3123,8 @@ ngx_http_proxy_v2_process_trailers(ngx_http_request_t *r,
 }
 
 
+/* Called for frames admitted before protocol closure. */
+
 static ngx_int_t
 ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
     ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b, ngx_uint_t new_frame)
@@ -3090,6 +3135,12 @@ ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
     log = sess->connection->log;
 
     switch (sess->type) {
+
+    case NGX_HTTP_V2_HEADERS_FRAME:
+    case NGX_HTTP_V2_CONTINUATION_FRAME:
+
+        return ngx_http_proxy_v2_process_header_frame(sess, stream, b,
+                                                     new_frame);
 
     case NGX_HTTP_V2_DATA_FRAME:
 
@@ -3125,15 +3176,16 @@ ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
             return rc;
         }
 
-        if (stream->rst) {
-            ngx_log_error(NGX_LOG_ERR, log, 0,
-                          "upstream sent frame for closed stream %ui",
-                          stream->id);
-            return NGX_ERROR;
-        }
-
         stream->rst = 1;
         stream->error = sess->rst_error;
+
+        if (stream->in || !stream->output_closed
+            || ngx_http_proxy_v2_output_pending(sess))
+        {
+            /* even session-owned output can contain frames for this stream */
+
+            sess->connection->close = 1;
+        }
 
         if (stream->error || !(stream->input_closed || stream->done)) {
             ngx_log_error(NGX_LOG_ERR, log, 0,
@@ -3158,18 +3210,82 @@ ngx_http_proxy_v2_process_stream_frame(ngx_http_proxy_v2_session_t *sess,
         return ngx_http_proxy_v2_process_window_update(sess, stream, b);
 
     default:
+        return NGX_ERROR;
+    }
+}
 
-        /* priority, unknown frames */
 
-        if (new_frame && stream && stream->input_closed) {
-            ngx_log_error(NGX_LOG_ERR, log, 0,
-                          "upstream sent frame for closed stream %ui",
-                          stream->id);
+static ngx_int_t
+ngx_http_proxy_v2_process_closed_stream_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b, ngx_uint_t new_frame)
+{
+    ngx_int_t  rc;
+
+    switch (sess->type) {
+
+    case NGX_HTTP_V2_RST_STREAM_FRAME:
+    case NGX_HTTP_V2_WINDOW_UPDATE_FRAME:
+
+        if (new_frame && sess->rest != 4) {
             return NGX_ERROR;
         }
 
-        return ngx_http_proxy_v2_skip_frame(sess, b);
+        rc = ngx_http_proxy_v2_skip_frame(sess, b);
+
+        if (rc == NGX_OK && sess->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
+            /* queued output may still belong to the closed stream */
+
+            if (stream) {
+                if (stream->in || !stream->output_closed
+                    || ngx_http_proxy_v2_output_pending(sess))
+                {
+                    sess->connection->close = 1;
+                }
+
+            } else if (sess->nstreams == 0
+                       && sess->stream_id == sess->detached_output_id)
+            {
+                sess->connection->close = 1;
+            }
+        }
+
+        return rc;
+
+    case NGX_HTTP_V2_DATA_FRAME:
+
+        if (!new_frame && sess->input_discard) {
+            /* the accepted frame has already reserved receive credit */
+
+            return ngx_http_proxy_v2_process_data(sess, NULL, b, new_frame);
+        }
+
+        break;
+
+    case NGX_HTTP_V2_HEADERS_FRAME:
+
+        if (new_frame) {
+            break;
+        }
+
+        /* fall through */
+
+    case NGX_HTTP_V2_CONTINUATION_FRAME:
+
+        if (sess->input_discard) {
+            /* finish the header block accepted before detachment */
+
+            return ngx_http_proxy_v2_process_header_frame(sess, NULL, b,
+                                                         new_frame);
+        }
+
+        break;
     }
+
+    ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
+                  "upstream sent frame for unknown stream %ui",
+                  sess->stream_id);
+
+    return NGX_ERROR;
 }
 
 
@@ -3268,7 +3384,7 @@ ngx_http_proxy_v2_process_header_frame(ngx_http_proxy_v2_session_t *sess,
                 return NGX_ERROR;
             }
 
-            if (stream->input_closed || stream->trailers) {
+            if (stream->input_closed || stream->rst || stream->trailers) {
                 ngx_log_error(NGX_LOG_ERR, log, 0,
                               "upstream sent headers for invalid stream %ui",
                               stream->id);
@@ -5227,7 +5343,7 @@ ngx_http_proxy_v2_send_window_update(ngx_http_proxy_v2_session_t *sess,
 
     connection = sess->recv_window <= NGX_HTTP_V2_DEFAULT_WINDOW / 2
                  ? sess->recv_credit : 0;
-    window = stream && !stream->input_closing
+    window = stream && !stream->input_closing && !stream->rst
              && stream->recv_window <= NGX_HTTP_V2_DEFAULT_WINDOW / 2
              ? stream->recv_credit : 0;
 
@@ -5815,6 +5931,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
     sess->last_out = &sess->out;
     sess->free = NULL;
     sess->busy = NULL;
+    sess->detached_output_id = 0;
     sess->pings = 0;
     sess->settings = 0;
 
@@ -5857,6 +5974,7 @@ ngx_http_proxy_v2_get_session(ngx_peer_connection_t *pc,
     sess->preface_sent = 0;
     sess->error = 0;
     sess->goaway = 0;
+    sess->frame_closed = 0;
     sess->input_discard = 0;
     sess->literal = 0;
     sess->field_huffman = 0;
@@ -6131,6 +6249,11 @@ ngx_http_proxy_v2_close_stream(ngx_http_proxy_v2_stream_t *stream)
     {
         sess->connection->close = 1;
     }
+
+    /* reuse requires drained output, so detached streams cannot overlap */
+
+    sess->detached_output_id = ngx_http_proxy_v2_output_pending(sess)
+                               ? stream->id : 0;
 
     if (sess->header_stream_id == stream->id && !sess->input_discard) {
         sess->input_discard = 1;
