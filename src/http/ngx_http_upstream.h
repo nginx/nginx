@@ -401,9 +401,14 @@ struct ngx_http_upstream_s {
      * the physical connection.  Return NGX_OK with a valid connection,
      * NGX_DECLINED to retry an unusable peer, or NGX_ERROR for an internal error.
      *
+     * For cached peers, called before any request setup of the physical
+     * connection.  The protocol retains physical I/O ownership and accounts
+     * the new request in the physical connection's requests counter.
+     *
      * When replacing connection, the protocol initializes the endpoint's request
      * data, I/O methods, event handlers and readiness, and updates
-     * writer.connection.  It takes over the physical handlers, removing or
+     * writer.connection.  Endpoint events can use ngx_http_upstream_handler().
+     * For new connections it takes over the physical handlers, removing or
      * transferring pending timers and posted events.  The protocol must cancel
      * endpoint timers and posted events before releasing the endpoint.
      */

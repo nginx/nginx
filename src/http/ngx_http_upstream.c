@@ -1669,39 +1669,42 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     c = u->connection;
 
-    c->requests++;
-
-    c->data = r;
-
-    c->write->handler = ngx_http_upstream_handler;
-    c->read->handler = ngx_http_upstream_handler;
-
     u->write_event_handler = ngx_http_upstream_send_request_handler;
     u->read_event_handler = ngx_http_upstream_process_header;
 
-    c->sendfile &= r->connection->sendfile;
-    u->output.sendfile = c->sendfile;
+    if (!u->init_connection || !u->peer.cached) {
+        c->requests++;
 
-    if (r->connection->tcp_nopush == NGX_TCP_NOPUSH_DISABLED) {
-        u->peer.connection->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
-    }
+        c->data = r;
 
-    if (c->pool == NULL) {
+        c->write->handler = ngx_http_upstream_handler;
+        c->read->handler = ngx_http_upstream_handler;
 
-        /* we need separate pool here to be able to cache SSL connections */
+        c->sendfile &= r->connection->sendfile;
 
-        c->pool = ngx_create_pool(128, r->connection->log);
-        if (c->pool == NULL) {
-            ngx_http_upstream_finalize_request(r, u,
-                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
+        if (r->connection->tcp_nopush == NGX_TCP_NOPUSH_DISABLED) {
+            c->tcp_nopush = NGX_TCP_NOPUSH_DISABLED;
         }
+
+        if (c->pool == NULL) {
+
+            /* a separate pool allows caching SSL connections */
+
+            c->pool = ngx_create_pool(128, r->connection->log);
+            if (c->pool == NULL) {
+                ngx_http_upstream_finalize_request(r, u,
+                                                NGX_HTTP_INTERNAL_SERVER_ERROR);
+                return;
+            }
+        }
+
+        c->log = r->connection->log;
+        c->pool->log = c->log;
+        c->read->log = c->log;
+        c->write->log = c->log;
     }
 
-    c->log = r->connection->log;
-    c->pool->log = c->log;
-    c->read->log = c->log;
-    c->write->log = c->log;
+    u->output.sendfile = c->sendfile;
 
     /* init or reinit the ngx_output_chain() and ngx_chain_writer() contexts */
 
@@ -1750,6 +1753,16 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->request_body_sent = 0;
     u->request_body_blocked = 0;
     u->response_received = 0;
+
+    if (u->init_connection && u->peer.cached) {
+        /* cached protocol connections retain their physical I/O ownership */
+
+        if (ngx_http_upstream_init_connection(r, u) != NGX_OK) {
+            return;
+        }
+
+        c = u->connection;
+    }
 
     if (rc == NGX_AGAIN) {
         ngx_add_timer(c->write, u->conf->connect_timeout);
@@ -2203,6 +2216,7 @@ ngx_http_upstream_init_connection(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     u->connection_initialized = 1;
+    u->output.sendfile = u->connection->sendfile;
 
     return NGX_OK;
 }
