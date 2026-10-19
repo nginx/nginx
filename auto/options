@@ -290,7 +290,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
         --without-http_tunnel_module)    HTTP_TUNNEL=NO             ;;
         --without-http_memcached_module) HTTP_MEMCACHED=NO          ;;
         --without-http_limit_conn_module) HTTP_LIMIT_CONN=NO        ;;
-        --without-http_limit_req_module) HTTP_LIMIT_REQ=NO         ;;
+        --without-http_limit_req_module) HTTP_LIMIT_REQ=NO          ;;
         --without-http_empty_gif_module) HTTP_EMPTY_GIF=NO          ;;
         --without-http_browser_module)   HTTP_BROWSER=NO            ;;
         --without-http_upstream_hash_module) HTTP_UPSTREAM_HASH=NO  ;;
