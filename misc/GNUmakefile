@@ -90,7 +90,8 @@ zip: export
 	mkdir -p $(TEMP)/$(NGINX)/logs
 	mkdir -p $(TEMP)/$(NGINX)/temp
 
-	sed -i '' -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
+	sed -i.bak -e "s/$$/`printf '\r'`/" $(TEMP)/$(NGINX)/conf/*
+	rm $(TEMP)/$(NGINX)/conf/*.bak
 
 	mv $(TEMP)/$(NGINX)/LICENSE $(TEMP)/$(NGINX)/docs.new
 	mv $(TEMP)/$(NGINX)/*.md $(TEMP)/$(NGINX)/docs.new
