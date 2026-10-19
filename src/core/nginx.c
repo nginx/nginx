@@ -1231,6 +1231,13 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
                NGX_OLDPID_EXT, sizeof(NGX_OLDPID_EXT));
 
 
+    if (ccf->working_directory.len) {
+        if (ngx_conf_full_name(cycle, &ccf->working_directory, 0) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+
 #if !(NGX_WIN32)
 
     if (ccf->user == (uid_t) NGX_CONF_UNSET_UINT && geteuid() == 0) {
