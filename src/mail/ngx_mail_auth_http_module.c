@@ -70,6 +70,7 @@ static void ngx_mail_auth_sleep_handler(ngx_event_t *rev);
 static ngx_int_t ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx);
 static void ngx_mail_auth_http_block_read(ngx_event_t *rev);
+static ngx_int_t ngx_mail_auth_http_test_client(ngx_connection_t *c);
 static void ngx_mail_auth_http_dummy_handler(ngx_event_t *ev);
 static ngx_buf_t *ngx_mail_auth_http_create_request(ngx_mail_session_t *s,
     ngx_pool_t *pool, ngx_mail_auth_http_conf_t *ahcf);
@@ -867,6 +868,11 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
     c = rev->data;
     s = c->data;
 
+    if (c->close || ngx_mail_auth_http_test_client(c) != NGX_OK) {
+        ngx_mail_close_connection(c);
+        return;
+    }
+
     if (rev->timedout) {
 
         rev->timedout = 0;
@@ -1117,6 +1123,38 @@ ngx_mail_auth_http_block_read(ngx_event_t *rev)
         ngx_destroy_pool(ctx->pool);
         ngx_mail_session_internal_server_error(s);
     }
+}
+
+
+static ngx_int_t
+ngx_mail_auth_http_test_client(ngx_connection_t *c)
+{
+    char       buf[1];
+    ssize_t    n;
+    ngx_err_t  err;
+
+    if (c->read->pending_eof) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client closed connection");
+        return NGX_ERROR;
+    }
+
+    n = recv(c->fd, buf, 1, MSG_PEEK);
+
+    if (n == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0, "client closed connection");
+        return NGX_ERROR;
+    }
+
+    if (n == -1) {
+        err = ngx_socket_errno;
+
+        if (err != NGX_EAGAIN) {
+            ngx_connection_error(c, err, "recv() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 
