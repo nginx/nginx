@@ -468,6 +468,17 @@ ngx_quic_input_handler(ngx_event_t *rev)
     qc->send_timer_set = 0;
     ngx_add_timer(rev, qc->tp.max_idle_timeout);
 
+    /* run the posted output early, to avoid delaying acknowledgments */
+
+    if (qc->push.posted) {
+        ngx_delete_posted_event(&qc->push);
+
+        if (ngx_quic_output(c) != NGX_OK) {
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
+    }
+
     ngx_quic_connstate_dbg(c);
 }
 
