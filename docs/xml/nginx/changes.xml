@@ -5,6 +5,86 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.8" date="2026-10-21">
+
+<change>
+<para lang="ru">
+Изменение во внутреннем API:
+теперь парсер JSON сообщает о строках с escape-последовательностями
+отдельными событиями,
+а функция ngx_json_unescape_string() декодирует строку в отдельный буфер.
+</para>
+<para lang="en">
+Change in internal API:
+now the JSON parser reports strings with escape sequences
+as separate events,
+and the ngx_json_unescape_string() function decodes a string
+into a separate buffer.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь путь, указанный в директиве working_directory, определяется
+относительно префикса, а не относительно текущего каталога.
+</para>
+<para lang="en">
+now the path specified in the "working_directory" directive is relative
+to nginx prefix directory, but not to the current directory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+на старте или во время переконфигурации рабочие процессы завершались,
+если в директиве working_directory был указан некорректный каталог.
+</para>
+<para lang="en">
+worker processes exited on start or during reconfiguration
+if an invalid directory was specified in the "working_directory" directive.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/3 на платформах со строгим выравниванием
+рабочие процессы могли завершаться аварийно по сигналу SIGBUS.<br/>
+Спасибо Daewoo Choi.
+</para>
+<para lang="en">
+worker processes might be terminated abnormally on a SIGBUS signal
+when using HTTP/3 on platforms with strict alignment requirements.<br/>
+Thanks to Daewoo Choi.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании kernel TLS с OpenSSL 3.2.0 и более новыми версиями
+при закрытии SSL-соединений в логах могли появляться сообщения
+"recv() failed (5: Input/output error)".
+</para>
+<para lang="en">
+"recv() failed (5: Input/output error)" alerts might appear in logs
+when closing SSL connections
+if kernel TLS was used with OpenSSL 3.2.0 or newer.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+nginx не собирался на Solaris,
+если использовался параметр --with-control-api.
+</para>
+<para lang="en">
+nginx could not be built on Solaris
+if the --with-control-api option was used.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.7" date="2026-10-14">
 
 <change type="security">
