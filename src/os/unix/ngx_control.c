@@ -10,7 +10,7 @@
 
 
 #define NGX_CTRL_MAX_FD             64
-#define NGX_CTRL_MAX_REQUEST        1024
+#define NGX_CTRL_DFLT_MAX_REQUEST   1024
 #define NGX_CTRL_DFLT_CHLD_TIMEOUT  30000
 
 #define NGX_CTRL_OK                 200
@@ -51,6 +51,7 @@ typedef struct {
 
 typedef struct {
     ngx_msec_t     chld_proc_timeout;
+    ngx_uint_t     max_request_bytes;
 } ngx_control_conf_t;
 
 
@@ -62,6 +63,8 @@ static ngx_int_t ngx_control_content(ngx_control_request_t *r);
 static char *ngx_control_status_text(ngx_uint_t code);
 static void *ngx_control_create_conf(ngx_cycle_t *cycle);
 static char *ngx_control_init_conf(ngx_cycle_t *cycle, void *conf);
+static char *ngx_control_conf_block(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static ngx_int_t ngx_control_send_response(ngx_control_request_t *r,
     ngx_uint_t code, ngx_buf_t *body);
 static ngx_int_t ngx_control_handle_write(ngx_control_request_t *r);
@@ -142,10 +145,20 @@ static ngx_data_decl_t  ngx_control_config_fields[] = {
 };
 
 static ngx_command_t  ngx_control_core_commands[] = {
-    { ngx_string("control_api_helper_timeout_ms"),
-      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+    { ngx_string("control_api"),
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      ngx_control_conf_block,
+      0, 0, NULL },
+
+    { ngx_string("helper_timeout"),
+      NGX_CONTROL_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
       0, offsetof(ngx_control_conf_t, chld_proc_timeout), NULL },
+
+    { ngx_string("max_request_bytes"),
+      NGX_CONTROL_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      0, offsetof(ngx_control_conf_t, max_request_bytes), NULL },
 
       ngx_null_command
 };
@@ -172,15 +185,35 @@ ngx_module_t ngx_control_core_module = {
 };
 
 
+static char *
+ngx_control_conf_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char        *parse_ret;
+    ngx_uint_t   outer_type;
+
+    outer_type = cf->cmd_type;
+    cf->cmd_type = NGX_CONTROL_CONF;
+    parse_ret = ngx_conf_parse(cf, NULL);
+    if (parse_ret != NGX_CONF_OK) {
+        return parse_ret;
+    }
+
+    cf->cmd_type = outer_type;
+    return NGX_CONF_OK;
+}
+
+
 static void *
 ngx_control_create_conf(ngx_cycle_t *cycle)
 {
-    ngx_control_conf_t *conf = ngx_pcalloc(cycle->pool, sizeof(ngx_control_conf_t));
+    ngx_control_conf_t *conf = ngx_pcalloc(cycle->pool,
+                                           sizeof(ngx_control_conf_t));
     if (conf == NULL) {
         return NULL;
     }
 
     conf->chld_proc_timeout = NGX_CONF_UNSET_MSEC;
+    conf->max_request_bytes = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -192,6 +225,7 @@ ngx_control_init_conf(ngx_cycle_t *_cycle, void *conf)
     ngx_control_conf_t *cf = (ngx_control_conf_t *) conf;
 
     ngx_conf_init_msec_value(cf->chld_proc_timeout, NGX_CTRL_DFLT_CHLD_TIMEOUT);
+    ngx_conf_init_size_value(cf->max_request_bytes, NGX_CTRL_DFLT_MAX_REQUEST);
 
     return NGX_CONF_OK;
 }
@@ -519,7 +553,11 @@ ngx_control_handle_accept(void)
     ngx_fd_t                fd;
     ngx_err_t               err;
     struct pollfd          *pfd;
+    ngx_control_conf_t     *conf;
     ngx_control_request_t  *r;
+
+    conf = (ngx_control_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                               ngx_control_core_module);
 
     for ( ;; ) {
         fd = accept(ngx_control_pollfd[0].fd, NULL, NULL);
@@ -590,7 +628,7 @@ ngx_control_handle_accept(void)
             continue;
         }
 
-        r->in = ngx_create_temp_buf(r->pool, NGX_CTRL_MAX_REQUEST);
+        r->in = ngx_create_temp_buf(r->pool, conf->max_request_bytes);
         if (r->in == NULL) {
             ngx_destroy_pool(r->pool);
             ngx_close_socket(r->fd);
