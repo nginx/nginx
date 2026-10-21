@@ -2051,21 +2051,20 @@ ngx_http_file_cache_manager(void *data)
                        "http file cache size: %O c:%ui w:%i",
                        size, count, (ngx_int_t) watermark);
 
-        if (cache->min_free_percent >= 0) {
-            total_fs_size = ngx_fs_size(cache->path->name.data);
-
-            if (total_fs_size == NGX_MAX_OFF_T_VALUE) {
-                ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
-                               "failed to determine filesystem size "
-                               "for \"%V\"",
-                               &cache->path->name);
-                break;
-            }
-
-            cache->min_free = (total_fs_size / 100) * cache->min_free_percent;
-        }
-
         if (size < cache->max_size && count < watermark) {
+            if (cache->min_free_percent >= 0) {
+                total_fs_size = ngx_fs_size(cache->path->name.data);
+
+                if (total_fs_size == NGX_MAX_OFF_T_VALUE) {
+                    ngx_log_error(NGX_LOG_EMERG, ngx_cycle->log, 0,
+                                "failed to determine filesystem size "
+                                "for \"%V\"",
+                                &cache->path->name);
+                    break;
+                }
+
+                cache->min_free = (total_fs_size / 100) * cache->min_free_percent;
+            }
 
             if (!cache->min_free) {
                 break;
