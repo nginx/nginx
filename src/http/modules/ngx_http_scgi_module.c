@@ -1986,7 +1986,12 @@ ngx_http_scgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+
     clcf->handler = ngx_http_scgi_handler;
+
+    if (clcf->name.len && clcf->name.data[clcf->name.len - 1] == '/') {
+        clcf->auto_redirect = 1;
+    }
 
     value = cf->args->elts;
 
@@ -2021,10 +2026,6 @@ ngx_http_scgi_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     scf->upstream.upstream = ngx_http_upstream_add(cf, &u, 0);
     if (scf->upstream.upstream == NULL) {
         return NGX_CONF_ERROR;
-    }
-
-    if (clcf->name.len && clcf->name.data[clcf->name.len - 1] == '/') {
-        clcf->auto_redirect = 1;
     }
 
     return NGX_CONF_OK;
