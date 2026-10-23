@@ -217,6 +217,7 @@ struct ngx_http_proxy_v2_peer_s {
     ngx_http_upstream_t           *upstream;
     ngx_log_t                     *log;
     ngx_str_t                      key;
+    ngx_uint_t                     max_streams;  /* local concurrency limit */
 
     void                          *data;
     ngx_event_get_peer_pt          get;
@@ -290,7 +291,7 @@ static ngx_uint_t ngx_http_proxy_v2_output_has_shadow(
 static ngx_uint_t ngx_http_proxy_v2_session_need_close(
     ngx_http_proxy_v2_session_t *sess);
 static ngx_uint_t ngx_http_proxy_v2_session_stream_limit(
-    ngx_http_proxy_v2_session_t *sess);
+    ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_peer_t *peer);
 static ngx_uint_t ngx_http_proxy_v2_session_io_pending(
     ngx_http_proxy_v2_session_t *sess);
 static void ngx_http_proxy_v2_discard_output(ngx_http_proxy_v2_session_t *sess);
@@ -2650,7 +2651,8 @@ ngx_http_proxy_v2_session_need_close(ngx_http_proxy_v2_session_t *sess)
 
 
 static ngx_uint_t
-ngx_http_proxy_v2_session_stream_limit(ngx_http_proxy_v2_session_t *sess)
+ngx_http_proxy_v2_session_stream_limit(ngx_http_proxy_v2_session_t *sess,
+    ngx_http_proxy_v2_peer_t *peer)
 {
     /*
      * Reservations and attached request streams share this limit, including
@@ -2658,7 +2660,9 @@ ngx_http_proxy_v2_session_stream_limit(ngx_http_proxy_v2_session_t *sess)
      * This conservative limit is independent of pending connection I/O.
      */
 
-    return ngx_min(sess->max_streams, NGX_HTTP_PROXY_V2_MAX_ATTACHED_STREAMS);
+    return ngx_min(ngx_min(sess->max_streams,
+                           NGX_HTTP_PROXY_V2_MAX_ATTACHED_STREAMS),
+                   peer->max_streams);
 }
 
 
@@ -5956,14 +5960,15 @@ static ngx_int_t
 ngx_http_proxy_v2_init_peer(ngx_http_request_t *r,
     ngx_http_upstream_srv_conf_t *us)
 {
-    u_char                    *p;
-    size_t                     len;
-    socklen_t                  local;
-    ngx_str_t                 *origin;
-    ngx_peer_connection_t     *pc;
-    ngx_http_upstream_t       *u;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_http_proxy_v2_peer_t  *peer;
+    u_char                     *p;
+    size_t                      len;
+    socklen_t                   local;
+    ngx_str_t                  *origin;
+    ngx_peer_connection_t      *pc;
+    ngx_http_upstream_t        *u;
+    ngx_http_core_loc_conf_t   *clcf;
+    ngx_http_proxy_v2_peer_t   *peer;
+    ngx_http_proxy_loc_conf_t  *plcf;
     struct {
         ngx_http_upstream_srv_conf_t  *upstream;
         ngx_http_upstream_conf_t      *conf;
@@ -6006,6 +6011,9 @@ ngx_http_proxy_v2_init_peer(ngx_http_request_t *r,
     peer->upstream = u;
     peer->log = clcf->error_log;
     peer->cacheable = 1;
+
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+    peer->max_streams = plcf->http2_max_concurrent_streams;
 
 #if (NGX_HTTP_SSL)
     /* variable TLS identities need a handshake, not a cached connection */
@@ -6182,7 +6190,7 @@ ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
-    limit = ngx_http_proxy_v2_session_stream_limit(sess);
+    limit = ngx_http_proxy_v2_session_stream_limit(sess, peer);
 
     /* this request already owns one of the reserved stream slots */
 
@@ -6693,7 +6701,7 @@ ngx_http_proxy_v2_get_peer(ngx_peer_connection_t *pc, void *data)
         /* a full session may regain capacity and does not need to close */
 
         if (sess->nstreams + sess->nreserved
-            >= ngx_http_proxy_v2_session_stream_limit(sess))
+            >= ngx_http_proxy_v2_session_stream_limit(sess, peer))
         {
             continue;
         }
