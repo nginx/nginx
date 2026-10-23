@@ -76,8 +76,6 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
                        qc->streams.server_streams_bidi,
                        qc->streams.server_max_streams_bidi, id);
 
-        qc->streams.server_streams_bidi++;
-
     } else {
         if (qc->streams.server_streams_uni
             >= qc->streams.server_max_streams_uni)
@@ -97,13 +95,18 @@ ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi)
                        " streams:%uL max:%uL id:0x%xL",
                        qc->streams.server_streams_uni,
                        qc->streams.server_max_streams_uni, id);
-
-        qc->streams.server_streams_uni++;
     }
 
     qs = ngx_quic_create_stream(pc, id);
     if (qs == NULL) {
         return NULL;
+    }
+
+    if (bidi) {
+        qc->streams.server_streams_bidi++;
+
+    } else {
+        qc->streams.server_streams_uni++;
     }
 
     sc = qs->connection;
