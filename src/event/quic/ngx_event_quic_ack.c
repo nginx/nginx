@@ -1257,7 +1257,7 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
                     }
                 }
 
-                if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
+                if (!pkt->need_ack) {
                     ctx->pending_ack = NGX_QUIC_UNSET_PN;
                 }
             }
@@ -1352,8 +1352,11 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
                         }
                     }
 
-                    if (prev_pending == ctx->pending_ack || !pkt->need_ack) {
+                    if (!pkt->need_ack) {
                         ctx->pending_ack = NGX_QUIC_UNSET_PN;
+
+                    } else if (prev_pending == ctx->pending_ack) {
+                        ctx->pending_ack = pn;
                     }
                 }
 
