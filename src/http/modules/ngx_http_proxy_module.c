@@ -202,6 +202,15 @@ static ngx_conf_enum_t  ngx_http_proxy_http_version[] = {
 };
 
 
+#if (NGX_HTTP_V2)
+
+static ngx_conf_num_bounds_t  ngx_http_proxy_http2_streams_bounds = {
+    ngx_conf_check_num_bounds, 1, 0x7fffffff
+};
+
+#endif
+
+
 ngx_module_t  ngx_http_proxy_module;
 
 
@@ -616,6 +625,17 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, http_version),
       &ngx_http_proxy_http_version },
+
+#if (NGX_HTTP_V2)
+
+    { ngx_string("proxy_http2_max_concurrent_streams"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_num_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_proxy_loc_conf_t, http2_max_concurrent_streams),
+      &ngx_http_proxy_http2_streams_bounds },
+
+#endif
 
 #if (NGX_HTTP_SSL)
 
@@ -3654,6 +3674,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     conf->cookie_flags = NGX_CONF_UNSET_PTR;
 
     conf->http_version = NGX_CONF_UNSET_UINT;
+    conf->http2_max_concurrent_streams = NGX_CONF_UNSET_UINT;
 
     conf->headers_hash_max_size = NGX_CONF_UNSET_UINT;
     conf->headers_hash_bucket_size = NGX_CONF_UNSET_UINT;
@@ -4071,6 +4092,9 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_uint_value(conf->http_version, prev->http_version,
                               NGX_HTTP_VERSION_11);
 
+    ngx_conf_merge_uint_value(conf->http2_max_concurrent_streams,
+                              prev->http2_max_concurrent_streams, 128);
+
     ngx_conf_merge_uint_value(conf->headers_hash_max_size,
                               prev->headers_hash_max_size, 512);
 
@@ -4113,6 +4137,44 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         clcf->handler = ngx_http_proxy_handler;
     }
+
+#if (NGX_HTTP_V2)
+
+    if (conf->http_version == NGX_HTTP_VERSION_20) {
+        conf->upstream.change_buffering = 0;
+
+        if (conf->upstream.upstream || conf->proxy_lengths) {
+            if (!conf->upstream.buffering) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"proxy_buffering off\" is not supported "
+                                   "with \"proxy_http_version 2\"");
+                return NGX_CONF_ERROR;
+            }
+
+#if (NGX_HTTP_CACHE)
+
+            if (conf->upstream.cache) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"proxy_cache\" is not supported "
+                                   "with \"proxy_http_version 2\"");
+                return NGX_CONF_ERROR;
+            }
+
+#endif
+
+            if (conf->upstream.limit_rate
+                && (conf->upstream.limit_rate->lengths
+                    || conf->upstream.limit_rate->u.size))
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"proxy_limit_rate\" is not supported "
+                                   "with \"proxy_http_version 2\"");
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
+
+#endif
 
     if (conf->body_source.data == NULL) {
         conf->body_flushes = prev->body_flushes;
