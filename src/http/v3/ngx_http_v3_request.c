@@ -51,7 +51,8 @@ static const struct {
     { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
     { ngx_string("PATCH"),     NGX_HTTP_PATCH },
     { ngx_string("TRACE"),     NGX_HTTP_TRACE },
-    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT }
+    { ngx_string("CONNECT"),   NGX_HTTP_CONNECT },
+    { ngx_string("QUERY"),     NGX_HTTP_QUERY }
 };
 
 
