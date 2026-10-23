@@ -222,6 +222,7 @@ ngx_quic_rtt_sample(ngx_connection_t *c, ngx_quic_ack_frame_t *ack,
         qc->avg_rtt = latest_rtt;
         qc->rttvar = latest_rtt / 2;
         qc->first_rtt = ngx_current_msec;
+        qc->congestion.pacing_time = ngx_current_msec;
 
     } else {
         qc->min_rtt = ngx_min(qc->min_rtt, latest_rtt);
@@ -445,7 +446,7 @@ ngx_quic_congestion_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 
 done:
 
-    if (blocked && cg->in_flight < cg->window) {
+    if (blocked && cg->in_flight < cg->window && !qc->push.timer_set) {
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
 }
@@ -850,7 +851,9 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
         return;
     }
 
-    ngx_post_event(&qc->push, &ngx_posted_events);
+    if (!qc->push.timer_set) {
+        ngx_post_event(&qc->push, &ngx_posted_events);
+    }
 }
 
 
@@ -874,9 +877,6 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
     }
 
     blocked = (cg->in_flight >= cg->window) ? 1 : 0;
-
-    cg->in_flight -= f->plen;
-    f->plen = 0;
 
     timer = f->send_time - cg->recovery_start;
 
@@ -918,7 +918,10 @@ ngx_quic_congestion_lost(ngx_connection_t *c, ngx_quic_frame_t *f)
 
 done:
 
-    if (blocked && cg->in_flight < cg->window) {
+    cg->in_flight -= f->plen;
+    f->plen = 0;
+
+    if (blocked && cg->in_flight < cg->window && !qc->push.timer_set) {
         ngx_post_event(&qc->push, &ngx_posted_events);
     }
 }
@@ -1205,10 +1208,27 @@ ngx_quic_ack_packet(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     if (pkt->need_ack) {
 
-        ngx_post_event(&qc->push, &ngx_posted_events);
+        if (ctx->level == NGX_QUIC_ENCRYPTION_APPLICATION && !qc->push.posted
+            && ctx->send_ack + 1 < NGX_QUIC_MAX_ACK_GAP)
+        {
+            if (!qc->push.timer_set
+                || (ngx_msec_int_t) (ngx_current_msec + qc->tp.max_ack_delay
+                                     - qc->push.timer.key)
+                    < 0)
+            {
+                if (qc->push.timer_set) {
+                    ngx_del_timer(&qc->push);
+                }
 
-        if (ctx->send_ack == 0) {
-            ctx->ack_delay_start = ngx_current_msec;
+                ngx_add_timer(&qc->push, qc->tp.max_ack_delay);
+            }
+
+        } else {
+            if (qc->push.timer_set) {
+                ngx_del_timer(&qc->push);
+            }
+
+            ngx_post_event(&qc->push, &ngx_posted_events);
         }
 
         ctx->send_ack++;
@@ -1421,29 +1441,8 @@ insert:
 ngx_int_t
 ngx_quic_generate_ack(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 {
-    ngx_msec_t              delay;
-    ngx_quic_connection_t  *qc;
-
     if (!ctx->send_ack) {
         return NGX_OK;
-    }
-
-    if (ctx->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
-
-        delay = ngx_current_msec - ctx->ack_delay_start;
-        qc = ngx_quic_get_connection(c);
-
-        if (ngx_queue_empty(&ctx->frames)
-            && ctx->send_ack < NGX_QUIC_MAX_ACK_GAP
-            && delay < qc->tp.max_ack_delay)
-        {
-            if (!qc->push.timer_set && !qc->closing) {
-                ngx_add_timer(&qc->push,
-                              qc->tp.max_ack_delay - delay);
-            }
-
-            return NGX_OK;
-        }
     }
 
     if (ngx_quic_send_ack(c, ctx) != NGX_OK) {
