@@ -73,6 +73,27 @@ if [ $ngx_found = no ]; then
 fi
 
 
+if [ $ngx_found = no ]; then
+
+    # pkg-config
+    if [ x$PKG_CONFIG = x ]; then
+      PKG_CONFIG="pkg-config"
+    fi
+
+    ngx_feature="libxslt (pkg-config)"
+    ngx_feature_path="$($PKG_CONFIG --cflags-only-I libxslt | sed -e 's/-I//g')"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="$($PKG_CONFIG --libs-only-L libxslt | sed -e 's/-L/-R/') $($PKG_CONFIG --libs libxslt)"
+    else
+        ngx_feature_libs="$($PKG_CONFIG --libs libxslt)"
+    fi
+
+    . auto/feature
+
+fi
+
+
 if [ $ngx_found = yes ]; then
 
     CORE_INCS="$CORE_INCS $ngx_feature_path"
@@ -153,6 +174,27 @@ if [ $ngx_found = no ]; then
     fi
 
     . auto/feature
+fi
+
+
+if [ $ngx_found = no ]; then
+
+    # pkg-config
+    if [ x$PKG_CONFIG = x ]; then
+      PKG_CONFIG="pkg-config"
+    fi
+
+    ngx_feature="libexslt (pkg-config)"
+    ngx_feature_path="$($PKG_CONFIG --cflags-only-I libexslt | sed -e 's/-I//g')"
+
+    if [ $NGX_RPATH = YES ]; then
+        ngx_feature_libs="$($PKG_CONFIG --libs-only-L libexslt | sed -e 's/-L/-R/') $($PKG_CONFIG --libs libexslt)"
+    else
+        ngx_feature_libs="$($PKG_CONFIG --libs libexslt)"
+    fi
+
+    . auto/feature
+
 fi
 
 
