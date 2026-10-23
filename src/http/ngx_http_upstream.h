@@ -168,6 +168,7 @@ typedef struct {
     ngx_msec_t                       connect_timeout;
     ngx_msec_t                       send_timeout;
     ngx_msec_t                       read_timeout;
+    ngx_msec_t                       header_timeout;
     ngx_msec_t                       next_upstream_timeout;
 
     size_t                           send_lowat;
