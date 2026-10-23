@@ -191,6 +191,7 @@ UNIX_SRCS="$CORE_SRCS $EVENT_SRCS \
 
 UNIX_CONTROL_API_DEPS=src/os/unix/ngx_control.h
 UNIX_CONTROL_API_SRCS=src/os/unix/ngx_control.c
+UNIX_CONTROL_API_MODULE=ngx_control_core_module
 
 POSIX_DEPS=src/os/unix/ngx_posix_config.h
 
