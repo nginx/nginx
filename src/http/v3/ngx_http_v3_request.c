@@ -17,6 +17,8 @@ static void ngx_http_v3_cleanup_request(void *data);
 static void ngx_http_v3_process_request(ngx_event_t *rev);
 static ngx_int_t ngx_http_v3_process_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
+static void ngx_http_v3_apply_pending_priority(ngx_connection_t *c,
+    ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_validate_header(ngx_http_request_t *r,
     ngx_str_t *name, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_process_pseudo_header(ngx_http_request_t *r,
@@ -25,6 +27,8 @@ static ngx_int_t ngx_http_v3_init_pseudo_headers(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_process_request_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_cookie(ngx_http_request_t *r, ngx_str_t *value);
 static ngx_int_t ngx_http_v3_construct_cookie_header(ngx_http_request_t *r);
+static ngx_int_t ngx_http_v3_priority(ngx_http_request_t *r, ngx_str_t *value);
+static ngx_int_t ngx_http_v3_process_priority(ngx_http_request_t *r);
 static void ngx_http_v3_read_client_request_body_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_do_read_client_request_body(ngx_http_request_t *r);
 static ngx_int_t ngx_http_v3_request_body_filter(ngx_http_request_t *r,
@@ -243,6 +247,10 @@ ngx_http_v3_init_request_stream(ngx_connection_t *c)
 
     h3c->nrequests++;
 
+    /* each opened request stream grants a small PRIORITY_UPDATE allowance */
+
+    h3c->priority_limit += NGX_HTTP_V3_PRIORITY_UPDATES_PER_STREAM;
+
     if (h3c->keepalive.timer_set) {
         ngx_del_timer(&h3c->keepalive);
     }
@@ -388,7 +396,12 @@ ngx_http_v3_wait_request_handler(ngx_event_t *rev)
     r->v3_parse->header_limit = cscf->large_client_header_buffers.size
                                 * cscf->large_client_header_buffers.num;
 
+    ngx_http_priority_state_init(&r->v3_parse->priority);
+
+    ngx_http_v3_apply_pending_priority(c, r);
+
     c->data = r;
+    ngx_quic_set_stream_app_ready(c);
     c->requests = (c->quic->id >> 2) + 1;
 
     cln = ngx_pool_cleanup_add(r->pool, 0);
@@ -654,6 +667,21 @@ ngx_http_v3_process_header(ngx_http_request_t *r, ngx_str_t *name,
 
     if (ngx_http_v3_init_pseudo_headers(r) != NGX_OK) {
         return NGX_ERROR;
+    }
+
+    if (name->len == 8
+        && ngx_strncmp(name->data, "priority", 8) == 0)
+    {
+        /*
+         * Collect the value for RFC 9218 priority parsing, then fall through
+         * so the field is also recorded in r->headers_in like any other
+         * header (observable via $http_priority and forwarded to upstreams).
+         */
+
+        if (ngx_http_v3_priority(r, value) != NGX_OK) {
+            ngx_http_close_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return NGX_ERROR;
+        }
     }
 
     if (name->len == cookie.len
@@ -1080,6 +1108,10 @@ ngx_http_v3_process_request_header(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    if (ngx_http_v3_process_priority(r) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
     if (r->headers_in.server.len == 0) {
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "client sent neither \":authority\" nor \"Host\" header");
@@ -1273,6 +1305,348 @@ ngx_http_v3_construct_cookie_header(ngx_http_request_t *r)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v3_priority(ngx_http_request_t *r, ngx_str_t *value)
+{
+    ngx_str_t    *val;
+    ngx_array_t  *priorities;
+
+    priorities = r->v3_parse->priorities;
+
+    if (priorities == NULL) {
+        priorities = ngx_array_create(r->pool, 1, sizeof(ngx_str_t));
+        if (priorities == NULL) {
+            return NGX_ERROR;
+        }
+
+        r->v3_parse->priorities = priorities;
+    }
+
+    val = ngx_array_push(priorities);
+    if (val == NULL) {
+        return NGX_ERROR;
+    }
+
+    *val = *value;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_v3_process_priority(ngx_http_request_t *r)
+{
+    u_char               *p;
+    size_t                len;
+    ngx_str_t             value, *vals;
+    ngx_uint_t            i;
+    ngx_array_t          *priorities;
+    ngx_http_priority_t   priority, *e;
+
+    priorities = r->v3_parse->priorities;
+
+    if (priorities == NULL) {
+        return NGX_OK;
+    }
+
+    /*
+     * RFC 9218, Section 7: a PRIORITY_UPDATE frame overrides the Priority
+     * header field, so ignore the header once a frame has been applied.
+     */
+
+    if (r->v3_parse->priority_update) {
+        return NGX_OK;
+    }
+
+    vals = priorities->elts;
+
+    if (priorities->nelts == 1) {
+        value = vals[0];
+
+    } else {
+
+        /* combine the field lines into a single value, "v1, v2, ..." */
+
+        len = 0;
+
+        for (i = 0; i < priorities->nelts; i++) {
+            len += vals[i].len + 2;
+        }
+
+        len -= 2;
+
+        p = ngx_pnalloc(r->pool, len);
+        if (p == NULL) {
+            return NGX_ERROR;
+        }
+
+        value.data = p;
+        value.len = len;
+
+        for (i = 0; /* void */ ; i++) {
+            p = ngx_cpymem(p, vals[i].data, vals[i].len);
+
+            if (i == priorities->nelts - 1) {
+                break;
+            }
+
+            *p++ = ','; *p++ = ' ';
+        }
+    }
+
+    /* a malformed value is ignored (RFC 8941, Section 4.2) */
+
+    if (ngx_http_priority_parse(&value, &priority) != NGX_OK) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "http3 ignoring malformed priority header");
+        return NGX_OK;
+    }
+
+    r->v3_parse->priority.client = priority;
+    ngx_http_priority_state_update(&r->v3_parse->priority);
+
+    e = &r->v3_parse->priority.effective;
+
+    ngx_quic_set_stream_priority(r->connection, e->urgency, e->incremental);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http3 priority header: u=%ud, i=%ud",
+                   e->urgency, e->incremental);
+
+    return NGX_OK;
+}
+
+
+static ngx_inline ngx_uint_t
+ngx_http_v3_request_ready(ngx_connection_t *sc)
+{
+    /* true once the request is attached (c->data = r) and r->v3_parse set */
+
+    return ngx_quic_stream_app_ready(sc) && sc->data != NULL;
+}
+
+
+ngx_int_t
+ngx_http_v3_set_priority(ngx_connection_t *c, uint64_t id,
+    ngx_http_priority_t *value)
+{
+    ngx_uint_t                       i;
+    ngx_connection_t                *pc, *sc;
+    ngx_http_request_t              *r;
+    ngx_http_priority_t              priority;
+    ngx_http_v3_session_t           *h3c;
+    ngx_http_v3_srv_conf_t          *h3scf;
+    ngx_http_v3_pending_priority_t  *pp;
+
+    h3c = ngx_http_v3_get_session(c);
+
+    /* charge the frame against the budget; exhaustion is excessive load */
+
+    if (h3c->priority_limit == 0) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent too many PRIORITY_UPDATE frames");
+        return NGX_HTTP_V3_ERR_EXCESSIVE_LOAD;
+    }
+
+    h3c->priority_limit--;
+
+    /*
+     * The Prioritized Element ID must identify a client-initiated
+     * bidirectional (request) stream.  A server-initiated or unidirectional
+     * id is a validly encoded but invalid identifier, which RFC 9218
+     * requires to be treated as a connection error of type H3_ID_ERROR
+     * (not H3_FRAME_ERROR, which is for malformed frame payloads).
+     */
+    if (id & NGX_QUIC_STREAM_SERVER_INITIATED) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent PRIORITY_UPDATE for "
+                      "server-initiated stream %uL", id);
+        return NGX_HTTP_V3_ERR_ID_ERROR;
+    }
+
+    if (id & NGX_QUIC_STREAM_UNIDIRECTIONAL) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent PRIORITY_UPDATE for "
+                      "unidirectional stream %uL", id);
+        return NGX_HTTP_V3_ERR_ID_ERROR;
+    }
+
+    pc = c->quic->parent;
+
+    /*
+     * The id must also be within the range the client is currently permitted
+     * to open: an id at or above the advertised MAX_STREAMS limit identifies
+     * a stream that cannot yet exist.  RFC 9218 requires such an id to be
+     * rejected as H3_ID_ERROR rather than buffered, so it cannot occupy the
+     * pending-priority table.
+     */
+    if (!ngx_quic_client_bidi_stream_id_allowed(pc, id)) {
+        ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                      "client sent PRIORITY_UPDATE for stream %uL "
+                      "beyond the current stream limit", id);
+        return NGX_HTTP_V3_ERR_ID_ERROR;
+    }
+
+    /*
+     * The Prioritized Element ID is validated above whenever the frame
+     * completes; a malformed Priority Field Value (value == NULL) is then
+     * ignored (RFC 8941, Section 4.2) once the id has been checked.
+     */
+    if (value == NULL) {
+        return NGX_OK;
+    }
+
+    /*
+     * A PRIORITY_UPDATE carries a complete parameter set (RFC 9218 Section 7):
+     * omitted parameters and an empty value reset to the defaults that
+     * ngx_http_priority_parse() has already seeded into *value, so it applies
+     * as-is rather than retaining a stale prior signal.
+     */
+    priority = *value;
+
+    /*
+     * If the target request stream already exists and its request has been
+     * fully initialized, apply the priority to it immediately.  This also
+     * covers re-prioritization of an in-flight response.
+     *
+     * A QUIC stream connection may exist before its ngx_http_request_t is
+     * created: until ngx_http_v3_init_request_stream() assigns c->data = r
+     * (and allocates r->v3_parse), sc->data still points at the
+     * ngx_http_connection_t, so it must not be treated as a request.
+     * ngx_http_v3_request_ready() performs that check safely; when the
+     * stream exists but is not yet a request, fall through and buffer the
+     * update so ngx_http_v3_apply_pending_priority() applies it at init.
+     */
+    sc = ngx_quic_find_stream_connection(pc, id);
+
+    if (sc != NULL && ngx_http_v3_request_ready(sc)) {
+        ngx_http_priority_t  *e;
+
+        r = sc->data;
+
+        r->v3_parse->priority.client = priority;
+        r->v3_parse->priority_update = 1;
+        ngx_http_priority_state_update(&r->v3_parse->priority);
+
+        e = &r->v3_parse->priority.effective;
+
+        ngx_quic_set_stream_priority(sc, e->urgency, e->incremental);
+
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 PRIORITY_UPDATE applied to stream "
+                       "%uL: u=%ud", id, e->urgency);
+
+        return NGX_OK;
+    }
+
+    /*
+     * Request stream ids are opened by the client in increasing order.
+     * next_request_id tracks the id of the most recently initialized
+     * request stream plus one.  An id below it that is not an existing,
+     * not-yet-initialized stream belongs to a stream that has already been
+     * created (and by now closed); there is nothing left to buffer for it.
+     */
+    if (sc == NULL && id < h3c->next_request_id) {
+        return NGX_OK;
+    }
+
+    /* buffer priority for a stream not yet created or not yet initialized */
+
+    h3scf = ngx_http_v3_get_module_srv_conf(c, ngx_http_v3_module);
+
+    if (h3c->pending_priorities == NULL) {
+        h3c->pending_priorities = ngx_array_create(pc->pool, 4,
+                                      sizeof(ngx_http_v3_pending_priority_t));
+        if (h3c->pending_priorities == NULL) {
+            return NGX_ERROR;
+        }
+    }
+
+    pp = h3c->pending_priorities->elts;
+
+    for (i = 0; i < h3c->pending_priorities->nelts; i++) {
+        if (pp[i].id == id) {
+            pp[i].priority = priority;
+
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                           "http3 PRIORITY_UPDATE updated pending for "
+                           "stream %uL: u=%ud", id, priority.urgency);
+            return NGX_OK;
+        }
+    }
+
+    if (h3c->pending_priorities->nelts >= h3scf->max_concurrent_streams) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 PRIORITY_UPDATE ignored, pending limit "
+                       "reached for stream %uL", id);
+        return NGX_OK;
+    }
+
+    pp = ngx_array_push(h3c->pending_priorities);
+    if (pp == NULL) {
+        return NGX_ERROR;
+    }
+
+    pp->id = id;
+    pp->priority = priority;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http3 PRIORITY_UPDATE buffered for stream "
+                   "%uL: u=%ud", id, priority.urgency);
+
+    return NGX_OK;
+}
+
+
+static void
+ngx_http_v3_apply_pending_priority(ngx_connection_t *c, ngx_http_request_t *r)
+{
+    uint64_t                         id;
+    ngx_uint_t                       i, n;
+    ngx_http_priority_t             *e;
+    ngx_http_v3_session_t           *h3c;
+    ngx_http_v3_pending_priority_t  *pp;
+
+    h3c = ngx_http_v3_get_session(c);
+
+    if (h3c->pending_priorities == NULL) {
+        return;
+    }
+
+    id = c->quic->id;
+
+    pp = h3c->pending_priorities->elts;
+    n = h3c->pending_priorities->nelts;
+
+    for (i = 0; i < n; i++) {
+        if (pp[i].id != id) {
+            continue;
+        }
+
+        r->v3_parse->priority.client = pp[i].priority;
+        r->v3_parse->priority_update = 1;
+        ngx_http_priority_state_update(&r->v3_parse->priority);
+
+        e = &r->v3_parse->priority.effective;
+
+        ngx_quic_set_stream_priority(c, e->urgency, e->incremental);
+
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                       "http3 applied pending priority for stream "
+                       "%uL: u=%ud, i=%ud",
+                       id, e->urgency, e->incremental);
+
+        n--;
+        if (i < n) {
+            pp[i] = pp[n];
+        }
+        h3c->pending_priorities->nelts = n;
+
+        break;
+    }
 }
 
 

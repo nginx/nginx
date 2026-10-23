@@ -124,7 +124,7 @@ if [ $HTTP = YES ]; then
     fi
 
 
-    if [ $HTTP_V2 = YES ]; then
+    if [ $HTTP_V2 = YES -o $HTTP_V3 = YES ]; then
         HTTP_DEPS="$HTTP_DEPS $HTTP_PRIORITY_DEPS"
         HTTP_SRCS="$HTTP_SRCS $HTTP_PRIORITY_SRCS"
     fi

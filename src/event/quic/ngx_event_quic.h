@@ -43,6 +43,9 @@
 #define NGX_QUIC_STREAM_SERVER_INITIATED     0x01
 #define NGX_QUIC_STREAM_UNIDIRECTIONAL       0x02
 
+/* RFC 9218 default urgency for a stream with no explicit priority */
+#define NGX_QUIC_STREAM_DEFAULT_URGENCY      3
+
 
 typedef ngx_int_t (*ngx_quic_init_pt)(ngx_connection_t *c);
 typedef void (*ngx_quic_shutdown_pt)(ngx_connection_t *c);
@@ -122,6 +125,25 @@ struct ngx_quic_stream_s {
     ngx_quic_buffer_t              recv;
     ngx_quic_stream_send_state_e   send_state;
     ngx_quic_stream_recv_state_e   recv_state;
+
+    /*
+     * RFC 9218 extensible priority, pushed down from the application layer
+     * (e.g. HTTP/3) via ngx_quic_set_stream_priority().  Kept protocol-
+     * agnostic so the QUIC layer does not depend on HTTP types.  Lower
+     * urgency value means higher priority (0..7, default 3).
+     */
+    ngx_uint_t                     urgency;
+
+    unsigned                       incremental:1;
+
+    /*
+     * Set by the application layer once it has attached its per-stream
+     * object to c->data (for HTTP/3, the ngx_http_request_t).  Before this
+     * is set, c->data still points at the connection-level object, so code
+     * reaching a stream by id (e.g. an out-of-band PRIORITY_UPDATE) must not
+     * treat c->data as the application's per-stream object.
+     */
+    unsigned                       app_ready:1;
     unsigned                       cancelable:1;
     unsigned                       fin_acked:1;
 };
@@ -130,6 +152,14 @@ struct ngx_quic_stream_s {
 void ngx_quic_recvmsg(ngx_event_t *ev);
 void ngx_quic_run(ngx_connection_t *c, ngx_quic_conf_t *conf);
 ngx_connection_t *ngx_quic_open_stream(ngx_connection_t *c, ngx_uint_t bidi);
+ngx_connection_t *ngx_quic_find_stream_connection(ngx_connection_t *pc,
+    uint64_t id);
+ngx_int_t ngx_quic_client_bidi_stream_id_allowed(ngx_connection_t *pc,
+    uint64_t id);
+void ngx_quic_set_stream_app_ready(ngx_connection_t *c);
+ngx_int_t ngx_quic_stream_app_ready(ngx_connection_t *c);
+void ngx_quic_set_stream_priority(ngx_connection_t *c, ngx_uint_t urgency,
+    ngx_uint_t incremental);
 void ngx_quic_finalize_connection(ngx_connection_t *c, ngx_uint_t err,
     const char *reason);
 void ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
