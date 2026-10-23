@@ -412,6 +412,7 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_http_auth_basic_loc_conf_t *alcf = conf;
 
     ngx_str_t                         *value;
+    ngx_file_info_t                    fi;
     ngx_http_compile_complex_value_t   ccv;
 
     if (alcf->user_file != NGX_CONF_UNSET_PTR) {
@@ -435,6 +436,22 @@ ngx_http_auth_basic_user_file(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
         return NGX_CONF_ERROR;
+    }
+
+    if (alcf->user_file->lengths == NULL) {
+
+        if (ngx_file_info(alcf->user_file->value.data, &fi)
+            == NGX_FILE_ERROR)
+        {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, ngx_errno,
+                               ngx_file_info_n " \"%s\" failed",
+                               alcf->user_file->value.data);
+
+        } else if (!ngx_is_file(&fi)) {
+            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
+                               "\"%s\" is not a regular file",
+                               alcf->user_file->value.data);
+        }
     }
 
     return NGX_CONF_OK;
