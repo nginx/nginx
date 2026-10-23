@@ -54,7 +54,7 @@ $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& \$(MAKE) -f win32/Makefile.gcc \\
-		CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
+		CFLAGS="$ZLIB_OPT" CC="\$(CC)" AR="\$(AR)" \\
 		libz.a
 
 END
@@ -77,7 +77,7 @@ $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& cp contrib/asm586/match.S . \\
-	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
+	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" AR="\$(AR)" \\
 		./configure \\
 	&& \$(MAKE) OBJA=match.o libz.a
 
@@ -94,7 +94,7 @@ $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
 	&& \$(MAKE) distclean \\
 	&& cp contrib/asm686/match.S . \\
-	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" \\
+	&& CFLAGS="$ZLIB_OPT -DASMV" CC="\$(CC)" AR="\$(AR)" \\
 		./configure \\
 	&& \$(MAKE) OBJA=match.o libz.a
 
@@ -126,7 +126,7 @@ if [ $done = NO ]; then
 $ZLIB/libz.a:	$NGX_MAKEFILE
 	cd $ZLIB \\
 	&& \$(MAKE) distclean \\
-	&& CFLAGS="$ZLIB_OPT" CC="\$(CC)" \\
+	&& CFLAGS="$ZLIB_OPT" CC="\$(CC)" AR="\$(AR)" \\
 		./configure \\
 	&& \$(MAKE) libz.a
 
