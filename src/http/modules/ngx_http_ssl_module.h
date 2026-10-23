@@ -13,6 +13,12 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
+typedef struct {
+    u_char *backend_ssl_protocol;
+    u_char *backend_ssl_cipher;
+} ngx_http_backend_ssl_ctx_t;
+
+extern ngx_module_t ngx_http_backend_ssl_module;
 
 typedef struct {
     ngx_ssl_t                       ssl;
