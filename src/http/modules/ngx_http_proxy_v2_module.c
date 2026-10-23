@@ -1101,28 +1101,27 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 
         ctx->header_sent = 1;
 
+        b = ctx->in->buf;
+        p = b->pos + sizeof(ngx_http_proxy_v2_connection_start) - 1;
+
         if (ctx->id != 1) {
-            /*
-             * keepalive connection: skip connection preface,
-             * update stream identifiers
-             */
+            /* keepalive connection: skip connection preface */
 
-            b = ctx->in->buf;
-            b->pos += sizeof(ngx_http_proxy_v2_connection_start) - 1;
+            b->pos = p;
+        }
 
-            p = b->pos;
+        /* update stream identifiers, including retries on a new connection */
 
-            while (p < b->last) {
-                f = (ngx_http_proxy_v2_frame_t *) p;
-                p += sizeof(ngx_http_proxy_v2_frame_t);
+        while (p < b->last) {
+            f = (ngx_http_proxy_v2_frame_t *) p;
+            p += sizeof(ngx_http_proxy_v2_frame_t);
 
-                f->stream_id_0 = (u_char) ((ctx->id >> 24) & 0xff);
-                f->stream_id_1 = (u_char) ((ctx->id >> 16) & 0xff);
-                f->stream_id_2 = (u_char) ((ctx->id >> 8) & 0xff);
-                f->stream_id_3 = (u_char) (ctx->id & 0xff);
+            f->stream_id_0 = (u_char) ((ctx->id >> 24) & 0xff);
+            f->stream_id_1 = (u_char) ((ctx->id >> 16) & 0xff);
+            f->stream_id_2 = (u_char) ((ctx->id >> 8) & 0xff);
+            f->stream_id_3 = (u_char) (ctx->id & 0xff);
 
-                p += (f->length_0 << 16) + (f->length_1 << 8) + f->length_2;
-            }
+            p += (f->length_0 << 16) + (f->length_1 << 8) + f->length_2;
         }
 
         if (ctx->in->buf->last_buf) {
