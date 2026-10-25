@@ -368,7 +368,7 @@ main(int argc, char *const *argv)
 #endif
 
 #if (NGX_CONTROL_API)
-    if (ngx_process == NGX_PROCESS_SINGLE) {
+    if (ngx_control_api_enabled && ngx_process == NGX_PROCESS_SINGLE) {
         ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
                       "control API unavailable in single process mode");
 
