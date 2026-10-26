@@ -1589,6 +1589,21 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     u->connection_initialized = 0;
 
+    /*
+     * Wrap the initialized balancer once, before the first peer selection.
+     * Runtime-resolved peers may have no upstream server configuration.
+     */
+
+    if (u->init_peer && !u->peer_initialized) {
+        if (u->init_peer(r, u->upstream) != NGX_OK) {
+            ngx_http_upstream_finalize_request(r, u,
+                                               NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        u->peer_initialized = 1;
+    }
+
     r->connection->log->action = "connecting to upstream";
 
     if (u->state && u->state->response_time == (ngx_msec_t) -1) {
