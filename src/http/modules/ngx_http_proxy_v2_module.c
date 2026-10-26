@@ -214,6 +214,8 @@ typedef struct {
     size_t                         recv_queued;
 
     off_t                          length;
+    off_t                          body_received;
+    off_t                          body_filtered;
 
     ngx_uint_t                     error;
 
@@ -2026,8 +2028,8 @@ ngx_http_proxy_v2_filter_init(void *data)
             return NGX_ERROR;
         }
 
-        u->length = 0;
-        u->pipe->length = 0;
+        u->length = stream->done ? 0 : 1;
+        u->pipe->length = u->length;
 
     } else {
         u->length = 1;
@@ -2042,7 +2044,9 @@ static ngx_int_t
 ngx_http_proxy_v2_finish_response(ngx_http_request_t *r,
     ngx_http_proxy_v2_stream_t *stream)
 {
-    if (!stream->input_closed || stream->done) {
+    if (!stream->input_closed || stream->done
+        || stream->body_received != stream->body_filtered)
+    {
         return NGX_OK;
     }
 
@@ -2080,7 +2084,7 @@ ngx_http_proxy_v2_process_body(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    if (rc == NGX_AGAIN && !stream->done) {
+    if (!stream->done) {
         return NGX_AGAIN;
     }
 
@@ -2171,6 +2175,7 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
                 return NGX_ERROR;
             }
 
+            stream->body_received += size;
             buf->last = b->pos;
 
             if (stream->length != -1) {
@@ -2184,6 +2189,8 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
 
                 stream->length -= buf->last - buf->pos;
             }
+
+            stream->body_filtered += buf->last - buf->pos;
 
             continue;
         }
