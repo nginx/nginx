@@ -249,8 +249,9 @@ static ngx_int_t ngx_http_proxy_v2_non_buffered_filter(void *data,
     ssize_t bytes);
 static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
-static ngx_int_t ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_process_control_frame(
+    ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream,
+    ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_process_closed_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_skip_frame(ngx_http_proxy_v2_session_t *sess,
@@ -1845,7 +1846,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
             return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
 
-        rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
+        rc = ngx_http_proxy_v2_process_control_frame(sess, stream, b);
 
         if (rc == NGX_AGAIN) {
             goto again;
@@ -2593,20 +2594,14 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
+    ngx_http_proxy_v2_stream_t *stream, ngx_buf_t *b)
 {
-    ssize_t                       window_update;
-    ngx_int_t                     rc;
-    ngx_rbtree_t                 *tree;
-    ngx_rbtree_node_t            *node;
-    ngx_http_upstream_t          *u;
-    ngx_http_proxy_v2_stream_t   *stream;
-    ngx_http_proxy_v2_session_t  *sess;
-
-    u = r->upstream;
-    stream = ctx->stream;
-    sess = stream->session;
+    ssize_t                      window_update;
+    ngx_int_t                    rc;
+    ngx_rbtree_t                *tree;
+    ngx_rbtree_node_t           *node;
+    ngx_http_proxy_v2_stream_t  *s;
 
     if (sess->type == NGX_HTTP_V2_GOAWAY_FRAME) {
 
@@ -2631,7 +2626,12 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
         }
 
         sess->goaway = 1;
-        u->keepalive = 0;
+
+        if (stream == NULL) {
+            return NGX_OK;
+        }
+
+        stream->request->upstream->keepalive = 0;
 
         /*
          * Streams above the confirmed last stream ID need to be retried.
@@ -2642,7 +2642,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
         if (sess->goaway_last_stream_id < stream->id) {
 
             if (sess->goaway_error || stream->response_received) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                               "upstream sent goaway with error %ui",
                               sess->goaway_error);
             }
@@ -2670,7 +2670,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
         }
 
         if (sess->window_update == 0) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                           "upstream sent zero window update");
             return NGX_ERROR;
         }
@@ -2680,7 +2680,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             if (sess->window_update > (size_t) NGX_HTTP_V2_MAX_WINDOW
                                       - stream->send_window)
             {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                               "upstream sent too large window update");
                 return NGX_ERROR;
             }
@@ -2692,7 +2692,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             if (sess->window_update > NGX_HTTP_V2_MAX_WINDOW
                                       - sess->send_window)
             {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                               "upstream sent too large window update");
                 return NGX_ERROR;
             }
@@ -2700,8 +2700,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             sess->send_window += sess->window_update;
         }
 
-        if (stream->in) {
-            ngx_post_event(u->connection->write, &ngx_posted_events);
+        if (stream && stream->in) {
+            ngx_post_event(&stream->write, &ngx_posted_events);
         }
 
         return NGX_OK;
@@ -2739,22 +2739,21 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
                          node;
                          node = ngx_rbtree_next(tree, node))
                     {
-                        stream = ngx_rbtree_data(node,
-                                                ngx_http_proxy_v2_stream_t,
-                                                node);
+                        s = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t,
+                                            node);
 
-                        if (stream->send_window > 0
+                        if (s->send_window > 0
                             && window_update > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
-                                               - stream->send_window)
+                                               - s->send_window)
                         {
-                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                            ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                                           "upstream sent settings frame "
                                           "with too large initial window "
                                           "size: %ui", sess->setting_value);
                             return NGX_ERROR;
                         }
 
-                        stream->send_window += window_update;
+                        s->send_window += window_update;
                     }
                 }
 
@@ -2768,8 +2767,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             }
         }
 
-        if (sess->control || ctx->stream->in) {
-            ngx_post_event(u->connection->write, &ngx_posted_events);
+        if (stream && (sess->control || stream->in)) {
+            ngx_post_event(&stream->write, &ngx_posted_events);
         }
 
         return NGX_OK;
@@ -2791,13 +2790,15 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
-        ngx_post_event(u->connection->write, &ngx_posted_events);
+        if (stream) {
+            ngx_post_event(&stream->write, &ngx_posted_events);
+        }
 
         return NGX_OK;
     }
 
     if (sess->type == NGX_HTTP_V2_PUSH_PROMISE_FRAME) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+        ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                       "upstream sent unexpected push promise frame");
         return NGX_ERROR;
     }
@@ -3027,7 +3028,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
             continue;
         }
 
-        rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
+        rc = ngx_http_proxy_v2_process_control_frame(sess, stream, b);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
