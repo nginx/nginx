@@ -11,7 +11,32 @@
 #include <ngx_event_pipe.h>
 
 
+typedef struct {
+    ngx_buf_t                    buf;
+    ngx_queue_t                  writable;
+    ngx_queue_t                  pending;
+    u_char                      *start;
+    u_char                      *pos;
+    u_char                      *last;
+    u_char                      *end;
+    unsigned                     busy:1;
+    unsigned                     queued:1;
+} ngx_event_pipe_input_buf_t;
+
+
+struct ngx_event_pipe_input_s {
+    ngx_queue_t                  writable;
+    ngx_queue_t                  pending;
+    ngx_event_pipe_input_buf_t  *buffers;
+    ngx_pool_t                  *pool;
+    ngx_bufs_t                   bufs;
+    size_t                       capacity;
+    unsigned                     cancelled:1;
+};
+
+
 static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p);
+static void ngx_event_pipe_release_input(ngx_event_pipe_t *p, ngx_buf_t *buf);
 static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
 static ngx_int_t ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p);
 
@@ -1113,6 +1138,243 @@ ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
     p->free_raw_bufs->next = cl;
 
     return NGX_OK;
+}
+
+
+/*
+ * Each block has one published prefix and one collecting suffix.  Downstream
+ * and disk I/O may retain the prefix while the tail accepts credited input.
+ * Publication order is independent of writable order: a recycled older block
+ * may receive new bytes after pending data in other blocks.  A busy pending
+ * head stops publication, but never prevents writing to the remaining tails.
+ */
+
+ngx_int_t
+ngx_event_pipe_init_input(ngx_event_pipe_t *p, ngx_pool_t *pool,
+    ngx_bufs_t *bufs)
+{
+    u_char                      *start;
+    size_t                       size;
+    ngx_buf_t                   *buf;
+    ngx_int_t                    i;
+    ngx_chain_t                 *cl;
+    ngx_event_pipe_input_t      *input;
+    ngx_event_pipe_input_buf_t  *b;
+
+    if (bufs->num <= 0 || bufs->size == 0
+        || bufs->size > NGX_MAX_SIZE_T_VALUE / (size_t) bufs->num
+        || sizeof(ngx_event_pipe_input_buf_t)
+           > NGX_MAX_SIZE_T_VALUE / (size_t) bufs->num)
+    {
+        return NGX_ERROR;
+    }
+
+    input = p->input;
+
+    if (input) {
+        if (input->pool != pool || input->bufs.num != bufs->num
+            || input->bufs.size != bufs->size)
+        {
+            return NGX_ERROR;
+        }
+
+        if (!input->cancelled || p->writing) {
+            return NGX_BUSY;
+        }
+
+        /*
+         * Downstream may have consumed terminal output after the pipe ran.
+         * Leave descriptors queued for normal recycling and file accounting.
+         */
+
+        for (cl = p->busy; cl; cl = cl->next) {
+            buf = cl->buf;
+
+            if (buf->tag != p->tag) {
+                continue;
+            }
+
+            if (ngx_buf_size(buf) != 0) {
+                break;
+            }
+
+            if (buf->last_shadow
+                && buf->shadow->tag
+                   == (ngx_buf_tag_t) &ngx_event_pipe_init_input)
+            {
+                ngx_event_pipe_release_input(p, buf->shadow);
+                buf->last_shadow = 0;
+                buf->shadow = NULL;
+            }
+        }
+
+        for (i = 0; i < bufs->num; i++) {
+            if (input->buffers[i].busy) {
+                return NGX_BUSY;
+            }
+        }
+
+    } else {
+        input = ngx_pcalloc(pool, sizeof(ngx_event_pipe_input_t));
+        if (input == NULL) {
+            return NGX_ERROR;
+        }
+
+        size = bufs->num * sizeof(ngx_event_pipe_input_buf_t);
+        input->buffers = ngx_pcalloc(pool, size);
+        if (input->buffers == NULL) {
+            return NGX_ERROR;
+        }
+
+        start = ngx_palloc(pool, bufs->size * bufs->num);
+        if (start == NULL) {
+            return NGX_ERROR;
+        }
+
+        input->pool = pool;
+        input->bufs = *bufs;
+
+        for (i = 0; i < bufs->num; i++) {
+            b = &input->buffers[i];
+            b->start = start;
+            start += bufs->size;
+            b->end = start;
+        }
+
+        p->input = input;
+    }
+
+    ngx_queue_init(&input->writable);
+    ngx_queue_init(&input->pending);
+
+    for (i = 0; i < bufs->num; i++) {
+        b = &input->buffers[i];
+        b->pos = b->start;
+        b->last = b->start;
+        b->queued = 0;
+        ngx_queue_insert_tail(&input->writable, &b->writable);
+    }
+
+    input->capacity = bufs->size * bufs->num;
+    input->cancelled = 0;
+
+    return NGX_OK;
+}
+
+
+size_t
+ngx_event_pipe_input_capacity(ngx_event_pipe_t *p)
+{
+    return p->input && !p->input->cancelled ? p->input->capacity : 0;
+}
+
+
+size_t
+ngx_event_pipe_input_writable(ngx_event_pipe_t *p, u_char **buf)
+{
+    ngx_queue_t                 *q;
+    ngx_event_pipe_input_buf_t  *b;
+
+    *buf = NULL;
+
+    if (p->input == NULL || p->input->cancelled
+        || ngx_queue_empty(&p->input->writable))
+    {
+        return 0;
+    }
+
+    q = ngx_queue_head(&p->input->writable);
+    b = ngx_queue_data(q, ngx_event_pipe_input_buf_t, writable);
+    *buf = b->last;
+
+    return b->end - b->last;
+}
+
+
+void
+ngx_event_pipe_commit_input(ngx_event_pipe_t *p, size_t size)
+{
+    ngx_queue_t                 *q;
+    ngx_event_pipe_input_t      *input;
+    ngx_event_pipe_input_buf_t  *b;
+
+    if (size == 0) {
+        return;
+    }
+
+    input = p->input;
+    q = ngx_queue_head(&input->writable);
+    b = ngx_queue_data(q, ngx_event_pipe_input_buf_t, writable);
+
+    if (!b->queued) {
+        ngx_queue_insert_tail(&input->pending, &b->pending);
+        b->queued = 1;
+    }
+
+    b->last += size;
+    input->capacity -= size;
+    p->read_length += size;
+
+    if (b->last == b->end) {
+        ngx_queue_remove(&b->writable);
+    }
+}
+
+
+ngx_uint_t
+ngx_event_pipe_input_ready(ngx_event_pipe_t *p)
+{
+    ngx_queue_t                 *q;
+    ngx_event_pipe_input_buf_t  *b;
+
+    if (p->input == NULL || p->input->cancelled
+        || ngx_queue_empty(&p->input->pending))
+    {
+        return 0;
+    }
+
+    q = ngx_queue_head(&p->input->pending);
+    b = ngx_queue_data(q, ngx_event_pipe_input_buf_t, pending);
+
+    return !b->busy;
+}
+
+
+static void
+ngx_event_pipe_release_input(ngx_event_pipe_t *p, ngx_buf_t *buf)
+{
+    ngx_event_pipe_input_buf_t  *b;
+
+    b = (ngx_event_pipe_input_buf_t *) buf;
+    b->busy = 0;
+    buf->shadow = NULL;
+
+    if (b->pos == b->last) {
+        if (b->last == b->end) {
+            ngx_queue_insert_tail(&p->input->writable, &b->writable);
+        }
+
+        p->input->capacity += b->last - b->start;
+        b->pos = b->start;
+        b->last = b->start;
+    }
+
+    /* Releasing a prefix may unblock publication without restoring capacity. */
+
+    if (p->input_event && !p->input->cancelled) {
+        ngx_post_event(p->input_event, &ngx_posted_events);
+    }
+}
+
+
+void
+ngx_event_pipe_cancel_input(ngx_event_pipe_t *p)
+{
+    if (p->input) {
+        p->input->cancelled = 1;
+    }
+
+    p->input_event = NULL;
 }
 
 

@@ -14,7 +14,8 @@
 #include <ngx_event.h>
 
 
-typedef struct ngx_event_pipe_s  ngx_event_pipe_t;
+typedef struct ngx_event_pipe_s        ngx_event_pipe_t;
+typedef struct ngx_event_pipe_input_s  ngx_event_pipe_input_t;
 
 typedef ngx_int_t (*ngx_event_pipe_input_filter_pt)(ngx_event_pipe_t *p,
                                                     ngx_buf_t *buf);
@@ -43,6 +44,9 @@ struct ngx_event_pipe_s {
 
     ngx_event_pipe_input_filter_pt    input_filter;
     void                             *input_ctx;
+
+    ngx_event_pipe_input_t           *input;
+    ngx_event_t                      *input_event;
 
     void                            (*read_timer)(ngx_event_pipe_t *p);
 
@@ -103,6 +107,45 @@ struct ngx_event_pipe_s {
 ngx_int_t ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write);
 ngx_int_t ngx_event_pipe_copy_input_filter(ngx_event_pipe_t *p, ngx_buf_t *buf);
 ngx_int_t ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b);
+
+
+/*
+ * Reserved input contains only body bytes.  Initialize before granting credit.
+ * Invalid sizes or a different pool or buffer sizes return NGX_ERROR.
+ * Reinitialization requires cancellation, no pending file writes and no
+ * published references; otherwise return NGX_BUSY.
+ * It resets only input storage, not pipe flags or read_length.  The pool must
+ * outlive all shadows and asynchronous writes.  Do not replace live p->input.
+ * Filters append complete shadow groups to p->in, using p->tag and preserving
+ * flush.  Only the pipe submits these views to downstream or file I/O.  A
+ * failed filter abandons its publication.  Filters must not reenter the pipe
+ * or produce input; each pass publishes at most one prefix per block.
+ */
+ngx_int_t ngx_event_pipe_init_input(ngx_event_pipe_t *p, ngx_pool_t *pool,
+    ngx_bufs_t *bufs);
+size_t ngx_event_pipe_input_capacity(ngx_event_pipe_t *p);
+
+/*
+ * Borrow a tail and immediately commit at most the returned size.  These
+ * operations neither allocate nor invoke callbacks.  Do not process the pipe,
+ * cancel, reset or yield between them.  A failed read needs no rollback;
+ * committing zero bytes is a no-op.
+ */
+size_t ngx_event_pipe_input_writable(ngx_event_pipe_t *p, u_char **buf);
+void ngx_event_pipe_commit_input(ngx_event_pipe_t *p, size_t size);
+
+/*
+ * Ready means publishable input; a busy prefix can hide a pending suffix.
+ * Completion requires received-versus-filtered accounting, not readiness.
+ */
+ngx_uint_t ngx_event_pipe_input_ready(ngx_event_pipe_t *p);
+
+/*
+ * Recycling posts input_event for capacity or publication progress.  Cancel
+ * suppresses notifications but retains live references.  The owner removes
+ * already-posted events and cancels input before teardown, including NGX_ABORT.
+ */
+void ngx_event_pipe_cancel_input(ngx_event_pipe_t *p);
 
 
 #endif /* _NGX_EVENT_PIPE_H_INCLUDED_ */
