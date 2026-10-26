@@ -157,6 +157,7 @@ typedef struct {
     size_t                         send_window;
     size_t                         recv_window;
     ngx_uint_t                     last_stream_id;
+    ngx_uint_t                     last_opened_id;
 
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
@@ -206,7 +207,6 @@ typedef struct {
     unsigned                       input_closed:1;
     unsigned                       done:1;
     unsigned                       rst:1;
-    unsigned                       admission_rejected:1;
     unsigned                       send_waiting:1;
     unsigned                       send_expired:1;
     unsigned                       output_stopped:1;
@@ -269,8 +269,6 @@ static ngx_int_t ngx_http_proxy_v2_init_peer(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_v2_init_stream(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_peer_t *peer);
-static ngx_int_t ngx_http_proxy_v2_check_capacity(
-    ngx_http_proxy_v2_stream_t *stream);
 static void ngx_http_proxy_v2_connection_handler(ngx_event_t *ev);
 static void ngx_http_proxy_v2_stream_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_proxy_v2_test_io(ngx_connection_t *c,
@@ -1442,10 +1440,6 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
         }
     }
 
-    if (ngx_http_proxy_v2_check_capacity(stream) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
     if (stream->in || sess->output.source) {
         if (!stream->send_waiting) {
             stream->send_waiting = 1;
@@ -2504,10 +2498,6 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
             }
         }
 
-        if (stream && ngx_http_proxy_v2_check_capacity(stream) != NGX_OK) {
-            return NGX_HTTP_UPSTREAM_CONNECTION_ERROR;
-        }
-
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
         }
@@ -3173,7 +3163,7 @@ ngx_http_proxy_v2_validate_frame(ngx_http_proxy_v2_session_t *sess)
 
         if (sess->stream_id
             && (!(sess->stream_id & 1)
-                || sess->stream_id > sess->last_stream_id))
+                || sess->stream_id > sess->last_opened_id))
         {
             ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
                           "upstream sent frame for unknown stream %ui",
@@ -4892,7 +4882,8 @@ ngx_http_proxy_v2_stream_ready(ngx_http_proxy_v2_stream_t *stream)
     }
 
     if (!stream->header_sent) {
-        return !stream->session->goaway;
+        return stream->header_started
+               || (!stream->session->goaway && stream->session->max_streams);
     }
 
     return ngx_buf_size(stream->in->buf) <= 0
@@ -4981,10 +4972,6 @@ ngx_http_proxy_v2_send(ngx_http_proxy_v2_session_t *sess)
             } else {
                 if (!ngx_http_proxy_v2_stream_ready(stream)) {
                     return NGX_OK;
-                }
-
-                if (ngx_http_proxy_v2_check_capacity(stream) != NGX_OK) {
-                    return NGX_ERROR;
                 }
 
                 rc = ngx_http_proxy_v2_output_stream(stream);
@@ -5266,6 +5253,7 @@ ngx_http_proxy_v2_write(ngx_http_proxy_v2_session_t *sess, off_t limit)
 
         if (out->kind == ngx_http_proxy_v2_output_headers && stream) {
             stream->header_started = 1;
+            sess->last_opened_id = stream->id;
 
         } else if (out->kind == ngx_http_proxy_v2_output_data) {
             sess->send_window -= out->payload;
@@ -6391,22 +6379,6 @@ ngx_http_proxy_v2_handle_stream_read(ngx_connection_t *c, ssize_t n)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_check_capacity(ngx_http_proxy_v2_stream_t *stream)
-{
-    if (!stream->header_started && stream->session->max_streams == 0) {
-        ngx_log_error(NGX_LOG_ERR, &stream->session->log, 0,
-                      "upstream has no available http2 streams");
-
-        stream->admission_rejected = 1;
-        stream->request->upstream->keepalive = 0;
-        return NGX_DECLINED;
-    }
-
-    return NGX_OK;
-}
-
-
-static ngx_int_t
 ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_peer_t *peer)
 {
@@ -6420,10 +6392,10 @@ ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
 
     session = peer->session;
 
-    /* only one stream can use the request-driven I/O path */
+    /* Keep admission serial until shared response dispatch is available. */
 
-    if (session->nstreams || session->max_streams == 0
-        || session->closing || session->finishing || session->goaway)
+    if (session->nstreams || session->closing || session->finishing
+        || session->goaway)
     {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "too many active http2 streams");
@@ -7141,11 +7113,6 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     c = pc->connection;
     session = peer->session;
     stream = peer->stream;
-
-    if (stream && stream->admission_rejected) {
-        state = NGX_PEER_NEXT;
-        pc->cached = 0;
-    }
 
     if (session) {
         session->ref_count++;
