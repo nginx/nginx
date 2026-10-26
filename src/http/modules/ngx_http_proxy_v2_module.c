@@ -60,6 +60,20 @@ typedef struct {
     ngx_uint_t                     setting_value;
     u_char                         ping_data[8];
 
+    ngx_uint_t                     fragment_state;
+    ngx_uint_t                     index;
+
+    ngx_str_t                      name;
+    ngx_str_t                      value;
+    u_char                        *field_end;
+
+    size_t                         header_limit;
+    size_t                         header_block_limit;
+    size_t                         header_size;
+    size_t                         field_length;
+    size_t                         field_rest;
+    u_char                         field_state;
+
     size_t                         init_window;
     size_t                         send_window;
     size_t                         recv_window;
@@ -68,6 +82,8 @@ typedef struct {
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
 
+    unsigned                       literal:1;
+    unsigned                       field_huffman:1;
     unsigned                       goaway:1;
 } ngx_http_proxy_v2_session_t;
 
@@ -98,8 +114,6 @@ typedef struct {
 typedef struct {
     ngx_http_proxy_ctx_t           ctx;
 
-    ngx_uint_t                     fragment_state;
-
     ngx_chain_t                   *out;
     ngx_chain_t                   *free;
     ngx_chain_t                   *busy;
@@ -110,21 +124,6 @@ typedef struct {
     ngx_uint_t                     settings;
 
     off_t                          length;
-
-    ngx_uint_t                     index;
-    ngx_str_t                      name;
-    ngx_str_t                      value;
-
-    u_char                        *field_end;
-    size_t                         header_limit;
-    size_t                         header_block_limit;
-    size_t                         header_size;
-    size_t                         field_length;
-    size_t                         field_rest;
-    u_char                         field_state;
-
-    unsigned                       literal:1;
-    unsigned                       field_huffman:1;
 
     unsigned                       output_blocked:1;
     unsigned                       status:1;
@@ -200,7 +199,8 @@ static ngx_int_t ngx_http_proxy_v2_validate_frame(
 static ngx_int_t ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
+static void ngx_http_proxy_v2_clear_header(ngx_http_proxy_v2_session_t *sess);
 static ngx_int_t ngx_http_proxy_v2_validate_header_name(ngx_http_request_t *r,
     ngx_str_t *s);
 static ngx_int_t ngx_http_proxy_v2_validate_header_value(ngx_http_request_t *r,
@@ -1761,18 +1761,18 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "http proxy header: \"%V: %V\"",
-                               &ctx->name, &ctx->value);
+                               &sess->name, &sess->value);
 
-                if (ctx->name.len && ctx->name.data[0] == ':') {
+                if (sess->name.len && sess->name.data[0] == ':') {
 
-                    if (ctx->name.len != sizeof(":status") - 1
-                        || ngx_strncmp(ctx->name.data, ":status",
+                    if (sess->name.len != sizeof(":status") - 1
+                        || ngx_strncmp(sess->name.data, ":status",
                                        sizeof(":status") - 1)
                            != 0)
                     {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream sent invalid header \"%V: %V\"",
-                                      &ctx->name, &ctx->value);
+                                      &sess->name, &sess->value);
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
@@ -1782,7 +1782,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
-                    status_line = &ctx->value;
+                    status_line = &sess->value;
 
                     if (status_line->len != 3) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -1836,8 +1836,8 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     return NGX_ERROR;
                 }
 
-                h->key = ctx->name;
-                h->value = ctx->value;
+                h->key = sess->name;
+                h->value = sess->value;
                 h->lowcase_key = h->key.data;
                 h->hash = ngx_hash_key(h->key.data, h->key.len);
 
@@ -2833,13 +2833,13 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
                     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                    "http proxy trailer: \"%V: %V\"",
-                                   &ctx->name, &ctx->value);
+                                   &sess->name, &sess->value);
 
-                    if (ctx->name.len && ctx->name.data[0] == ':') {
+                    if (sess->name.len && sess->name.data[0] == ':') {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream sent invalid "
                                       "trailer \"%V: %V\"",
-                                      &ctx->name, &ctx->value);
+                                      &sess->name, &sess->value);
                         return NGX_ERROR;
                     }
 
@@ -2855,8 +2855,8 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                         return NGX_ERROR;
                     }
 
-                    h->key = ctx->name;
-                    h->value = ctx->value;
+                    h->key = sess->name;
+                    h->value = sess->value;
                     h->lowcase_key = h->key.data;
                     h->hash = ngx_hash_key(h->key.data, h->key.len);
 
@@ -3158,28 +3158,28 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
                        "http proxy parse header: start");
 
         if (sess->type == NGX_HTTP_V2_HEADERS_FRAME) {
-            ctx->header_block_limit = r->upstream->conf->buffer_size;
-            ctx->header_size = 0;
+            sess->header_block_limit = r->upstream->conf->buffer_size;
+            sess->header_size = 0;
         }
 
         /* Charge the complete frame once, before consuming its payload. */
 
         size = NGX_HTTP_V2_FRAME_HEADER_SIZE + sess->rest;
 
-        if (size > ctx->header_block_limit
-            || ctx->header_size > ctx->header_block_limit - size)
+        if (size > sess->header_block_limit
+            || sess->header_size > sess->header_block_limit - size)
         {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent too large http2 header block");
             return NGX_ERROR;
         }
 
-        ctx->header_size += size;
+        sess->header_size += size;
 
         if (sess->type == NGX_HTTP_V2_HEADERS_FRAME) {
             sess->header_stream_id = sess->stream_id;
-            ctx->fragment_state = 0;
-            ctx->header_limit = r->upstream->conf->buffer_size;
+            sess->fragment_state = 0;
+            sess->header_limit = r->upstream->conf->buffer_size;
 
             min = (sess->flags & NGX_HTTP_V2_PADDED_FLAG ? 1 : 0)
                   + (sess->flags & NGX_HTTP_V2_PRIORITY_FLAG ? 5 : 0);
@@ -3313,7 +3313,7 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
 
     if (state == sw_fragment) {
 
-        rc = ngx_http_proxy_v2_parse_fragment(r, ctx, b);
+        rc = ngx_http_proxy_v2_parse_fragment(r, sess, b);
 
         if (rc == NGX_AGAIN) {
             return NGX_AGAIN;
@@ -3350,12 +3350,13 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
 
         if (sess->flags & NGX_HTTP_V2_END_HEADERS_FLAG) {
 
-            if (ctx->fragment_state) {
+            if (sess->fragment_state) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent truncated http2 header");
                 return NGX_ERROR;
             }
 
+            ngx_http_proxy_v2_clear_header(sess);
             sess->header_stream_id = 0;
 
             return NGX_HTTP_PARSE_HEADER_DONE;
@@ -3372,12 +3373,11 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
 
 static ngx_int_t
 ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
+    ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
 {
-    u_char                        ch, *p, *last;
-    size_t                        len, size;
-    ngx_uint_t                    index, size_update;
-    ngx_http_proxy_v2_session_t  *sess;
+    u_char      ch, *p, *last;
+    size_t      len, size;
+    ngx_uint_t  index, size_update;
     enum {
         sw_start = 0,
         sw_index,
@@ -3395,8 +3395,6 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
         sw_value_bytes
     } state;
 
-    sess = ctx->stream->session;
-
     /* header block fragment */
 
 #if 0
@@ -3412,7 +3410,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
         last = b->pos + sess->rest - sess->padding;
     }
 
-    state = ctx->fragment_state;
+    state = sess->fragment_state;
 
     for (p = b->pos; p < last; p++) {
         ch = *p;
@@ -3425,7 +3423,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
         switch (state) {
 
         case sw_start:
-            ctx->index = 0;
+            sess->index = 0;
 
             if ((ch & 0x80) == 0x80) {
                 /*
@@ -3449,8 +3447,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "http proxy indexed header: %ui", index);
 
-                ctx->index = index;
-                ctx->literal = 0;
+                sess->index = index;
+                sess->literal = 0;
 
                 goto done;
 
@@ -3498,8 +3496,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                     break;
                 }
 
-                ctx->index = index;
-                ctx->literal = 1;
+                sess->index = index;
+                sess->literal = 1;
 
                 state = sw_value_length;
                 break;
@@ -3560,8 +3558,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 index = ch & ~0xf0;
 
                 if (index == 0x0f) {
-                    ctx->index = index;
-                    ctx->literal = 1;
+                    sess->index = index;
+                    sess->literal = 1;
                     state = sw_index;
                     break;
                 }
@@ -3575,8 +3573,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                                "http proxy literal header never indexed: %ui",
                                index);
 
-                ctx->index = index;
-                ctx->literal = 1;
+                sess->index = index;
+                sess->literal = 1;
 
                 state = sw_value_length;
                 break;
@@ -3611,8 +3609,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 index = ch & ~0xf0;
 
                 if (index == 0x0f) {
-                    ctx->index = index;
-                    ctx->literal = 1;
+                    sess->index = index;
+                    sess->literal = 1;
                     state = sw_index;
                     break;
                 }
@@ -3626,8 +3624,8 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                              "http proxy literal header without indexing: %ui",
                                index);
 
-                ctx->index = index;
-                ctx->literal = 1;
+                sess->index = index;
+                sess->literal = 1;
 
                 state = sw_value_length;
                 break;
@@ -3638,7 +3636,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             return NGX_ERROR;
 
         case sw_index:
-            ctx->index = ctx->index + (ch & ~0x80);
+            sess->index = sess->index + (ch & ~0x80);
 
             if (ch & 0x80) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -3647,29 +3645,29 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            if (ctx->index > 61) {
+            if (sess->index > 61) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent invalid http2 "
-                              "table index: %ui", ctx->index);
+                              "table index: %ui", sess->index);
                 return NGX_ERROR;
             }
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy header index: %ui", ctx->index);
+                           "http proxy header index: %ui", sess->index);
 
             state = sw_value_length;
             break;
 
         case sw_name_length:
-            ctx->field_huffman = ch & 0x80 ? 1 : 0;
-            ctx->field_length = ch & ~0x80;
+            sess->field_huffman = ch & 0x80 ? 1 : 0;
+            sess->field_length = ch & ~0x80;
 
-            if (ctx->field_length == 0x7f) {
+            if (sess->field_length == 0x7f) {
                 state = sw_name_length_2;
                 break;
             }
 
-            if (ctx->field_length == 0) {
+            if (sess->field_length == 0) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent zero http2 "
                               "header name length");
@@ -3680,7 +3678,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_name_length_2:
-            ctx->field_length += ch & ~0x80;
+            sess->field_length += ch & ~0x80;
 
             if (ch & 0x80) {
                 state = sw_name_length_3;
@@ -3691,7 +3689,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_name_length_3:
-            ctx->field_length += (ch & ~0x80) << 7;
+            sess->field_length += (ch & ~0x80) << 7;
 
             if (ch & 0x80) {
                 state = sw_name_length_4;
@@ -3702,7 +3700,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_name_length_4:
-            ctx->field_length += (ch & ~0x80) << 14;
+            sess->field_length += (ch & ~0x80) << 14;
 
             if (ch & 0x80) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -3715,25 +3713,25 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_name:
-            ctx->name.len = ctx->field_huffman ?
-                            ctx->field_length * 8 / 5 : ctx->field_length;
+            sess->name.len = sess->field_huffman ?
+                             sess->field_length * 8 / 5 : sess->field_length;
 
-            if (ctx->name.len > ctx->header_limit) {
+            if (sess->name.len > sess->header_limit) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent too large http2 "
                               "header name length: %uz",
-                              ctx->name.len);
+                              sess->name.len);
                 return NGX_ERROR;
             }
 
-            ctx->name.data = ngx_http_proxy_v2_alloc_header(r, ctx->name.len);
-            if (ctx->name.data == NULL) {
+            sess->name.data = ngx_http_proxy_v2_alloc_header(r, sess->name.len);
+            if (sess->name.data == NULL) {
                 return NGX_ERROR;
             }
 
-            ctx->field_end = ctx->name.data;
-            ctx->field_rest = ctx->field_length;
-            ctx->field_state = 0;
+            sess->field_end = sess->name.data;
+            sess->field_rest = sess->field_length;
+            sess->field_state = 0;
 
             state = sw_name_bytes;
 
@@ -3743,18 +3741,18 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy name: len:%uz h:%d last:%uz, rest:%uz",
-                           ctx->field_length,
-                           ctx->field_huffman,
+                           sess->field_length,
+                           sess->field_huffman,
                            last - p,
                            sess->rest - (p - b->pos));
 
-            size = ngx_min(last - p, (ssize_t) ctx->field_rest);
-            ctx->field_rest -= size;
+            size = ngx_min(last - p, (ssize_t) sess->field_rest);
+            sess->field_rest -= size;
 
-            if (ctx->field_huffman) {
-                if (ngx_http_huff_decode(&ctx->field_state, p, size,
-                                         &ctx->field_end,
-                                         ctx->field_rest == 0,
+            if (sess->field_huffman) {
+                if (ngx_http_huff_decode(&sess->field_state, p, size,
+                                         &sess->field_end,
+                                         sess->field_rest == 0,
                                          r->connection->log)
                     != NGX_OK)
                 {
@@ -3763,33 +3761,33 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                     return NGX_ERROR;
                 }
 
-                ctx->name.len = ctx->field_end - ctx->name.data;
-                ctx->name.data[ctx->name.len] = '\0';
+                sess->name.len = sess->field_end - sess->name.data;
+                sess->name.data[sess->name.len] = '\0';
 
             } else {
-                ctx->field_end = ngx_cpymem(ctx->field_end, p, size);
-                ctx->name.data[ctx->name.len] = '\0';
+                sess->field_end = ngx_cpymem(sess->field_end, p, size);
+                sess->name.data[sess->name.len] = '\0';
             }
 
             p += size - 1;
 
-            if (ctx->field_rest == 0) {
+            if (sess->field_rest == 0) {
                 state = sw_value_length;
             }
 
             break;
 
         case sw_value_length:
-            ctx->field_huffman = ch & 0x80 ? 1 : 0;
-            ctx->field_length = ch & ~0x80;
+            sess->field_huffman = ch & 0x80 ? 1 : 0;
+            sess->field_length = ch & ~0x80;
 
-            if (ctx->field_length == 0x7f) {
+            if (sess->field_length == 0x7f) {
                 state = sw_value_length_2;
                 break;
             }
 
-            if (ctx->field_length == 0) {
-                ngx_str_set(&ctx->value, "");
+            if (sess->field_length == 0) {
+                ngx_str_set(&sess->value, "");
                 goto done;
             }
 
@@ -3797,7 +3795,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_value_length_2:
-            ctx->field_length += ch & ~0x80;
+            sess->field_length += ch & ~0x80;
 
             if (ch & 0x80) {
                 state = sw_value_length_3;
@@ -3808,7 +3806,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_value_length_3:
-            ctx->field_length += (ch & ~0x80) << 7;
+            sess->field_length += (ch & ~0x80) << 7;
 
             if (ch & 0x80) {
                 state = sw_value_length_4;
@@ -3819,7 +3817,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_value_length_4:
-            ctx->field_length += (ch & ~0x80) << 14;
+            sess->field_length += (ch & ~0x80) << 14;
 
             if (ch & 0x80) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -3832,25 +3830,25 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
             break;
 
         case sw_value:
-            ctx->value.len = ctx->field_huffman ?
-                             ctx->field_length * 8 / 5 : ctx->field_length;
+            sess->value.len = sess->field_huffman ?
+                              sess->field_length * 8 / 5 : sess->field_length;
 
-            if (ctx->value.len > ctx->header_limit) {
+            if (sess->value.len > sess->header_limit) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent too large http2 "
                               "header value length: %uz",
-                              ctx->value.len);
+                              sess->value.len);
                 return NGX_ERROR;
             }
 
-            ctx->value.data = ngx_http_proxy_v2_alloc_header(r, ctx->value.len);
-            if (ctx->value.data == NULL) {
+            sess->value.data = ngx_http_proxy_v2_alloc_header(r, sess->value.len);
+            if (sess->value.data == NULL) {
                 return NGX_ERROR;
             }
 
-            ctx->field_end = ctx->value.data;
-            ctx->field_rest = ctx->field_length;
-            ctx->field_state = 0;
+            sess->field_end = sess->value.data;
+            sess->field_rest = sess->field_length;
+            sess->field_state = 0;
 
             state = sw_value_bytes;
 
@@ -3860,18 +3858,18 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
 
             ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy value: len:%uz h:%d last:%uz, rest:%uz",
-                           ctx->field_length,
-                           ctx->field_huffman,
+                           sess->field_length,
+                           sess->field_huffman,
                            last - p,
                            sess->rest - (p - b->pos));
 
-            size = ngx_min(last - p, (ssize_t) ctx->field_rest);
-            ctx->field_rest -= size;
+            size = ngx_min(last - p, (ssize_t) sess->field_rest);
+            sess->field_rest -= size;
 
-            if (ctx->field_huffman) {
-                if (ngx_http_huff_decode(&ctx->field_state, p, size,
-                                         &ctx->field_end,
-                                         ctx->field_rest == 0,
+            if (sess->field_huffman) {
+                if (ngx_http_huff_decode(&sess->field_state, p, size,
+                                         &sess->field_end,
+                                         sess->field_rest == 0,
                                          r->connection->log)
                     != NGX_OK)
                 {
@@ -3880,17 +3878,17 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                     return NGX_ERROR;
                 }
 
-                ctx->value.len = ctx->field_end - ctx->value.data;
-                ctx->value.data[ctx->value.len] = '\0';
+                sess->value.len = sess->field_end - sess->value.data;
+                sess->value.data[sess->value.len] = '\0';
 
             } else {
-                ctx->field_end = ngx_cpymem(ctx->field_end, p, size);
-                ctx->value.data[ctx->value.len] = '\0';
+                sess->field_end = ngx_cpymem(sess->field_end, p, size);
+                sess->value.data[sess->value.len] = '\0';
             }
 
             p += size - 1;
 
-            if (ctx->field_rest == 0) {
+            if (sess->field_rest == 0) {
                 goto done;
             }
 
@@ -3903,54 +3901,54 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
 
         p++;
         sess->rest -= p - b->pos;
-        ctx->fragment_state = sw_start;
+        sess->fragment_state = sw_start;
         b->pos = p;
 
-        if (ctx->index) {
-            ctx->name = *ngx_http_v2_get_static_name(ctx->index);
+        if (sess->index) {
+            sess->name = *ngx_http_v2_get_static_name(sess->index);
         }
 
-        if (ctx->index && !ctx->literal) {
-            ctx->value = *ngx_http_v2_get_static_value(ctx->index);
+        if (sess->index && !sess->literal) {
+            sess->value = *ngx_http_v2_get_static_value(sess->index);
         }
 
-        if (!ctx->index) {
-            if (ngx_http_proxy_v2_validate_header_name(r, &ctx->name)
+        if (!sess->index) {
+            if (ngx_http_proxy_v2_validate_header_name(r, &sess->name)
                 != NGX_OK)
             {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent invalid header: \"%V: %V\"",
-                              &ctx->name, &ctx->value);
+                              &sess->name, &sess->value);
                 return NGX_ERROR;
             }
         }
 
-        if (!ctx->index || ctx->literal) {
-            if (ngx_http_proxy_v2_validate_header_value(r, &ctx->value)
+        if (!sess->index || sess->literal) {
+            if (ngx_http_proxy_v2_validate_header_value(r, &sess->value)
                 != NGX_OK)
             {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent invalid header: \"%V: %V\"",
-                              &ctx->name, &ctx->value);
+                              &sess->name, &sess->value);
                 return NGX_ERROR;
             }
         }
 
-        len = ctx->name.len + ctx->value.len;
+        len = sess->name.len + sess->value.len;
 
-        if (len > ctx->header_limit) {
+        if (len > sess->header_limit) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream sent too large http2 header");
             return NGX_ERROR;
         }
 
-        ctx->header_limit -= len;
+        sess->header_limit -= len;
 
         return NGX_OK;
     }
 
     sess->rest -= p - b->pos;
-    ctx->fragment_state = state;
+    sess->fragment_state = state;
     b->pos = p;
 
     if (sess->rest > sess->padding) {
@@ -3958,6 +3956,15 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
     }
 
     return NGX_DONE;
+}
+
+
+static void
+ngx_http_proxy_v2_clear_header(ngx_http_proxy_v2_session_t *sess)
+{
+    sess->name.data = NULL;
+    sess->value.data = NULL;
+    sess->field_end = NULL;
 }
 
 
@@ -4846,6 +4853,10 @@ ngx_http_proxy_v2_detach_stream(ngx_http_proxy_v2_stream_t *stream)
     ngx_http_proxy_v2_session_t  *session;
 
     session = stream->session;
+
+    if (session->header_stream_id == stream->id) {
+        ngx_http_proxy_v2_clear_header(session);
+    }
 
     ngx_rbtree_delete(&session->streams, &stream->node);
     session->nstreams--;
