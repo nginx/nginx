@@ -2358,7 +2358,12 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
             return;
         }
 
-        ngx_add_timer(c->read, u->conf->read_timeout);
+        if (u->read_timer) {
+            u->read_timer(r);
+
+        } else {
+            ngx_add_timer(c->read, u->conf->read_timeout);
+        }
 
         if (c->read->ready) {
             ngx_http_upstream_process_header(r, u);
@@ -2646,6 +2651,10 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
         goto done;
     }
 
+    if (u->header_input) {
+        goto again;
+    }
+
     for ( ;; ) {
 
         n = c->recv(c, u->buffer.last, u->buffer.end - u->buffer.last);
@@ -2700,6 +2709,9 @@ again:
         rc = u->process_header(r);
 
         if (rc == NGX_AGAIN) {
+            if (u->header_input) {
+                return;
+            }
 
             if (u->buffer.last == u->buffer.end) {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0,
@@ -2792,7 +2804,9 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     if (u->conf->pass_early_hints) {
 
-        u->early_hints_length += u->buffer.pos - u->buffer.start;
+        u->early_hints_length += u->header_input
+                                ? u->headers_in.header_size
+                                : (size_t) (u->buffer.pos - u->buffer.start);
 
         if (u->early_hints_length <= (off_t) u->conf->buffer_size) {
 

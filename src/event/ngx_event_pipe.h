@@ -44,6 +44,8 @@ struct ngx_event_pipe_s {
     ngx_event_pipe_input_filter_pt    input_filter;
     void                             *input_ctx;
 
+    void                            (*read_timer)(ngx_event_pipe_t *p);
+
     ngx_event_pipe_output_filter_pt   output_filter;
     void                             *output_ctx;
 

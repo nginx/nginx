@@ -75,6 +75,9 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
                 ngx_del_timer(rev);
             }
 
+        } else if (p->read_timer) {
+            p->read_timer(p);
+
         } else if (!rev->delayed) {
             if ((rev->active || p->upstream->logical) && !rev->ready) {
                 ngx_add_timer(rev, p->read_timeout);
