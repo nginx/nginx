@@ -2410,6 +2410,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 {
     ssize_t                       window_update;
     ngx_int_t                     rc;
+    ngx_rbtree_t                 *tree;
+    ngx_rbtree_node_t            *node;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
@@ -2519,6 +2521,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
     if (sess->type == NGX_HTTP_V2_SETTINGS_FRAME) {
 
+        tree = &sess->streams;
+
         for ( ;; ) {
             rc = ngx_http_proxy_v2_parse_settings(sess, b);
 
@@ -2542,18 +2546,30 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
                 window_update = (ssize_t) sess->setting_value
                                 - (ssize_t) sess->init_window;
 
-                if (stream->send_window > 0
-                    && window_update > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
-                                       - stream->send_window)
-                {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent settings frame "
-                                  "with too large initial window size: %ui",
-                                  sess->setting_value);
-                    return NGX_ERROR;
+                if (tree->root != tree->sentinel) {
+                    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+                         node;
+                         node = ngx_rbtree_next(tree, node))
+                    {
+                        stream = ngx_rbtree_data(node,
+                                                ngx_http_proxy_v2_stream_t,
+                                                node);
+
+                        if (stream->send_window > 0
+                            && window_update > (ssize_t) NGX_HTTP_V2_MAX_WINDOW
+                                               - stream->send_window)
+                        {
+                            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                          "upstream sent settings frame "
+                                          "with too large initial window "
+                                          "size: %ui", sess->setting_value);
+                            return NGX_ERROR;
+                        }
+
+                        stream->send_window += window_update;
+                    }
                 }
 
-                stream->send_window += window_update;
                 sess->init_window = sess->setting_value;
             }
         }
@@ -2564,7 +2580,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
             }
         }
 
-        if (ctx->out || stream->in) {
+        if (ctx->out || ctx->stream->in) {
             ngx_post_event(u->peer.connection->write, &ngx_posted_events);
         }
 
