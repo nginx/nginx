@@ -1520,7 +1520,8 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
 static ngx_int_t
 ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 {
-    u_char                         *pos;
+    u_char                         *p, *pos;
+    size_t                          size;
     ngx_str_t                      *status_line;
     ngx_int_t                       rc, status;
     ngx_buf_t                      *b;
@@ -1532,7 +1533,13 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
     u = r->upstream;
     b = &u->buffer;
-    pos = b->pos;
+    pos = b->start;
+
+#if (NGX_HTTP_CACHE)
+    if (r->cache) {
+        pos += r->cache->header_start;
+    }
+#endif
 
     ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy response: %*xs%s, len: %uz",
@@ -1552,22 +1559,19 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         if (ctx->state < ngx_http_proxy_v2_st_payload) {
 
+            /* Preserve the first response frame header for cache replay. */
+
+            if (!ctx->parsing_headers && !ngx_http_proxy_v2_cached(r)
+                && b->last - b->pos < NGX_HTTP_V2_FRAME_HEADER_SIZE)
+            {
+                goto again;
+            }
+
+            p = b->pos;
             rc = ngx_http_proxy_v2_parse_frame(r, ctx, b);
 
             if (rc == NGX_AGAIN) {
-
-                /*
-                 * there can be a lot of window update frames,
-                 * so we reset buffer if it is empty and we haven't
-                 * started parsing headers yet
-                 */
-
-                if (!ctx->parsing_headers) {
-                    b->pos = pos;
-                    b->last = b->pos;
-                }
-
-                return NGX_AGAIN;
+                goto again;
             }
 
             if (rc == NGX_ERROR) {
@@ -1601,6 +1605,16 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                               ctx->stream_id);
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
+
+            if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME
+                && !ngx_http_proxy_v2_cached(r))
+            {
+                /* Reclaim controls preceding headers in the same read. */
+
+                size = b->pos - p;
+                b->last = ngx_movemem(pos, p, b->last - p);
+                b->pos = pos + size;
+            }
         }
 
         /* frame payload */
@@ -1611,7 +1625,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
 
                 if (rc == NGX_AGAIN) {
-                    return NGX_AGAIN;
+                    goto again;
                 }
 
                 if (rc == NGX_ERROR) {
@@ -1627,7 +1641,11 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
 
-            if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
+            if (rc == NGX_AGAIN) {
+                goto again;
+            }
+
+            if (rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
                 return rc;
             }
 
@@ -1648,7 +1666,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
             rc = ngx_http_proxy_v2_skip_frame(ctx, b);
 
             if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
+                goto again;
             }
 
             continue;
@@ -1828,6 +1846,17 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         return NGX_AGAIN;
     }
+
+again:
+
+    if (!ctx->parsing_headers && !ngx_http_proxy_v2_cached(r)) {
+        /* Retain only undecoded frame-header bytes before the response. */
+
+        b->last = ngx_movemem(pos, b->pos, b->last - b->pos);
+        b->pos = pos;
+    }
+
+    return NGX_AGAIN;
 }
 
 
