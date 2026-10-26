@@ -136,6 +136,7 @@ static ngx_int_t ngx_http_proxy_v2_init_header_budget(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_v2_account_header(ngx_http_request_t *r,
     size_t size);
 static u_char *ngx_http_proxy_v2_alloc_header(ngx_http_request_t *r, size_t len);
+static ngx_int_t ngx_http_proxy_v2_init_connection(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
@@ -185,10 +186,6 @@ static ngx_int_t ngx_http_proxy_v2_send_window_update(ngx_http_request_t *r,
 
 static ngx_chain_t *ngx_http_proxy_v2_get_buf(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx);
-static ngx_http_proxy_v2_ctx_t *
-    ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r);
-static ngx_int_t ngx_http_proxy_v2_get_connection_data(
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc);
 static void ngx_http_proxy_v2_cleanup(void *data);
 
 static void ngx_http_proxy_v2_abort_request(ngx_http_request_t *r);
@@ -303,6 +300,7 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
 
     u->create_request = ngx_http_proxy_v2_create_request;
     u->reinit_request = ngx_http_proxy_v2_reinit_request;
+    u->init_connection = ngx_http_proxy_v2_init_connection;
     u->process_header = ngx_http_proxy_v2_process_header;
     u->abort_request = ngx_http_proxy_v2_abort_request;
     u->finalize_request = ngx_http_proxy_v2_finalize_request;
@@ -1195,7 +1193,7 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http proxy output filter");
 
-    ctx = ngx_http_proxy_v2_get_ctx(r);
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -1577,7 +1575,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                    b->pos, b->last - b->pos > 256 ? "..." : "",
                    b->last - b->pos);
 
-    ctx = ngx_http_proxy_v2_get_ctx(r);
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
 
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -4563,34 +4561,21 @@ ngx_http_proxy_v2_get_buf(ngx_http_request_t *r, ngx_http_proxy_v2_ctx_t *ctx)
 }
 
 
-static ngx_http_proxy_v2_ctx_t *
-ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_proxy_v2_init_connection(ngx_http_request_t *r)
 {
-    ngx_http_upstream_t      *u;
+    ngx_connection_t        *c;
+    ngx_pool_cleanup_t      *cln;
+    ngx_peer_connection_t   *pc;
     ngx_http_proxy_v2_ctx_t  *ctx;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
-
-    if (ctx->connection == NULL) {
-        u = r->upstream;
-
-        if (ngx_http_proxy_v2_get_connection_data(ctx, &u->peer) != NGX_OK) {
-            return NULL;
-        }
-    }
-
-    return ctx;
-}
-
-
-static ngx_int_t
-ngx_http_proxy_v2_get_connection_data(ngx_http_proxy_v2_ctx_t *ctx,
-    ngx_peer_connection_t *pc)
-{
-    ngx_connection_t    *c;
-    ngx_pool_cleanup_t  *cln;
-
+    pc = &r->upstream->peer;
     c = pc->connection;
+
+    /* The previous attempt may have failed before request I/O. */
+
+    ctx->connection = NULL;
 
     if (pc->cached) {
 
@@ -4610,7 +4595,7 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_proxy_v2_ctx_t *ctx,
             ngx_log_error(NGX_LOG_ERR, c->log, 0,
                           "no connection data found for "
                           "keepalive http2 connection");
-            return NGX_ERROR;
+            return NGX_DECLINED;
         }
 
         ctx->send_window = ctx->connection->init_window;

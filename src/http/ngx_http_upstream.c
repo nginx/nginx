@@ -39,6 +39,8 @@ static void ngx_http_upstream_connect(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_init_connection(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
 static void ngx_http_upstream_send_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_uint_t do_write);
 static ngx_int_t ngx_http_upstream_send_request_body(ngx_http_request_t *r,
@@ -1585,6 +1587,8 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_connection_t          *c;
     ngx_http_core_loc_conf_t  *clcf;
 
+    u->connection_initialized = 0;
+
     r->connection->log->action = "connecting to upstream";
 
     if (u->state && u->state->response_time == (ngx_msec_t) -1) {
@@ -2169,6 +2173,30 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
 }
 
 
+static ngx_int_t
+ngx_http_upstream_init_connection(ngx_http_request_t *r, ngx_http_upstream_t *u)
+{
+    ngx_int_t  rc;
+
+    rc = u->init_connection(r);
+
+    if (rc == NGX_DECLINED) {
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+        return NGX_ERROR;
+    }
+
+    if (rc != NGX_OK) {
+        ngx_http_upstream_finalize_request(r, u,
+                                           NGX_HTTP_INTERNAL_SERVER_ERROR);
+        return NGX_ERROR;
+    }
+
+    u->connection_initialized = 1;
+
+    return NGX_OK;
+}
+
+
 static void
 ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t do_write)
@@ -2188,6 +2216,12 @@ ngx_http_upstream_send_request(ngx_http_request_t *r, ngx_http_upstream_t *u,
     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
+    }
+
+    if (u->init_connection && !u->connection_initialized) {
+        if (ngx_http_upstream_init_connection(r, u) != NGX_OK) {
+            return;
+        }
     }
 
     c->log->action = "sending request to upstream";
@@ -2488,6 +2522,29 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
     if (!u->request_sent && ngx_http_upstream_test_connect(c) != NGX_OK) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         return;
+    }
+
+    if (u->init_connection && !u->connection_initialized) {
+#if (NGX_HTTP_SSL)
+        if (u->ssl && c->ssl == NULL) {
+            ngx_http_upstream_ssl_init_connection(r, u, c);
+            return;
+        }
+
+        if (u->ssl && !c->ssl->handshaked) {
+            return;
+        }
+#endif
+
+        if (ngx_http_upstream_init_connection(r, u) != NGX_OK) {
+            return;
+        }
+
+        /* Reading first must not lose the initial request write. */
+
+        if (c->write->ready) {
+            ngx_post_event(c->write, &ngx_posted_events);
+        }
     }
 
     if (u->buffer.start == NULL) {
