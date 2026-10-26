@@ -75,6 +75,7 @@ typedef struct {
     ngx_rbtree_t                   streams;
     ngx_rbtree_node_t              sentinel;
     ngx_uint_t                     nstreams;
+    ngx_uint_t                     max_streams;
 
     ngx_http_proxy_v2_state_e      state;
     ngx_uint_t                     frame_state;
@@ -154,6 +155,7 @@ typedef struct {
     unsigned                       input_closed:1;
     unsigned                       done:1;
     unsigned                       rst:1;
+    unsigned                       admission_rejected:1;
 } ngx_http_proxy_v2_stream_t;
 
 
@@ -217,6 +219,8 @@ static ngx_int_t ngx_http_proxy_v2_init_peer(ngx_http_request_t *r,
 static ngx_int_t ngx_http_proxy_v2_init_stream(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_peer_t *peer);
+static ngx_int_t ngx_http_proxy_v2_check_capacity(
+    ngx_http_proxy_v2_stream_t *stream);
 static void ngx_http_proxy_v2_connection_handler(ngx_event_t *ev);
 static void ngx_http_proxy_v2_stream_handler(ngx_event_t *ev);
 static ngx_int_t ngx_http_proxy_v2_test_io(ngx_connection_t *c,
@@ -1366,6 +1370,10 @@ ngx_http_proxy_v2_body_output_filter(void *data, ngx_chain_t *in)
     ll = &out;
 
     if (!stream->header_sent) {
+        if (ngx_http_proxy_v2_check_capacity(stream) != NGX_OK) {
+            return NGX_ERROR;
+        }
+
         /* first buffer contains headers */
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -2715,7 +2723,7 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
             rc = ngx_http_proxy_v2_parse_settings(sess, b);
 
             if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
+                break;
             }
 
             if (rc == NGX_ERROR) {
@@ -2727,6 +2735,12 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
             }
 
             /* consume each setting before the parser reuses its result */
+
+            if (sess->setting_id == 0x03) {
+                /* SETTINGS_MAX_CONCURRENT_STREAMS, including zero */
+
+                sess->max_streams = sess->setting_value;
+            }
 
             if (sess->setting_id == 0x04) {
                 /* SETTINGS_INITIAL_WINDOW_SIZE */
@@ -2759,6 +2773,14 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
 
                 sess->init_window = sess->setting_value;
             }
+        }
+
+        if (stream && ngx_http_proxy_v2_check_capacity(stream) != NGX_OK) {
+            return NGX_HTTP_UPSTREAM_CONNECTION_ERROR;
+        }
+
+        if (rc == NGX_AGAIN) {
+            return NGX_AGAIN;
         }
 
         if (!(sess->flags & NGX_HTTP_V2_ACK_FLAG)) {
@@ -5613,6 +5635,22 @@ ngx_http_proxy_v2_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
 
 static ngx_int_t
+ngx_http_proxy_v2_check_capacity(ngx_http_proxy_v2_stream_t *stream)
+{
+    if (!stream->header_sent && stream->session->max_streams == 0) {
+        ngx_log_error(NGX_LOG_ERR, &stream->session->log, 0,
+                      "upstream has no available http2 streams");
+
+        stream->admission_rejected = 1;
+        stream->request->upstream->keepalive = 0;
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
     ngx_http_proxy_v2_peer_t *peer)
 {
@@ -5628,7 +5666,9 @@ ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
 
     /* only one stream can use the request-driven I/O path */
 
-    if (session->nstreams) {
+    if (session->nstreams || session->max_streams == 0
+        || session->closing || session->goaway)
+    {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "too many active http2 streams");
         return NGX_ERROR;
@@ -5845,6 +5885,7 @@ ngx_http_proxy_v2_reusable_session(ngx_http_proxy_v2_session_t *session)
         || c->write->timedout
         || c->buffered
         || session->nstreams
+        || session->max_streams == 0
         || session->goaway
         || session->state != ngx_http_proxy_v2_st_start
         || session->header_stream_id
@@ -5927,6 +5968,7 @@ ngx_http_proxy_v2_create_session(ngx_http_request_t *r)
     ngx_queue_insert_tail(&ngx_http_proxy_v2_sessions_queue,
                           &session->sessions_queue);
     session->control_last = &session->control;
+    session->max_streams = (ngx_uint_t) -1;
     ngx_rbtree_init(&session->streams, &session->sentinel,
                     ngx_rbtree_insert_value);
     session->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
@@ -6218,6 +6260,11 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     c = pc->connection;
     session = peer->session;
     stream = peer->stream;
+
+    if (stream && stream->admission_rejected) {
+        state = NGX_PEER_NEXT;
+        pc->cached = 0;
+    }
 
     if (session) {
         session->ref_count++;
