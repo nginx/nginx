@@ -1900,10 +1900,13 @@ invalid:
 static ngx_int_t
 ngx_http_proxy_parse_status_line(ngx_http_request_t *r)
 {
-    size_t                 len;
-    ngx_int_t              rc;
-    ngx_http_upstream_t   *u;
-    ngx_http_proxy_ctx_t  *ctx;
+    size_t                      len;
+    ngx_int_t                   rc;
+    ngx_http_upstream_t        *u;
+    ngx_http_proxy_ctx_t       *ctx;
+#if (NGX_HTTP_CACHE)
+    ngx_http_proxy_loc_conf_t  *plcf;
+#endif
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
@@ -1964,6 +1967,18 @@ ngx_http_proxy_parse_status_line(ngx_http_request_t *r)
     u->headers_in.status_n = ctx->status.code;
 
     len = ctx->status.end - ctx->status.start;
+
+#if (NGX_HTTP_CACHE)
+    if (r->cached && len == 3) {
+        plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+        if (plcf->http_version == NGX_HTTP_VERSION_20) {
+            /* HTTP/2 cache entries have no reason phrase. */
+            len = 0;
+        }
+    }
+#endif
+
     u->headers_in.status_line.len = len;
 
     u->headers_in.status_line.data = ngx_pnalloc(r->pool, len);
@@ -2002,9 +2017,16 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
     ngx_http_upstream_t            *u;
     ngx_http_proxy_ctx_t           *ctx;
     ngx_http_upstream_header_t     *hh;
+#if (NGX_HTTP_CACHE)
+    ngx_http_proxy_loc_conf_t      *plcf;
+#endif
     ngx_http_upstream_main_conf_t  *umcf;
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+#if (NGX_HTTP_CACHE)
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+#endif
 
     for ( ;; ) {
 
@@ -2045,6 +2067,13 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             } else {
                 ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
             }
+
+#if (NGX_HTTP_CACHE)
+            if (r->cached && plcf->http_version == NGX_HTTP_VERSION_20) {
+                /* HTTP/2 also accepts field names outside the parser's table. */
+                h->hash = ngx_hash_key(h->lowcase_key, h->key.len);
+            }
+#endif
 
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy header: \"%V: %V\"",
@@ -2116,38 +2145,8 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             }
 #endif
 
-            /*
-             * if no "Server" and "Date" in header line,
-             * then add the special empty headers
-             */
-
-            if (r->upstream->headers_in.server == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
-                }
-
-                h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
-                                    ngx_hash('s', 'e'), 'r'), 'v'), 'e'), 'r');
-
-                ngx_str_set(&h->key, "Server");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "server";
-                h->next = NULL;
-            }
-
-            if (r->upstream->headers_in.date == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
-                }
-
-                h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
-
-                ngx_str_set(&h->key, "Date");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "date";
-                h->next = NULL;
+            if (ngx_http_proxy_set_default_headers(r) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             /* clear content length if response is chunked */
@@ -2247,6 +2246,46 @@ ngx_http_proxy_process_cache_headers(ngx_http_request_t *r)
 }
 
 #endif
+
+
+ngx_int_t
+ngx_http_proxy_set_default_headers(ngx_http_request_t *r)
+{
+    ngx_table_elt_t  *h;
+
+    /* If no Server or Date was received, add the special empty headers. */
+
+    if (r->upstream->headers_in.server == NULL) {
+        h = ngx_list_push(&r->upstream->headers_in.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
+                            ngx_hash('s', 'e'), 'r'), 'v'), 'e'), 'r');
+
+        ngx_str_set(&h->key, "Server");
+        ngx_str_null(&h->value);
+        h->lowcase_key = (u_char *) "server";
+        h->next = NULL;
+    }
+
+    if (r->upstream->headers_in.date == NULL) {
+        h = ngx_list_push(&r->upstream->headers_in.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
+
+        ngx_str_set(&h->key, "Date");
+        ngx_str_null(&h->value);
+        h->lowcase_key = (u_char *) "date";
+        h->next = NULL;
+    }
+
+    return NGX_OK;
+}
 
 
 static ngx_int_t

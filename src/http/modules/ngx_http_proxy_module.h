@@ -111,6 +111,7 @@ ngx_int_t ngx_http_proxy_eval(ngx_http_request_t *r, ngx_http_proxy_ctx_t *ctx,
 ngx_int_t ngx_http_proxy_create_key(ngx_http_request_t *r);
 ngx_int_t ngx_http_proxy_process_cache_header(ngx_http_request_t *r);
 #endif
+ngx_int_t ngx_http_proxy_set_default_headers(ngx_http_request_t *r);
 ngx_int_t ngx_http_proxy_rewrite_redirect(ngx_http_request_t *r,
     ngx_table_elt_t *h, size_t prefix);
 ngx_int_t ngx_http_proxy_rewrite_cookie(ngx_http_request_t *r,

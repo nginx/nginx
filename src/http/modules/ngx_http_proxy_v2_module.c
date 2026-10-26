@@ -109,6 +109,10 @@ typedef struct {
     unsigned                       status:1;
     unsigned                       rst:1;
     unsigned                       goaway:1;
+#if (NGX_HTTP_CACHE)
+    unsigned                       cache_header_failed:1;
+    unsigned                       cache_buffer_expanded:1;
+#endif
 } ngx_http_proxy_v2_ctx_t;
 
 
@@ -135,6 +139,10 @@ static u_char *ngx_http_proxy_v2_alloc_header(ngx_http_request_t *r, size_t len)
 static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
+#if (NGX_HTTP_CACHE)
+static void ngx_http_proxy_v2_check_cache_format(ngx_http_request_t *r);
+static void ngx_http_proxy_v2_create_cache_header(ngx_http_request_t *r);
+#endif
 static ngx_int_t ngx_http_proxy_v2_filter_init(void *data);
 static ngx_int_t ngx_http_proxy_v2_non_buffered_filter(void *data,
     ssize_t bytes);
@@ -179,9 +187,8 @@ static ngx_chain_t *ngx_http_proxy_v2_get_buf(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx);
 static ngx_http_proxy_v2_ctx_t *
     ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r);
-static ngx_int_t ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
+static ngx_int_t ngx_http_proxy_v2_get_connection_data(
     ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc);
-static ngx_inline ngx_int_t ngx_http_proxy_v2_cached(ngx_http_request_t *r);
 static void ngx_http_proxy_v2_cleanup(void *data);
 
 static void ngx_http_proxy_v2_abort_request(ngx_http_request_t *r);
@@ -369,6 +376,8 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
 
 #if (NGX_HTTP_CACHE)
+    ngx_http_proxy_v2_check_cache_format(r);
+
     headers = u->cacheable ? &plcf->headers_cache : &plcf->headers;
 #else
     headers = &plcf->headers;
@@ -1080,6 +1089,21 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->busy = NULL;
     ctx->out = NULL;
 
+#if (NGX_HTTP_CACHE)
+    if (ctx->cache_header_failed) {
+        /* Only undo this attempt's serialization failure, before no_cache. */
+        r->upstream->cacheable = 1;
+        ctx->cache_header_failed = 0;
+    }
+
+    if (ctx->cache_buffer_expanded) {
+        /* A replacement must retain the configured response header limit. */
+        r->upstream->buffer.end = r->upstream->buffer.start
+                                 + r->upstream->conf->buffer_size;
+        ctx->cache_buffer_expanded = 0;
+    }
+#endif
+
     return ngx_http_proxy_v2_init_header_budget(r, &ctx->header_budget);
 }
 
@@ -1531,6 +1555,12 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
     ngx_http_upstream_header_t     *hh;
     ngx_http_upstream_main_conf_t  *umcf;
 
+#if (NGX_HTTP_CACHE)
+    if (r->cached) {
+        return ngx_http_proxy_process_cache_header(r);
+    }
+#endif
+
     u = r->upstream;
     b = &u->buffer;
     pos = b->start;
@@ -1559,9 +1589,9 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         if (ctx->state < ngx_http_proxy_v2_st_payload) {
 
-            /* Preserve the first response frame header for cache replay. */
+            /* Retain an incomplete initial frame header in the buffer. */
 
-            if (!ctx->parsing_headers && !ngx_http_proxy_v2_cached(r)
+            if (!ctx->parsing_headers
                 && b->last - b->pos < NGX_HTTP_V2_FRAME_HEADER_SIZE)
             {
                 goto again;
@@ -1599,16 +1629,14 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (ctx->id && ctx->stream_id && ctx->stream_id != ctx->id) {
+            if (ctx->stream_id && ctx->stream_id != ctx->id) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent frame for unknown stream %ui",
                               ctx->stream_id);
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME
-                && !ngx_http_proxy_v2_cached(r))
-            {
+            if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME) {
                 /* Reclaim controls preceding headers in the same read. */
 
                 size = b->pos - p;
@@ -1619,43 +1647,40 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
         /* frame payload */
 
-        if (!ngx_http_proxy_v2_cached(r)) {
-
-            if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
-                rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
-
-                if (rc == NGX_AGAIN) {
-                    goto again;
-                }
-
-                if (rc == NGX_ERROR) {
-                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-                }
-
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream rejected request with error %ui",
-                              ctx->error);
-
-                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
-            }
-
-            rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
+        if (ctx->type == NGX_HTTP_V2_RST_STREAM_FRAME) {
+            rc = ngx_http_proxy_v2_parse_rst_stream(r, ctx, b);
 
             if (rc == NGX_AGAIN) {
                 goto again;
-            }
-
-            if (rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
-                return rc;
             }
 
             if (rc == NGX_ERROR) {
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            if (rc == NGX_OK) {
-                continue;
-            }
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream rejected request with error %ui",
+                          ctx->error);
+
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
+        rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
+
+        if (rc == NGX_AGAIN) {
+            goto again;
+        }
+
+        if (rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
+            return rc;
+        }
+
+        if (rc == NGX_ERROR) {
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
+
+        if (rc == NGX_OK) {
+            continue;
         }
 
         if (ctx->type != NGX_HTTP_V2_HEADERS_FRAME
@@ -1794,6 +1819,12 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
                 /* a whole header has been parsed successfully */
 
+                if (!ctx->status) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "upstream sent no :status header");
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
                 ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "http proxy header done");
 
@@ -1826,7 +1857,15 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     u->keepalive = 1;
                 }
 
-                return NGX_OK;
+                /* Cache original fields before adding synthetic defaults. */
+
+#if (NGX_HTTP_CACHE)
+                if (u->cacheable) {
+                    ngx_http_proxy_v2_create_cache_header(r);
+                }
+#endif
+
+                return ngx_http_proxy_set_default_headers(r);
             }
 
             /* there was error while a header line parsing */
@@ -1849,7 +1888,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
 again:
 
-    if (!ctx->parsing_headers && !ngx_http_proxy_v2_cached(r)) {
+    if (!ctx->parsing_headers) {
         /* Retain only undecoded frame-header bytes before the response. */
 
         b->last = ngx_movemem(pos, b->pos, b->last - b->pos);
@@ -1858,6 +1897,179 @@ again:
 
     return NGX_AGAIN;
 }
+
+
+#if (NGX_HTTP_CACHE)
+
+static void
+ngx_http_proxy_v2_check_cache_format(ngx_http_request_t *r)
+{
+    ngx_buf_t            *b;
+    ngx_http_cache_t     *c;
+    ngx_http_upstream_t  *u;
+
+    u = r->upstream;
+
+    if (u->cache_status != NGX_HTTP_CACHE_EXPIRED) {
+        return;
+    }
+
+    c = r->cache;
+    b = c->buf;
+
+    if (c->body_start >= c->header_start
+        && c->body_start - c->header_start >= sizeof("HTTP/") - 1
+        && (size_t) (b->last - b->start) >= c->body_start
+        && ngx_strncmp(b->start + c->header_start, "HTTP/",
+                       sizeof("HTTP/") - 1) == 0)
+    {
+        return;
+    }
+
+    /*
+     * Expired entries have not passed through the cached header reader.
+     * Discard wire-format entries before building conditional requests
+     * or allowing stale fallback.
+     */
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http proxy incompatible cached header format");
+
+    u->cache_status = NGX_HTTP_CACHE_MISS;
+    c->valid_sec = 0;
+    c->updating_sec = 0;
+    c->error_sec = 0;
+    c->valid_msec = 0;
+    c->stale_updating = 0;
+    c->stale_error = 0;
+    c->last_modified = -1;
+    ngx_str_null(&c->etag);
+    ngx_str_null(&c->vary);
+}
+
+
+static void
+ngx_http_proxy_v2_create_cache_header(ngx_http_request_t *r)
+{
+    size_t                   size, left, rest;
+    ngx_buf_t                buffer, *b;
+    ngx_uint_t               i;
+    ngx_list_part_t         *part;
+    ngx_table_elt_t         *h;
+    ngx_http_upstream_t      *u;
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
+    u = r->upstream;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+    buffer = u->buffer;
+    b = &buffer;
+
+    /* Measure the cache prefix independently of unread wire input. */
+
+    size = ngx_min(u->conf->buffer_size - 1, (size_t) (u_short) -1);
+    left = sizeof("HTTP/1.1 200" CRLF CRLF) - 1;
+
+    if (r->cache->header_start > size
+        || left > size - r->cache->header_start)
+    {
+        goto declined;
+    }
+
+    left = size - r->cache->header_start - left;
+    part = &u->headers_in.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
+        if (h[i].key.len > left || h[i].value.len > left - h[i].key.len
+            || sizeof(": " CRLF) - 1 > left - h[i].key.len - h[i].value.len)
+        {
+            goto declined;
+        }
+
+        /* The text parser strips these spaces; retain live header semantics. */
+
+        if (h[i].value.len
+            && (h[i].value.data[0] == ' '
+                || h[i].value.data[h[i].value.len - 1] == ' '))
+        {
+            goto declined;
+        }
+
+        left -= h[i].key.len + h[i].value.len + sizeof(": " CRLF) - 1;
+    }
+
+    size -= left;
+    rest = b->last - b->pos;
+
+    /* HPACK may be smaller than text: preserve all preread frame bytes. */
+
+    if (rest > (size_t) (b->end - b->start) - size) {
+        if (rest > NGX_MAX_SIZE_T_VALUE - size) {
+            goto declined;
+        }
+
+        b->start = ngx_palloc(r->pool, size + rest);
+        if (b->start == NULL) {
+            goto declined;
+        }
+
+        b->end = b->start + size + rest;
+        ctx->cache_buffer_expanded = 1;
+    }
+
+    ngx_memmove(b->start + size, b->pos, rest);
+    b->last = b->start + r->cache->header_start;
+    b->last = ngx_sprintf(b->last, "HTTP/1.1 %03ui" CRLF,
+                         u->headers_in.status_n);
+    part = &u->headers_in.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
+        /* Preserve original fields, including duplicates ignored by handlers. */
+
+        b->last = ngx_cpymem(b->last, h[i].key.data, h[i].key.len);
+        *b->last++ = ':';
+        *b->last++ = ' ';
+        b->last = ngx_cpymem(b->last, h[i].value.data, h[i].value.len);
+        *b->last++ = CR;
+        *b->last++ = LF;
+    }
+
+    *b->last++ = CR;
+    *b->last++ = LF;
+    b->pos = b->last;
+    b->last += rest;
+    u->buffer = buffer;
+
+    return;
+
+declined:
+
+    ctx->cache_header_failed = 1;
+    u->cacheable = 0;
+}
+
+#endif
 
 
 static ngx_int_t
@@ -4362,7 +4574,7 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
     if (ctx->connection == NULL) {
         u = r->upstream;
 
-        if (ngx_http_proxy_v2_get_connection_data(r, ctx, &u->peer) != NGX_OK) {
+        if (ngx_http_proxy_v2_get_connection_data(ctx, &u->peer) != NGX_OK) {
             return NULL;
         }
     }
@@ -4372,22 +4584,11 @@ ngx_http_proxy_v2_get_ctx(ngx_http_request_t *r)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
-    ngx_http_proxy_v2_ctx_t *ctx, ngx_peer_connection_t *pc)
+ngx_http_proxy_v2_get_connection_data(ngx_http_proxy_v2_ctx_t *ctx,
+    ngx_peer_connection_t *pc)
 {
     ngx_connection_t    *c;
     ngx_pool_cleanup_t  *cln;
-
-    if (ngx_http_proxy_v2_cached(r)) {
-        ctx->connection = ngx_palloc(r->pool, sizeof(ngx_http_proxy_v2_conn_t));
-        if (ctx->connection == NULL) {
-            return NGX_ERROR;
-        }
-
-        ctx->id = 0;
-
-        goto done;
-    }
 
     c = pc->connection;
 
@@ -4431,8 +4632,6 @@ ngx_http_proxy_v2_get_connection_data(ngx_http_request_t *r,
 
     ctx->id = 1;
 
-done:
-
     ctx->connection->init_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->connection->send_window = NGX_HTTP_V2_DEFAULT_WINDOW;
     ctx->connection->recv_window = NGX_HTTP_V2_MAX_WINDOW;
@@ -4443,17 +4642,6 @@ done:
     ctx->connection->last_stream_id = 1;
 
     return NGX_OK;
-}
-
-
-static ngx_inline ngx_int_t
-ngx_http_proxy_v2_cached(ngx_http_request_t *r)
-{
-#if (NGX_HTTP_CACHE)
-    return r->cached;
-#else
-    return 0;
-#endif
 }
 
 
