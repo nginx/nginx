@@ -1149,7 +1149,10 @@ ngx_http_upstream_cache_send(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return NGX_ERROR;
     }
 
-    if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS) {
+    if (rc == NGX_AGAIN
+        || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS
+        || rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR)
+    {
         rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
 
@@ -2613,6 +2616,11 @@ again:
     }
 
 done:
+
+    if (rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
+        ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+        return;
+    }
 
     if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
         ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_INVALID_HEADER);

@@ -89,6 +89,7 @@ typedef struct {
     unsigned                       output_closed:1;
     unsigned                       output_blocked:1;
     unsigned                       parsing_headers:1;
+    unsigned                       response_received:1;
     unsigned                       end_stream:1;
     unsigned                       done:1;
     unsigned                       status:1;
@@ -1045,6 +1046,7 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->output_closed = 0;
     ctx->output_blocked = 0;
     ctx->parsing_headers = 0;
+    ctx->response_received = 0;
     ctx->end_stream = 0;
     ctx->done = 0;
     ctx->status = 0;
@@ -1534,8 +1536,8 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             rc = ngx_http_proxy_v2_process_control_frame(r, ctx, b);
 
-            if (rc == NGX_AGAIN) {
-                return NGX_AGAIN;
+            if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
+                return rc;
             }
 
             if (rc == NGX_ERROR) {
@@ -1562,6 +1564,10 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
         }
 
         /* headers */
+
+        /* control frames do not count as a response to this attempt */
+
+        ctx->response_received = 1;
 
         for ( ;; ) {
 
@@ -2023,11 +2029,15 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_request_t *r,
 
         if (ctx->stream_id < ctx->id) {
 
-            /* TODO: we can retry non-idempotent requests */
+            if (ctx->error || ctx->response_received) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent goaway with error %ui",
+                              ctx->error);
+            }
 
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "upstream sent goaway with error %ui",
-                          ctx->error);
+            if (!ctx->response_received) {
+                return NGX_HTTP_UPSTREAM_CONNECTION_ERROR;
+            }
 
             return NGX_ERROR;
         }
@@ -2308,7 +2318,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
             return NGX_AGAIN;
         }
 
-        if (rc == NGX_ERROR) {
+        if (rc == NGX_ERROR || rc == NGX_HTTP_UPSTREAM_CONNECTION_ERROR) {
             return NGX_ERROR;
         }
 
