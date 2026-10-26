@@ -434,6 +434,8 @@ struct ngx_http_upstream_s {
     unsigned                         upgrade:1;
     unsigned                         error:1;
 
+    unsigned                         keepalive_pass:1;
+
     unsigned                         request_sent:1;
     unsigned                         request_body_sent:1;
     unsigned                         request_body_blocked:1;
