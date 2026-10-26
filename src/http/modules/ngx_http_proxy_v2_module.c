@@ -208,6 +208,7 @@ typedef struct {
 
     ngx_chain_t                   *in;
     ngx_msec_t                     send_deadline;
+    ngx_msec_t                     read_deadline;
 
     ssize_t                        send_window;
     size_t                         recv_window;
@@ -230,6 +231,8 @@ typedef struct {
     unsigned                       send_waiting:1;
     unsigned                       send_expired:1;
     unsigned                       output_stopped:1;
+    unsigned                       read_waiting:1;
+    unsigned                       read_expired:1;
 } ngx_http_proxy_v2_stream_t;
 
 
@@ -419,6 +422,12 @@ static void ngx_http_proxy_v2_write_handler(ngx_event_t *ev);
 static void ngx_http_proxy_v2_output_timeout(ngx_event_t *ev);
 static void ngx_http_proxy_v2_control_timeout(ngx_event_t *ev);
 static ngx_int_t ngx_http_proxy_v2_read_idle(ngx_http_proxy_v2_session_t *sess);
+static void ngx_http_proxy_v2_close_input(ngx_http_proxy_v2_stream_t *stream);
+static void ngx_http_proxy_v2_read_timer(ngx_http_request_t *r);
+static void ngx_http_proxy_v2_pipe_read_timer(ngx_event_pipe_t *p);
+static ngx_uint_t ngx_http_proxy_v2_read_expired(
+    ngx_http_proxy_v2_stream_t *stream);
+static void ngx_http_proxy_v2_read_progress(ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_read_session(
     ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t **stream);
 static ngx_int_t ngx_http_proxy_v2_check_input_budget(
@@ -1554,6 +1563,10 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
 
     for ( ;; ) {
+        if (ngx_http_proxy_v2_read_expired(stream)) {
+            return NGX_AGAIN;
+        }
+
         p = NULL;
 
         if (sess->state < ngx_http_proxy_v2_st_payload) {
@@ -2012,6 +2025,8 @@ ngx_http_proxy_v2_filter_init(void *data)
 
     stream = ctx->stream;
 
+    u->pipe->read_timer = ngx_http_proxy_v2_pipe_read_timer;
+
     if (u->headers_in.status_n == NGX_HTTP_NO_CONTENT
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
         || ctx->ctx.head)
@@ -2047,6 +2062,10 @@ ngx_http_proxy_v2_finish_response(ngx_http_request_t *r,
     if (!stream->input_closed || stream->done
         || stream->body_received != stream->body_filtered)
     {
+        return NGX_OK;
+    }
+
+    if (ngx_http_proxy_v2_read_expired(stream)) {
         return NGX_OK;
     }
 
@@ -2176,6 +2195,7 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
             }
 
             stream->body_received += size;
+            ngx_http_proxy_v2_read_progress(stream);
             buf->last = b->pos;
 
             if (stream->length != -1) {
@@ -2281,6 +2301,16 @@ ngx_http_proxy_v2_process_frame(ngx_http_proxy_v2_session_t *sess,
         }
 
         sess->padding = 0;
+
+        if (sess->type == NGX_HTTP_V2_HEADERS_FRAME
+            || sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
+            || sess->type == NGX_HTTP_V2_DATA_FRAME)
+        {
+            target = ngx_http_proxy_v2_find_stream(sess, sess->stream_id);
+            if (target) {
+                ngx_http_proxy_v2_read_progress(target);
+            }
+        }
     }
 
     target = ngx_http_proxy_v2_find_stream(sess, sess->stream_id);
@@ -2627,6 +2657,7 @@ static ngx_int_t
 ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b, size_t *size)
 {
+    u_char                       *pos;
     ngx_int_t                     rc;
     ngx_table_elt_t              *h;
     ngx_http_upstream_t          *u;
@@ -2769,12 +2800,17 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
             return NGX_ERROR;
         }
 
+        pos = b->pos;
         rc = ngx_http_proxy_v2_parse_data(sess, b, size);
+
+        if (b->pos != pos) {
+            ngx_http_proxy_v2_read_progress(stream);
+        }
 
         if (rc == NGX_DONE) {
 
             if (sess->flags & NGX_HTTP_V2_END_STREAM_FLAG) {
-                stream->input_closed = 1;
+                ngx_http_proxy_v2_close_input(stream);
             }
 
             continue;
@@ -3161,6 +3197,7 @@ static ngx_int_t
 ngx_http_proxy_v2_process_header_frame(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
+    u_char                       *pos;
     ngx_int_t                     rc;
     ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
@@ -3184,7 +3221,16 @@ ngx_http_proxy_v2_process_header_frame(ngx_http_request_t *r,
     }
 
     for ( ;; ) {
+        if (ngx_http_proxy_v2_read_expired(stream)) {
+            return NGX_AGAIN;
+        }
+
+        pos = b->pos;
         rc = ngx_http_proxy_v2_parse_header(sess, b);
+
+        if (b->pos != pos) {
+            ngx_http_proxy_v2_read_progress(stream);
+        }
 
         if (rc != NGX_BUSY) {
             break;
@@ -3200,7 +3246,7 @@ ngx_http_proxy_v2_process_header_frame(ngx_http_request_t *r,
     }
 
     if (rc == NGX_HTTP_PARSE_HEADER_DONE && stream->end_stream) {
-        stream->input_closed = 1;
+        ngx_http_proxy_v2_close_input(stream);
     }
 
     return rc;
@@ -5956,6 +6002,91 @@ ngx_http_proxy_v2_read_session(ngx_http_proxy_v2_session_t *sess,
 }
 
 
+static void
+ngx_http_proxy_v2_close_input(ngx_http_proxy_v2_stream_t *stream)
+{
+    (void) ngx_http_proxy_v2_read_expired(stream);
+    stream->input_closed = 1;
+    ngx_http_proxy_v2_cancel_window_updates(stream->session, stream->id);
+    ngx_http_proxy_v2_read_timer(stream->request);
+}
+
+
+static ngx_uint_t
+ngx_http_proxy_v2_read_expired(ngx_http_proxy_v2_stream_t *stream)
+{
+    if (stream->read_expired
+        || (stream->read_waiting
+            && (ngx_msec_int_t) (stream->read_deadline - ngx_current_msec) <= 0))
+    {
+        stream->read_expired = 1;
+        stream->read.timedout = 1;
+        ngx_post_event(&stream->read, &ngx_posted_events);
+        return 1;
+    }
+
+    return 0;
+}
+
+
+static void
+ngx_http_proxy_v2_read_timer(ngx_http_request_t *r)
+{
+    ngx_http_proxy_v2_peer_t    *peer;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    peer = r->upstream->peer.data;
+    stream = peer->stream;
+
+    if (stream == NULL || ngx_http_proxy_v2_read_expired(stream)) {
+        return;
+    }
+
+    if (stream->input_closed || stream->connection.error) {
+        stream->read_waiting = 0;
+
+        if (stream->read.timer_set) {
+            ngx_del_timer(&stream->read);
+        }
+
+        return;
+    }
+
+    if (!stream->read_waiting) {
+        if (!r->upstream->request_body_sent && !stream->response_received) {
+            return;
+        }
+
+        stream->read_waiting = 1;
+        stream->read_deadline = ngx_current_msec
+                               + r->upstream->conf->read_timeout;
+    }
+
+    ngx_add_timer(&stream->read, stream->read_deadline - ngx_current_msec);
+}
+
+
+static void
+ngx_http_proxy_v2_pipe_read_timer(ngx_event_pipe_t *p)
+{
+    ngx_http_proxy_v2_read_timer(p->input_ctx);
+}
+
+
+static void
+ngx_http_proxy_v2_read_progress(ngx_http_proxy_v2_stream_t *stream)
+{
+    if (ngx_http_proxy_v2_read_expired(stream)) {
+        return;
+    }
+
+    stream->read_waiting = 1;
+    stream->read_deadline = ngx_current_msec
+                           + stream->request->upstream->conf->read_timeout;
+    ngx_http_proxy_v2_read_timer(stream->request);
+}
+
+
 static ngx_int_t
 ngx_http_proxy_v2_read_input(ngx_http_proxy_v2_session_t *sess, size_t size)
 {
@@ -6236,6 +6367,7 @@ ngx_http_proxy_v2_init_stream(ngx_http_request_t *r)
 
     r->upstream->connection = sc;
     r->upstream->write_timer = ngx_http_proxy_v2_write_timer;
+    r->upstream->read_timer = ngx_http_proxy_v2_read_timer;
 
     if (c->read->timer_set) {
         ngx_del_timer(c->read);
@@ -6347,9 +6479,21 @@ ngx_http_proxy_v2_stream_handler(ngx_event_t *ev)
         goto done;
     }
 
-    if (ev->timedout
-        || (!ev->write && stream->session->closing && stream->done))
-    {
+    if (ngx_http_proxy_v2_read_expired(stream)) {
+        if (ev->posted) {
+            ngx_delete_posted_event(ev);
+        }
+
+        goto done;
+    }
+
+    if (ev->timedout) {
+        ev->timedout = 0;
+        ngx_http_proxy_v2_read_timer(stream->request);
+        return;
+    }
+
+    if (stream->session->closing && stream->done) {
         goto done;
     }
 
