@@ -3561,15 +3561,19 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 #endif
 
-    p->preread_bufs = ngx_alloc_chain_link(r->pool);
-    if (p->preread_bufs == NULL) {
-        ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
-        return;
-    }
+    /* Do not pass an exhausted buffer to the event pipe. */
 
-    p->preread_bufs->buf = &u->buffer;
-    p->preread_bufs->next = NULL;
-    u->buffer.recycled = 1;
+    if (u->buffer.pos != u->buffer.end) {
+        p->preread_bufs = ngx_alloc_chain_link(r->pool);
+        if (p->preread_bufs == NULL) {
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+            return;
+        }
+
+        p->preread_bufs->buf = &u->buffer;
+        p->preread_bufs->next = NULL;
+        u->buffer.recycled = 1;
+    }
 
     p->preread_size = u->buffer.last - u->buffer.pos;
 
