@@ -102,6 +102,8 @@ typedef struct {
     ssize_t                        send_window;
     size_t                         recv_window;
 
+    off_t                          length;
+
     ngx_uint_t                     error;
 
     unsigned                       header_sent:1;
@@ -124,8 +126,6 @@ typedef struct {
 
     ngx_uint_t                     pings;
     ngx_uint_t                     settings;
-
-    off_t                          length;
 
     unsigned                       output_blocked:1;
     unsigned                       status:1;
@@ -2150,15 +2150,15 @@ ngx_http_proxy_v2_filter_init(void *data)
         || u->headers_in.status_n == NGX_HTTP_NOT_MODIFIED
         || ctx->ctx.head)
     {
-        ctx->length = 0;
+        stream->length = 0;
 
     } else {
-        ctx->length = u->headers_in.content_length_n;
+        stream->length = u->headers_in.content_length_n;
     }
 
     if (stream->end_stream) {
 
-        if (ctx->length > 0) {
+        if (stream->length > 0) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "upstream prematurely closed stream");
             return NGX_ERROR;
@@ -2188,6 +2188,7 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
     ngx_chain_t                  *cl, **ll;
     ngx_http_upstream_t          *u;
     ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -2199,7 +2200,8 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
         return NGX_ERROR;
     }
 
-    sess = ctx->stream->session;
+    stream = ctx->stream;
+    sess = stream->session;
     u = r->upstream;
     b = &u->buffer;
 
@@ -2241,16 +2243,16 @@ ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy output buf %p", buf->pos);
 
-            if (ctx->length != -1) {
+            if (stream->length != -1) {
 
-                if (buf->last - buf->pos > ctx->length) {
+                if (buf->last - buf->pos > stream->length) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "upstream sent response body larger "
                                   "than indicated content length");
                     return NGX_ERROR;
                 }
 
-                ctx->length -= buf->last - buf->pos;
+                stream->length -= buf->last - buf->pos;
             }
 
             continue;
@@ -2283,6 +2285,7 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
     ngx_chain_t                  *cl;
     ngx_http_request_t           *r;
     ngx_http_proxy_v2_ctx_t      *ctx;
+    ngx_http_proxy_v2_stream_t   *stream;
     ngx_http_proxy_v2_session_t  *sess;
 
     if (b->pos == b->last) {
@@ -2296,7 +2299,8 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         return NGX_ERROR;
     }
 
-    sess = ctx->stream->session;
+    stream = ctx->stream;
+    sess = stream->session;
     buf = NULL;
     prev = &b->shadow;
 
@@ -2350,16 +2354,16 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
 
             buf->last = b->pos;
 
-            if (ctx->length != -1) {
+            if (stream->length != -1) {
 
-                if (buf->last - buf->pos > ctx->length) {
+                if (buf->last - buf->pos > stream->length) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                   "upstream sent response body larger "
                                   "than indicated content length");
                     return NGX_ERROR;
                 }
 
-                ctx->length -= buf->last - buf->pos;
+                stream->length -= buf->last - buf->pos;
             }
 
             continue;
@@ -2654,7 +2658,7 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
                 if (stream->done) {
 
-                    if (ctx->length > 0) {
+                    if (stream->length > 0) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream prematurely closed stream");
                         return NGX_ERROR;
