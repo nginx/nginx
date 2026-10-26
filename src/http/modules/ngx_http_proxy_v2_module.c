@@ -78,6 +78,8 @@ typedef struct {
 
     u_char                        *field_end;
     size_t                         header_limit;
+    size_t                         header_block_limit;
+    size_t                         header_size;
     size_t                         field_length;
     size_t                         field_rest;
     u_char                         field_state;
@@ -2583,7 +2585,7 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b)
 {
     u_char     ch, *p, *last;
-    size_t     min;
+    size_t     min, size;
     ngx_int_t  rc;
     enum {
         sw_start = 0,
@@ -2603,6 +2605,25 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
 
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http proxy parse header: start");
+
+        if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME) {
+            ctx->header_block_limit = r->upstream->conf->buffer_size;
+            ctx->header_size = 0;
+        }
+
+        /* Charge the complete frame once, before consuming its payload. */
+
+        size = NGX_HTTP_V2_FRAME_HEADER_SIZE + ctx->rest;
+
+        if (size > ctx->header_block_limit
+            || ctx->header_size > ctx->header_block_limit - size)
+        {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "upstream sent too large http2 header block");
+            return NGX_ERROR;
+        }
+
+        ctx->header_size += size;
 
         if (ctx->type == NGX_HTTP_V2_HEADERS_FRAME) {
             ctx->parsing_headers = 1;
