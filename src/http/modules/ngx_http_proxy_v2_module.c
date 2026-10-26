@@ -295,8 +295,6 @@ static ngx_int_t ngx_http_proxy_v2_finish_response(ngx_http_request_t *r,
     ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_process_body(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b, size_t *size);
-static ngx_int_t ngx_http_proxy_v2_non_buffered_filter(void *data,
-    ssize_t bytes);
 static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
 static ngx_int_t ngx_http_proxy_v2_process_control_frame(
@@ -559,7 +557,7 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
         u->rewrite_cookie = ngx_http_proxy_rewrite_cookie;
     }
 
-    u->buffering = plcf->upstream.buffering;
+    u->buffering = 1;
 
     u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t));
     if (u->pipe == NULL) {
@@ -570,7 +568,6 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     u->pipe->input_ctx = r;
 
     u->input_filter_init = ngx_http_proxy_v2_filter_init;
-    u->input_filter = ngx_http_proxy_v2_non_buffered_filter;
     u->input_filter_ctx = r;
 
     u->accel = 1;
@@ -2097,105 +2094,6 @@ ngx_http_proxy_v2_process_body(ngx_http_request_t *r,
     }
 
     return NGX_DONE;
-}
-
-
-static ngx_int_t
-ngx_http_proxy_v2_non_buffered_filter(void *data, ssize_t bytes)
-{
-    ngx_http_request_t   *r = data;
-
-    size_t                        size;
-    ngx_int_t                     rc;
-    ngx_buf_t                    *b, *buf;
-    ngx_chain_t                  *cl, **ll;
-    ngx_http_upstream_t          *u;
-    ngx_http_proxy_v2_ctx_t      *ctx;
-    ngx_http_proxy_v2_stream_t   *stream;
-    ngx_http_proxy_v2_session_t  *sess;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http proxy filter bytes:%z", bytes);
-
-    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
-
-    if (ctx == NULL || ctx->stream == NULL) {
-        return NGX_ERROR;
-    }
-
-    stream = ctx->stream;
-    sess = stream->session;
-    u = r->upstream;
-    b = &u->buffer;
-
-    b->pos = b->last;
-    b->last += bytes;
-
-    for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) {
-        ll = &cl->next;
-    }
-
-    for ( ;; ) {
-
-        rc = ngx_http_proxy_v2_process_body(r, ctx, b, &size);
-
-        if (rc == NGX_OK) {
-
-            cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs);
-            if (cl == NULL) {
-                return NGX_ERROR;
-            }
-
-            *ll = cl;
-            ll = &cl->next;
-
-            buf = cl->buf;
-
-            buf->flush = 1;
-            buf->memory = 1;
-
-            buf->pos = b->pos;
-            buf->tag = u->output.tag;
-
-            if (ngx_http_proxy_v2_process_data(sess, b, size) != NGX_OK) {
-                return NGX_ERROR;
-            }
-
-            buf->last = b->pos;
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "http proxy output buf %p", buf->pos);
-
-            if (stream->length != -1) {
-
-                if (buf->last - buf->pos > stream->length) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream sent response body larger "
-                                  "than indicated content length");
-                    return NGX_ERROR;
-                }
-
-                stream->length -= buf->last - buf->pos;
-            }
-
-            continue;
-        }
-
-        if (rc == NGX_DONE) {
-            u->length = 0;
-            break;
-        }
-
-        if (rc == NGX_AGAIN) {
-            return NGX_AGAIN;
-        }
-
-        /* invalid response */
-
-        return NGX_ERROR;
-    }
-
-    return NGX_OK;
 }
 
 

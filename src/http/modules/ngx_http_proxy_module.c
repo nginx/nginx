@@ -4336,6 +4336,23 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         clcf->handler = ngx_http_proxy_handler;
     }
 
+#if (NGX_HTTP_V2)
+
+    if (conf->http_version == NGX_HTTP_VERSION_20) {
+        conf->upstream.change_buffering = 0;
+
+        if (!conf->upstream.buffering
+            && (conf->upstream.upstream || conf->proxy_lengths))
+        {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "\"proxy_buffering off\" is not supported "
+                               "with \"proxy_http_version 2\"");
+            return NGX_CONF_ERROR;
+        }
+    }
+
+#endif
+
     if (conf->body_source.data == NULL) {
         conf->body_flushes = prev->body_flushes;
         conf->body_source = prev->body_source;
