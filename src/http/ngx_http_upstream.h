@@ -100,6 +100,15 @@ typedef struct {
 
 
 typedef struct {
+    ngx_uint_t                       max_cached;
+    ngx_uint_t                       requests;
+    ngx_msec_t                       time;
+    ngx_msec_t                       timeout;
+    ngx_uint_t                       local; /* unsigned local:1; */
+} ngx_http_upstream_keepalive_conf_t;
+
+
+typedef struct {
     ngx_str_t                        name;
     ngx_addr_t                      *addrs;
     ngx_uint_t                       naddrs;
@@ -134,22 +143,26 @@ typedef struct {
 
 
 struct ngx_http_upstream_srv_conf_s {
-    ngx_http_upstream_peer_t         peer;
-    void                           **srv_conf;
+    ngx_http_upstream_peer_t             peer;
+    void                               **srv_conf;
 
-    ngx_array_t                     *servers;  /* ngx_http_upstream_server_t */
+    /* ngx_http_upstream_server_t */
 
-    ngx_uint_t                       flags;
-    ngx_str_t                        host;
-    u_char                          *file_name;
-    ngx_uint_t                       line;
-    in_port_t                        port;
-    ngx_uint_t                       no_port;  /* unsigned no_port:1 */
+    ngx_array_t                         *servers;
+
+    ngx_http_upstream_keepalive_conf_t  *keepalive;
+
+    ngx_uint_t                           flags;
+    ngx_str_t                            host;
+    u_char                              *file_name;
+    ngx_uint_t                           line;
+    in_port_t                            port;
+    ngx_uint_t                           no_port;  /* unsigned no_port:1 */
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
-    ngx_shm_zone_t                  *shm_zone;
-    ngx_resolver_t                  *resolver;
-    ngx_msec_t                       resolver_timeout;
+    ngx_shm_zone_t                      *shm_zone;
+    ngx_resolver_t                      *resolver;
+    ngx_msec_t                           resolver_timeout;
 #endif
 };
 
