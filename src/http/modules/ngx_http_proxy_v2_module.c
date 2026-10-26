@@ -11,6 +11,17 @@
 #include <ngx_http_proxy_module.h>
 
 
+/* Upstream's initial header/trailer arrays and amortized list growth. */
+
+#define NGX_HTTP_PROXY_V2_HEADER_BLOCK_COST                                   \
+    (ngx_align(8 * sizeof(ngx_table_elt_t), NGX_ALIGNMENT)                     \
+     + ngx_align(2 * sizeof(ngx_table_elt_t), NGX_ALIGNMENT))
+
+#define NGX_HTTP_PROXY_V2_HEADER_FIELD_COST                                   \
+    (ngx_align(sizeof(ngx_table_elt_t), NGX_ALIGNMENT)                         \
+     + ngx_align(sizeof(ngx_list_part_t), NGX_ALIGNMENT))
+
+
 typedef enum {
     ngx_http_proxy_v2_st_start = 0,
     ngx_http_proxy_v2_st_length_2,
@@ -54,6 +65,7 @@ typedef struct {
     ngx_uint_t                     settings;
 
     off_t                          length;
+    size_t                         header_budget;
 
     ssize_t                        send_window;
     size_t                         recv_window;
@@ -115,6 +127,11 @@ typedef struct {
 
 static ngx_int_t ngx_http_proxy_v2_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r);
+static ngx_int_t ngx_http_proxy_v2_init_header_budget(ngx_http_request_t *r,
+    size_t *budget);
+static ngx_int_t ngx_http_proxy_v2_account_header(ngx_http_request_t *r,
+    size_t size);
+static u_char *ngx_http_proxy_v2_alloc_header(ngx_http_request_t *r, size_t len);
 static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
     ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
@@ -265,6 +282,10 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     u->output.tag = (ngx_buf_tag_t) &ngx_http_proxy_v2_module;
 
     u->conf = &plcf->upstream;
+
+    if (ngx_http_proxy_v2_init_header_budget(r, &ctx->header_budget) != NGX_OK) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
 #if (NGX_HTTP_CACHE)
     pmcf = ngx_http_get_module_main_conf(r, ngx_http_proxy_module);
@@ -1059,7 +1080,75 @@ ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r)
     ctx->busy = NULL;
     ctx->out = NULL;
 
+    return ngx_http_proxy_v2_init_header_budget(r, &ctx->header_budget);
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_init_header_budget(ngx_http_request_t *r, size_t *budget)
+{
+    size_t  size;
+
+    /*
+     * Nonempty names bound the field count by the decoded header limit.
+     * A Huffman code uses at most 30 bits per decoded byte; the decoder's
+     * 8/5 expansion buffer therefore needs at most six times the decoded
+     * length plus one byte.  Allow two terminated, aligned strings per
+     * field in addition to the amortized list storage.
+     *
+     * Reserve two initial array pairs outside the remaining allowance:
+     * upstream reinitialization can allocate them before the first read
+     * allocates them again.  Subsequent 103 responses prepay the next pair.
+     */
+
+    size = NGX_HTTP_PROXY_V2_HEADER_FIELD_COST + 2 * (NGX_ALIGNMENT + 1) + 6;
+
+    if (r->upstream->conf->buffer_size
+        > (NGX_MAX_SIZE_T_VALUE - 2 * NGX_HTTP_PROXY_V2_HEADER_BLOCK_COST)
+          / size)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "too large http2 header buffer size");
+        return NGX_ERROR;
+    }
+
+    *budget = r->upstream->conf->buffer_size * size;
+
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_account_header(ngx_http_request_t *r, size_t size)
+{
+    ngx_http_proxy_v2_ctx_t  *ctx;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    if (size > ctx->header_budget) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "upstream sent too much http2 header data");
+        return NGX_ERROR;
+    }
+
+    ctx->header_budget -= size;
+
+    return NGX_OK;
+}
+
+
+static u_char *
+ngx_http_proxy_v2_alloc_header(ngx_http_request_t *r, size_t len)
+{
+    if (len > NGX_MAX_SIZE_T_VALUE - NGX_ALIGNMENT
+        || ngx_http_proxy_v2_account_header(r,
+                                     ngx_align(len + 1, NGX_ALIGNMENT))
+           != NGX_OK)
+    {
+        return NULL;
+    }
+
+    return ngx_pnalloc(r->pool, len + 1);
 }
 
 
@@ -1648,6 +1737,13 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                 }
 
+                if (ngx_http_proxy_v2_account_header(r,
+                                        NGX_HTTP_PROXY_V2_HEADER_FIELD_COST)
+                    != NGX_OK)
+                {
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                }
+
                 h = ngx_list_push(&u->headers_in.headers);
                 if (h == NULL) {
                     return NGX_ERROR;
@@ -1687,6 +1783,13 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                     if (ctx->end_stream) {
                         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                                       "upstream prematurely closed stream");
+                        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+                    }
+
+                    if (ngx_http_proxy_v2_account_header(r,
+                                        NGX_HTTP_PROXY_V2_HEADER_BLOCK_COST)
+                        != NGX_OK)
+                    {
                         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                     }
 
@@ -2352,6 +2455,13 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                                       "upstream sent invalid "
                                       "trailer \"%V: %V\"",
                                       &ctx->name, &ctx->value);
+                        return NGX_ERROR;
+                    }
+
+                    if (ngx_http_proxy_v2_account_header(r,
+                                        NGX_HTTP_PROXY_V2_HEADER_FIELD_COST)
+                        != NGX_OK)
+                    {
                         return NGX_ERROR;
                     }
 
@@ -3172,7 +3282,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            ctx->name.data = ngx_pnalloc(r->pool, ctx->name.len + 1);
+            ctx->name.data = ngx_http_proxy_v2_alloc_header(r, ctx->name.len);
             if (ctx->name.data == NULL) {
                 return NGX_ERROR;
             }
@@ -3289,7 +3399,7 @@ ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            ctx->value.data = ngx_pnalloc(r->pool, ctx->value.len + 1);
+            ctx->value.data = ngx_http_proxy_v2_alloc_header(r, ctx->value.len);
             if (ctx->value.data == NULL) {
                 return NGX_ERROR;
             }
