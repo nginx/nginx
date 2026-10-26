@@ -48,6 +48,7 @@ typedef struct {
     ngx_uint_t                     frame_state;
     size_t                         rest;
     ngx_uint_t                     stream_id;
+    ngx_uint_t                     header_stream_id;
     u_char                         type;
     u_char                         flags;
     u_char                         padding;
@@ -67,7 +68,6 @@ typedef struct {
     ngx_uint_t                     goaway_last_stream_id;
     ngx_uint_t                     goaway_error;
 
-    unsigned                       parsing_headers:1;
     unsigned                       goaway:1;
 } ngx_http_proxy_v2_session_t;
 
@@ -195,6 +195,8 @@ static ngx_int_t ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
 static ngx_int_t ngx_http_proxy_v2_parse_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
+static ngx_int_t ngx_http_proxy_v2_validate_frame(
+    ngx_http_proxy_v2_session_t *sess);
 static ngx_int_t ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
     ngx_http_proxy_v2_ctx_t *ctx, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_parse_fragment(ngx_http_request_t *r,
@@ -1642,7 +1644,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
             /* Retain an incomplete initial frame header in the buffer. */
 
-            if (!sess->parsing_headers
+            if (!sess->header_stream_id
                 && b->last - b->pos < NGX_HTTP_V2_FRAME_HEADER_SIZE)
             {
                 goto again;
@@ -1659,21 +1661,9 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
-            /*
-             * RFC 7540 says that implementations MUST discard frames
-             * that have unknown or unsupported types.  However, extension
-             * frames that appear in the middle of a header block are
-             * not permitted.  Also, for obvious reasons CONTINUATION frames
-             * cannot appear before headers, and DATA frames are not expected
-             * to appear before all headers are parsed.
-             */
+            /* DATA frames cannot appear before the response headers. */
 
-            if (sess->type == NGX_HTTP_V2_DATA_FRAME
-                || (sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
-                    && !sess->parsing_headers)
-                || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
-                    && sess->parsing_headers))
-            {
+            if (sess->type == NGX_HTTP_V2_DATA_FRAME) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "upstream sent unexpected http2 frame: %d",
                               sess->type);
@@ -1942,7 +1932,7 @@ ngx_http_proxy_v2_process_header(ngx_http_request_t *r)
 
 again:
 
-    if (!sess->parsing_headers) {
+    if (!sess->header_stream_id) {
         /* Retain only undecoded frame-header bytes before the response. */
 
         b->last = ngx_movemem(pos, b->pos, b->last - b->pos);
@@ -2696,17 +2686,6 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            if ((sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
-                 && !sess->parsing_headers)
-                || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
-                    && sess->parsing_headers))
-            {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                              "upstream sent unexpected http2 frame: %d",
-                              sess->type);
-                return NGX_ERROR;
-            }
-
             if (sess->type == NGX_HTTP_V2_DATA_FRAME) {
 
                 if (sess->stream_id != stream->id) {
@@ -3080,7 +3059,7 @@ ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
             sess->state = ngx_http_proxy_v2_st_payload;
             sess->frame_state = 0;
 
-            return NGX_OK;
+            return ngx_http_proxy_v2_validate_frame(sess);
 
         /* suppress warning */
         case ngx_http_proxy_v2_st_payload:
@@ -3093,6 +3072,60 @@ ngx_http_proxy_v2_parse_frame(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b)
     sess->state = state;
 
     return NGX_AGAIN;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_validate_frame(ngx_http_proxy_v2_session_t *sess)
+{
+    /* Even unknown frame types cannot interrupt a header block. */
+
+    if ((sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
+         && sess->header_stream_id == 0)
+        || (sess->type != NGX_HTTP_V2_CONTINUATION_FRAME
+            && sess->header_stream_id))
+    {
+        ngx_log_error(NGX_LOG_ERR, sess->connection->log, 0,
+                      "upstream sent unexpected http2 frame: %d", sess->type);
+        return NGX_ERROR;
+    }
+
+    if (sess->type == NGX_HTTP_V2_CONTINUATION_FRAME
+        && sess->stream_id != sess->header_stream_id)
+    {
+        ngx_log_error(NGX_LOG_ERR, sess->connection->log, 0,
+                      "upstream sent continuation frame "
+                      "for wrong stream %ui, expected %ui",
+                      sess->stream_id, sess->header_stream_id);
+        return NGX_ERROR;
+    }
+
+    switch (sess->type) {
+
+    case NGX_HTTP_V2_DATA_FRAME:
+    case NGX_HTTP_V2_HEADERS_FRAME:
+    case NGX_HTTP_V2_PRIORITY_FRAME:
+    case NGX_HTTP_V2_RST_STREAM_FRAME:
+    case NGX_HTTP_V2_CONTINUATION_FRAME:
+
+        if (sess->stream_id == 0) {
+            ngx_log_error(NGX_LOG_ERR, sess->connection->log, 0,
+                          "upstream sent http2 frame %d with zero stream id",
+                          sess->type);
+            return NGX_ERROR;
+        }
+
+        break;
+    }
+
+    if (sess->type == NGX_HTTP_V2_PRIORITY_FRAME && sess->rest != 5) {
+        ngx_log_error(NGX_LOG_ERR, sess->connection->log, 0,
+                      "upstream sent priority frame with invalid length: %uz",
+                      sess->rest);
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -3144,7 +3177,7 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
         ctx->header_size += size;
 
         if (sess->type == NGX_HTTP_V2_HEADERS_FRAME) {
-            sess->parsing_headers = 1;
+            sess->header_stream_id = sess->stream_id;
             ctx->fragment_state = 0;
             ctx->header_limit = r->upstream->conf->buffer_size;
 
@@ -3323,7 +3356,7 @@ ngx_http_proxy_v2_parse_header(ngx_http_request_t *r,
                 return NGX_ERROR;
             }
 
-            sess->parsing_headers = 0;
+            sess->header_stream_id = 0;
 
             return NGX_HTTP_PARSE_HEADER_DONE;
         }
@@ -4773,7 +4806,7 @@ ngx_http_proxy_v2_init_stream(ngx_http_request_t *r)
 
     if (session->goaway
         || session->state != ngx_http_proxy_v2_st_start
-        || session->parsing_headers)
+        || session->header_stream_id)
     {
         return NGX_DECLINED;
     }
