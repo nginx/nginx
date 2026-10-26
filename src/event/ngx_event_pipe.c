@@ -13,6 +13,7 @@
 
 static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p);
 static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
+static ngx_int_t ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p);
 
 static ngx_int_t ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p);
 static ngx_inline void ngx_event_pipe_remove_shadow_links(ngx_buf_t *buf);
@@ -701,34 +702,47 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             return ngx_event_pipe_drain_chains(p);
         }
 
-        for (cl = p->free; cl; cl = cl->next) {
-
-            if (cl->buf->temp_file) {
-                if (p->cacheable || !p->cyclic_temp_file) {
-                    continue;
-                }
-
-                /* reset p->temp_offset if all bufs had been sent */
-
-                if (cl->buf->file_last == p->temp_file->offset) {
-                    p->temp_file->offset = 0;
-                }
-            }
-
-            /* TODO: free buf if p->free_bufs && upstream done */
-
-            /* add the free shadow raw buf to p->free_raw_bufs */
-
-            if (cl->buf->last_shadow) {
-                if (ngx_event_pipe_add_free_buf(p, cl->buf->shadow) != NGX_OK) {
-                    return NGX_ABORT;
-                }
-
-                cl->buf->last_shadow = 0;
-            }
-
-            cl->buf->shadow = NULL;
+        if (ngx_event_pipe_recycle_buffers(p) != NGX_OK) {
+            return NGX_ABORT;
         }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p)
+{
+    ngx_chain_t  *cl;
+
+    for (cl = p->free; cl; cl = cl->next) {
+
+        if (cl->buf->temp_file) {
+            if (p->cacheable || !p->cyclic_temp_file) {
+                continue;
+            }
+
+            /* reset p->temp_offset if all bufs had been sent */
+
+            if (cl->buf->file_last == p->temp_file->offset) {
+                p->temp_file->offset = 0;
+            }
+        }
+
+        /* TODO: free buf if p->free_bufs && upstream done */
+
+        /* add the free shadow raw buf to p->free_raw_bufs */
+
+        if (cl->buf->last_shadow) {
+            if (ngx_event_pipe_add_free_buf(p, cl->buf->shadow) != NGX_OK) {
+                return NGX_ABORT;
+            }
+
+            cl->buf->last_shadow = 0;
+        }
+
+        cl->buf->shadow = NULL;
     }
 
     return NGX_OK;
