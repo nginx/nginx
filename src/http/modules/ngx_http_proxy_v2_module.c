@@ -167,6 +167,7 @@ typedef struct {
     size_t                         send_window;
     size_t                         recv_window;
     size_t                         recv_queued;
+    size_t                         recv_credit;
     ngx_uint_t                     last_stream_id;
     ngx_uint_t                     last_opened_id;
 
@@ -325,6 +326,8 @@ static ngx_int_t ngx_http_proxy_v2_parse_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_validate_frame(
     ngx_http_proxy_v2_session_t *sess);
+static ngx_int_t ngx_http_proxy_v2_admit_data(
+    ngx_http_proxy_v2_session_t *sess, ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_parse_data(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b, size_t *size);
 static ngx_int_t ngx_http_proxy_v2_process_data(
@@ -2230,12 +2233,17 @@ ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p, ngx_buf_t *b)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "input buf %p %z", buf->pos, buf->last - buf->pos);
 
-        return NGX_OK;
+    } else {
+
+        /* there is no data record in the buf, add it to free chain */
+
+        if (ngx_event_pipe_add_free_buf(p, b) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
-    /* there is no data record in the buf, add it to free chain */
-
-    if (ngx_event_pipe_add_free_buf(p, b) != NGX_OK) {
+    if (ngx_http_proxy_v2_send_window_update(sess, NULL) != NGX_OK) {
+        r->upstream->keepalive = 0;
         return NGX_ERROR;
     }
 
@@ -2470,16 +2478,8 @@ ngx_http_proxy_v2_process_closed_frame(ngx_http_proxy_v2_session_t *sess,
 
     case NGX_HTTP_V2_DATA_FRAME:
 
-        if (sess->frame_state == 0) {
-            if (sess->rest > sess->recv_window) {
-                ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
-                              "upstream violated connection flow control");
-                return NGX_ERROR;
-            }
-
-            sess->recv_window -= sess->rest;
-            sess->frame_state = 1;
-            sess->padding = 0;
+        if (ngx_http_proxy_v2_admit_data(sess, NULL) != NGX_OK) {
+            return NGX_ERROR;
         }
 
         for ( ;; ) {
@@ -2494,17 +2494,13 @@ ngx_http_proxy_v2_process_closed_frame(ngx_http_proxy_v2_session_t *sess,
             }
         }
 
-        if (rc != NGX_DONE) {
-            return rc;
-        }
-
-        if (sess->recv_window + sess->recv_queued
-            < NGX_HTTP_V2_MAX_WINDOW / 4)
+        if (rc == NGX_ERROR
+            || ngx_http_proxy_v2_send_window_update(sess, NULL) != NGX_OK)
         {
-            return ngx_http_proxy_v2_send_window_update(sess, NULL);
+            return NGX_ERROR;
         }
 
-        return NGX_OK;
+        return rc == NGX_DONE ? NGX_OK : rc;
 
     case NGX_HTTP_V2_HEADERS_FRAME:
     case NGX_HTTP_V2_CONTINUATION_FRAME:
@@ -2587,36 +2583,11 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
             if (sess->type == NGX_HTTP_V2_DATA_FRAME
                 && sess->stream_id == stream->id)
             {
-
-                if (sess->rest > stream->recv_window) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream violated stream flow control, "
-                                  "received %uz data frame with window %uz",
-                                  sess->rest, stream->recv_window);
-                    return NGX_ERROR;
-                }
-
-                if (sess->rest > sess->recv_window) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                                  "upstream violated connection flow control, "
-                                  "received %uz data frame with window %uz",
-                                  sess->rest, sess->recv_window);
-                    return NGX_ERROR;
-                }
-
-                stream->recv_window -= sess->rest;
-                sess->recv_window -= sess->rest;
-
-                if (sess->recv_window + sess->recv_queued
-                    < NGX_HTTP_V2_MAX_WINDOW / 4
-                    || stream->recv_window + stream->recv_queued
-                       < NGX_HTTP_V2_MAX_WINDOW / 4)
+                if (ngx_http_proxy_v2_admit_data(sess, stream) != NGX_OK
+                    || ngx_http_proxy_v2_send_window_update(sess, stream)
+                       != NGX_OK)
                 {
-                    if (ngx_http_proxy_v2_send_window_update(sess, stream)
-                        != NGX_OK)
-                    {
-                        return NGX_ERROR;
-                    }
+                    return NGX_ERROR;
                 }
             }
 
@@ -2807,6 +2778,44 @@ ngx_http_proxy_v2_process_frames(ngx_http_request_t *r,
 
 
 static ngx_int_t
+ngx_http_proxy_v2_admit_data(ngx_http_proxy_v2_session_t *sess,
+    ngx_http_proxy_v2_stream_t *stream)
+{
+    /* Admission survives partial reads and detachment of the consumer. */
+
+    if (sess->frame_state) {
+        return NGX_OK;
+    }
+
+    if (stream && sess->rest > stream->recv_window) {
+        ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
+                      "upstream violated stream flow control, "
+                      "received %uz data frame with window %uz",
+                      sess->rest, stream->recv_window);
+        return NGX_ERROR;
+    }
+
+    if (sess->rest > sess->recv_window) {
+        ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
+                      "upstream violated connection flow control, "
+                      "received %uz data frame with window %uz",
+                      sess->rest, sess->recv_window);
+        return NGX_ERROR;
+    }
+
+    if (stream) {
+        stream->recv_window -= sess->rest;
+    }
+
+    sess->recv_window -= sess->rest;
+    sess->frame_state = 1;
+    sess->padding = 0;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
 ngx_http_proxy_v2_parse_data(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
     size_t *size)
 {
@@ -2827,11 +2836,13 @@ ngx_http_proxy_v2_parse_data(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
         if (sess->state == ngx_http_proxy_v2_st_padding) {
 
             if (b->last - b->pos < (ssize_t) sess->rest) {
+                sess->recv_credit += b->last - b->pos;
                 sess->rest -= b->last - b->pos;
                 b->pos = b->last;
                 return NGX_AGAIN;
             }
 
+            sess->recv_credit += sess->rest;
             b->pos += sess->rest;
             sess->rest = 0;
             sess->state = ngx_http_proxy_v2_st_start;
@@ -2854,6 +2865,7 @@ ngx_http_proxy_v2_parse_data(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
             sess->flags &= ~NGX_HTTP_V2_PADDED_FLAG;
             sess->padding = *b->pos++;
             sess->rest -= 1;
+            sess->recv_credit++;
 
             if (sess->padding > sess->rest) {
                 ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
@@ -2911,6 +2923,7 @@ ngx_http_proxy_v2_process_data(ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
 
     b->pos += size;
     sess->rest -= size;
+    sess->recv_credit += size;
 
     return NGX_OK;
 }
@@ -4643,26 +4656,33 @@ static ngx_int_t
 ngx_http_proxy_v2_send_window_update(ngx_http_proxy_v2_session_t *sess,
     ngx_http_proxy_v2_stream_t *stream)
 {
-    size_t  n;
+    size_t  n, window;
+
+    window = stream ? stream->recv_window + stream->recv_queued
+                    : sess->recv_window + sess->recv_queued;
+
+    if (window >= NGX_HTTP_V2_MAX_WINDOW / 4) {
+        return NGX_OK;
+    }
+
+    /* Only consumed or discarded payload restores connection credit. */
+
+    n = stream ? NGX_HTTP_V2_MAX_WINDOW - window : sess->recv_credit;
+
+    if (n == 0) {
+        return NGX_OK;
+    }
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, &sess->log, 0,
                    "http proxy send window update: %uz %uz",
                    sess->recv_window, stream ? stream->recv_window : 0);
 
-    n = NGX_HTTP_V2_MAX_WINDOW - sess->recv_window - sess->recv_queued;
-
-    if (n && ngx_http_proxy_v2_queue_window_update(sess, NULL, n) != NGX_OK) {
+    if (ngx_http_proxy_v2_queue_window_update(sess, stream, n) != NGX_OK) {
         return NGX_ERROR;
     }
 
-    if (stream) {
-        n = NGX_HTTP_V2_MAX_WINDOW - stream->recv_window - stream->recv_queued;
-
-        if (n && ngx_http_proxy_v2_queue_window_update(sess, stream, n)
-                 != NGX_OK)
-        {
-            return NGX_ERROR;
-        }
+    if (stream == NULL) {
+        sess->recv_credit -= n;
     }
 
     return NGX_OK;
