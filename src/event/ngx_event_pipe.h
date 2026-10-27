@@ -112,8 +112,8 @@ ngx_int_t ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b);
 /*
  * Reserved input contains only body bytes.  Initialize before granting credit.
  * Invalid sizes or a different pool or buffer sizes return NGX_ERROR.
- * Reinitialization requires cancellation, no pending file writes and no
- * published references; otherwise return NGX_BUSY.
+ * Reinitialization requires cancellation, no pending file writes or queued
+ * output, and no unconsumed published references; otherwise return NGX_BUSY.
  * It resets only input storage, not pipe flags or read_length.  The pool must
  * outlive all shadows and asynchronous writes.  Do not replace live p->input.
  * Filters append complete shadow groups to p->in, using p->tag and preserving

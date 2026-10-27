@@ -36,6 +36,7 @@ struct ngx_event_pipe_input_s {
 
 
 static ngx_int_t ngx_event_pipe_read_upstream(ngx_event_pipe_t *p);
+static ngx_int_t ngx_event_pipe_read_reserved(ngx_event_pipe_t *p);
 static void ngx_event_pipe_release_input(ngx_event_pipe_t *p, ngx_buf_t *buf);
 static ngx_int_t ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p);
 static ngx_int_t ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p);
@@ -59,10 +60,14 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
             rc = ngx_event_pipe_write_to_downstream(p);
 
             if (rc == NGX_ABORT) {
-                return NGX_ABORT;
+                goto failed;
             }
 
             if (rc == NGX_BUSY) {
+                if (p->input) {
+                    break;
+                }
+
                 return NGX_OK;
             }
         }
@@ -73,7 +78,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         p->log->action = "reading upstream";
 
         if (ngx_event_pipe_read_upstream(p) == NGX_ABORT) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         if (!p->read && !p->upstream_blocked) {
@@ -91,7 +96,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         flags = (rev->eof || rev->error) ? NGX_CLOSE_EVENT : 0;
 
         if (ngx_handle_read_event(rev, flags) != NGX_OK) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         if (p->upstream_done || p->upstream_eof || p->upstream_error) {
@@ -119,7 +124,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
     {
         wev = p->downstream->write;
         if (ngx_handle_write_event(wev, p->send_lowat) != NGX_OK) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         if (!wev->delayed) {
@@ -133,6 +138,14 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
     }
 
     return NGX_OK;
+
+failed:
+
+    if (p->input) {
+        (void) ngx_event_pipe_drain_chains(p);
+    }
+
+    return NGX_ABORT;
 }
 
 
@@ -150,6 +163,10 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
         || p->upstream == NULL)
     {
         return NGX_OK;
+    }
+
+    if (p->input) {
+        return ngx_event_pipe_read_reserved(p);
     }
 
 #if (NGX_THREADS)
@@ -540,6 +557,16 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                    "pipe write downstream: %d", downstream->write->ready);
 
+    if (p->input) {
+        out = NULL;
+
+        ngx_chain_update_chains(p->pool, &p->free, &p->busy, &out, p->tag);
+
+        if (ngx_event_pipe_recycle_buffers(p) != NGX_OK) {
+            return NGX_ABORT;
+        }
+    }
+
 #if (NGX_THREADS)
 
     if (p->writing) {
@@ -577,6 +604,15 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
                 rc = p->output_filter(p->output_ctx, p->out);
 
+                if (p->input) {
+                    ngx_chain_update_chains(p->pool, &p->free, &p->busy,
+                                            &p->out, p->tag);
+
+                    if (ngx_event_pipe_recycle_buffers(p) != NGX_OK) {
+                        return NGX_ABORT;
+                    }
+                }
+
                 if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
                     return ngx_event_pipe_drain_chains(p);
@@ -598,6 +634,17 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
                 }
 
                 rc = p->output_filter(p->output_ctx, p->in);
+
+                if (p->input) {
+                    p->last_in = &p->in;
+
+                    ngx_chain_update_chains(p->pool, &p->free, &p->busy,
+                                            &p->in, p->tag);
+
+                    if (ngx_event_pipe_recycle_buffers(p) != NGX_OK) {
+                        return NGX_ABORT;
+                    }
+                }
 
                 if (rc == NGX_ERROR) {
                     p->downstream_error = 1;
@@ -650,7 +697,9 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
             goto flush;
         }
 
-        flush = 0;
+        /* A retained prefix can block publication of reserved input. */
+
+        flush = (p->input && p->busy);
         ll = NULL;
         prev_last_shadow = 1;
 
@@ -724,6 +773,11 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 
         if (rc == NGX_ERROR) {
             p->downstream_error = 1;
+
+            if (p->input) {
+                (void) ngx_event_pipe_recycle_buffers(p);
+            }
+
             return ngx_event_pipe_drain_chains(p);
         }
 
@@ -739,19 +793,29 @@ ngx_event_pipe_write_to_downstream(ngx_event_pipe_t *p)
 static ngx_int_t
 ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p)
 {
+    ngx_int_t     rc;
     ngx_chain_t  *cl;
+
+    rc = NGX_OK;
 
     for (cl = p->free; cl; cl = cl->next) {
 
         if (cl->buf->temp_file) {
-            if (p->cacheable || !p->cyclic_temp_file) {
-                continue;
-            }
+            if (p->input) {
+                /* Account for live file ranges below, including on errors. */
 
-            /* reset p->temp_offset if all bufs had been sent */
+                cl->buf->temp_file = 0;
 
-            if (cl->buf->file_last == p->temp_file->offset) {
-                p->temp_file->offset = 0;
+            } else {
+                if (p->cacheable || !p->cyclic_temp_file) {
+                    continue;
+                }
+
+                /* reset p->temp_offset if all bufs had been sent */
+
+                if (cl->buf->file_last == p->temp_file->offset) {
+                    p->temp_file->offset = 0;
+                }
             }
         }
 
@@ -761,7 +825,11 @@ ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p)
 
         if (cl->buf->last_shadow) {
             if (ngx_event_pipe_add_free_buf(p, cl->buf->shadow) != NGX_OK) {
-                return NGX_ABORT;
+                if (p->input == NULL) {
+                    return NGX_ABORT;
+                }
+
+                rc = NGX_ABORT;
             }
 
             cl->buf->last_shadow = 0;
@@ -770,7 +838,28 @@ ngx_event_pipe_recycle_buffers(ngx_event_pipe_t *p)
         cl->buf->shadow = NULL;
     }
 
-    return NGX_OK;
+    if (p->input && !p->cacheable && p->cyclic_temp_file
+        && p->out == NULL && p->writing == NULL && p->temp_file->offset)
+    {
+        /*
+         * A discarded tail does not prove earlier ranges were consumed.
+         * Rewind only after queued and retained file output has drained;
+         * an asynchronous write also pins its captured offset until reaped.
+         */
+
+        for (cl = p->busy; cl; cl = cl->next) {
+            if (cl->buf->in_file
+                && cl->buf->file == &p->temp_file->file
+                && cl->buf->file_pos < cl->buf->file_last)
+            {
+                return rc;
+            }
+        }
+
+        p->temp_file->offset = 0;
+    }
+
+    return rc;
 }
 
 
@@ -791,12 +880,17 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
         }
 
         out = p->writing;
-        p->writing = NULL;
 
         n = ngx_write_chain_to_temp_file(p->temp_file, NULL);
 
+        if (n == NGX_AGAIN) {
+            return NGX_AGAIN;
+        }
+
+        p->writing = NULL;
+
         if (n == NGX_ERROR) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         goto done;
@@ -807,7 +901,7 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
     if (p->buf_to_file) {
         out = ngx_alloc_chain_link(p->pool);
         if (out == NULL) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         out->buf = p->buf_to_file;
@@ -883,7 +977,7 @@ ngx_event_pipe_write_chain_to_temp_file(ngx_event_pipe_t *p)
     n = ngx_write_chain_to_temp_file(p->temp_file, out);
 
     if (n == NGX_ERROR) {
-        return NGX_ABORT;
+        goto failed;
     }
 
 #if (NGX_THREADS)
@@ -902,7 +996,12 @@ done:
         p->temp_file->offset = p->buf_to_file->last - p->buf_to_file->pos;
         n -= p->buf_to_file->last - p->buf_to_file->pos;
         p->buf_to_file = NULL;
+        cl = out;
         out = out->next;
+
+        if (p->input) {
+            ngx_free_chain(p->pool, cl);
+        }
     }
 
     if (n > 0) {
@@ -927,7 +1026,7 @@ done:
 
         cl = ngx_chain_get_free_buf(p->pool, &p->free);
         if (cl == NULL) {
-            return NGX_ABORT;
+            goto failed;
         }
 
         b = cl->buf;
@@ -966,9 +1065,17 @@ free:
 
         if (b->last_shadow) {
 
+            if (b->shadow->tag == (ngx_buf_tag_t) &ngx_event_pipe_init_input) {
+                b = b->shadow;
+                ngx_event_pipe_remove_shadow_links(b);
+                ngx_event_pipe_release_input(p, b);
+                continue;
+            }
+
             tl = ngx_alloc_chain_link(p->pool);
             if (tl == NULL) {
-                return NGX_ABORT;
+                out = next;
+                goto failed;
             }
 
             tl->buf = b->shadow;
@@ -985,6 +1092,36 @@ free:
     }
 
     return NGX_OK;
+
+failed:
+
+    if (p->input) {
+        if (p->buf_to_file) {
+            if (out) {
+                cl = out;
+                out = out->next;
+                ngx_free_chain(p->pool, cl);
+            }
+
+            p->buf_to_file = NULL;
+        }
+
+        /* Return the abandoned write to pipe ownership for error cleanup. */
+
+        if (out) {
+            for (cl = out; cl->next; cl = cl->next) { /* void */ }
+
+            cl->next = p->in;
+
+            if (p->in == NULL) {
+                p->last_in = &cl->next;
+            }
+
+            p->in = out;
+        }
+    }
+
+    return NGX_ABORT;
 }
 
 
@@ -1097,6 +1234,11 @@ ngx_event_pipe_add_free_buf(ngx_event_pipe_t *p, ngx_buf_t *b)
 {
     ngx_chain_t  *cl;
 
+    if (b->tag == (ngx_buf_tag_t) &ngx_event_pipe_init_input) {
+        ngx_event_pipe_release_input(p, b);
+        return NGX_OK;
+    }
+
     cl = ngx_alloc_chain_link(p->pool);
     if (cl == NULL) {
         return NGX_ERROR;
@@ -1178,7 +1320,7 @@ ngx_event_pipe_init_input(ngx_event_pipe_t *p, ngx_pool_t *pool,
             return NGX_ERROR;
         }
 
-        if (!input->cancelled || p->writing) {
+        if (!input->cancelled || p->writing || p->in || p->out) {
             return NGX_BUSY;
         }
 
@@ -1195,7 +1337,7 @@ ngx_event_pipe_init_input(ngx_event_pipe_t *p, ngx_pool_t *pool,
             }
 
             if (ngx_buf_size(buf) != 0) {
-                break;
+                return NGX_BUSY;
             }
 
             if (buf->last_shadow
@@ -1340,6 +1482,106 @@ ngx_event_pipe_input_ready(ngx_event_pipe_t *p)
 }
 
 
+static ngx_int_t
+ngx_event_pipe_read_reserved(ngx_event_pipe_t *p)
+{
+    ngx_int_t                    rc;
+    ngx_queue_t                 *q;
+    ngx_event_pipe_input_buf_t  *b;
+
+#if (NGX_THREADS)
+
+    /* Finish earlier writes before publication can mark the body complete. */
+
+    if (p->aio) {
+        return NGX_AGAIN;
+    }
+
+    if (p->writing) {
+        rc = ngx_event_pipe_write_chain_to_temp_file(p);
+        if (rc != NGX_OK) {
+            return rc;
+        }
+    }
+
+#endif
+
+    /* Cache headers retain their own storage; body arrives through commit. */
+
+    if (p->preread_bufs) {
+        if (p->preread_size) {
+            ngx_log_error(NGX_LOG_ALERT, p->log, 0,
+                          "preread body with reserved pipe input");
+            return NGX_ABORT;
+        }
+
+        ngx_free_chain(p->pool, p->preread_bufs);
+        p->preread_bufs = NULL;
+    }
+
+    while (ngx_event_pipe_input_ready(p)) {
+        q = ngx_queue_head(&p->input->pending);
+        b = ngx_queue_data(q, ngx_event_pipe_input_buf_t, pending);
+        ngx_queue_remove(q);
+        b->queued = 0;
+        b->busy = 1;
+
+        ngx_memzero(&b->buf, sizeof(ngx_buf_t));
+        b->buf.start = b->start;
+        b->buf.end = b->end;
+        b->buf.pos = b->pos;
+        b->buf.last = b->last;
+        b->buf.temporary = 1;
+        b->buf.tag = (ngx_buf_tag_t) &ngx_event_pipe_init_input;
+
+        /* A retained short prefix must not wait for its unpublished suffix. */
+
+        b->buf.flush = 1;
+        b->pos = b->last;
+
+        rc = p->input_filter(p, &b->buf);
+
+        if (b->busy && b->buf.shadow == NULL) {
+            ngx_event_pipe_release_input(p, &b->buf);
+        }
+
+        if (rc == NGX_ERROR) {
+            /* A failed filter may not have completed its shadow chain. */
+
+            (void) ngx_event_pipe_drain_chains(p);
+
+            if (b->busy) {
+                ngx_event_pipe_release_input(p, &b->buf);
+            }
+
+            return NGX_ABORT;
+        }
+
+        p->read = 1;
+    }
+
+    if (p->length == 0) {
+        p->upstream_done = 1;
+        p->read = 1;
+    }
+
+    if ((p->cacheable && (p->in || p->buf_to_file))
+        || (p->in && p->input->capacity == 0
+            && p->temp_file->offset < p->max_temp_file_size
+            && (p->downstream->data != p->output_ctx
+                || !p->downstream->write->ready
+                || p->downstream->write->delayed)))
+    {
+        rc = ngx_event_pipe_write_chain_to_temp_file(p);
+        if (rc == NGX_ABORT) {
+            return NGX_ABORT;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 static void
 ngx_event_pipe_release_input(ngx_event_pipe_t *p, ngx_buf_t *buf)
 {
@@ -1381,7 +1623,10 @@ ngx_event_pipe_cancel_input(ngx_event_pipe_t *p)
 static ngx_int_t
 ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
 {
+    ngx_int_t     rc;
     ngx_chain_t  *cl, *tl;
+
+    rc = NGX_OK;
 
     for ( ;; ) {
         if (p->out) {
@@ -1391,15 +1636,20 @@ ngx_event_pipe_drain_chains(ngx_event_pipe_t *p)
         } else if (p->in) {
             cl = p->in;
             p->in = NULL;
+            p->last_in = &p->in;
 
         } else {
-            return NGX_OK;
+            return rc;
         }
 
         while (cl) {
             if (cl->buf->last_shadow) {
                 if (ngx_event_pipe_add_free_buf(p, cl->buf->shadow) != NGX_OK) {
-                    return NGX_ABORT;
+                    if (p->input == NULL) {
+                        return NGX_ABORT;
+                    }
+
+                    rc = NGX_ABORT;
                 }
 
                 cl->buf->last_shadow = 0;
