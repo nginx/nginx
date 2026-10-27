@@ -537,6 +537,10 @@ static ngx_int_t ngx_http_proxy_v2_match_session(
     ngx_http_proxy_v2_session_t *session, ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_proxy_v2_reusable_session(
     ngx_http_proxy_v2_session_t *session);
+static ngx_int_t ngx_http_proxy_v2_stream_capacity(
+    ngx_http_proxy_v2_session_t *session);
+static ngx_int_t ngx_http_proxy_v2_check_session(
+    ngx_http_proxy_v2_session_t *session);
 static ngx_int_t ngx_http_proxy_v2_retain_session(
     ngx_http_proxy_v2_session_t *session);
 static ngx_http_proxy_v2_session_t *
@@ -7669,12 +7673,10 @@ ngx_http_proxy_v2_create_stream(ngx_http_request_t *r,
 
     /* Keep admission serial until concurrent pool checkout is available. */
 
-    if (session->nstreams || session->closing || session->finishing
-        || session->goaway)
+    if (session->nstreams
+        || ngx_http_proxy_v2_stream_capacity(session) != NGX_OK)
     {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "too many active http2 streams");
-        return NGX_ERROR;
+        return NGX_BUSY;
     }
 
     stream = ngx_pcalloc(r->pool, sizeof(ngx_http_proxy_v2_stream_t));
@@ -7824,12 +7826,13 @@ ngx_http_proxy_v2_find_session(ngx_http_upstream_t *u)
 {
     ngx_rbtree_key_t              key;
     ngx_rbtree_node_t            *node, *next, *first, *sentinel;
-    ngx_http_proxy_v2_session_t  *session;
+    ngx_http_proxy_v2_session_t  *session, *idle;
 
     key = ngx_http_proxy_v2_session_key(u);
     node = ngx_http_proxy_v2_sessions.root;
     sentinel = ngx_http_proxy_v2_sessions.sentinel;
     first = NULL;
+    idle = NULL;
 
     /* Equal keys can be on either side after tree rotations. */
 
@@ -7850,15 +7853,16 @@ ngx_http_proxy_v2_find_session(ngx_http_upstream_t *u)
         next = ngx_rbtree_next(&ngx_http_proxy_v2_sessions, node);
         session = ngx_rbtree_data(node, ngx_http_proxy_v2_session_t, node);
 
-        if (!session->idle
+        if (session->closing || (!session->idle && session->nstreams == 0)
             || ngx_http_proxy_v2_match_session(session, u) != NGX_OK)
         {
             continue;
         }
 
-        if (ngx_http_proxy_v2_retain_session(session) != NGX_OK
-            || (ngx_msec_int_t) (ngx_current_msec
-                                 - session->idle_timer.timer.key) >= 0)
+        if (session->idle
+            && (ngx_http_proxy_v2_retain_session(session) != NGX_OK
+                || (ngx_msec_int_t) (ngx_current_msec
+                                     - session->idle_timer.timer.key) >= 0))
         {
             ngx_http_proxy_v2_close_session(session);
             continue;
@@ -7868,10 +7872,16 @@ ngx_http_proxy_v2_find_session(ngx_http_upstream_t *u)
             continue;
         }
 
-        return session;
+        if (session->nstreams) {
+            return session;
+        }
+
+        if (idle == NULL) {
+            idle = session;
+        }
     }
 
-    return NULL;
+    return idle;
 }
 
 
@@ -7925,7 +7935,20 @@ ngx_http_proxy_v2_reusable_session(ngx_http_proxy_v2_session_t *session)
 {
     ngx_connection_t  *c;
 
-    if (ngx_http_proxy_v2_retain_session(session) != NGX_OK) {
+    if (ngx_http_proxy_v2_check_session(session) != NGX_OK
+        || ngx_http_proxy_v2_stream_capacity(session) != NGX_OK)
+    {
+        return NGX_DECLINED;
+    }
+
+    /* Socket callbacks can precede already elapsed output timers. */
+
+    if ((session->output_timer.timer_set
+         && (ngx_msec_int_t) (session->output_deadline - ngx_current_msec) <= 0)
+        || (session->control_timer.timer_set
+            && (ngx_msec_int_t) (session->control_deadline - ngx_current_msec)
+               <= 0))
+    {
         return NGX_DECLINED;
     }
 
@@ -7954,8 +7977,7 @@ ngx_http_proxy_v2_reusable_session(ngx_http_proxy_v2_session_t *session)
         return NGX_DECLINED;
     }
 
-    if (session->max_streams == 0
-        || session->state != ngx_http_proxy_v2_st_start
+    if (session->state != ngx_http_proxy_v2_st_start
         || session->header_stream_id || session->write.posted
         || session->read.posted || session->input_stream_id
         || ngx_http_proxy_v2_output_pending(session)
@@ -7969,7 +7991,25 @@ ngx_http_proxy_v2_reusable_session(ngx_http_proxy_v2_session_t *session)
 
 
 static ngx_int_t
-ngx_http_proxy_v2_retain_session(ngx_http_proxy_v2_session_t *session)
+ngx_http_proxy_v2_stream_capacity(ngx_http_proxy_v2_session_t *session)
+{
+    if (session->closing || session->connection == NULL || session->finishing
+        || session->goaway
+        || session->nstreams >= NGX_HTTP_PROXY_V2_MAX_STREAMS
+        || session->nreserved >= NGX_HTTP_PROXY_V2_MAX_STREAMS
+        || session->nactive >= session->max_streams
+        || session->nopening >= session->max_streams - session->nactive
+        || session->last_stream_id >= 0x7fffffff)
+    {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_check_session(ngx_http_proxy_v2_session_t *session)
 {
     ngx_connection_t                   *c;
     ngx_http_upstream_keepalive_conf_t  *kcf;
@@ -7984,8 +8024,7 @@ ngx_http_proxy_v2_retain_session(ngx_http_proxy_v2_session_t *session)
     c = session->connection;
     kcf = session->upstream->keepalive;
 
-    if (kcf->max_cached == 0
-        || c->requests >= kcf->requests
+    if (c->requests >= kcf->requests
         || ngx_current_msec - c->start_time > kcf->time
         || c->error
         || c->close
@@ -7995,7 +8034,7 @@ ngx_http_proxy_v2_retain_session(ngx_http_proxy_v2_session_t *session)
         || c->write->error
         || c->write->timedout
         || session->goaway
-        || session->last_stream_id == 0x7fffffff
+        || session->last_stream_id >= 0x7fffffff
         || ngx_terminate
         || ngx_exiting)
     {
@@ -8003,6 +8042,17 @@ ngx_http_proxy_v2_retain_session(ngx_http_proxy_v2_session_t *session)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_retain_session(ngx_http_proxy_v2_session_t *session)
+{
+    if (ngx_http_proxy_v2_check_session(session) != NGX_OK) {
+        return NGX_DECLINED;
+    }
+
+    return session->upstream->keepalive->max_cached ? NGX_OK : NGX_DECLINED;
 }
 
 
