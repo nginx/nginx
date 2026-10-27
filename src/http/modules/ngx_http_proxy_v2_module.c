@@ -9153,6 +9153,10 @@ ngx_http_proxy_v2_exit_process(ngx_cycle_t *cycle)
 
         ngx_http_proxy_v2_remove_idle(session);
 
+        /* Stop asynchronous work before detaching the remaining borrowers. */
+
+        session->closing = 1;
+
         while (session->nstreams) {
             node = ngx_rbtree_min(session->streams.root,
                                  session->streams.sentinel);
