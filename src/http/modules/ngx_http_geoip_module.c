@@ -35,6 +35,8 @@
 #define NGX_GEOIP_CITY_DMA_CODE        10
 #define NGX_GEOIP_CITY_AREA_CODE       11
 
+#define NGX_GEOIP_MAX_COORD            180
+
 
 typedef struct {
 #if (NGX_HAVE_GEOIP)
@@ -1193,15 +1195,23 @@ ngx_http_geoip_float(MMDB_entry_s *entry, const char **path, double *value)
 
     case MMDB_DATA_TYPE_DOUBLE:
         *value = entry_data.double_value;
-        return NGX_OK;
+        break;
 
     case MMDB_DATA_TYPE_FLOAT:
         *value = entry_data.float_value;
-        return NGX_OK;
+        break;
 
     default:
         return NGX_DECLINED;
     }
+
+    /* the range of a coordinate in degrees; NaN fails the comparison */
+
+    if (!(*value >= -NGX_GEOIP_MAX_COORD && *value <= NGX_GEOIP_MAX_COORD)) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
