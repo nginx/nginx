@@ -29,6 +29,7 @@
 #define NGX_HTTP_PROXY_V2_PROTOCOL_ERROR   0x1
 #define NGX_HTTP_PROXY_V2_INTERNAL_ERROR   0x2
 #define NGX_HTTP_PROXY_V2_FLOW_CTRL_ERROR  0x3
+#define NGX_HTTP_PROXY_V2_REFUSED_STREAM   0x7
 #define NGX_HTTP_PROXY_V2_CANCEL           0x8
 
 
@@ -251,6 +252,7 @@ typedef struct {
     unsigned                       active:1;
     unsigned                       exited:1;
     unsigned                       reset_sent:1;
+    unsigned                       not_processed:1;
 } ngx_http_proxy_v2_stream_t;
 
 
@@ -326,7 +328,8 @@ static ngx_int_t ngx_http_proxy_v2_body_output_filter(void *data,
 static ngx_int_t ngx_http_proxy_v2_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_process_headers(ngx_http_request_t *r);
 static void ngx_http_proxy_v2_set_failure(
-    ngx_http_proxy_v2_stream_t *stream, ngx_uint_t failure, ngx_uint_t error);
+    ngx_http_proxy_v2_stream_t *stream, ngx_uint_t failure, ngx_uint_t error,
+    ngx_uint_t not_processed);
 static ngx_int_t ngx_http_proxy_v2_check_failure(
     ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_fail_stream(
@@ -349,6 +352,8 @@ static ngx_int_t ngx_http_proxy_v2_body_filter(ngx_event_pipe_t *p,
 static ngx_int_t ngx_http_proxy_v2_process_control_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b);
 static ngx_int_t ngx_http_proxy_v2_check_goaway(
+    ngx_http_proxy_v2_stream_t *stream);
+static ngx_int_t ngx_http_proxy_v2_record_goaway(
     ngx_http_proxy_v2_stream_t *stream);
 static ngx_int_t ngx_http_proxy_v2_process_frame(
     ngx_http_proxy_v2_session_t *sess, ngx_buf_t *b,
@@ -2218,9 +2223,9 @@ ngx_http_proxy_v2_check_failure(ngx_http_proxy_v2_stream_t *stream)
 
 static void
 ngx_http_proxy_v2_set_failure(ngx_http_proxy_v2_stream_t *stream,
-    ngx_uint_t failure, ngx_uint_t error)
+    ngx_uint_t failure, ngx_uint_t error, ngx_uint_t not_processed)
 {
-    /* The first failure owns the attempt, independently of event flags. */
+    /* The first failure owns the attempt and its unprocessed proof. */
 
     if (stream->failure) {
         return;
@@ -2243,10 +2248,12 @@ ngx_http_proxy_v2_set_failure(ngx_http_proxy_v2_stream_t *stream,
     if (stream->send_expired || stream->read_expired) {
         failure = NGX_HTTP_UPSTREAM_FT_TIMEOUT;
         error = 0;
+        not_processed = 0;
     }
 
     stream->failure = failure;
     stream->error = error;
+    stream->not_processed = not_processed && !stream->response_received;
 }
 
 
@@ -2321,7 +2328,7 @@ ngx_http_proxy_v2_fail_stream(ngx_http_proxy_v2_stream_t *stream,
 {
     ngx_int_t  rc;
 
-    ngx_http_proxy_v2_set_failure(stream, failure, error);
+    ngx_http_proxy_v2_set_failure(stream, failure, error, 0);
 
     if (stream->exited) {
         return NGX_OK;
@@ -2352,6 +2359,22 @@ ngx_http_proxy_v2_fail_stream(ngx_http_proxy_v2_stream_t *stream,
 static ngx_int_t
 ngx_http_proxy_v2_check_goaway(ngx_http_proxy_v2_stream_t *stream)
 {
+    ngx_int_t  rc;
+
+    rc = ngx_http_proxy_v2_record_goaway(stream);
+
+    if (rc != NGX_OK) {
+        (void) ngx_http_proxy_v2_fail_stream(stream, stream->failure,
+                                            stream->error);
+    }
+
+    return rc;
+}
+
+
+static ngx_int_t
+ngx_http_proxy_v2_record_goaway(ngx_http_proxy_v2_stream_t *stream)
+{
     ngx_uint_t                    failure;
     ngx_http_proxy_v2_session_t  *sess;
 
@@ -2364,12 +2387,15 @@ ngx_http_proxy_v2_check_goaway(ngx_http_proxy_v2_stream_t *stream)
             return NGX_OK;
         }
 
-        if (sess->goaway_last_stream_id < stream->id) {
+        if (!stream->header_started
+            || sess->goaway_last_stream_id < stream->id)
+        {
             failure = stream->response_received
                       ? NGX_HTTP_UPSTREAM_FT_INVALID_HEADER
                       : NGX_HTTP_UPSTREAM_FT_ERROR;
 
-            ngx_http_proxy_v2_set_failure(stream, failure, sess->goaway_error);
+            ngx_http_proxy_v2_set_failure(stream, failure,
+                                         sess->goaway_error, 1);
 
             if (sess->goaway_error || stream->response_received) {
                 ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
@@ -2475,6 +2501,10 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
                       sess->error);
 
         if (!stream->input_closed) {
+            ngx_http_proxy_v2_set_failure(
+                stream, NGX_HTTP_UPSTREAM_FT_ERROR, sess->error,
+                sess->error == NGX_HTTP_PROXY_V2_REFUSED_STREAM);
+
             return ngx_http_proxy_v2_fail_stream(stream,
                                                  NGX_HTTP_UPSTREAM_FT_ERROR,
                                                  sess->error);
@@ -2498,11 +2528,15 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
             return NGX_ERROR;
         }
 
-        if (!sess->goaway
-            || sess->frame_goaway_last_stream_id < sess->goaway_last_stream_id)
+        if (sess->goaway
+            && sess->frame_goaway_last_stream_id > sess->goaway_last_stream_id)
         {
-            sess->goaway_last_stream_id = sess->frame_goaway_last_stream_id;
+            ngx_log_error(NGX_LOG_ERR, &sess->log, 0,
+                          "upstream sent goaway with increasing stream id");
+            return NGX_ERROR;
         }
+
+        sess->goaway_last_stream_id = sess->frame_goaway_last_stream_id;
 
         if (sess->goaway_error == 0) {
             sess->goaway_error = sess->error;
@@ -2513,13 +2547,31 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
         tree = &sess->streams;
 
         if (tree->root != tree->sentinel) {
+            /* Record all rejections before cleanup can close the session. */
+
             for (node = ngx_rbtree_min(tree->root, tree->sentinel);
                  node;
                  node = ngx_rbtree_next(tree, node))
             {
                 stream = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t, node);
-                stream->request->upstream->keepalive = 0;
-                (void) ngx_http_proxy_v2_check_goaway(stream);
+                (void) ngx_http_proxy_v2_record_goaway(stream);
+            }
+
+            for (node = ngx_rbtree_min(tree->root, tree->sentinel);
+                 node;
+                 node = ngx_rbtree_next(tree, node))
+            {
+                stream = ngx_rbtree_data(node, ngx_http_proxy_v2_stream_t, node);
+
+                if (stream->failure) {
+                    (void) ngx_http_proxy_v2_fail_stream(stream, stream->failure,
+                                                        stream->error);
+
+                    if (sess->closing) {
+                        return NGX_ERROR;
+                    }
+                }
+
                 stream->read.ready = 1;
                 ngx_post_event(&stream->read, &ngx_posted_events);
             }
@@ -5989,7 +6041,7 @@ ngx_http_proxy_v2_send_expired(ngx_http_proxy_v2_stream_t *stream)
     if (!stream->failure && stream->send_waiting
         && (ngx_msec_int_t) (stream->send_deadline - ngx_current_msec) <= 0)
     {
-        ngx_http_proxy_v2_set_failure(stream, NGX_HTTP_UPSTREAM_FT_TIMEOUT, 0);
+        ngx_http_proxy_v2_set_failure(stream, NGX_HTTP_UPSTREAM_FT_TIMEOUT, 0, 0);
         stream->send_expired = 1;
     }
 
@@ -6491,7 +6543,7 @@ ngx_http_proxy_v2_read_expired(ngx_http_proxy_v2_stream_t *stream)
         || (!stream->failure && stream->read_waiting
             && (ngx_msec_int_t) (stream->read_deadline - ngx_current_msec) <= 0))
     {
-        ngx_http_proxy_v2_set_failure(stream, NGX_HTTP_UPSTREAM_FT_TIMEOUT, 0);
+        ngx_http_proxy_v2_set_failure(stream, NGX_HTTP_UPSTREAM_FT_TIMEOUT, 0, 0);
         stream->read_expired = 1;
         stream->read.timedout = 1;
         ngx_post_event(&stream->read, &ngx_posted_events);
