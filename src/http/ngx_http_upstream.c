@@ -2147,16 +2147,23 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     /* reinit the request chain */
 
-    file_pos = 0;
+    if (u->restore_request) {
+        if (u->restore_request(r) != NGX_OK) {
+            return NGX_ERROR;
+        }
 
-    for (cl = u->request_bufs; cl; cl = cl->next) {
-        cl->buf->pos = cl->buf->start;
+    } else {
+        file_pos = 0;
 
-        /* there is at most one file */
+        for (cl = u->request_bufs; cl; cl = cl->next) {
+            cl->buf->pos = cl->buf->start;
 
-        if (cl->buf->in_file) {
-            cl->buf->file_pos = file_pos;
-            file_pos = cl->buf->file_last;
+            /* there is at most one file */
+
+            if (cl->buf->in_file) {
+                cl->buf->file_pos = file_pos;
+                file_pos = cl->buf->file_last;
+            }
         }
     }
 
