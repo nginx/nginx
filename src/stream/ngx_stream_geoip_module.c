@@ -1155,15 +1155,23 @@ ngx_stream_geoip_float(MMDB_entry_s *entry, const char **path, double *value)
 
     case MMDB_DATA_TYPE_DOUBLE:
         *value = entry_data.double_value;
-        return NGX_OK;
+        break;
 
     case MMDB_DATA_TYPE_FLOAT:
         *value = entry_data.float_value;
-        return NGX_OK;
+        break;
 
     default:
         return NGX_DECLINED;
     }
+
+    /* latitude and longitude only; also rejects NaN */
+
+    if (!(*value >= -180 && *value <= 180)) {
+        return NGX_DECLINED;
+    }
+
+    return NGX_OK;
 }
 
 
