@@ -4784,7 +4784,9 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "upstream timed out");
     }
 
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
+    if (u->peer.cached && !u->keepalive_pass
+        && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR)
+    {
         /* TODO: inform balancer instead */
         u->peer.tries++;
     }
