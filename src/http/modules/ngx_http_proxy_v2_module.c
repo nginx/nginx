@@ -8052,12 +8052,6 @@ ngx_http_proxy_v2_find_session(ngx_http_upstream_t *u)
             continue;
         }
 
-        /* Keep pool checkout serial until concurrent reuse is enabled. */
-
-        if (session->nstreams) {
-            continue;
-        }
-
         if (session->idle
             && (ngx_http_proxy_v2_retain_session(session) != NGX_OK
                 || (ngx_msec_int_t) (ngx_current_msec
