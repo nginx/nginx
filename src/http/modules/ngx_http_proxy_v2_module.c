@@ -7865,9 +7865,7 @@ ngx_http_proxy_v2_close_session(ngx_http_proxy_v2_session_t *session)
             sc->buffered = 0;
 
             if (!stream->input_closed) {
-                ngx_http_proxy_v2_set_failure(stream, failure, 0);
-                sc->error = 1;
-                sc->read->error = 1;
+                (void) ngx_http_proxy_v2_fail_stream(stream, failure, 0);
             }
 
             if (sc->read->timer_set) {
