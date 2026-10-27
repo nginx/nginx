@@ -8708,15 +8708,17 @@ ngx_http_proxy_v2_free_peer(ngx_peer_connection_t *pc, void *data,
     pc->connection = NULL;
     peer->free(pc, peer->data, state);
 
-    kcf = session->upstream ? session->upstream->keepalive : NULL;
-    if (kcf) {
-        session->idle_deadline = ngx_current_msec + kcf->timeout;
-    }
+    if (session->nstreams == 0) {
+        kcf = session->upstream ? session->upstream->keepalive : NULL;
+        if (kcf) {
+            session->idle_deadline = ngx_current_msec + kcf->timeout;
+        }
 
-    ngx_http_proxy_v2_idle_session(session);
+        ngx_http_proxy_v2_idle_session(session);
 
-    if (session->idle) {
-        ngx_http_proxy_v2_post_read(session);
+        if (session->idle) {
+            ngx_http_proxy_v2_post_read(session);
+        }
     }
 
     ngx_http_proxy_v2_release_session(session);
