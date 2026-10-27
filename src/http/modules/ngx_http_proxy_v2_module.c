@@ -2071,7 +2071,6 @@ ngx_http_proxy_v2_finish_response(ngx_http_request_t *r,
     }
 
     stream->done = 1;
-    ngx_http_proxy_v2_stop_output(stream);
 
     return NGX_OK;
 }
@@ -6103,14 +6102,36 @@ ngx_http_proxy_v2_block_reading(ngx_http_request_t *r)
     ngx_connection_t  *c;
 
     c = r->connection;
+    rev = c->read;
+
+    /*
+     * HTTP/2 input can rearm the body timer after output has stopped.
+     * Leave posted reads for transport work and client-close handling.
+     */
+
+    if (rev->timer_set) {
+        ngx_del_timer(rev);
+    }
+
+    rev->timedout = 0;
+
+#if (NGX_HTTP_V2)
+    if (r->stream) {
+        return;
+    }
+#endif
+
+#if (NGX_HTTP_V3)
+    if (c->quic) {
+        return;
+    }
+#endif
 
 #if (NGX_HTTP_SSL)
     if (c->ssl && c->ssl->saved_read_handler) {
         return;
     }
 #endif
-
-    rev = c->read;
 
     if ((ngx_event_flags & NGX_USE_LEVEL_EVENT)
         && rev->active
@@ -6446,6 +6467,19 @@ ngx_http_proxy_v2_close_input(ngx_http_proxy_v2_stream_t *stream)
     stream->input_closed = 1;
     ngx_http_proxy_v2_release_stream(stream);
     ngx_http_proxy_v2_cancel_window_updates(stream->session, stream->id);
+
+    /* Final headers alone can precede a full-duplex request body exchange. */
+
+    ngx_http_proxy_v2_stop_output(stream);
+
+    if (stream->failure) {
+        (void) ngx_http_proxy_v2_fail_stream(stream, stream->failure,
+                                             stream->error);
+
+    } else if (!stream->output_closed) {
+        (void) ngx_http_proxy_v2_cancel_stream(stream, NGX_HTTP_PROXY_V2_CANCEL);
+    }
+
     ngx_http_proxy_v2_read_timer(stream->request);
 }
 
@@ -7187,6 +7221,12 @@ ngx_http_proxy_v2_recv_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             }
 
             ngx_http_proxy_v2_release_input(sess);
+        }
+
+        /* Cancelling the upload can close the transport after END_STREAM. */
+
+        if (sess->closing) {
+            return n;
         }
 
         /* Publish positive reads even when subsequent event rearming fails. */
