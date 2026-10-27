@@ -2804,6 +2804,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
                 /* SETTINGS_MAX_CONCURRENT_STREAMS, including zero */
 
                 sess->max_streams = sess->setting_value;
+
+                ngx_post_event(&sess->write, &ngx_posted_next_events);
             }
 
             if (sess->setting_id == 0x04) {
@@ -2843,6 +2845,8 @@ ngx_http_proxy_v2_process_control_frame(ngx_http_proxy_v2_session_t *sess,
                 }
 
                 sess->init_window = sess->setting_value;
+
+                ngx_post_event(&sess->write, &ngx_posted_next_events);
             }
         }
 
