@@ -1457,8 +1457,9 @@ ngx_http_proxy_v2_account_header(ngx_http_request_t *r, size_t size)
     if (size > ctx->stream->header_budget) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "upstream sent too much http2 header data");
-        ctx->stream->session->input_error = 1;
-        ngx_http_proxy_v2_close_session(ctx->stream->session);
+        (void) ngx_http_proxy_v2_fail_stream(
+            ctx->stream, NGX_HTTP_UPSTREAM_FT_INVALID_HEADER,
+            NGX_HTTP_PROXY_V2_INTERNAL_ERROR);
         return NGX_ERROR;
     }
 
@@ -3417,6 +3418,9 @@ ngx_http_proxy_v2_process_header_frame(ngx_http_request_t *r,
         }
 
         if (ngx_http_proxy_v2_alloc_field(r, sess) != NGX_OK) {
+            (void) ngx_http_proxy_v2_fail_stream(
+                stream, NGX_HTTP_UPSTREAM_FT_ERROR,
+                NGX_HTTP_PROXY_V2_INTERNAL_ERROR);
             return NGX_ERROR;
         }
     }
@@ -4295,6 +4299,8 @@ ngx_http_proxy_v2_process_field(ngx_http_request_t *r,
 static void
 ngx_http_proxy_v2_clear_header(ngx_http_proxy_v2_session_t *sess)
 {
+    /* Keep decoding progress and lengths for request-independent discard. */
+
     sess->name.data = NULL;
     sess->value.data = NULL;
     sess->field = NULL;
