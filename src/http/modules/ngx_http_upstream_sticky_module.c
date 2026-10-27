@@ -395,8 +395,13 @@ ngx_http_upstream_sticky_get_peer(ngx_peer_connection_t *pc, void *data)
         return rc;
     }
 
-    if (ngx_http_upstream_sticky_cookie_insert(pc, stp) != NGX_OK) {
-        return NGX_ERROR;
+    if (stp->id.len == 0 || pc->sid == NULL
+        || stp->id.len != pc->sid->len
+        || ngx_memcmp(stp->id.data, pc->sid->data, stp->id.len) != 0)
+    {
+       if (ngx_http_upstream_sticky_cookie_insert(pc, stp) != NGX_OK) {
+           return NGX_ERROR;
+       }
     }
 
     return rc;
