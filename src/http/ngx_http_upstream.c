@@ -55,6 +55,8 @@ static ngx_int_t ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 static void ngx_http_upstream_early_hints_writer(ngx_http_request_t *r);
 static ngx_int_t ngx_http_upstream_test_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+static ngx_uint_t ngx_http_upstream_retry_mask(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_uint_t mask);
 static ngx_int_t ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
@@ -2956,14 +2958,7 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
         timeout = u->conf->next_upstream_timeout;
 
-        if (u->request_sent
-            && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
-        {
-            mask = un->mask | NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
-
-        } else {
-            mask = un->mask;
-        }
+        mask = ngx_http_upstream_retry_mask(r, u, un->mask);
 
         if (u->peer.tries > 1
             && ((u->conf->next_upstream & mask) == mask)
@@ -4759,15 +4754,37 @@ ngx_http_upstream_dummy_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
 }
 
 
+static ngx_uint_t
+ngx_http_upstream_retry_mask(ngx_http_request_t *r, ngx_http_upstream_t *u,
+    ngx_uint_t mask)
+{
+    if (u->retry_mask) {
+        return u->retry_mask(r, mask);
+    }
+
+    if (u->request_sent
+        && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
+    {
+        mask |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
+    }
+
+    return mask;
+}
+
+
 static void
 ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
 {
     ngx_msec_t  timeout;
-    ngx_uint_t  status, state;
+    ngx_uint_t  status, state, mask;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
+
+    /* Protocol attempt state is available until free_peer() detaches it. */
+
+    mask = ngx_http_upstream_retry_mask(r, u, ft_type);
 
     if (u->peer.sockaddr && u->connection
         && (u->init_connection == NULL || u->connection_initialized))
@@ -4844,21 +4861,15 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
     timeout = u->conf->next_upstream_timeout;
 
-    if (u->request_sent
-        && (r->method & (NGX_HTTP_POST|NGX_HTTP_LOCK|NGX_HTTP_PATCH)))
-    {
-        ft_type |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
-    }
-
     if (u->peer.tries == 0
-        || ((u->conf->next_upstream & ft_type) != ft_type)
+        || ((u->conf->next_upstream & mask) != mask)
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
     {
 #if (NGX_HTTP_CACHE)
 
         if (u->cache_status == NGX_HTTP_CACHE_EXPIRED
-            && ((u->conf->cache_use_stale & ft_type) || r->cache->stale_error))
+            && ((u->conf->cache_use_stale & mask) || r->cache->stale_error))
         {
             ngx_int_t  rc;
 

@@ -398,6 +398,8 @@ struct ngx_http_upstream_s {
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
     ngx_int_t                      (*restore_request)(ngx_http_request_t *r);
+    ngx_uint_t                     (*retry_mask)(ngx_http_request_t *r,
+                                         ngx_uint_t mask);
     ngx_http_upstream_init_peer_pt   init_peer;
     ngx_int_t                      (*init_connection)(ngx_http_request_t *r);
     void                           (*write_timer)(ngx_http_request_t *r);

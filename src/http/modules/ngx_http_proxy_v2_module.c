@@ -273,6 +273,7 @@ typedef struct {
     ngx_array_t                    request_bufs;
 
     unsigned                       status:1;
+    unsigned                       non_idempotent:1;
 #if (NGX_HTTP_CACHE)
     unsigned                       cache_header_failed:1;
 #endif
@@ -314,6 +315,8 @@ static ngx_int_t ngx_http_proxy_v2_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_save_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_v2_restore_request(ngx_http_request_t *r);
+static ngx_uint_t ngx_http_proxy_v2_retry_mask(ngx_http_request_t *r,
+    ngx_uint_t mask);
 static ngx_int_t ngx_http_proxy_v2_init_header_budget(ngx_http_request_t *r,
     size_t *budget);
 static ngx_int_t ngx_http_proxy_v2_account_header(ngx_http_request_t *r,
@@ -651,6 +654,7 @@ ngx_http_proxy_v2_handler(ngx_http_request_t *r)
     u->create_request = ngx_http_proxy_v2_create_request;
     u->reinit_request = ngx_http_proxy_v2_reinit_request;
     u->restore_request = ngx_http_proxy_v2_restore_request;
+    u->retry_mask = ngx_http_proxy_v2_retry_mask;
     u->init_peer = ngx_http_proxy_v2_init_peer;
     u->init_connection = ngx_http_proxy_v2_init_stream;
     u->process_header = ngx_http_proxy_v2_process_header;
@@ -746,6 +750,11 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     }
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_v2_module);
+
+    ctx->non_idempotent =
+        (method.len == 4 && ngx_strncmp(method.data, "POST", 4) == 0)
+        || (method.len == 4 && ngx_strncmp(method.data, "LOCK", 4) == 0)
+        || (method.len == 5 && ngx_strncmp(method.data, "PATCH", 5) == 0);
 
     if (method.len == 4
         && ngx_strncasecmp(method.data, (u_char *) "HEAD", 4) == 0)
@@ -1458,6 +1467,26 @@ ngx_http_proxy_v2_restore_request(ngx_http_request_t *r)
     }
 
     return NGX_OK;
+}
+
+
+static ngx_uint_t
+ngx_http_proxy_v2_retry_mask(ngx_http_request_t *r, ngx_uint_t mask)
+{
+    ngx_http_proxy_v2_peer_t    *peer;
+    ngx_http_proxy_v2_stream_t  *stream;
+
+    peer = r->upstream->peer.data;
+    stream = peer->stream;
+
+    if (peer->ctx->non_idempotent && stream
+        && (stream->response_received
+            || (stream->header_started && !stream->not_processed)))
+    {
+        mask |= NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT;
+    }
+
+    return mask;
 }
 
 
