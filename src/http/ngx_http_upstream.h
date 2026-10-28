@@ -99,6 +99,15 @@ typedef struct {
 
 
 typedef struct {
+    ngx_uint_t                       max_cached;
+    ngx_uint_t                       requests;
+    ngx_msec_t                       time;
+    ngx_msec_t                       timeout;
+    ngx_uint_t                       local; /* unsigned  local:1; */
+} ngx_http_upstream_keepalive_conf_t;
+
+
+typedef struct {
     ngx_str_t                        name;
     ngx_addr_t                      *addrs;
     ngx_uint_t                       naddrs;
@@ -135,6 +144,8 @@ typedef struct {
 struct ngx_http_upstream_srv_conf_s {
     ngx_http_upstream_peer_t         peer;
     void                           **srv_conf;
+
+    ngx_http_upstream_keepalive_conf_t  *keepalive;
 
     ngx_array_t                     *servers;  /* ngx_http_upstream_server_t */
 
@@ -284,6 +295,7 @@ typedef struct {
 
     ngx_uint_t                       status_n;
     ngx_str_t                        status_line;
+    size_t                           header_size;
 
     ngx_table_elt_t                 *status;
     ngx_table_elt_t                 *date;
@@ -344,6 +356,7 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_handler_pt     write_event_handler;
 
     ngx_peer_connection_t            peer;
+    ngx_connection_t                *connection;
 
     ngx_event_pipe_t                *pipe;
 
@@ -381,6 +394,28 @@ struct ngx_http_upstream_s {
 #endif
     ngx_int_t                      (*create_request)(ngx_http_request_t *r);
     ngx_int_t                      (*reinit_request)(ngx_http_request_t *r);
+
+    /*
+     * Called once per attempt after TCP/TLS setup, before upstream request I/O.
+     * May replace connection with a protocol endpoint; peer.connection remains
+     * the physical connection.  Return NGX_OK with a valid connection,
+     * NGX_DECLINED to retry an unusable peer, or NGX_ERROR for an internal error.
+     *
+     * For cached peers, called before any request setup of the physical
+     * connection.  The protocol retains physical I/O ownership and accounts
+     * the new request in the physical connection's requests counter.
+     *
+     * When replacing connection, the protocol initializes the endpoint's request
+     * data, I/O methods, event handlers and readiness, and updates
+     * writer.connection.  Endpoint events can use ngx_http_upstream_handler().
+     * For new connections it takes over the physical handlers, removing or
+     * transferring pending timers and posted events.  The protocol must cancel
+     * endpoint timers and posted events before releasing the endpoint.
+     */
+
+    ngx_int_t                      (*init_connection)(ngx_http_request_t *r);
+    ngx_http_upstream_init_peer_pt    init_peer;
+
     ngx_int_t                      (*process_header)(ngx_http_request_t *r);
     void                           (*abort_request)(ngx_http_request_t *r);
     void                           (*finalize_request)(ngx_http_request_t *r,
@@ -423,6 +458,8 @@ struct ngx_http_upstream_s {
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
     unsigned                         response_received:1;
+    unsigned                         connection_initialized:1;
+    unsigned                         peer_initialized:1;
 };
 
 
@@ -441,6 +478,7 @@ typedef struct {
 
 ngx_int_t ngx_http_upstream_create(ngx_http_request_t *r);
 void ngx_http_upstream_init(ngx_http_request_t *r);
+void ngx_http_upstream_handler(ngx_event_t *ev);
 ngx_int_t ngx_http_upstream_non_buffered_filter_init(void *data);
 ngx_int_t ngx_http_upstream_non_buffered_filter(void *data, ssize_t bytes);
 ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,
