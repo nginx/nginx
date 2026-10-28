@@ -13,6 +13,10 @@
 #define NGX_QUIC_PATH_MTU_DELAY       100
 #define NGX_QUIC_PATH_MTU_PRECISION   16
 
+/* UDP payload sizes for the Ethernet MTU of 1500 */
+#define NGX_QUIC_PATH_MTU_ETHER       (1500 - 20 - 8)
+#define NGX_QUIC_PATH_MTU_ETHER6      (1500 - 40 - 8)
+
 
 static void ngx_quic_set_connection_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
@@ -188,6 +192,7 @@ valid:
         qc->congestion.ssthresh = (size_t) -1;
         qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
         qc->congestion.recovery_start = ngx_current_msec - 1;
+        qc->congestion.pacing_time = ngx_current_msec;
 
         ngx_quic_init_rtt(qc);
     }
@@ -618,9 +623,20 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 void
 ngx_quic_discover_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path)
 {
+    size_t                  ether;
     ngx_quic_connection_t  *qc;
 
     qc = ngx_quic_get_connection(c);
+
+#if (NGX_HAVE_INET6)
+    if (path->sockaddr->sa_family == AF_INET6) {
+        ether = NGX_QUIC_PATH_MTU_ETHER6;
+
+    } else
+#endif
+    {
+        ether = NGX_QUIC_PATH_MTU_ETHER;
+    }
 
     if (path->max_mtu) {
         if (path->max_mtu - path->mtu <= NGX_QUIC_PATH_MTU_PRECISION) {
@@ -632,7 +648,8 @@ ngx_quic_discover_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path)
         path->mtud = (path->mtu + path->max_mtu) / 2;
 
     } else {
-        path->mtud = path->mtu * 2;
+        /* most paths are Ethernet, probe its MTU before searching */
+        path->mtud = (path->mtu < ether) ? ether : path->mtu * 2;
 
         if (path->mtud >= qc->ctp.max_udp_payload_size) {
             path->mtud = qc->ctp.max_udp_payload_size;
