@@ -9,20 +9,21 @@
 #include <poll.h>
 
 
-#define NGX_CTRL_MAX_FD          64
-#define NGX_CTRL_MAX_REQUEST     1024
+#define NGX_CTRL_MAX_FD             64
+#define NGX_CTRL_DFLT_MAX_REQUEST   1024
+#define NGX_CTRL_DFLT_CHLD_TIMEOUT  30000
 
-#define NGX_CTRL_OK              200
-#define NGX_CTRL_BAD_REQUEST     400
-#define NGX_CTRL_NOT_FOUND       404
-#define NGX_CTRL_NOT_ALLOWED     405
-#define NGX_CTRL_UNPROCESSABLE   422
-#define NGX_CTRL_INTERNAL_ERROR  500
+#define NGX_CTRL_OK                 200
+#define NGX_CTRL_BAD_REQUEST        400
+#define NGX_CTRL_NOT_FOUND          404
+#define NGX_CTRL_NOT_ALLOWED        405
+#define NGX_CTRL_UNPROCESSABLE      422
+#define NGX_CTRL_INTERNAL_ERROR     500
 
-#define NGX_CTRL_GET             1
-#define NGX_CTRL_PATCH           2
+#define NGX_CTRL_GET                1
+#define NGX_CTRL_PATCH              2
 
-#define NGX_CTRL_ENV             "NGINX_CTRL"
+#define NGX_CTRL_ENV                "NGINX_CTRL"
 
 
 typedef struct {
@@ -48,12 +49,22 @@ typedef struct {
 } ngx_control_process_t;
 
 
+typedef struct {
+    ngx_msec_t     chld_proc_timeout;
+    ngx_uint_t     max_request_bytes;
+} ngx_control_conf_t;
+
+
 static ngx_int_t ngx_control_inherit(void);
 static void ngx_control_close(ngx_control_request_t *r);
 static void ngx_control_handle_accept(void);
 static ngx_int_t ngx_control_handle_read(ngx_control_request_t *r);
 static ngx_int_t ngx_control_content(ngx_control_request_t *r);
 static char *ngx_control_status_text(ngx_uint_t code);
+static void *ngx_control_create_conf(ngx_cycle_t *cycle);
+static char *ngx_control_init_conf(ngx_cycle_t *cycle, void *conf);
+static char *ngx_control_conf_block(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
 static ngx_int_t ngx_control_send_response(ngx_control_request_t *r,
     ngx_uint_t code, ngx_buf_t *body);
 static ngx_int_t ngx_control_handle_write(ngx_control_request_t *r);
@@ -64,9 +75,11 @@ static ngx_int_t ngx_control_show_processes(ngx_control_request_t *r);
 static ngx_int_t ngx_control_show_version(ngx_control_request_t *r);
 static ngx_int_t ngx_control_reload_config(ngx_control_request_t *r);
 static ngx_int_t ngx_control_print_config(ngx_control_request_t *r);
+static ngx_int_t ngx_control_check_config(ngx_control_request_t *r);
 static void ngx_control_log_capture(ngx_log_t *log, ngx_uint_t l,
     u_char *buf, size_t len);
 
+static void ngx_control_check_config_child(ngx_control_request_t *r);
 static ngx_int_t ngx_control_parse_request_line(ngx_control_request_t *r);
 static ngx_int_t ngx_control_send_json(ngx_control_request_t *r, ngx_int_t code,
     ngx_data_item_t *obj);
@@ -130,6 +143,92 @@ static ngx_data_decl_t  ngx_control_config_fields[] = {
 
       ngx_data_null_decl
 };
+
+static ngx_command_t  ngx_control_core_commands[] = {
+    { ngx_string("control_api"),
+      NGX_MAIN_CONF|NGX_CONF_BLOCK|NGX_CONF_NOARGS,
+      ngx_control_conf_block,
+      0, 0, NULL },
+
+    { ngx_string("helper_timeout"),
+      NGX_CONTROL_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      0, offsetof(ngx_control_conf_t, chld_proc_timeout), NULL },
+
+    { ngx_string("max_request_bytes"),
+      NGX_CONTROL_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      0, offsetof(ngx_control_conf_t, max_request_bytes), NULL },
+
+      ngx_null_command
+};
+
+static ngx_core_module_t ngx_control_core_module_ctx = {
+    ngx_string("ngx_control_api"),
+    ngx_control_create_conf,
+    ngx_control_init_conf,
+};
+
+ngx_module_t ngx_control_core_module = {
+    NGX_MODULE_V1,
+    &ngx_control_core_module_ctx,
+    ngx_control_core_commands,
+    NGX_CORE_MODULE,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NGX_MODULE_V1_PADDING
+};
+
+
+static char *
+ngx_control_conf_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    char        *parse_ret;
+    ngx_uint_t   outer_type;
+
+    outer_type = cf->cmd_type;
+    cf->cmd_type = NGX_CONTROL_CONF;
+    parse_ret = ngx_conf_parse(cf, NULL);
+    if (parse_ret != NGX_CONF_OK) {
+        return parse_ret;
+    }
+
+    cf->cmd_type = outer_type;
+    return NGX_CONF_OK;
+}
+
+
+static void *
+ngx_control_create_conf(ngx_cycle_t *cycle)
+{
+    ngx_control_conf_t *conf = ngx_pcalloc(cycle->pool,
+                                           sizeof(ngx_control_conf_t));
+    if (conf == NULL) {
+        return NULL;
+    }
+
+    conf->chld_proc_timeout = NGX_CONF_UNSET_MSEC;
+    conf->max_request_bytes = NGX_CONF_UNSET_UINT;
+
+    return conf;
+}
+
+
+static char *
+ngx_control_init_conf(ngx_cycle_t *_cycle, void *conf)
+{
+    ngx_control_conf_t *cf = (ngx_control_conf_t *) conf;
+
+    ngx_conf_init_msec_value(cf->chld_proc_timeout, NGX_CTRL_DFLT_CHLD_TIMEOUT);
+    ngx_conf_init_size_value(cf->max_request_bytes, NGX_CTRL_DFLT_MAX_REQUEST);
+
+    return NGX_CONF_OK;
+}
 
 
 void
@@ -464,7 +563,11 @@ ngx_control_handle_accept(void)
     ngx_fd_t                fd;
     ngx_err_t               err;
     struct pollfd          *pfd;
+    ngx_control_conf_t     *conf;
     ngx_control_request_t  *r;
+
+    conf = (ngx_control_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                               ngx_control_core_module);
 
     for ( ;; ) {
         fd = accept(ngx_control_pollfd[0].fd, NULL, NULL);
@@ -544,7 +647,7 @@ ngx_control_handle_accept(void)
             continue;
         }
 
-        r->in = ngx_create_temp_buf(r->pool, NGX_CTRL_MAX_REQUEST);
+        r->in = ngx_create_temp_buf(r->pool, conf->max_request_bytes);
         if (r->in == NULL) {
             ngx_destroy_pool(r->pool);
             ngx_close_socket(r->fd);
@@ -695,6 +798,17 @@ ngx_control_content(ngx_control_request_t *r)
             }
 
             return ngx_control_show_processes(r);
+        }
+
+        break;
+
+    case 23:
+        if (ngx_strncmp(p, "/1/control/config/check", len) == 0) {
+            if (r->method != NGX_CTRL_GET) {
+                return ngx_control_send_response(r, NGX_CTRL_NOT_ALLOWED, NULL);
+            }
+
+            return ngx_control_check_config(r);
         }
 
         break;
@@ -979,14 +1093,177 @@ ngx_control_json_logs(ngx_array_t *logs)
 }
 
 
-static ngx_int_t
-ngx_control_reload_config(ngx_control_request_t *r)
+static void
+ngx_control_check_config_child(ngx_control_request_t *r)
 {
     ngx_int_t         status;
     ngx_log_t         log, *tmp;
     ngx_cycle_t      *cycle;
     ngx_array_t       log_store;
+    struct pollfd    *pfd;
     ngx_data_item_t  *obj;
+
+    /* this function is run as a child process */
+
+    ngx_test_config = 1;
+    status = NGX_CTRL_OK;
+    pfd = &ngx_control_pollfd[r->index];
+
+    if (ngx_array_init(&log_store, r->pool, 3, sizeof(ngx_str_t)) != NGX_OK) {
+        _exit(1);
+    }
+
+    ngx_memzero(&log, sizeof(ngx_log_t));
+    log.wdata = &log_store;
+    log.writer = ngx_control_log_capture;
+    log.log_level = NGX_LOG_DEBUG;
+
+    tmp = ngx_cycle->log;
+    log.next = tmp;
+    ngx_cycle->log = &log;
+
+    cycle = ngx_init_cycle((ngx_cycle_t *) ngx_cycle);
+
+    if (cycle == NULL) {
+        status = NGX_CTRL_UNPROCESSABLE;
+        ngx_cycle->log = tmp;
+
+    } else {
+        ngx_cycle = cycle;
+        r->pool->log = ngx_cycle->log;
+    }
+
+    obj = ngx_control_json_logs(&log_store);
+    if (obj == NULL) {
+        _exit(1);
+    }
+
+    switch (ngx_control_send_json(r, status, obj)) {
+    case NGX_DONE:
+        _exit(0);
+    case NGX_AGAIN:
+        break;
+    case NGX_ERROR:
+        /* fallthrough */
+    default:
+        _exit(1);
+    }
+
+    /* make sure response written fully before exiting */
+    do {
+        if (poll(pfd, 1, -1) == -1) {
+            if (ngx_errno != EINTR) {
+                _exit(1);
+            } else {
+                continue;
+            }
+        }
+
+        if (pfd->revents & (POLLHUP | POLLERR | POLLNVAL)) {
+            _exit(1);
+        }
+
+        switch (ngx_control_handle_write(r)) {
+        case NGX_ERROR:
+            _exit(1);
+        case NGX_DONE:
+            _exit(0);
+        default:
+            continue;
+        }
+
+    } while (pfd->events & POLLOUT);
+
+    /* theoretically unreachable */
+    _exit(1);
+}
+
+
+static ngx_int_t
+ngx_control_check_config(ngx_control_request_t *r)
+{
+    int                  status;
+    ngx_pid_t            pid, waited_pid;
+    ngx_uint_t           timeout;
+    ngx_control_conf_t  *conf;
+
+    conf = (ngx_control_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                               ngx_control_core_module);
+    timeout = 0;
+
+    if (conf->chld_proc_timeout > 0) {
+        timeout = ngx_current_msec + conf->chld_proc_timeout;
+    }
+
+    pid = fork();
+    if (pid) {
+        if (pid < 0) {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                          "control: fork() failed");
+            return NGX_ERROR;
+        }
+
+        /* wait indefinitely for child */
+        if (timeout == 0) {
+            waited_pid = waitpid(pid, &status, 0);
+            if (waited_pid != pid) {
+                ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, waited_pid,
+                              "control: waitpid() failed");
+                return NGX_ERROR;
+            }
+
+        /* loop while waiting for timeout */
+        } else {
+            do {
+                waited_pid = waitpid(pid, &status, WNOHANG);
+                if (waited_pid == 0) {
+                    /* WNOHANG AND NOTHING CHANGED */
+                    ngx_msleep(1);
+                    ngx_time_update();
+                    continue;
+
+                } else if (waited_pid == pid) {
+                    goto next;
+
+                } else {
+                    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, waited_pid,
+                                  "control: waitpid() failed");
+                    return NGX_ERROR;
+                }
+            } while (ngx_current_msec < timeout);
+
+            if (kill(pid, SIGKILL) == -1) {
+                ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, ngx_errno,
+                              "control: kill() failed");
+            }
+
+            return NGX_ERROR;
+        }
+
+next:
+        /* if child process exited prematurely with error */
+        if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+            /* logging happened in child */
+            return NGX_ERROR;
+        }
+
+    } else {
+        ngx_control_check_config_child(r);
+        /* there is no return from above function */
+    }
+
+    return NGX_DONE;
+}
+
+
+static ngx_int_t
+ngx_control_reload_config(ngx_control_request_t *r)
+{
+    ngx_int_t            status;
+    ngx_log_t            log, *tmp;
+    ngx_cycle_t         *cycle;
+    ngx_array_t          log_store;
+    ngx_data_item_t     *obj;
 
     status = NGX_CTRL_OK;
 
