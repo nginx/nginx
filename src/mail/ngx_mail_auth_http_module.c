@@ -985,21 +985,6 @@ ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
                 break;
             }
 
-            if (ch == CR) {
-                ctx->header_name_end = p;
-                ctx->header_start = p;
-                ctx->header_end = p;
-                state = sw_almost_done;
-                break;
-            }
-
-            if (ch == LF) {
-                ctx->header_name_end = p;
-                ctx->header_start = p;
-                ctx->header_end = p;
-                goto done;
-            }
-
             return NGX_ERROR;
 
         /* space* before header value */
