@@ -368,12 +368,12 @@ main(int argc, char *const *argv)
 #endif
 
 #if (NGX_CONTROL_API)
-    if (ngx_process == NGX_PROCESS_SINGLE) {
-        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
-                      "control API unavailable in single process mode");
+    if (ngx_control_api_enabled) {
+        if (ngx_process == NGX_PROCESS_SINGLE) {
+            ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                          "control API unavailable in single process mode");
 
-    } else {
-        if (ngx_control_init(ngx_control_addr) != NGX_OK) {
+        } else if (ngx_control_init(ngx_control_addr) != NGX_OK) {
             return 1;
         }
     }
