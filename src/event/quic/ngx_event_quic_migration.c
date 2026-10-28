@@ -194,7 +194,9 @@ valid:
 
     path->validated = 1;
 
-    ngx_quic_set_connection_path(c, path);
+    if (path == qc->path) {
+        ngx_quic_set_connection_path(c, path);
+    }
 
     if (path->mtu_unvalidated) {
         path->mtu_unvalidated = 0;
