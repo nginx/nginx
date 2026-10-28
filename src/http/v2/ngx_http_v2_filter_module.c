@@ -1108,6 +1108,20 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
 
     h2c = stream->connection;
 
+    if (h2c->fair_scheduling && !fc->error
+        && (fc->write->posted || stream->queued))
+    {
+        /* Finish the preceding batch without starting another turn. */
+
+        if (ngx_http_v2_filter_send(fc, stream) == NGX_ERROR) {
+            return NGX_CHAIN_ERROR;
+        }
+
+        ngx_http_v2_handle_stream(h2c, stream);
+
+        return in;
+    }
+
     if (size && ngx_http_v2_flow_control(h2c, stream) == NGX_DECLINED) {
 
         if (ngx_http_v2_filter_send(fc, stream) == NGX_ERROR) {
@@ -1147,6 +1161,10 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
 
     if (limit > stream->send_window) {
         limit = (stream->send_window > 0) ? stream->send_window : 0;
+    }
+
+    if (h2c->fair_scheduling && limit > 16384) {
+        limit = 16384;
     }
 
     h2lcf = ngx_http_get_module_loc_conf(r, ngx_http_v2_module);
@@ -1278,6 +1296,14 @@ ngx_http_v2_send_chain(ngx_connection_t *fc, ngx_chain_t *in, off_t limit)
     if (in && ngx_http_v2_flow_control(h2c, stream) == NGX_DECLINED) {
         fc->write->active = 1;
         fc->write->ready = 0;
+    }
+
+    if (h2c->fair_scheduling && !stream->out_closed
+        && !stream->waiting && !stream->exhausted && !fc->write->delayed)
+    {
+        /* Yield even when a synchronous producer exhausted this input. */
+
+        ngx_post_event(fc->write, &ngx_posted_next_events);
     }
 
     return in;
@@ -1679,7 +1705,10 @@ ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
 
     fc = stream->request->connection;
 
-    if (!fc->error && stream->exhausted) {
+    if (!fc->error
+        && (stream->exhausted
+            || (h2c->fair_scheduling && stream->queued)))
+    {
         return;
     }
 
@@ -1692,7 +1721,12 @@ ngx_http_v2_handle_stream(ngx_http_v2_connection_t *h2c,
         return;
     }
 
-    ngx_post_event(wev, &ngx_posted_events);
+    if (!fc->error && h2c->fair_scheduling) {
+        ngx_post_event(wev, &ngx_posted_next_events);
+
+    } else {
+        ngx_post_event(wev, &ngx_posted_events);
+    }
 }
 
 
