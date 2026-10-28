@@ -813,8 +813,9 @@ ngx_http_script_add_code(ngx_array_t *codes, size_t size, void *code)
     }
 
     if (code) {
-        if (elts != codes->elts) {
-            p = code;
+        p = code;
+
+        if (*p && elts != codes->elts) {
             *p += (u_char *) codes->elts - elts;
         }
     }
