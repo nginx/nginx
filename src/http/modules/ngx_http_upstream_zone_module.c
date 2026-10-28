@@ -413,7 +413,9 @@ ngx_http_upstream_zone_copy_peer(ngx_http_upstream_rr_peers_t *peers,
         ngx_memcpy(dst->sockaddr, src->sockaddr, src->socklen);
         ngx_memcpy(dst->name.data, src->name.data, src->name.len);
 #if (NGX_HTTP_UPSTREAM_SID)
-        ngx_memcpy(dst->sid.data, src->sid.data, src->sid.len);
+        if (src->sid.len) {
+            ngx_memcpy(dst->sid.data, src->sid.data, src->sid.len);
+        }
 #endif
 
         dst->server.data = ngx_slab_alloc_locked(pool, src->server.len);
