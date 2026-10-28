@@ -20,6 +20,8 @@ ngx_quic_frame_t *ngx_quic_alloc_frame(ngx_connection_t *c);
 void ngx_quic_free_frame(ngx_connection_t *c, ngx_quic_frame_t *frame);
 void ngx_quic_free_frames(ngx_connection_t *c, ngx_queue_t *frames);
 void ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame);
+void ngx_quic_queue_stream_frame(ngx_quic_send_ctx_t *ctx,
+    ngx_quic_frame_t *frame);
 ngx_int_t ngx_quic_split_frame(ngx_connection_t *c, ngx_quic_frame_t *f,
     size_t len);
 
