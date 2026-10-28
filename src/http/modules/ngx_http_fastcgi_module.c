@@ -861,11 +861,12 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     u_char                        ch, sep, *pos, *lowcase_key;
     size_t                        size, len, params_len,
                                   key_len, val_len, padding, allocated;
-    ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
+    ngx_uint_t                    i, j, n, next, hash, skip_empty,
+                                  header_params, nignored;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
-    ngx_table_elt_t              *header, *hn, **ignored;
+    ngx_table_elt_t              *header, *hn, **ignored, **headers;
     ngx_http_upstream_t          *u;
     ngx_http_script_code_pt       code;
     ngx_http_script_engine_t      e, le;
@@ -877,7 +878,9 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
     len = 0;
     params_len = 0;
     header_params = 0;
+    nignored = 0;
     ignored = NULL;
+    headers = NULL;
 
     u = r->upstream;
 
@@ -931,19 +934,28 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
             return NGX_ERROR;
         }
 
-        if (params->number || r->headers_in.multi) {
-            n = 0;
-            part = &r->headers_in.headers.part;
+        n = 0;
+        part = &r->headers_in.headers.part;
 
-            while (part) {
-                n += part->nelts;
-                part = part->next;
-            }
+        while (part) {
+            n += part->nelts;
+            part = part->next;
+        }
 
+        headers = ngx_palloc(r->pool, n * sizeof(void *));
+        if (headers == NULL) {
+            return NGX_ERROR;
+        }
+
+        if (r->headers_in.multi) {
             ignored = ngx_palloc(r->pool, n * sizeof(void *));
             if (ignored == NULL) {
                 return NGX_ERROR;
             }
+
+            /* the headers array is not used yet and serves as a buffer */
+
+            nignored = ngx_http_sort_linked_headers(r, ignored, headers);
         }
 
         part = &r->headers_in.headers.part;
@@ -961,10 +973,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            for (n = 0; n < header_params; n++) {
-                if (&header[i] == ignored[n]) {
-                    goto next_length;
-                }
+            if (ngx_http_find_linked_header(ignored, nignored, &header[i])) {
+                continue;
             }
 
             if (params->number) {
@@ -993,7 +1003,6 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 }
 
                 if (ngx_hash_find(&params->hash, hash, lowcase_key, n)) {
-                    ignored[header_params++] = &header[i];
                     continue;
                 }
             }
@@ -1004,15 +1013,16 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
             for (hn = header[i].next; hn; hn = hn->next) {
                 val_len += hn->value.len + 2;
-                ignored[header_params++] = hn;
             }
 
             len += ((key_len > 127) ? 4 : 1) + key_len
                    + ((val_len > 127) ? 4 : 1) + val_len;
 
-        next_length:
+            headers[header_params++] = &header[i];
+        }
 
-            continue;
+        if (ignored) {
+            ngx_pfree(r->pool, ignored);
         }
     }
 
@@ -1164,6 +1174,8 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 
     if (flcf->upstream.pass_request_headers) {
 
+        j = 0;
+
         part = &r->headers_in.headers.part;
         header = part->elts;
 
@@ -1179,11 +1191,11 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 i = 0;
             }
 
-            for (n = 0; n < header_params; n++) {
-                if (&header[i] == ignored[n]) {
-                    goto next_value;
-                }
+            if (j == header_params || &header[i] != headers[j]) {
+                continue;
             }
+
+            j++;
 
             key_len = sizeof("HTTP_") - 1 + header[i].key.len;
             if (key_len > 127) {
@@ -1254,9 +1266,6 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                            "fastcgi param: \"%*s: %*s\"",
                            key_len, b->last - (key_len + val_len),
                            val_len, b->last - val_len);
-        next_value:
-
-            continue;
         }
     }
 
