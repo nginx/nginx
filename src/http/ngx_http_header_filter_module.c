@@ -287,7 +287,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-    if (r->headers_out.server == NULL) {
+    if (clcf->server_header && r->headers_out.server == NULL) {
         if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
             len += sizeof(ngx_http_server_full_string) - 1;
 
@@ -456,7 +456,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     }
     *b->last++ = CR; *b->last++ = LF;
 
-    if (r->headers_out.server == NULL) {
+    if (clcf->server_header && r->headers_out.server == NULL) {
         if (clcf->server_tokens == NGX_HTTP_SERVER_TOKENS_ON) {
             p = ngx_http_server_full_string;
             len = sizeof(ngx_http_server_full_string) - 1;
