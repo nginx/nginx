@@ -107,7 +107,7 @@ static ngx_int_t
 ngx_http_v2_header_filter(ngx_http_request_t *r)
 {
     u_char                     status, *pos, *start, *p, *tmp;
-    size_t                     len, tmp_len;
+    size_t                     len, tmp_len, ct_len;
     ngx_str_t                  host, location;
     ngx_uint_t                 i, port, fin;
     ngx_list_part_t           *part;
@@ -242,20 +242,22 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
 
     if (r->headers_out.content_type.len) {
 
-        if (r->headers_out.content_type.len > NGX_HTTP_V2_MAX_FIELD) {
+        ct_len = r->headers_out.content_type.len;
+
+        if (r->headers_out.content_type_len == r->headers_out.content_type.len
+            && r->headers_out.charset.len)
+        {
+            ct_len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
+        }
+
+        if (ct_len > NGX_HTTP_V2_MAX_FIELD) {
             ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
                           "too long response header value: "
                           "\"Content-Type: %V\"", &r->headers_out.content_type);
             return NGX_ERROR;
         }
 
-        len += 1 + NGX_HTTP_V2_INT_OCTETS + r->headers_out.content_type.len;
-
-        if (r->headers_out.content_type_len == r->headers_out.content_type.len
-            && r->headers_out.charset.len)
-        {
-            len += sizeof("; charset=") - 1 + r->headers_out.charset.len;
-        }
+        len += 1 + NGX_HTTP_V2_INT_OCTETS + ct_len;
     }
 
     if (r->headers_out.content_length == NULL
@@ -271,13 +273,6 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     }
 
     if (r->headers_out.location && r->headers_out.location->value.len) {
-
-        if (r->headers_out.location->value.len > NGX_HTTP_V2_MAX_FIELD) {
-            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
-                          "too long response header value: \"Location: %V\"",
-                          &r->headers_out.location->value);
-            return NGX_ERROR;
-        }
 
         if (r->headers_out.location->value.data[0] == '/'
             && clcf->absolute_redirect)
@@ -351,6 +346,13 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
         }
 
         r->headers_out.location->hash = 0;
+
+        if (r->headers_out.location->value.len > NGX_HTTP_V2_MAX_FIELD) {
+            ngx_log_error(NGX_LOG_CRIT, fc->log, 0,
+                          "too long response header value: \"Location: %V\"",
+                          &r->headers_out.location->value);
+            return NGX_ERROR;
+        }
 
         len += 1 + NGX_HTTP_V2_INT_OCTETS + r->headers_out.location->value.len;
     }
