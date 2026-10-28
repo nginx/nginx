@@ -614,7 +614,7 @@ ngx_create_paths(ngx_cycle_t *cycle, ngx_uid_t user)
             }
         }
 
-        if (user == (ngx_uid_t) NGX_CONF_UNSET_UINT) {
+        if (user == (ngx_uid_t) NGX_CONF_UNSET_UINT || ngx_test_config) {
             continue;
         }
 
