@@ -92,12 +92,6 @@ typedef struct {
 } ngx_proxy_protocol_tlv_entry_t;
 
 
-typedef struct {
-    ngx_uint_t                              type;
-    ngx_str_t                               value;
-} ngx_proxy_protocol_tlv_value_t;
-
-
 static u_char *ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p,
     u_char *last, ngx_str_t *addr);
 static u_char *ngx_proxy_protocol_read_port(u_char *p, u_char *last,
@@ -675,9 +669,38 @@ ngx_proxy_protocol_lookup_tlv(ngx_connection_t *c, ngx_str_t *tlvs,
 }
 
 
+ngx_int_t
+ngx_proxy_protocol_v2_tlv_type(ngx_str_t *s, ngx_uint_t *type)
+{
+    ngx_int_t  n;
+
+    /*
+     * the only accepted form is a lowercase "0x" prefix followed by
+     * exactly two hexadecimal digits
+     */
+
+    if (s->len != 4 || s->data[0] != '0' || s->data[1] != 'x') {
+        return NGX_ERROR;
+    }
+
+    n = ngx_hextoi(s->data + 2, 2);
+
+    if (n == NGX_ERROR
+        || n < NGX_PROXY_PROTOCOL_TLV_USER_MIN
+        || n > NGX_PROXY_PROTOCOL_TLV_USER_MAX)
+    {
+        return NGX_ERROR;
+    }
+
+    *type = (ngx_uint_t) n;
+
+    return NGX_OK;
+}
+
+
 u_char *
 ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last,
-    ngx_array_t *tlvs /* reserved */ )
+    ngx_array_t *tlvs)
 {
     u_char                          *p;
     uint32_t                         verify;
@@ -738,6 +761,18 @@ ngx_proxy_protocol_v2_write(ngx_connection_t *c, u_char *buf, u_char *last,
                                             verify);
         if (p == NULL) {
             return NULL;
+        }
+    }
+
+    if (tlvs) {
+        tlv = tlvs->elts;
+
+        for (i = 0; i < tlvs->nelts; i++) {
+            p = ngx_proxy_protocol_v2_write_tlv(c, p, last, tlv[i].type,
+                                                &tlv[i].value);
+            if (p == NULL) {
+                return NULL;
+            }
         }
     }
 
