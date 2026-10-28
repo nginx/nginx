@@ -592,7 +592,9 @@ ngx_quic_output_packet(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
     {
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
-        if (ack_only && f->type != NGX_QUIC_FT_ACK) {
+        if (ack_only && f->type != NGX_QUIC_FT_ACK
+            && !f->ignore_congestion)
+        {
             break;
         }
 
