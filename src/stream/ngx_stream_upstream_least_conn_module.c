@@ -100,7 +100,7 @@ ngx_stream_upstream_get_least_conn_peer(ngx_peer_connection_t *pc, void *data)
 
     time_t                           now;
     uintptr_t                        m;
-    ngx_int_t                        rc, total;
+    ngx_int_t                        total;
     ngx_uint_t                       i, n, p, many;
     ngx_stream_upstream_rr_peer_t   *peer, *best;
     ngx_stream_upstream_rr_peers_t  *peers;
@@ -274,13 +274,7 @@ failed:
 
         ngx_stream_upstream_rr_peers_unlock(peers);
 
-        rc = ngx_stream_upstream_get_least_conn_peer(pc, rrp);
-
-        if (rc != NGX_BUSY) {
-            return rc;
-        }
-
-        ngx_stream_upstream_rr_peers_wlock(peers);
+        return ngx_stream_upstream_get_least_conn_peer(pc, rrp);
     }
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
