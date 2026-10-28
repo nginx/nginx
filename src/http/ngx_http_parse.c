@@ -230,6 +230,11 @@ ngx_http_parse_request_line(ngx_http_request_t *r, ngx_buf_t *b)
                         break;
                     }
 
+                    if (ngx_str5cmp(m, 'Q', 'U', 'E', 'R', 'Y')) {
+                        r->method = NGX_HTTP_QUERY;
+                        break;
+                    }
+
                     break;
 
                 case 6:
