@@ -574,6 +574,10 @@ ngx_sprintf_str(u_char *buf, u_char *last, u_char *src, size_t len,
     static u_char   hex[] = "0123456789abcdef";
     static u_char   HEX[] = "0123456789ABCDEF";
 
+    if (len == 0) {
+        return buf;
+    }
+
     if (hexadecimal == 0) {
 
         if (len == (size_t) -1) {
