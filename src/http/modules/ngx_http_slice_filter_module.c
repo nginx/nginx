@@ -401,6 +401,23 @@ ngx_http_slice_range_variable(ngx_http_request_t *r,
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_slice_filter_module);
 
+    if (ctx == NULL && r != r->main) {
+
+        /*
+         * a named location redirect zeroes the subrequest's module
+         * contexts; restore the slice context from the main request
+         */
+
+        ctx = ngx_http_get_module_ctx(r->main, ngx_http_slice_filter_module);
+
+        if (ctx != NULL && ctx->sr == r) {
+            ngx_http_set_ctx(r, ctx, ngx_http_slice_filter_module);
+
+        } else {
+            ctx = NULL;
+        }
+    }
+
     if (ctx == NULL) {
         if (r != r->main || r->headers_out.status) {
             v->not_found = 1;
