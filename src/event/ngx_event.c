@@ -243,6 +243,8 @@ ngx_process_events_and_timers(ngx_cycle_t *cycle)
         timer = 0;
     }
 
+    timer = ngx_event_timer_timeout(timer);
+
     delta = ngx_current_msec;
 
     (void) ngx_process_events(cycle, timer, flags);
