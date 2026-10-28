@@ -888,9 +888,9 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
 
     static u_char  lowcase[] =
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
-        "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0" "0123456789\0\0\0\0\0\0"
-        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
-        "\0abcdefghijklmnopqrstuvwxyz\0\0\0\0\0"
+        "\0!\0#$%&'\0\0*+\0-.\0" "0123456789\0\0\0\0\0\0"
+        "\0abcdefghijklmnopqrstuvwxyz\0\0\0^\0"
+        "`abcdefghijklmnopqrstuvwxyz\0|\0~\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -950,12 +950,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                     return NGX_HTTP_PARSE_INVALID_HEADER;
                 }
 
-                hash = 0;
-                i = 0;
-                r->invalid_header = 1;
-
-                break;
-
+                r->header_end = p;
+                return NGX_HTTP_PARSE_INVALID_HEADER;
             }
             break;
 
@@ -1019,9 +1015,8 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
                 return NGX_HTTP_PARSE_INVALID_HEADER;
             }
 
-            r->invalid_header = 1;
-
-            break;
+            r->header_end = p;
+            return NGX_HTTP_PARSE_INVALID_HEADER;
 
         /* space* before header value */
         case sw_space_before_value:
