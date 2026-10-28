@@ -10,7 +10,7 @@
 
 
 void
-ngx_gettimeofday(struct timeval *tp)
+ngx_gettimeofday64(ngx_timeval_t *tp)
 {
     uint64_t  intervals;
     FILETIME  ft;
@@ -31,10 +31,19 @@ ngx_gettimeofday(struct timeval *tp)
      */
 
     intervals = ((uint64_t) ft.dwHighDateTime << 32) | ft.dwLowDateTime;
-    intervals -= 116444736000000000;
+    ngx_filetime_to_timeval(intervals, tp);
+}
 
-    tp->tv_sec = (long) (intervals / 10000000);
-    tp->tv_usec = (long) ((intervals % 10000000) / 10);
+
+void
+ngx_gettimeofday(struct timeval *tp)
+{
+    ngx_timeval_t  tv;
+
+    ngx_gettimeofday64(&tv);
+
+    tp->tv_sec = (long) tv.tv_sec;
+    tp->tv_usec = tv.tv_usec;
 }
 
 
