@@ -677,6 +677,35 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 continue;
             }
 
+            if (len == sizeof("Auth-SMTP") - 1
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-SMTP",
+                                   sizeof("Auth-SMTP") - 1)
+                   == 0)
+            {
+                len = ctx->header_end - ctx->header_start;
+
+                if (len == sizeof("no") - 1
+                    && ngx_strncasecmp(ctx->header_start, (u_char *) "no",
+                                       sizeof("no") - 1)
+                       == 0)
+                {
+                    s->smtp_auth = 0;
+                    s->smtp_auth_set = 1;
+
+                } else if (len == sizeof("yes") - 1
+                           && ngx_strncasecmp(ctx->header_start,
+                                              (u_char *) "yes",
+                                              sizeof("yes") - 1)
+                              == 0)
+                {
+                    s->smtp_auth = 1;
+                    s->smtp_auth_set = 1;
+                }
+
+                continue;
+            }
+
             /* ignore other headers */
 
             continue;
