@@ -61,7 +61,11 @@ static ngx_int_t ngx_http_proxy_create_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_reinit_request(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_body_output_filter(void *data, ngx_chain_t *in);
 static ngx_int_t ngx_http_proxy_process_status_line(ngx_http_request_t *r);
+static ngx_int_t ngx_http_proxy_parse_status_line(ngx_http_request_t *r);
 static ngx_int_t ngx_http_proxy_process_header(ngx_http_request_t *r);
+#if (NGX_HTTP_CACHE)
+static ngx_int_t ngx_http_proxy_process_cache_headers(ngx_http_request_t *r);
+#endif
 static ngx_int_t ngx_http_proxy_input_filter_init(void *data);
 static ngx_int_t ngx_http_proxy_copy_filter(ngx_event_pipe_t *p,
     ngx_buf_t *buf);
@@ -1804,10 +1808,105 @@ out:
 static ngx_int_t
 ngx_http_proxy_process_status_line(ngx_http_request_t *r)
 {
-    size_t                 len;
+#if (NGX_HTTP_CACHE)
+    if (r->cached) {
+        return ngx_http_proxy_process_cache_header(r);
+    }
+#endif
+
+    return ngx_http_proxy_parse_status_line(r);
+}
+
+
+#if (NGX_HTTP_CACHE)
+
+ngx_int_t
+ngx_http_proxy_process_cache_header(ngx_http_request_t *r)
+{
+    u_char                *last;
     ngx_int_t              rc;
+    ngx_uint_t             state, major, minor, keepalive;
+    ngx_http_cache_t      *c;
+    ngx_http_status_t      status;
     ngx_http_upstream_t   *u;
     ngx_http_proxy_ctx_t  *ctx;
+    ngx_int_t            (*process_header)(ngx_http_request_t *r);
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
+
+    if (ctx == NULL) {
+        return NGX_ERROR;
+    }
+
+    u = r->upstream;
+    c = r->cache;
+
+    if (c->body_start <= c->header_start
+        || (size_t) (u->buffer.last - u->buffer.start) < c->body_start)
+    {
+        rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        goto invalid;
+    }
+
+    /* Cached headers form a complete block, independent of any live attempt. */
+
+    last = u->buffer.last;
+    process_header = u->process_header;
+    status = ctx->status;
+    state = r->state;
+    major = r->http_major;
+    minor = r->http_minor;
+    keepalive = u->keepalive;
+
+    u->buffer.last = u->buffer.start + c->body_start;
+    ngx_memzero(&ctx->status, sizeof(ngx_http_status_t));
+    r->state = 0;
+
+    rc = ngx_http_proxy_parse_status_line(r);
+
+    if (rc == NGX_AGAIN || rc == NGX_HTTP_UPSTREAM_EARLY_HINTS
+        || (rc == NGX_OK && u->buffer.pos != u->buffer.last))
+    {
+        rc = NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
+    u->buffer.last = last;
+    u->process_header = process_header;
+    ctx->status = status;
+    r->state = state;
+    r->http_major = major;
+    r->http_minor = minor;
+    u->keepalive = keepalive;
+
+invalid:
+
+    if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
+        /* The replacement response must supply its own cache policy. */
+        c->valid_sec = 0;
+        c->updating_sec = 0;
+        c->error_sec = 0;
+        c->valid_msec = 0;
+        c->stale_updating = 0;
+        c->stale_error = 0;
+        ngx_str_null(&c->vary);
+    }
+
+    return rc;
+}
+
+#endif
+
+
+static ngx_int_t
+ngx_http_proxy_parse_status_line(ngx_http_request_t *r)
+{
+    size_t                      len;
+    ngx_int_t                   rc;
+    ngx_http_upstream_t        *u;
+    ngx_http_proxy_ctx_t       *ctx;
+#if (NGX_HTTP_CACHE)
+    ngx_http_proxy_loc_conf_t  *plcf;
+#endif
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_proxy_module);
 
@@ -1827,6 +1926,10 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         u->buffer.pos = ctx->status.line_start;
 
 #if (NGX_HTTP_CACHE)
+
+        if (r->cached) {
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+        }
 
         if (r->cache) {
             r->http_version = NGX_HTTP_VERSION_9;
@@ -1851,6 +1954,12 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
         return NGX_OK;
     }
 
+#if (NGX_HTTP_CACHE)
+    if (r->cached && ctx->status.code < NGX_HTTP_OK) {
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+#endif
+
     if (u->state && u->state->status == 0) {
         u->state->status = ctx->status.code;
     }
@@ -1858,6 +1967,18 @@ ngx_http_proxy_process_status_line(ngx_http_request_t *r)
     u->headers_in.status_n = ctx->status.code;
 
     len = ctx->status.end - ctx->status.start;
+
+#if (NGX_HTTP_CACHE)
+    if (r->cached && len == 3) {
+        plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+
+        if (plcf->http_version == NGX_HTTP_VERSION_20) {
+            /* HTTP/2 cache entries have no reason phrase. */
+            len = 0;
+        }
+    }
+#endif
+
     u->headers_in.status_line.len = len;
 
     u->headers_in.status_line.data = ngx_pnalloc(r->pool, len);
@@ -1896,9 +2017,16 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
     ngx_http_upstream_t            *u;
     ngx_http_proxy_ctx_t           *ctx;
     ngx_http_upstream_header_t     *hh;
+#if (NGX_HTTP_CACHE)
+    ngx_http_proxy_loc_conf_t      *plcf;
+#endif
     ngx_http_upstream_main_conf_t  *umcf;
 
     umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+#if (NGX_HTTP_CACHE)
+    plcf = ngx_http_get_module_loc_conf(r, ngx_http_proxy_module);
+#endif
 
     for ( ;; ) {
 
@@ -1940,6 +2068,13 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 ngx_strlow(h->lowcase_key, h->key.data, h->key.len);
             }
 
+#if (NGX_HTTP_CACHE)
+            if (r->cached && plcf->http_version == NGX_HTTP_VERSION_20) {
+                /* HTTP/2 also accepts field names outside the parser's table. */
+                h->hash = ngx_hash_key(h->lowcase_key, h->key.len);
+            }
+#endif
+
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "http proxy header: \"%V: %V\"",
                            &h->key, &h->value);
@@ -1947,6 +2082,21 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
             if (r->upstream->headers_in.status_n == NGX_HTTP_EARLY_HINTS) {
                 continue;
             }
+
+#if (NGX_HTTP_CACHE)
+            /* Validate framing before applying cached response side effects. */
+
+            if (r->cached
+                && !(h->key.len == sizeof("content-length") - 1
+                     && ngx_strncmp(h->lowcase_key, "content-length",
+                                    sizeof("content-length") - 1) == 0)
+                && !(h->key.len == sizeof("transfer-encoding") - 1
+                     && ngx_strncmp(h->lowcase_key, "transfer-encoding",
+                                    sizeof("transfer-encoding") - 1) == 0))
+            {
+                continue;
+            }
+#endif
 
             hh = ngx_hash_find(&umcf->headers_in_hash, h->hash,
                                h->lowcase_key, h->key.len);
@@ -1983,38 +2133,20 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 return NGX_HTTP_UPSTREAM_EARLY_HINTS;
             }
 
-            /*
-             * if no "Server" and "Date" in header line,
-             * then add the special empty headers
-             */
-
-            if (r->upstream->headers_in.server == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
+#if (NGX_HTTP_CACHE)
+            if (r->cached) {
+                if (r->upstream->buffer.pos != r->upstream->buffer.last) {
+                    return NGX_HTTP_UPSTREAM_INVALID_HEADER;
                 }
 
-                h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
-                                    ngx_hash('s', 'e'), 'r'), 'v'), 'e'), 'r');
-
-                ngx_str_set(&h->key, "Server");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "server";
-                h->next = NULL;
+                if (ngx_http_proxy_process_cache_headers(r) != NGX_OK) {
+                    return NGX_ERROR;
+                }
             }
+#endif
 
-            if (r->upstream->headers_in.date == NULL) {
-                h = ngx_list_push(&r->upstream->headers_in.headers);
-                if (h == NULL) {
-                    return NGX_ERROR;
-                }
-
-                h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
-
-                ngx_str_set(&h->key, "Date");
-                ngx_str_null(&h->value);
-                h->lowcase_key = (u_char *) "date";
-                h->next = NULL;
+            if (ngx_http_proxy_set_default_headers(r) != NGX_OK) {
+                return NGX_ERROR;
             }
 
             /* clear content length if response is chunked */
@@ -2063,6 +2195,96 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
 
         return NGX_HTTP_UPSTREAM_INVALID_HEADER;
     }
+}
+
+
+#if (NGX_HTTP_CACHE)
+
+static ngx_int_t
+ngx_http_proxy_process_cache_headers(ngx_http_request_t *r)
+{
+    ngx_uint_t                      i;
+    ngx_list_part_t                *part;
+    ngx_table_elt_t                *h;
+    ngx_http_upstream_t            *u;
+    ngx_http_upstream_header_t     *hh;
+    ngx_http_upstream_main_conf_t  *umcf;
+
+    u = r->upstream;
+    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+
+    part = &u->headers_in.headers.part;
+    h = part->elts;
+
+    for (i = 0; /* void */; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+
+        if (&h[i] == u->headers_in.content_length
+            || &h[i] == u->headers_in.transfer_encoding)
+        {
+            continue;
+        }
+
+        hh = ngx_hash_find(&umcf->headers_in_hash, h[i].hash,
+                           h[i].lowcase_key, h[i].key.len);
+
+        if (hh && hh->handler(r, &h[i], hh->offset) != NGX_OK) {
+            /* Once side effects are applied, failure must not fall back. */
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+#endif
+
+
+ngx_int_t
+ngx_http_proxy_set_default_headers(ngx_http_request_t *r)
+{
+    ngx_table_elt_t  *h;
+
+    /* If no Server or Date was received, add the special empty headers. */
+
+    if (r->upstream->headers_in.server == NULL) {
+        h = ngx_list_push(&r->upstream->headers_in.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        h->hash = ngx_hash(ngx_hash(ngx_hash(ngx_hash(
+                            ngx_hash('s', 'e'), 'r'), 'v'), 'e'), 'r');
+
+        ngx_str_set(&h->key, "Server");
+        ngx_str_null(&h->value);
+        h->lowcase_key = (u_char *) "server";
+        h->next = NULL;
+    }
+
+    if (r->upstream->headers_in.date == NULL) {
+        h = ngx_list_push(&r->upstream->headers_in.headers);
+        if (h == NULL) {
+            return NGX_ERROR;
+        }
+
+        h->hash = ngx_hash(ngx_hash(ngx_hash('d', 'a'), 't'), 'e');
+
+        ngx_str_set(&h->key, "Date");
+        ngx_str_null(&h->value);
+        h->lowcase_key = (u_char *) "date";
+        h->next = NULL;
+    }
+
+    return NGX_OK;
 }
 
 
@@ -4113,6 +4335,33 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     {
         clcf->handler = ngx_http_proxy_handler;
     }
+
+#if (NGX_HTTP_V2)
+
+    if (conf->http_version == NGX_HTTP_VERSION_20) {
+        conf->upstream.change_buffering = 0;
+
+        if (conf->upstream.upstream || conf->proxy_lengths) {
+            if (!conf->upstream.buffering) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"proxy_buffering off\" is not supported "
+                                   "with \"proxy_http_version 2\"");
+                return NGX_CONF_ERROR;
+            }
+
+            if (conf->upstream.limit_rate
+                && (conf->upstream.limit_rate->lengths
+                    || conf->upstream.limit_rate->u.size))
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "\"proxy_limit_rate\" is not supported "
+                                   "with \"proxy_http_version 2\"");
+                return NGX_CONF_ERROR;
+            }
+        }
+    }
+
+#endif
 
     if (conf->body_source.data == NULL) {
         conf->body_flushes = prev->body_flushes;
