@@ -2212,7 +2212,10 @@ ngx_http_variable_request_body(ngx_http_request_t *r,
 
     for ( /* void */ ; cl; cl = cl->next) {
         buf = cl->buf;
-        p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
+
+        if (buf->pos != buf->last) {
+            p = ngx_cpymem(p, buf->pos, buf->last - buf->pos);
+        }
     }
 
     v->len = len;
