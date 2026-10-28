@@ -42,12 +42,14 @@ typedef struct {
     unsigned                 log:1;
     unsigned                 errors:1;
     unsigned                 events:1;
+    unsigned                 directio_off:1;
 
     unsigned                 is_dir:1;
     unsigned                 is_file:1;
     unsigned                 is_link:1;
     unsigned                 is_exec:1;
     unsigned                 is_directio:1;
+    unsigned                 is_directio_off:1;
 } ngx_open_file_info_t;
 
 
@@ -66,6 +68,8 @@ struct ngx_cached_open_file_s {
     time_t                   mtime;
     off_t                    size;
     ngx_err_t                err;
+
+    ngx_uint_t               directio_off;
 
     uint32_t                 uses;
 
@@ -103,6 +107,7 @@ typedef struct {
     ngx_open_file_cache_t   *cache;
     ngx_cached_open_file_t  *file;
     ngx_uint_t               min_uses;
+    ngx_uint_t               directio_off;
     ngx_log_t               *log;
 } ngx_open_file_cache_cleanup_t;
 
@@ -124,6 +129,9 @@ ngx_open_file_cache_t *ngx_open_file_cache_init(ngx_pool_t *pool,
     ngx_uint_t max, time_t inactive);
 ngx_int_t ngx_open_cached_file(ngx_open_file_cache_t *cache, ngx_str_t *name,
     ngx_open_file_info_t *of, ngx_pool_t *pool);
+
+ngx_int_t ngx_open_file_directio_on(ngx_fd_t fd, ngx_pool_t *pool);
+ngx_int_t ngx_open_file_directio_off(ngx_fd_t fd, ngx_pool_t *pool);
 
 
 #endif /* _NGX_OPEN_FILE_CACHE_H_INCLUDED_ */
