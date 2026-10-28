@@ -12,7 +12,6 @@
 
 static ngx_int_t ngx_conf_add_dump(ngx_conf_t *cf, ngx_str_t *filename);
 static ngx_int_t ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last);
-static ngx_int_t ngx_conf_read_token(ngx_conf_t *cf);
 static void ngx_conf_flush_files(ngx_cycle_t *cycle);
 
 
@@ -47,7 +46,7 @@ ngx_module_t  ngx_conf_module = {
 
 /* The eight fixed arguments */
 
-static ngx_uint_t argument_number[] = {
+ngx_uint_t argument_number[] = {
     NGX_CONF_NOARGS,
     NGX_CONF_TAKE1,
     NGX_CONF_TAKE2,
@@ -176,7 +175,11 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
     prev = NULL;
 #endif
 
-    if (filename) {
+    if (filename && cf->dynamic) {
+
+        type = parse_file;
+
+    } else if (filename) {
 
         /* open configuration file */
 
@@ -236,7 +239,7 @@ ngx_conf_parse(ngx_conf_t *cf, ngx_str_t *filename)
             cf->conf_file->dump = NULL;
         }
 
-    } else if (cf->conf_file->file.fd != NGX_INVALID_FILE) {
+    } else if (cf->conf_file->file.fd != NGX_INVALID_FILE || cf->dynamic) {
 
         type = parse_block;
 
@@ -335,7 +338,7 @@ failed:
 
 done:
 
-    if (filename) {
+    if (filename && !cf->dynamic) {
         if (cf->conf_file->buffer->start) {
             ngx_free(cf->conf_file->buffer->start);
         }
@@ -392,6 +395,12 @@ ngx_conf_handler(ngx_conf_t *cf, ngx_int_t last)
 
             if (cf->cycle->modules[i]->type != NGX_CONF_MODULE
                 && cf->cycle->modules[i]->type != cf->module_type)
+            {
+                continue;
+            }
+
+            if (cf->dynamic
+                && !(cf->cycle->modules[i]->flags & NGX_DYNAMIC_MODULE))
             {
                 continue;
             }
@@ -505,7 +514,7 @@ invalid:
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_conf_read_token(ngx_conf_t *cf)
 {
     u_char      *start, ch, *src, *dst;
@@ -1011,7 +1020,7 @@ ngx_conf_log_error(ngx_uint_t level, ngx_conf_t *cf, ngx_err_t err,
         p = ngx_log_errno(p, last, err);
     }
 
-    if (cf->conf_file == NULL) {
+    if (cf->conf_file == NULL || cf->dynamic) {
         ngx_log_error(level, cf->log, 0, "%*s", p - errstr, errstr);
         return;
     }
