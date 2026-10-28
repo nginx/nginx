@@ -72,6 +72,8 @@ static ngx_int_t ngx_http_json_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static void ngx_http_json_reset(ngx_http_variable_value_t *values,
     ngx_http_json_main_conf_t *jmcf, ngx_uint_t source_index);
+static void ngx_http_json_reset_node(ngx_http_json_state_t *state,
+    ngx_http_json_node_t *node);
 static char *ngx_http_json_insert_path(ngx_conf_t *cf,
     ngx_http_json_node_t *root, ngx_uint_t dest, ngx_str_t *path);
 static ngx_http_json_node_t *ngx_http_json_child(ngx_conf_t *cf,
@@ -383,6 +385,30 @@ ngx_http_json_reset(ngx_http_variable_value_t *values,
 
         values[i].valid = 0;
         values[i].not_found = 1;
+    }
+}
+
+
+static void
+ngx_http_json_reset_node(ngx_http_json_state_t *state,
+    ngx_http_json_node_t *node)
+{
+    ngx_uint_t             i;
+    ngx_http_json_node_t  *children;
+
+    for (i = 0; i < node->ndests; i++) {
+        state->values[node->dests[i]].valid = 0;
+        state->values[node->dests[i]].not_found = 1;
+    }
+
+    if (node->children == NULL) {
+        return;
+    }
+
+    children = node->children->elts;
+
+    for (i = 0; i < node->children->nelts; i++) {
+        ngx_http_json_reset_node(state, &children[i]);
     }
 }
 
@@ -785,6 +811,8 @@ ngx_http_json_handler(ngx_json_ctx_t *ctx, ngx_json_event_e event,
             state->current_node = NULL;
             return NGX_JSON_SKIP;
         }
+
+        ngx_http_json_reset_node(state, node);
 
         state->in_member = 1;
         state->current_node = node;
