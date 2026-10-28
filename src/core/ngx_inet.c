@@ -40,7 +40,7 @@ ngx_inet_addr(u_char *text, size_t len)
             continue;
         }
 
-        if (c == '.') {
+        if (c == '.' && p != text && *(p - 1) != '.') {
             addr = (addr << 8) + octet;
             octet = 0;
             n++;
@@ -50,7 +50,7 @@ ngx_inet_addr(u_char *text, size_t len)
         return INADDR_NONE;
     }
 
-    if (n == 3) {
+    if (n == 3 && *(p - 1) != '.') {
         addr = (addr << 8) + octet;
         return htonl(addr);
     }
