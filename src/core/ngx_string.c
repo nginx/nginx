@@ -17,6 +17,7 @@ static void ngx_encode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis, ngx_uint_t padding);
 static ngx_int_t ngx_decode_base64_internal(ngx_str_t *dst, ngx_str_t *src,
     const u_char *basis);
+static size_t ngx_json_utf8_sequence(u_char *src, size_t size);
 
 
 void
@@ -1901,22 +1902,119 @@ ngx_escape_html(u_char *dst, u_char *src, size_t size)
 }
 
 
+static size_t
+ngx_json_utf8_sequence(u_char *src, size_t size)
+{
+    u_char    c;
+    size_t    len;
+    uint32_t  u, min;
+
+    c = src[0];
+
+    if (c < 0x80) {
+        return 1;
+    }
+
+    if (c < 0xc2) {
+        /* a continuation byte, or an overlong two-byte lead (0xc0, 0xc1) */
+        return 0;
+    }
+
+    if (c < 0xe0) {
+        u = c & 0x1f;
+        min = 0x80;
+        len = 2;
+
+    } else if (c < 0xf0) {
+        u = c & 0x0f;
+        min = 0x800;
+        len = 3;
+
+    } else if (c < 0xf5) {
+        u = c & 0x07;
+        min = 0x10000;
+        len = 4;
+
+    } else {
+        /* 0xf5..0xff would encode above U+10FFFF */
+        return 0;
+    }
+
+    if (size < len) {
+        return 0;
+    }
+
+    for (size = 1; size < len; size++) {
+        c = src[size];
+
+        if ((c & 0xc0) != 0x80) {
+            return 0;
+        }
+
+        u = (u << 6) | (c & 0x3f);
+    }
+
+    if (u < min) {
+        /* overlong encoding */
+        return 0;
+    }
+
+    if (u >= 0xd800 && u <= 0xdfff) {
+        /* surrogate halves are not Unicode scalar values */
+        return 0;
+    }
+
+    if (u > 0x10ffff) {
+        return 0;
+    }
+
+    return len;
+}
+
+
 uintptr_t
 ngx_escape_json(u_char *dst, u_char *src, size_t size)
 {
+    u_char     *run;
     u_char      ch;
+    size_t      ulen;
     ngx_uint_t  len;
 
     if (dst == NULL) {
         len = 0;
 
         while (size) {
-            ch = *src++;
+            ch = *src;
 
-            if (ch == '\\' || ch == '"') {
-                len++;
+            /* skip the run of bytes that need no escaping */
 
-            } else if (ch <= 0x1f) {
+            while (ch > 0x1f && ch < 0x80 && ch != '\\' && ch != '"') {
+                src++;
+
+                if (--size == 0) {
+                    return (uintptr_t) len;
+                }
+
+                ch = *src;
+            }
+
+            if (ch > 0x1f) {
+
+                if (ch < 0x80) {
+                    len++;
+                    ulen = 1;
+
+                } else {
+                    ulen = ngx_json_utf8_sequence(src, size);
+
+                    if (ulen == 0) {
+                        /* malformed: one U+FFFD per offending byte */
+                        len += sizeof("\xEF\xBF\xBD") - 2;
+                        ulen = 1;
+                    }
+                }
+
+            } else {
 
                 switch (ch) {
                 case '\n':
@@ -1930,26 +2028,80 @@ ngx_escape_json(u_char *dst, u_char *src, size_t size)
                 default:
                     len += sizeof("\\u001F") - 2;
                 }
+
+                ulen = 1;
             }
 
-            size--;
+            src += ulen;
+            size -= ulen;
         }
 
         return (uintptr_t) len;
     }
 
     while (size) {
-        ch = *src++;
+        ch = *src;
 
         if (ch > 0x1f) {
 
-            if (ch == '\\' || ch == '"') {
+            if (ch < 0x80) {
+
+                if (ch != '\\' && ch != '"') {
+
+                    /* copy the run with one memcpy, not byte by byte */
+
+                    run = src;
+
+                    do {
+                        src++;
+                        size--;
+
+                        if (size == 0) {
+                            break;
+                        }
+
+                        ch = *src;
+
+                    } while (ch > 0x1f && ch < 0x80
+                             && ch != '\\' && ch != '"');
+
+                    dst = ngx_cpymem(dst, run, src - run);
+
+                    continue;
+                }
+
                 *dst++ = '\\';
+                *dst++ = ch;
+
+                src++;
+                size--;
+
+                continue;
             }
 
-            *dst++ = ch;
+            ulen = ngx_json_utf8_sequence(src, size);
+
+            if (ulen == 0) {
+                /* malformed: replace the offending byte with U+FFFD */
+                *dst++ = 0xef; *dst++ = 0xbf; *dst++ = 0xbd;
+
+                src++;
+                size--;
+
+                continue;
+            }
+
+            size -= ulen;
+
+            while (ulen--) {
+                *dst++ = *src++;
+            }
+
+            continue;
 
         } else {
+            src++;
+
             *dst++ = '\\';
 
             switch (ch) {
