@@ -137,6 +137,7 @@ struct ngx_http_v2_connection_s {
     ngx_uint_t                       priority_limit;
 
     size_t                           send_window;
+    size_t                           send_queued;
     size_t                           recv_window;
     size_t                           init_window;
 
