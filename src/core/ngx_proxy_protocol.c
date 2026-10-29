@@ -954,12 +954,20 @@ ngx_proxy_protocol_v2_ssl_sub(ngx_connection_t *c, ngx_uint_t type,
     case NGX_PROXY_PROTOCOL_TLV_SSL_SIG_ALG:
         cert = SSL_get_certificate(c->ssl->connection);
 
+        if (cert == NULL) {
+            return NGX_DECLINED;
+        }
+
         out->data = (u_char *) OBJ_nid2sn(X509_get_signature_nid(cert));
         out->len = ngx_strlen(out->data);
         return NGX_OK;
 
     case NGX_PROXY_PROTOCOL_TLV_SSL_KEY_ALG:
         cert = SSL_get_certificate(c->ssl->connection);
+
+        if (cert == NULL) {
+            return NGX_DECLINED;
+        }
 
         pkey = X509_get_pubkey(cert);
         if (pkey == NULL) {
