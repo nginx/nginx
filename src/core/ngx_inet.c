@@ -80,6 +80,11 @@ ngx_inet6_addr(u_char *p, size_t len, u_char *addr)
     n = 8;
 
     if (p[0] == ':') {
+
+        if (len == 1 || p[1] != ':') {
+            return NGX_ERROR;
+        }
+
         p++;
         len--;
     }
@@ -118,7 +123,10 @@ ngx_inet6_addr(u_char *p, size_t len, u_char *addr)
             }
 
             word = ngx_inet_addr(digit, len4 - 1);
-            if (word == INADDR_NONE) {
+            if (word == INADDR_NONE
+                && (len4 - 1 != sizeof("255.255.255.255") - 1
+                    || ngx_strncmp(digit, "255.255.255.255", len4 - 1) != 0))
+            {
                 return NGX_ERROR;
             }
 
@@ -148,8 +156,14 @@ ngx_inet6_addr(u_char *p, size_t len, u_char *addr)
         return NGX_ERROR;
     }
 
-    if (nibbles == 0 && zero == NULL) {
-        return NGX_ERROR;
+    if (nibbles == 0) {
+
+        if (zero != addr) {
+            return NGX_ERROR;
+        }
+
+        ngx_memzero(zero, n * 2);
+        return NGX_OK;
     }
 
     *addr++ = (u_char) (word >> 8);
