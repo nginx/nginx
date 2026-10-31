@@ -671,6 +671,14 @@ ngx_json_parse_ctx(ngx_json_ctx_t *ctx, u_char *data, size_t len)
         return NGX_OK;
     }
 
+    /*
+     * an unfinished context cannot be safely resumed: a resuming call
+     * starts with an uninitialized token pointer and could emit an
+     * incomplete token from it
+     */
+
+    ctx->state = ngx_json_done;
+
     return NGX_DECLINED;
 }
 
