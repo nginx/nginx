@@ -731,12 +731,15 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
         addr_text.data = NULL;
     }
 
+    ngx_rbtree_insert(&qc->streams.tree, &qs->node);
+
     reusable = c->reusable;
     ngx_reusable_connection(c, 0);
 
     sc = ngx_get_connection(c->fd, log);
     if (sc == NULL) {
         ngx_destroy_pool(pool);
+        ngx_rbtree_delete(&qc->streams.tree, &qs->node);
         ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
         ngx_reusable_connection(c, reusable);
         return NULL;
@@ -803,6 +806,7 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
     if (cln == NULL) {
         ngx_close_connection(sc);
         ngx_destroy_pool(pool);
+        ngx_rbtree_delete(&qc->streams.tree, &qs->node);
         ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
         ngx_reusable_connection(c, reusable);
         return NULL;
@@ -810,8 +814,6 @@ ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 
     cln->handler = ngx_quic_stream_cleanup_handler;
     cln->data = sc;
-
-    ngx_rbtree_insert(&qc->streams.tree, &qs->node);
 
     return qs;
 }
