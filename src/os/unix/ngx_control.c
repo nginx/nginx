@@ -567,12 +567,6 @@ ngx_control_handle_read(ngx_control_request_t *r)
 
     b = r->in;
 
-    if (b->last == b->end) {
-        ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
-                      "control: request too large");
-        return NGX_ERROR;
-    }
-
     n = recv(r->fd, b->last, b->end - b->last, 0);
 
     if (n < 0) {
@@ -594,6 +588,13 @@ ngx_control_handle_read(ngx_control_request_t *r)
     switch (ngx_control_parse_request_line(r)) {
 
     case NGX_AGAIN:
+        if (b->last == b->end) {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                          "control: request too large");
+            ngx_control_pollfd[r->index].events &= ~POLLIN;
+            return ngx_control_send_response(r, NGX_CTRL_BAD_REQUEST, NULL);
+        }
+
         return NGX_AGAIN;
 
     case NGX_DECLINED:
