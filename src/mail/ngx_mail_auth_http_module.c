@@ -216,6 +216,8 @@ ngx_mail_auth_http_init(ngx_mail_session_t *s)
     ctx->peer.connection->data = s;
     ctx->peer.connection->pool = s->connection->pool;
 
+    s->out.len = 0;
+
     s->connection->read->handler = ngx_mail_auth_http_block_read;
     ctx->peer.connection->read->handler = ngx_mail_auth_http_read_handler;
     ctx->peer.connection->write->handler = ngx_mail_auth_http_write_handler;
