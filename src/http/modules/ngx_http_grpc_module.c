@@ -739,8 +739,8 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
                                   key_len, val_len, uri_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     host;
-    ngx_uint_t                    i, next;
+    ngx_str_t                     host, uri, args;
+    ngx_uint_t                    i, next, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
     ngx_table_elt_t              *header;
@@ -762,6 +762,12 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
           + sizeof(ngx_http_grpc_frame_t);             /* headers frame */
 
     headers_len = 0;
+
+#if (NGX_SUPPRESS_WARN)
+    escape = 0;
+    ngx_str_null(&uri);
+    ngx_str_null(&args);
+#endif
 
     /* :method header */
 
@@ -787,13 +793,16 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
     /* :path header */
 
     if (r->valid_unparsed_uri) {
-        escape = 0;
+        unparsed_uri = 1;
         uri_len = r->unparsed_uri.len;
 
     } else {
-        escape = 2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len,
+        unparsed_uri = 0;
+        uri = r->uri;
+        args = r->args;
+        escape = 2 * ngx_escape_uri(NULL, uri.data, uri.len,
                                     NGX_ESCAPE_URI);
-        uri_len = r->uri.len + escape + sizeof("?") - 1 + r->args.len;
+        uri_len = uri.len + escape + sizeof("?") - 1 + args.len;
     }
 
     if (uri_len > NGX_HTTP_V2_MAX_FIELD) {
@@ -1020,7 +1029,7 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
                        "grpc header: \":scheme: http\"");
     }
 
-    if (r->valid_unparsed_uri) {
+    if (unparsed_uri) {
 
         if (r->unparsed_uri.len == 1 && r->unparsed_uri.data[0] == '/') {
             *b->last++ = ngx_http_v2_indexed(NGX_HTTP_V2_PATH_ROOT_INDEX);
@@ -1034,20 +1043,20 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "grpc header: \":path: %V\"", &r->unparsed_uri);
 
-    } else if (escape || r->args.len > 0) {
+    } else if (escape || args.len > 0) {
         p = val_tmp;
 
         if (escape) {
-            p = (u_char *) ngx_escape_uri(p, r->uri.data, r->uri.len,
+            p = (u_char *) ngx_escape_uri(p, uri.data, uri.len,
                                           NGX_ESCAPE_URI);
 
         } else {
-            p = ngx_copy(p, r->uri.data, r->uri.len);
+            p = ngx_copy(p, uri.data, uri.len);
         }
 
-        if (r->args.len > 0) {
+        if (args.len > 0) {
             *p++ = '?';
-            p = ngx_copy(p, r->args.data, r->args.len);
+            p = ngx_copy(p, args.data, args.len);
         }
 
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
@@ -1058,11 +1067,11 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
 
     } else {
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
-        b->last = ngx_http_v2_write_value(b->last, r->uri.data,
-                                          r->uri.len, tmp);
+        b->last = ngx_http_v2_write_value(b->last, uri.data,
+                                          uri.len, tmp);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "grpc header: \":path: %V\"", &r->uri);
+                       "grpc header: \":path: %V\"", &uri);
     }
 
     *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_AUTHORITY_INDEX);
