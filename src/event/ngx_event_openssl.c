@@ -81,8 +81,25 @@ static ngx_int_t ngx_ssl_rotate_ticket_keys(SSL_CTX *ssl_ctx, ngx_log_t *log);
 static void ngx_ssl_ticket_keys_cleanup(void *data);
 #endif
 
-#ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+#if (!defined X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT \
+     || OPENSSL_VERSION_NUMBER >= 0x40100000L)
 static ngx_int_t ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *str);
+static ngx_inline ngx_int_t ngx_ssl_name_is_idna(u_char *p, size_t len);
+static ngx_int_t ngx_ssl_name_equal(u_char *pattern, size_t plen,
+    u_char *subject, size_t slen);
+static u_char *ngx_ssl_wildcard_valid(u_char *p, size_t len);
+static ngx_int_t ngx_ssl_match_wildcard(u_char *prefix, size_t prefix_len,
+    u_char *suffix, size_t suffix_len, u_char *subject, size_t subject_len);
+#endif
+
+/*
+ * ASN1_STRING_data() is deprecated since OpenSSL 1.1.0 in favour of
+ * ASN1_STRING_get0_data(); the latter is not available in earlier versions.
+ */
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+#define ngx_ssl_asn1_string_data(s)  ASN1_STRING_data(s)
+#else
+#define ngx_ssl_asn1_string_data(s)  ((u_char *) ASN1_STRING_get0_data(s))
 #endif
 
 static time_t ngx_ssl_parse_time(
@@ -5369,9 +5386,13 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
         alen = 0;
     }
 
-#ifdef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+#if defined(X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT) \
+    && OPENSSL_VERSION_NUMBER < 0x40100000L
 
-    /* X509_check_host() is only available in OpenSSL 1.0.2+ */
+    /*
+     * X509_check_host() is available in OpenSSL 1.0.2+, and is used up to
+     * OpenSSL 4.1, where it is deprecated in favour of the manual check below.
+     */
 
     if (addr) {
         if (X509_check_ip(cert, addr, alen, 0) != 1) {
@@ -5407,6 +5428,11 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
     STACK_OF(GENERAL_NAME)  *altnames;
 
     /*
+     * This manual subjectAltName walk is used for OpenSSL before 1.0.2
+     * (which has no X509_check_host()), and for OpenSSL 4.1+, where
+     * X509_check_host() is deprecated.  ngx_ssl_check_name() mirrors the
+     * default X509_check_host() matching, including partial wildcards.
+     *
      * As per RFC6125 and RFC2818, we check subjectAltName extension,
      * and if it's not present - commonName in Subject is checked.
      */
@@ -5426,7 +5452,7 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
                 ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                                "SSL subjectAltName: \"%*s\"",
                                (size_t) ASN1_STRING_length(str),
-                               ASN1_STRING_data(str));
+                               ngx_ssl_asn1_string_data(str));
 
                 if (addr == NULL && ngx_ssl_check_name(name, str) == NGX_OK) {
                     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -5438,7 +5464,7 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
             } else if (altname->type == GEN_IPADD) {
 
                 str = altname->d.iPAddress;
-                data = ASN1_STRING_data(str);
+                data = ngx_ssl_asn1_string_data(str);
                 dlen = ASN1_STRING_length(str);
 
 #if (NGX_DEBUG)
@@ -5518,7 +5544,7 @@ ngx_ssl_check_host(ngx_connection_t *c, ngx_str_t *name)
         ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL commonName: \"%*s\"",
                        (size_t) ASN1_STRING_length(str),
-                       ASN1_STRING_data(str));
+                       ngx_ssl_asn1_string_data(str));
 
         if (ngx_ssl_check_name(name, str) == NGX_OK) {
             ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
@@ -5544,43 +5570,248 @@ found:
 }
 
 
-#ifndef X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT
+#if (!defined X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT \
+     || OPENSSL_VERSION_NUMBER >= 0x40100000L)
+
+/*
+ * The functions below implement host name verification as per RFC 6125,
+ * section 6.4 (and the host check of RFC 2818): case-insensitive matching
+ * of DNS labels, with support for a single wildcard in the left-most label,
+ * including partial "f*.example.com" / "*o.example.com" wildcards.  This
+ * reproduces the default behaviour of X509_check_host() (flags == 0), and
+ * is used both for OpenSSL before 1.0.2 (where X509_check_host() is not
+ * available) and for OpenSSL 4.1+ (where it is deprecated).
+ */
+
+#define NGX_SSL_NAME_LABEL_START   0x01
+#define NGX_SSL_NAME_LABEL_HYPHEN  0x02
+#define NGX_SSL_NAME_LABEL_IDNA    0x04
+
 
 static ngx_int_t
 ngx_ssl_check_name(ngx_str_t *name, ASN1_STRING *pattern)
 {
-    u_char  *s, *p, *end;
+    u_char  *s, *p, *wildcard;
     size_t   slen, plen;
 
     s = name->data;
     slen = name->len;
 
-    p = ASN1_STRING_data(pattern);
+    p = ngx_ssl_asn1_string_data(pattern);
     plen = ASN1_STRING_length(pattern);
 
-    if (slen == plen && ngx_strncasecmp(s, p, plen) == 0) {
+    if (plen == 0) {
+        return NGX_ERROR;
+    }
+
+    /* trivial case: exact, case-insensitive match */
+
+    if (ngx_ssl_name_equal(p, plen, s, slen) == NGX_OK) {
         return NGX_OK;
     }
 
-    if (plen > 2 && p[0] == '*' && p[1] == '.') {
-        plen -= 1;
-        p += 1;
+    /*
+     * Reference names starting with "." match wildcard patterns only via a
+     * sub-domain suffix, which is not supported here; such names are limited
+     * to the exact comparison above.
+     */
 
-        end = s + slen;
-        s = ngx_strlchr(s, end, '.');
+    if (slen > 1 && s[0] == '.') {
+        return NGX_ERROR;
+    }
 
-        if (s == NULL) {
-            return NGX_ERROR;
-        }
+    wildcard = ngx_ssl_wildcard_valid(p, plen);
 
-        slen = end - s;
+    if (wildcard == NULL) {
+        return NGX_ERROR;
+    }
 
-        if (plen == slen && ngx_strncasecmp(s, p, plen) == 0) {
-            return NGX_OK;
+    return ngx_ssl_match_wildcard(p, wildcard - p, wildcard + 1,
+                                  (p + plen) - wildcard - 1, s, slen);
+}
+
+
+static ngx_inline ngx_int_t
+ngx_ssl_name_is_idna(u_char *p, size_t len)
+{
+    /* an IDNA A-label starts with a case-insensitive "xn--" prefix */
+
+    return len >= 4 && ngx_strncasecmp(p, (u_char *) "xn--", 4) == 0;
+}
+
+
+static ngx_int_t
+ngx_ssl_name_equal(u_char *pattern, size_t plen, u_char *subject, size_t slen)
+{
+    if (plen != slen) {
+        return NGX_ERROR;
+    }
+
+    /* the pattern must not contain NUL characters */
+
+    if (ngx_strlchr(pattern, pattern + plen, '\0') != NULL) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_strncasecmp(pattern, subject, plen) != 0) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static u_char *
+ngx_ssl_wildcard_valid(u_char *p, size_t len)
+{
+    size_t       i;
+    u_char      *star;
+    ngx_uint_t   state, dots, atstart, atend;
+
+    star = NULL;
+    state = NGX_SSL_NAME_LABEL_START;
+    dots = 0;
+
+    for (i = 0; i < len; i++) {
+
+        if (p[i] == '*') {
+            atstart = state & NGX_SSL_NAME_LABEL_START;
+            atend = (i == len - 1 || p[i + 1] == '.');
+
+            /*
+             * at most one wildcard per pattern, no wildcards in IDNA
+             * labels or after the first label, and no "foo*bar" wildcards
+             */
+
+            if (star != NULL
+                || (state & NGX_SSL_NAME_LABEL_IDNA)
+                || dots
+                || (!atstart && !atend))
+            {
+                return NULL;
+            }
+
+            star = &p[i];
+            state &= ~NGX_SSL_NAME_LABEL_START;
+
+        } else if ((p[i] >= 'a' && p[i] <= 'z')
+                   || (p[i] >= 'A' && p[i] <= 'Z')
+                   || (p[i] >= '0' && p[i] <= '9'))
+        {
+            if ((state & NGX_SSL_NAME_LABEL_START)
+                && ngx_ssl_name_is_idna(&p[i], len - i))
+            {
+                state |= NGX_SSL_NAME_LABEL_IDNA;
+            }
+
+            state &= ~(NGX_SSL_NAME_LABEL_HYPHEN | NGX_SSL_NAME_LABEL_START);
+
+        } else if (p[i] == '.') {
+
+            if (state & (NGX_SSL_NAME_LABEL_HYPHEN | NGX_SSL_NAME_LABEL_START)) {
+                return NULL;
+            }
+
+            state = NGX_SSL_NAME_LABEL_START;
+            dots++;
+
+        } else if (p[i] == '-') {
+
+            /* no domain/subdomain starts with '-' */
+
+            if (state & NGX_SSL_NAME_LABEL_START) {
+                return NULL;
+            }
+
+            state |= NGX_SSL_NAME_LABEL_HYPHEN;
+
+        } else {
+            return NULL;
         }
     }
 
-    return NGX_ERROR;
+    /*
+     * the final label must not end in a hyphen or ".", and there must be
+     * at least two dots after the star
+     */
+
+    if ((state & (NGX_SSL_NAME_LABEL_START | NGX_SSL_NAME_LABEL_HYPHEN))
+        || dots < 2)
+    {
+        return NULL;
+    }
+
+    return star;
+}
+
+
+static ngx_int_t
+ngx_ssl_match_wildcard(u_char *prefix, size_t prefix_len, u_char *suffix,
+    size_t suffix_len, u_char *subject, size_t subject_len)
+{
+    u_char      *p, *wildcard_start, *wildcard_end;
+    ngx_uint_t   allow_idna;
+
+    if (subject_len < prefix_len + suffix_len) {
+        return NGX_ERROR;
+    }
+
+    if (ngx_ssl_name_equal(prefix, prefix_len, subject, prefix_len) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    wildcard_start = subject + prefix_len;
+    wildcard_end = subject + (subject_len - suffix_len);
+
+    if (ngx_ssl_name_equal(wildcard_end, suffix_len, suffix, suffix_len)
+        != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    allow_idna = 0;
+
+    /*
+     * if the wildcard makes up the entire first label, it must match at
+     * least one character
+     */
+
+    if (prefix_len == 0 && *suffix == '.') {
+        if (wildcard_start == wildcard_end) {
+            return NGX_ERROR;
+        }
+
+        allow_idna = 1;
+    }
+
+    /* IDNA labels cannot match partial wildcards */
+
+    if (!allow_idna && ngx_ssl_name_is_idna(subject, subject_len)) {
+        return NGX_ERROR;
+    }
+
+    /* the wildcard may match a literal '*' */
+
+    if (wildcard_end == wildcard_start + 1 && *wildcard_start == '*') {
+        return NGX_OK;
+    }
+
+    /*
+     * the part matched by the wildcard must contain only permitted
+     * characters and match a single label
+     */
+
+    for (p = wildcard_start; p != wildcard_end; p++) {
+        if (!((*p >= '0' && *p <= '9')
+              || (*p >= 'A' && *p <= 'Z')
+              || (*p >= 'a' && *p <= 'z')
+              || *p == '-'))
+        {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
 }
 
 #endif
