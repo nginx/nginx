@@ -24,6 +24,7 @@ typedef struct {
 
 
 static void ngx_mail_proxy_block_read(ngx_event_t *rev);
+static void ngx_mail_proxy_block_write(ngx_event_t *wev);
 static void ngx_mail_proxy_pop3_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_imap_handler(ngx_event_t *rev);
 static void ngx_mail_proxy_smtp_handler(ngx_event_t *rev);
@@ -173,6 +174,7 @@ ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
     p->upstream.connection->pool = s->connection->pool;
 
     s->connection->read->handler = ngx_mail_proxy_block_read;
+    s->connection->write->handler = ngx_mail_proxy_block_write;
     p->upstream.connection->write->handler = ngx_mail_proxy_write_handler;
 
     pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
@@ -224,6 +226,23 @@ ngx_mail_proxy_block_read(ngx_event_t *rev)
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         c = rev->data;
+        s = c->data;
+
+        ngx_mail_proxy_close_session(s);
+    }
+}
+
+
+static void
+ngx_mail_proxy_block_write(ngx_event_t *wev)
+{
+    ngx_connection_t    *c;
+    ngx_mail_session_t  *s;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_MAIL, wev->log, 0, "mail proxy block write");
+
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        c = wev->data;
         s = c->data;
 
         ngx_mail_proxy_close_session(s);
