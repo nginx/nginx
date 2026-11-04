@@ -397,6 +397,10 @@ main(int argc, char *const *argv)
     ngx_use_stderr = 0;
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "\"master_process off\" is for development only "
+                      "and is not recommended for production");
+
         ngx_single_process_cycle(cycle);
 
     } else {
