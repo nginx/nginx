@@ -70,6 +70,7 @@ static void ngx_mail_auth_sleep_handler(ngx_event_t *rev);
 static ngx_int_t ngx_mail_auth_http_parse_header_line(ngx_mail_session_t *s,
     ngx_mail_auth_http_ctx_t *ctx);
 static void ngx_mail_auth_http_block_read(ngx_event_t *rev);
+static void ngx_mail_auth_http_block_write(ngx_event_t *wev);
 static void ngx_mail_auth_http_dummy_handler(ngx_event_t *ev);
 static ngx_buf_t *ngx_mail_auth_http_create_request(ngx_mail_session_t *s,
     ngx_pool_t *pool, ngx_mail_auth_http_conf_t *ahcf);
@@ -219,6 +220,7 @@ ngx_mail_auth_http_init(ngx_mail_session_t *s)
     s->out.len = 0;
 
     s->connection->read->handler = ngx_mail_auth_http_block_read;
+    s->connection->write->handler = ngx_mail_auth_http_block_write;
     ctx->peer.connection->read->handler = ngx_mail_auth_http_read_handler;
     ctx->peer.connection->write->handler = ngx_mail_auth_http_write_handler;
 
@@ -690,6 +692,8 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
 
             ngx_close_connection(ctx->peer.connection);
 
+            s->connection->write->handler = ngx_mail_send;
+
             if (ctx->err.len) {
 
                 ngx_log_error(NGX_LOG_INFO, s->connection->log, 0,
@@ -1111,6 +1115,29 @@ ngx_mail_auth_http_block_read(ngx_event_t *rev)
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
         c = rev->data;
+        s = c->data;
+
+        ctx = ngx_mail_get_module_ctx(s, ngx_mail_auth_http_module);
+
+        ngx_close_connection(ctx->peer.connection);
+        ngx_destroy_pool(ctx->pool);
+        ngx_mail_session_internal_server_error(s);
+    }
+}
+
+
+static void
+ngx_mail_auth_http_block_write(ngx_event_t *wev)
+{
+    ngx_connection_t          *c;
+    ngx_mail_session_t        *s;
+    ngx_mail_auth_http_ctx_t  *ctx;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_MAIL, wev->log, 0,
+                   "mail auth http block write");
+
+    if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+        c = wev->data;
         s = c->data;
 
         ctx = ngx_mail_get_module_ctx(s, ngx_mail_auth_http_module);
