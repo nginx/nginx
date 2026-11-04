@@ -44,6 +44,10 @@ ngx_list_push(ngx_list_t *l)
             return NULL;
         }
 
+        if (l->size != 0 && l->nalloc > NGX_MAX_SIZE_T_VALUE / l->size) {
+            return NULL;
+        }
+
         last->elts = ngx_palloc(l->pool, l->nalloc * l->size);
         if (last->elts == NULL) {
             return NULL;

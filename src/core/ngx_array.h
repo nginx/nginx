@@ -41,6 +41,10 @@ ngx_array_init(ngx_array_t *array, ngx_pool_t *pool, ngx_uint_t n, size_t size)
     array->nalloc = n;
     array->pool = pool;
 
+    if (size != 0 && n > NGX_MAX_SIZE_T_VALUE / size) {
+        return NGX_ERROR;
+    }
+
     array->elts = ngx_palloc(pool, n * size);
     if (array->elts == NULL) {
         return NGX_ERROR;
