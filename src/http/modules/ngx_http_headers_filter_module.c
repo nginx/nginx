@@ -100,6 +100,10 @@ static ngx_http_set_header_t  ngx_http_set_headers[] = {
                  offsetof(ngx_http_headers_out_t, etag),
                  ngx_http_set_response_header },
 
+    { ngx_string("Age"),
+                 offsetof(ngx_http_headers_out_t, age),
+                 ngx_http_set_response_header },
+
     { ngx_null_string, 0, NULL }
 };
 
@@ -381,6 +385,11 @@ ngx_http_set_expires(ngx_http_request_t *r, ngx_http_headers_conf_t *conf)
         if (expires == NGX_HTTP_EXPIRES_OFF) {
             return NGX_OK;
         }
+    }
+
+    if (r->headers_out.age) {
+        r->headers_out.age->hash = 0;
+        r->headers_out.age = NULL;
     }
 
     e = r->headers_out.expires;
