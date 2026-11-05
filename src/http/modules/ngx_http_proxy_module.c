@@ -2039,12 +2039,21 @@ ngx_http_proxy_process_header(ngx_http_request_t *r)
                 u->keepalive = !u->headers_in.connection_close;
             }
 
-            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS) {
+            if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS
+                && r->headers_in.upgrade)
+            {
                 u->keepalive = 0;
+                u->upgrade = 1;
 
-                if (r->headers_in.upgrade) {
-                    u->upgrade = 1;
-                }
+            } else if (u->headers_in.status_n == NGX_HTTP_SWITCHING_PROTOCOLS) {
+
+                /* reject unexpected connection upgrades */
+
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "upstream sent unexpected status \"%V\"",
+                              &u->headers_in.status_line);
+
+                return NGX_HTTP_UPSTREAM_INVALID_HEADER;
             }
 
             return NGX_OK;
