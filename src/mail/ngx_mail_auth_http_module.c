@@ -677,6 +677,28 @@ ngx_mail_auth_http_process_headers(ngx_mail_session_t *s,
                 continue;
             }
 
+            if (len == sizeof("Auth-Method") - 1
+                && ngx_strncasecmp(ctx->header_name_start,
+                                   (u_char *) "Auth-Method",
+                                   sizeof("Auth-Method") - 1)
+                   == 0)
+            {
+                int value_len = ctx->header_end - ctx->header_start;
+                if (value_len == sizeof("none") - 1
+                    && ngx_strncasecmp(ctx->header_start,
+                                       (u_char *) "none",
+                                       sizeof("none") - 1)
+                       == 0)
+                {
+                    s->proxy_auth_method = NGX_MAIL_AUTH_NONE;
+                } else {
+                    ctx->errmsg.len = value_len;
+		    ctx->errmsg.data = ctx->header_start;
+		}
+
+                continue;
+            }
+
             /* ignore other headers */
 
             continue;
@@ -883,6 +905,7 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
 
         s->mail_state = 0;
         s->auth_method = NGX_MAIL_AUTH_PLAIN;
+        s->proxy_auth_method = NGX_MAIL_AUTH_PLAIN;
 
         c->log->action = "in auth state";
 
