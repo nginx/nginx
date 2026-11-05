@@ -186,6 +186,7 @@ ngx_http_try_files_handler(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
+            len = e.pos - name + 1;
             path.len = e.pos - path.data;
 
             *e.pos = '\0';
