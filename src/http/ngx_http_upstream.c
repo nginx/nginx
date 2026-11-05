@@ -626,6 +626,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
             return;
         }
 
+        u->cacheable_initial = u->cacheable;
+
         if (rc == NGX_OK) {
             rc = ngx_http_upstream_cache_send(r, u);
 
@@ -2097,6 +2099,18 @@ ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u)
     ngx_memzero(&u->headers_in, sizeof(ngx_http_upstream_headers_in_t));
     u->headers_in.content_length_n = -1;
     u->headers_in.last_modified_time = -1;
+
+#if (NGX_HTTP_CACHE)
+
+    if (r->cache) {
+        u->cacheable = u->cacheable_initial;
+        r->cache->valid_sec = 0;
+        r->cache->updating_sec = 0;
+        r->cache->error_sec = 0;
+        ngx_str_null(&r->cache->vary);
+    }
+
+#endif
 
     if (ngx_list_init(&u->headers_in.headers, r->pool, 8,
                       sizeof(ngx_table_elt_t))
