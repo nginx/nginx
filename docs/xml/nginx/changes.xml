@@ -5,6 +5,320 @@
 <change_log title="nginx">
 
 
+<changes ver="1.31.9" date="2026-11-18">
+
+<change type="security">
+<para lang="ru">
+при совместном использовании директив try_files и alias
+в некоторых конфигурациях
+могло произойти переполнение буфера в рабочем процессе
+(CVE-2026-125283).<br/>
+Спасибо Marc Luchian и Liviu-Alexandru Bud.
+</para>
+<para lang="en">
+a buffer overflow might occur in a worker process
+when using the "try_files" and "alias" directives
+in certain configurations
+(CVE-2026-125283).<br/>
+Thanks to Marc Luchian and Liviu-Alexandru Bud.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+переполнение окна управления потоком в HTTP/2
+могло позволить атакующему вызвать segmentation fault
+в рабочем процессе, а также потенциально могло иметь
+другие последствия
+(CVE-2026-123007).<br/>
+Спасибо Xint.io.
+</para>
+<para lang="en">
+a flow control window overflow in HTTP/2
+might allow an attacker to cause a segmentation fault
+in a worker process, or might have potential other impact
+(CVE-2026-123007).<br/>
+Thanks to Xint.io.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/2
+в рабочем процессе могло произойти обращение к ранее освобождённой памяти,
+если не хватало worker_connections
+(CVE-2026-123633).<br/>
+Спасибо Albert из Vexera AI.
+</para>
+<para lang="en">
+use-after-free might occur in a worker process
+when using HTTP/2
+if worker_connections were not enough
+(CVE-2026-123633).<br/>
+Thanks to Albert of Vexera AI.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании HTTP/3
+в рабочем процессе могло произойти обращение к ранее освобождённой памяти,
+если не хватало worker_connections
+(CVE-2026-121810).<br/>
+Спасибо Xint.io.
+</para>
+<para lang="en">
+use-after-free might occur in a worker process
+when using HTTP/3
+if worker_connections were not enough
+(CVE-2026-121810).<br/>
+Thanks to Xint.io.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании директивы resolver
+могло произойти обращение к ранее освобождённой памяти,
+если одно и то же имя одновременно резолвилось в подзапросах,
+что позволяло атакующему,
+имеющему возможность инициировать преобразование имён в адреса,
+вызвать segmentation fault в рабочем процессе,
+а также потенциально могло иметь другие последствия
+(CVE-2026-123634).<br/>
+Спасибо Xint.io.
+</para>
+<para lang="en">
+use-after-free condition might occur
+if the "resolver" directive was used
+and the same name was simultaneously resolved in subrequests,
+allowing an attacker who is able to trigger name resolution
+to cause segmentation fault in a worker process,
+or might have potential other impact
+(CVE-2026-123634).<br/>
+Thanks to Xint.io.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+в почтовом прокси-сервере
+в рабочем процессе могло произойти обращение к ранее освобождённой памяти
+(CVE-2026-113425).<br/>
+Спасибо Xint.io и Максиму Дунину.
+</para>
+<para lang="en">
+use-after-free might occur in a worker process
+in the mail proxy server
+(CVE-2026-113425).<br/>
+Thanks to Xint.io and Maxim Dounin.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+в модуле stream атакующий,
+имеющий возможность завершить SSL handshake синхронно,
+мог добиться того, что клиентские SSL-сертификаты проверялись
+с использованием настроек сервера по умолчанию,
+а не виртуального сервера, выбранного с помощью SNI
+(CVE-2026-120967).<br/>
+Спасибо CERT.PL.
+</para>
+<para lang="en">
+in the stream module, an attacker
+who is able to complete the SSL handshake synchronously
+might cause client SSL certificates to be verified
+using the configuration of the default server
+rather than the virtual server selected by SNI
+(CVE-2026-120967).<br/>
+Thanks to CERT.PL.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+при использовании PROXY protocol версии 2
+с динамической загрузкой SSL-сертификатов
+в рабочем процессе мог произойти segmentation fault
+(CVE-2026-120993).<br/>
+Спасибо ruokeqx.
+</para>
+<para lang="en">
+a segmentation fault might occur in a worker process
+when using PROXY protocol version 2
+with dynamic SSL certificate loading
+(CVE-2026-120993).<br/>
+Thanks to ruokeqx.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+модуль ngx_stream_ssl_preread_module мог интерпретировать
+некорректные сообщения ClientHello иначе, чем другие реализации TLS,
+что могло приводить к обходу ограничений безопасности
+(CVE-2026-123640).<br/>
+Спасибо Vivek Parikh из BreachX Zero Day Labs.
+</para>
+<para lang="en">
+the ngx_stream_ssl_preread_module might interpret
+malformed ClientHello messages differently than other TLS implementations,
+which might result in bypassing security restrictions
+(CVE-2026-123640).<br/>
+Thanks to Vivek Parikh of BreachX Zero Day Labs.
+</para>
+</change>
+
+<change type="security">
+<para lang="ru">
+рабочие процессы могли зациклиться
+при чтении тела запроса по SSL
+(CVE-2026-118899).<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+worker processes might get caught in an endless loop
+while reading the request body over SSL
+(CVE-2026-118899).<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь строки заголовков без двоеточия отклоняются.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+now header lines without a colon are rejected.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="change">
+<para lang="ru">
+теперь запрос отклоняется,
+если chunked-тело запроса содержит слишком много служебных данных.<br/>
+Спасибо jskoetsier.
+</para>
+<para lang="en">
+now a request is rejected
+if the chunked request body contains too much framing overhead.<br/>
+Thanks to jskoetsier.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+в рабочем процессе могло произойти переполнение буфера
+при использовании базы данных GeoIP в формате MMDB,
+содержащей некорректные координаты.<br/>
+Спасибо Y.Horie.
+</para>
+<para lang="en">
+a buffer overflow might occur in a worker process
+when using a GeoIP database in the MMDB format
+containing invalid coordinates.<br/>
+Thanks to Y.Horie.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+запрос мог зависнуть,
+если он проксировался во время отбрасывания тела запроса.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+a request might hang
+if it was proxied while the request body was being discarded.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/3 некоторые значения
+статической таблицы QPACK декодировались некорректно.<br/>
+Спасибо Nexory.
+</para>
+<para lang="en">
+some values of the QPACK static table
+were decoded incorrectly when using HTTP/3.<br/>
+Thanks to Nexory.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании HTTP/2 трейлеры ответа
+могли задерживать отправку данных
+потоков с более высоким приоритетом.
+</para>
+<para lang="en">
+when using HTTP/2, response trailers
+might delay data
+of higher priority streams.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+переменные $cookie_... и модуль ngx_http_userid_module
+некорректно обрабатывали строку заголовка "Cookie",
+если в ней была cookie без имени.
+</para>
+<para lang="en">
+the $cookie_... variables and the ngx_http_userid_module
+handled the "Cookie" request header line incorrectly
+if it contained a cookie without a name.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+некэшируемые переменные в директиве index
+могли вычисляться некорректно.<br/>
+Спасибо Максиму Дунину.
+</para>
+<para lang="en">
+non-cacheable variables in the "index" directive
+might be evaluated incorrectly.<br/>
+Thanks to Maxim Dounin.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+при использовании директивы ssl_ocsp_cache
+OCSP-ответы для клиентских сертификатов
+с нестандартными серийными номерами могли кэшироваться некорректно.<br/>
+Спасибо Gyejin Lee из QED Audit.
+</para>
+<para lang="en">
+OCSP responses for client certificates with uncommon serial numbers
+might be cached incorrectly when using the "ssl_ocsp_cache" directive.<br/>
+Thanks to Gyejin Lee of QED Audit.
+</para>
+</change>
+
+<change type="bugfix">
+<para lang="ru">
+control API не отвечал на запросы
+со слишком длинной строкой запроса.<br/>
+Спасибо Daewoo Choi.
+</para>
+<para lang="en">
+the control API did not respond to requests
+with a too long request line.<br/>
+Thanks to Daewoo Choi.
+</para>
+</change>
+
+</changes>
+
+
 <changes ver="1.31.8" date="2026-10-21">
 
 <change>
