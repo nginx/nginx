@@ -326,7 +326,7 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
                                   loc_len, body_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method, host;
+    ngx_str_t                     method, host, tmp_str;
     ngx_uint_t                    i, next, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -385,6 +385,12 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         tmp_len = 0;
 
     } else {
+        if (ngx_http_valid_header_name(&method) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "HTTP request method contains forbidden characters");
+            return NGX_ERROR;
+        }
+
         if (method.len > NGX_HTTP_V2_MAX_FIELD) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "too long http2 method: \"%V\"", &method);
@@ -569,6 +575,20 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_valid_header_name(&header[i].key) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "Header name contains forbidden characters");
+                return NGX_ERROR;
+            }
+
+            if (ngx_http_valid_header_value(&header[i].value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "%V header value contains forbidden characters "
+                              "(do you use variables in header values that "
+                              "can contain CR or LF?)", &header[i].key);
+                return NGX_ERROR;
+            }
+
             if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "too long http2 header name: \"%V\"",
@@ -686,12 +706,14 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
         b->last = ngx_http_v2_write_value(b->last, ctx->ctx.vars.uri.data,
                                           ctx->ctx.vars.uri.len, tmp);
+        tmp_str = ctx->ctx.vars.uri;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http proxy header: \":path: %V\"", &ctx->ctx.vars.uri);
 
     } else if (unparsed_uri) {
 
+        tmp_str = r->unparsed_uri;
         if (r->unparsed_uri.len == 1 && r->unparsed_uri.data[0] == '/') {
             *b->last++ = ngx_http_v2_indexed(NGX_HTTP_V2_PATH_ROOT_INDEX);
 
@@ -706,6 +728,7 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
 
     } else {
         p = val_tmp;
+        tmp_str.data = p;
 
         if (r->valid_location) {
             p = ngx_copy(p, ctx->ctx.vars.uri.data, ctx->ctx.vars.uri.len);
@@ -724,6 +747,7 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
             *p++ = '?';
             p = ngx_copy(p, r->args.data, r->args.len);
         }
+        tmp_str.len = (size_t)(p - tmp_str.data);
 
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
         b->last = ngx_http_v2_write_value(b->last, val_tmp, p - val_tmp, tmp);
@@ -731,6 +755,15 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http proxy header: \":path: %*s\"", p - val_tmp,
                        val_tmp);
+    }
+
+    for (uri_len = 0; uri_len < tmp_str.len; ++uri_len) {
+        if (tmp_str.data[uri_len] <= 0x20 || tmp_str.data[uri_len] == 0x7F) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "URI contains control characters "
+                          "(possible CRLF injection?");
+            return NGX_ERROR;
+        }
     }
 
     *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_AUTHORITY_INDEX);

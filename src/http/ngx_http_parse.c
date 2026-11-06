@@ -2470,3 +2470,59 @@ invalid:
 
     return NGX_ERROR;
 }
+
+
+ngx_int_t
+ngx_http_valid_header_value(ngx_str_t *value)
+{
+    size_t i;
+
+    if (value->len < 1) {
+        return NGX_OK;
+    }
+
+    if (value->data[0] == ' ' || value->data[0] == '\t'
+        || value->data[value->len - 1] == ' '
+        || value->data[value->len - 1] == '\t') {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < value->len; ++i) {
+        if (value->data[i] == '\0' || value->data[i] == CR
+            || value->data[i] == LF) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_http_valid_header_name(ngx_str_t *value)
+{
+    size_t i;
+    u_char ch;
+
+    if (value->len < 1) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < value->len; ++i) {
+        ch = value->data[0];
+        if ((ch == '!') ||
+            (ch >= '#' && ch <= '\'') ||
+            (ch >= '*' && ch <= '+') ||
+            (ch >= '-' && ch <= '.') ||
+            (ch >= '0' && ch <= '9') ||
+            (ch >= 'A' && ch <= 'Z') ||
+            (ch >= '^' && ch <= 'z') ||
+            (ch == '~'))
+        {
+            continue;
+        }
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}

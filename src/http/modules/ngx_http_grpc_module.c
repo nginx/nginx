@@ -739,7 +739,7 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
                                   key_len, val_len, uri_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     host;
+    ngx_str_t                     host, tmp_str;
     ngx_uint_t                    i, next;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -770,6 +770,12 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
         tmp_len = 0;
 
     } else {
+        if (ngx_http_valid_header_name(&r->method_name) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                    "HTTP request method contains forbidden characters");
+            return NGX_ERROR;
+        }
+
         if (r->method_name.len > NGX_HTTP_V2_MAX_FIELD) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "too long http2 method: \"%V\"", &r->method_name);
@@ -908,6 +914,20 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
                 continue;
             }
 
+            if (ngx_http_valid_header_name(&header[i].key) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "Header name contains forbidden characters");
+                return NGX_ERROR;
+            }
+
+            if (ngx_http_valid_header_value(&header[i].value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "%V header value contains forbidden characters "
+                              "(do you use variables in header values that "
+                              "can contain CR or LF?)", &header[i].key);
+                return NGX_ERROR;
+            }
+
             if (header[i].key.len > NGX_HTTP_V2_MAX_FIELD) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                               "too long http2 header name: \"%V\"",
@@ -1022,6 +1042,7 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
 
     if (r->valid_unparsed_uri) {
 
+        tmp_str = r->unparsed_uri;
         if (r->unparsed_uri.len == 1 && r->unparsed_uri.data[0] == '/') {
             *b->last++ = ngx_http_v2_indexed(NGX_HTTP_V2_PATH_ROOT_INDEX);
 
@@ -1036,6 +1057,7 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
 
     } else if (escape || r->args.len > 0) {
         p = val_tmp;
+        tmp_str.data = p;
 
         if (escape) {
             p = (u_char *) ngx_escape_uri(p, r->uri.data, r->uri.len,
@@ -1049,6 +1071,7 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
             *p++ = '?';
             p = ngx_copy(p, r->args.data, r->args.len);
         }
+        tmp_str.len = (size_t)(p - tmp_str.data);
 
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
         b->last = ngx_http_v2_write_value(b->last, val_tmp, p - val_tmp, tmp);
@@ -1060,9 +1083,19 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
         b->last = ngx_http_v2_write_value(b->last, r->uri.data,
                                           r->uri.len, tmp);
+        tmp_str = r->uri;
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "grpc header: \":path: %V\"", &r->uri);
+    }
+
+    for (uri_len = 0; uri_len < tmp_str.len; ++uri_len) {
+        if (tmp_str.data[uri_len] <= 0x20 || tmp_str.data[uri_len] == 0x7F) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "URI contains control characters "
+                          "(possible CRLF injection?");
+            return NGX_ERROR;
+        }
     }
 
     *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_AUTHORITY_INDEX);
@@ -1133,6 +1166,14 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
             return NGX_ERROR;
         }
 
+        tmp_str.data = key_tmp;
+        tmp_str.len = key_len;
+        if (ngx_http_valid_header_name(&tmp_str) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Header name contains forbidden characters");
+            return NGX_ERROR;
+        }
+
         b->last = ngx_http_v2_write_name(b->last, key_tmp, key_len, tmp);
 
         e.pos = val_tmp;
@@ -1155,6 +1196,16 @@ ngx_http_grpc_create_request(ngx_http_request_t *r)
         {
             ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
                           "no buffer space in grpc create request");
+            return NGX_ERROR;
+        }
+
+        tmp_str.data = val_tmp;
+        tmp_str.len = val_len;
+        if (ngx_http_valid_header_value(&tmp_str) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Header value contains forbidden characters "
+                          "(do you use variables in header values that "
+                          "can contain CR or LF?)");
             return NGX_ERROR;
         }
 
