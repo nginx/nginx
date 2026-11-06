@@ -693,6 +693,27 @@ ngx_http_upstream_create_round_robin_peer(ngx_http_request_t *r,
 }
 
 
+void
+ngx_http_upstream_reinit_round_robin_peer(ngx_peer_connection_t *pc,
+    void *data)
+{
+    ngx_http_upstream_rr_peer_data_t  *rrp = data;
+
+    ngx_uint_t  i, n;
+
+    rrp->current = NULL;
+
+    n = (rrp->peers->number + (8 * sizeof(uintptr_t) - 1))
+            / (8 * sizeof(uintptr_t));
+
+    for (i = 0; i < n; i++) {
+        rrp->tried[i] = 0;
+    }
+
+    pc->tries = ngx_http_upstream_tries(rrp->peers);
+}
+
+
 ngx_int_t
 ngx_http_upstream_get_round_robin_peer(ngx_peer_connection_t *pc, void *data)
 {
