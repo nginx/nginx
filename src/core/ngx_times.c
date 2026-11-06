@@ -209,6 +209,46 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
 }
 
 
+ngx_usec_t
+ngx_monotonic_usec(void)
+{
+#if (NGX_HAVE_CLOCK_MONOTONIC)
+    struct timespec  ts;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (ngx_usec_t) ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+
+#else
+    ngx_msec_t             msec;
+    ngx_msec_int_t         elapsed;
+    static ngx_msec_t      last;
+    static ngx_usec_t      now;
+    static ngx_uint_t      initialized;
+
+    /* This worker-local clock is used only by the event loop. */
+
+    msec = ngx_current_msec;
+
+    if (!initialized) {
+        last = msec;
+        now = (ngx_usec_t) msec * 1000;
+        initialized = 1;
+    }
+
+    elapsed = (ngx_msec_int_t) (msec - last);
+    last = msec;
+
+    if (elapsed > 0) {
+        now += (ngx_usec_t) elapsed * 1000;
+    }
+
+    return now;
+
+#endif
+}
+
+
 #if !(NGX_WIN32)
 
 void

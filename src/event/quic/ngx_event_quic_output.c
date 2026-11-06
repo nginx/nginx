@@ -12,6 +12,7 @@
 
 #define NGX_QUIC_MAX_UDP_SEGMENT_BUF  65487 /* 65K - IPv6 header */
 #define NGX_QUIC_MAX_SEGMENTS            64 /* UDP_MAX_SEGMENTS */
+#define NGX_QUIC_PACING_MAX_BURST        10
 
 #define NGX_QUIC_RETRY_TOKEN_LIFETIME     3 /* seconds */
 #define NGX_QUIC_NEW_TOKEN_LIFETIME     600 /* seconds */
@@ -44,6 +45,8 @@
                     (pkt)->trunc);
 
 
+static void ngx_quic_pacing_update(ngx_connection_t *c);
+static void ngx_quic_pacing_delay(ngx_connection_t *c);
 static ngx_int_t ngx_quic_create_datagrams(ngx_connection_t *c);
 static void ngx_quic_commit_send(ngx_connection_t *c);
 static void ngx_quic_revert_send(ngx_connection_t *c,
@@ -80,6 +83,12 @@ ngx_quic_output(ngx_connection_t *c)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    if (qc->push.timer_set) {
+        ngx_del_timer(&qc->push);
+    }
+
+    ngx_quic_pacing_update(c);
+
     in_flight = cg->in_flight;
 
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
@@ -95,6 +104,8 @@ ngx_quic_output(ngx_connection_t *c)
         return NGX_ERROR;
     }
 
+    ngx_quic_pacing_delay(c);
+
     if (in_flight == cg->in_flight || qc->closing) {
         /* no ack-eliciting data was sent or we are done */
         return NGX_OK;
@@ -108,6 +119,147 @@ ngx_quic_output(ngx_connection_t *c)
     ngx_quic_set_lost_timer(c);
 
     return NGX_OK;
+}
+
+
+static void
+ngx_quic_pacing_update(ngx_connection_t *c)
+{
+    size_t                  rate, burst, left, credit;
+    ngx_usec_t              now;
+    ngx_usec_int_t          elapsed;
+    ngx_quic_pacing_t      *pace;
+    ngx_quic_congestion_t  *cg;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    cg = &qc->congestion;
+    pace = &qc->pacing;
+
+    rate = cg->window / ngx_max(qc->avg_rtt, 1);
+    rate = ngx_min(rate, NGX_MAX_SIZE_T_VALUE / 2);
+    rate = (cg->window < cg->ssthresh) ? rate * 2 : rate + rate / 4;
+    rate = ngx_max(rate, 1);
+
+    /* Bound accumulated credit, including all GSO batches. */
+
+    burst = ngx_max(rate + qc->path->mtu, 2 * qc->path->mtu);
+    burst = ngx_min(burst, NGX_QUIC_PACING_MAX_BURST * qc->path->mtu);
+
+    if (qc->first_rtt == NGX_TIMER_INFINITE) {
+        /* Do not pace the first flight using the provisional RTT. */
+        burst = 10 * NGX_QUIC_MIN_INITIAL_SIZE;
+    }
+
+    burst = ngx_max(qc->path->mtu, ngx_min(burst, cg->window));
+    now = ngx_monotonic_usec();
+
+    if (pace->rate == 0) {
+        pace->budget = burst;
+        pace->fraction = 0;
+        pace->last = now;
+
+    } else {
+        pace->budget = ngx_min(pace->budget, burst);
+        elapsed = (ngx_usec_int_t) (now - pace->last);
+        left = burst - pace->budget;
+
+        if (left == 0) {
+            pace->fraction = 0;
+
+        } else if (elapsed > 0) {
+            /* Do not apply a rate increase retroactively. */
+            pace->rate = ngx_min(pace->rate, rate);
+
+            /* The bucket holds at most ten QUIC UDP payload sizes. */
+            credit = left * 1000 - pace->fraction;
+
+            if ((ngx_usec_t) elapsed >= credit / pace->rate
+                                         + (credit % pace->rate != 0))
+            {
+                pace->budget = burst;
+                pace->fraction = 0;
+
+            } else {
+                credit = elapsed * pace->rate + pace->fraction;
+                pace->budget += credit / 1000;
+                pace->fraction = credit % 1000;
+            }
+        }
+
+        if (elapsed >= 0) {
+            pace->last = now;
+        }
+    }
+
+    pace->rate = rate;
+}
+
+
+static void
+ngx_quic_pacing_delay(ngx_connection_t *c)
+{
+    size_t                  left;
+    ngx_uint_t              i;
+    ngx_msec_int_t          timer;
+    ngx_usec_t              now, delay, elapsed, remaining;
+    ngx_quic_pacing_t      *pace;
+    ngx_quic_connection_t  *qc;
+
+    qc = ngx_quic_get_connection(c);
+    pace = &qc->pacing;
+
+    if (qc->closing || qc->congestion.in_flight >= qc->congestion.window
+        || pace->budget >= qc->path->mtu)
+    {
+        return;
+    }
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        if (!ngx_queue_empty(&qc->send_ctx[i].frames)) {
+            break;
+        }
+    }
+
+    if (i == NGX_QUIC_SEND_CTX_LAST) {
+        return;
+    }
+
+    left = (qc->path->mtu - pace->budget) * 1000 - pace->fraction;
+    delay = left / pace->rate + (left % pace->rate != 0);
+
+    now = ngx_monotonic_usec();
+    elapsed = now - pace->last;
+
+    if ((ngx_usec_int_t) elapsed > 0) {
+        delay = (elapsed < delay) ? delay - elapsed : 1;
+    }
+
+    if (qc->push.timer_set) {
+        /* ACK and socket retry deadlines remain in milliseconds. */
+#if (NGX_HAVE_CLOCK_MONOTONIC)
+        timer = (ngx_msec_int_t)
+                   (qc->push.timer.key - (ngx_msec_t) (now / 1000));
+#else
+        timer = (ngx_msec_int_t) (qc->push.timer.key - ngx_current_msec);
+#endif
+
+        if (timer <= 0) {
+            return;
+        }
+
+        if ((ngx_usec_t) timer <= delay / 1000 + 1) {
+            remaining = (ngx_usec_t) timer * 1000 - now % 1000;
+
+            if (remaining <= delay) {
+                return;
+            }
+        }
+
+        ngx_del_timer(&qc->push);
+    }
+
+    ngx_event_add_precise_timer(&qc->push, delay);
 }
 
 
@@ -160,7 +312,8 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
             }
 
             n = ngx_quic_output_packet(c, ctx, p, len, min,
-                                       cg->in_flight >= cg->window);
+                                       cg->in_flight >= cg->window
+                                       || qc->pacing.budget < path->mtu);
             if (n == NGX_ERROR) {
                 return NGX_ERROR;
             }
@@ -229,6 +382,7 @@ ngx_quic_commit_send(ngx_connection_t *c)
                 ngx_queue_insert_tail(&ctx->sent, q);
 
                 cg->in_flight += f->plen;
+                qc->pacing.budget -= ngx_min(qc->pacing.budget, f->plen);
 
             } else {
                 ngx_quic_free_frame(c, f);
@@ -310,6 +464,10 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
     bytes = 0;
     len = ngx_min(qc->path->mtu, NGX_QUIC_MAX_UDP_SEGMENT_BUF);
 
+    if (qc->pacing.budget < len * 3) {
+        return 0;
+    }
+
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
          q = ngx_queue_next(q))
@@ -369,7 +527,9 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
         len = ngx_min(segsize, (size_t) (end - p));
 
-        if (len && cg->in_flight + (p - dst) < cg->window) {
+        if (len && cg->in_flight + (p - dst) < cg->window
+            && (size_t) (p - dst) + len <= qc->pacing.budget)
+        {
 
             n = ngx_quic_output_packet(c, ctx, p, len, len, 0);
             if (n == NGX_ERROR) {
