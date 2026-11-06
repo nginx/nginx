@@ -61,6 +61,10 @@ ngx_test_full_name(ngx_str_t *name)
 #if (NGX_WIN32)
     u_char  c0, c1;
 
+    if (name->len == 0) {
+        return NGX_DECLINED;
+    }
+
     c0 = name->data[0];
 
     if (name->len < 2) {
@@ -95,7 +99,7 @@ ngx_test_full_name(ngx_str_t *name)
 
 #else
 
-    if (name->data[0] == '/') {
+    if (name->len > 0 && name->data[0] == '/') {
         return NGX_OK;
     }
 
