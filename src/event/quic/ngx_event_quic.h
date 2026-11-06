@@ -87,6 +87,7 @@ typedef struct {
     ngx_msec_t                     idle_timeout;
     ngx_str_t                      host_key;
     size_t                         stream_buffer_size;
+    size_t                         stream_recv_window;
     ngx_uint_t                     max_concurrent_streams_bidi;
     ngx_uint_t                     max_concurrent_streams_uni;
     ngx_uint_t                     active_connection_id_limit;
@@ -124,6 +125,7 @@ struct ngx_quic_stream_s {
     ngx_quic_stream_recv_state_e   recv_state;
     unsigned                       cancelable:1;
     unsigned                       fin_acked:1;
+    unsigned                       blocked:1;
 };
 
 
@@ -137,6 +139,7 @@ void ngx_quic_shutdown_connection(ngx_connection_t *c, ngx_uint_t err,
 ngx_int_t ngx_quic_reset_stream(ngx_connection_t *c, ngx_uint_t err);
 ngx_int_t ngx_quic_shutdown_stream(ngx_connection_t *c, int how);
 void ngx_quic_cancelable_stream(ngx_connection_t *c);
+ngx_int_t ngx_quic_set_recv_window(ngx_connection_t *c, size_t window);
 ngx_int_t ngx_quic_get_packet_dcid(ngx_log_t *log, u_char *data, size_t len,
     ngx_str_t *dcid);
 ngx_int_t ngx_quic_derive_key(ngx_log_t *log, const char *label,
