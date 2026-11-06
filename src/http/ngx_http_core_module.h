@@ -376,6 +376,8 @@ struct ngx_http_core_loc_conf_s {
     ngx_http_complex_value_t  *limit_rate_after; /* limit_rate_after */
 
     ngx_msec_t    client_body_timeout;     /* client_body_timeout */
+    ngx_msec_t    client_body_total_timeout;
+                                          /* client_body_total_timeout */
     ngx_msec_t    send_timeout;            /* send_timeout */
     ngx_msec_t    keepalive_time;          /* keepalive_time */
     ngx_msec_t    keepalive_timeout;       /* keepalive_timeout */
