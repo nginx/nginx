@@ -2550,7 +2550,22 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
                 next->node = NULL;
             }
 
-            (void) ngx_resolve_name_locked(r, ctx, &name);
+            if (ngx_resolve_name_locked(r, ctx, &name) == NGX_ERROR) {
+
+                /* unlock name mutex */
+
+                do {
+                    ctx->state = NGX_ERROR;
+                    ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
+                    next = ctx->next;
+
+                    ctx->handler(ctx);
+
+                    ctx = next;
+                } while (ctx);
+
+                return;
+            }
         }
 
         /* unlock name mutex */
@@ -2935,7 +2950,22 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
                 next->node = NULL;
             }
 
-            (void) ngx_resolve_name_locked(r, ctx, &name);
+            if (ngx_resolve_name_locked(r, ctx, &name) == NGX_ERROR) {
+
+                /* unlock name mutex */
+
+                do {
+                    ctx->state = NGX_ERROR;
+                    ctx->valid = ngx_time() + (r->valid ? r->valid : 10);
+                    next = ctx->next;
+
+                    ctx->handler(ctx);
+
+                    ctx = next;
+                } while (ctx);
+
+                return;
+            }
         }
 
         /* unlock name mutex */
