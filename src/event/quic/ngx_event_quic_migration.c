@@ -416,9 +416,10 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
 
     /*
      * invalidate CID that is no longer usable for any other path;
-     * this also requests new CIDs from client
+     * this also requests new CIDs from client;
+     * a zero-length CID is used on all paths and cannot be retired
      */
-    if (path->cid) {
+    if (path->cid && path->cid->len) {
         if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
             return NGX_ERROR;
         }

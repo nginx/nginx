@@ -344,7 +344,8 @@ ngx_quic_next_client_id(ngx_connection_t *c)
     {
         cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
 
-        if (!cid->used) {
+        if (!cid->used || cid->len == 0) {
+            /* a zero-length client id is used on all paths */
             return cid;
         }
     }
