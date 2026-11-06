@@ -1884,35 +1884,32 @@ ngx_stream_proxy_test_connect(ngx_connection_t *c)
 #if (NGX_HAVE_KQUEUE)
 
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
-        err = c->write->kq_errno ? c->write->kq_errno : c->read->kq_errno;
+        if (c->write->pending_eof || c->read->pending_eof) {
+            err = c->write->kq_errno ? c->write->kq_errno : c->read->kq_errno;
 
-        if (err) {
             (void) ngx_connection_error(c, err,
                                     "kevent() reported that connect() failed");
             return NGX_ERROR;
         }
+    }
 
-    } else
 #endif
-    {
-        err = 0;
-        len = sizeof(int);
 
-        /*
-         * BSDs and Linux return 0 and set a pending error in err
-         * Solaris returns -1 and sets errno
-         */
+    err = 0;
+    len = sizeof(int);
 
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
-            == -1)
-        {
-            err = ngx_socket_errno;
-        }
+    /*
+     * BSDs and Linux return 0 and set a pending error in err
+     * Solaris returns -1 and sets errno
+     */
 
-        if (err) {
-            (void) ngx_connection_error(c, err, "connect() failed");
-            return NGX_ERROR;
-        }
+    if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) {
+        err = ngx_socket_errno;
+    }
+
+    if (err) {
+        (void) ngx_connection_error(c, err, "connect() failed");
+        return NGX_ERROR;
     }
 
     return NGX_OK;
