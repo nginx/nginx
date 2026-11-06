@@ -42,6 +42,7 @@ typedef struct {
     ngx_uint_t     format;
     ngx_flag_t     localtime;
     ngx_flag_t     exact_size;
+    ngx_flag_t     list_hidden;
 } ngx_http_autoindex_loc_conf_t;
 
 
@@ -110,6 +111,13 @@ static ngx_command_t  ngx_http_autoindex_commands[] = {
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_autoindex_loc_conf_t, exact_size),
+      NULL },
+
+    { ngx_string("autoindex_list_hidden"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_autoindex_loc_conf_t, list_hidden),
       NULL },
 
       ngx_null_command
@@ -314,7 +322,13 @@ ngx_http_autoindex_handler(ngx_http_request_t *r)
 
         len = ngx_de_namelen(&dir);
 
-        if (ngx_de_name(&dir)[0] == '.') {
+        if (alcf->list_hidden) {
+            if (ngx_strcmp(ngx_de_name(&dir), ".") == 0
+                || ngx_strcmp(ngx_de_name(&dir), "..") == 0)
+            {
+                continue;
+            }
+        } else if (ngx_de_name(&dir)[0] == '.') {
             continue;
         }
 
@@ -1034,6 +1048,7 @@ ngx_http_autoindex_create_loc_conf(ngx_conf_t *cf)
     conf->format = NGX_CONF_UNSET_UINT;
     conf->localtime = NGX_CONF_UNSET;
     conf->exact_size = NGX_CONF_UNSET;
+    conf->list_hidden = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -1050,6 +1065,7 @@ ngx_http_autoindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               NGX_HTTP_AUTOINDEX_HTML);
     ngx_conf_merge_value(conf->localtime, prev->localtime, 0);
     ngx_conf_merge_value(conf->exact_size, prev->exact_size, 1);
+    ngx_conf_merge_value(conf->list_hidden, prev->list_hidden, 0);
 
     return NGX_CONF_OK;
 }
