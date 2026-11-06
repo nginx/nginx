@@ -546,7 +546,14 @@ found:
             rc.options = NGX_REGEX_CASELESS;
         }
 
-        rc.pattern = value[0];
+        rc.pattern.len = value[0].len;
+        rc.pattern.data = ngx_pnalloc(ctx->keys.pool, value[0].len + 1);
+        if (rc.pattern.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(rc.pattern.data, value[0].data, value[0].len + 1);
+
         rc.err.len = NGX_MAX_CONF_ERRSTR;
         rc.err.data = errstr;
 
