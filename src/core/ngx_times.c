@@ -214,7 +214,7 @@ ngx_monotonic_time(time_t sec, ngx_uint_t msec)
 void
 ngx_time_sigsafe_update(void)
 {
-    u_char          *p, *p2;
+    u_char          *p, *p2, *p3;
     ngx_tm_t         tm;
     time_t           sec;
     ngx_time_t      *tp;
@@ -260,10 +260,21 @@ ngx_time_sigsafe_update(void)
                        months[tm.ngx_tm_mon - 1], tm.ngx_tm_mday,
                        tm.ngx_tm_hour, tm.ngx_tm_min, tm.ngx_tm_sec);
 
+    p3 = &cached_http_log_iso8601[slot][0];
+
+    (void) ngx_sprintf(p3, "%4d-%02d-%02dT%02d:%02d:%02d%c%02i:%02i",
+                       tm.ngx_tm_year, tm.ngx_tm_mon,
+                       tm.ngx_tm_mday, tm.ngx_tm_hour,
+                       tm.ngx_tm_min, tm.ngx_tm_sec,
+                       cached_gmtoff < 0 ? '-' : '+',
+                       ngx_abs(cached_gmtoff / 60),
+                       ngx_abs(cached_gmtoff % 60));
+
     ngx_memory_barrier();
 
     ngx_cached_err_log_time.data = p;
     ngx_cached_syslog_time.data = p2;
+    ngx_cached_http_log_iso8601.data = p3;
 
     ngx_unlock(&ngx_time_lock);
 }
