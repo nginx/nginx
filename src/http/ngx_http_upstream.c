@@ -5144,12 +5144,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     if (p) {
         n = ngx_http_upstream_process_delta_seconds(p + offset, last);
 
-        if (n == NGX_ERROR) {
-            u->cacheable = 0;
-            return NGX_OK;
-        }
-
-        if (n == 0) {
+        if (n == NGX_ERROR || n == 0) {
             u->headers_in.no_cache = 1;
             goto extensions;
         }
