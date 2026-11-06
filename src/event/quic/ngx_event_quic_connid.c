@@ -81,6 +81,20 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
+    if (qc->path->cid->len == 0) {
+        /*
+         * RFC 9000, 19.15.  NEW_CONNECTION_ID Frames
+         *
+         *  An endpoint that is sending packets with a zero-length
+         *  Destination Connection ID MUST treat receipt of
+         *  a NEW_CONNECTION_ID frame as a connection error of type
+         *  PROTOCOL_VIOLATION.
+         */
+        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        qc->error_reason = "new connection id from client with zero-length id";
+        return NGX_ERROR;
+    }
+
     if (f->seqnum < qc->max_retired_seqnum) {
         /*
          * RFC 9000, 19.15.  NEW_CONNECTION_ID Frame
