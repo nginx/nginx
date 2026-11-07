@@ -1184,7 +1184,7 @@ ngx_http_script_regex_start_code(ngx_http_script_engine_t *e)
             r->valid_location = 0;
             r->uri_changed = 0;
 
-        } else {
+        } else if (!code->redirect) {
             r->uri_changed = 1;
         }
     }
