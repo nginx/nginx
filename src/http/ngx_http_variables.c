@@ -458,6 +458,12 @@ ngx_http_add_variable(ngx_conf_t *cf, ngx_str_t *name, ngx_uint_t flags)
             return NULL;
         }
 
+        if (!(flags & NGX_HTTP_VAR_WEAK) && v->set_handler) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "the duplicate \"%V\" variable", name);
+            return NULL;
+        }
+
         if (!(flags & NGX_HTTP_VAR_WEAK)) {
             v->flags &= ~NGX_HTTP_VAR_WEAK;
         }
@@ -2651,7 +2657,8 @@ ngx_http_regex_compile(ngx_conf_t *cf, ngx_regex_compile_t *rc)
         name.data = &p[2];
         name.len = ngx_strlen(name.data);
 
-        v = ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+        v = ngx_http_add_variable(cf, &name,
+                                  NGX_HTTP_VAR_CHANGEABLE|NGX_HTTP_VAR_WEAK);
         if (v == NULL) {
             return NULL;
         }
@@ -2661,7 +2668,9 @@ ngx_http_regex_compile(ngx_conf_t *cf, ngx_regex_compile_t *rc)
             return NULL;
         }
 
-        v->get_handler = ngx_http_variable_not_found;
+        if (v->get_handler == NULL) {
+            v->get_handler = ngx_http_variable_not_found;
+        }
 
         p += size;
     }
