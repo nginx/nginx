@@ -1187,7 +1187,7 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
                                   key_len, val_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method, host;
+    ngx_str_t                     method, host, uri, args;
     ngx_uint_t                    i, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1257,6 +1257,11 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
     body_len = 0;
     headers_len = 0;
 
+#if (NGX_SUPPRESS_WARN)
+    ngx_str_null(&uri);
+    ngx_str_null(&args);
+#endif
+
     if (plcf->proxy_lengths && ctx->vars.uri.len) {
         uri_len = ctx->vars.uri.len;
 
@@ -1265,16 +1270,19 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         uri_len = r->unparsed_uri.len;
 
     } else {
+        uri = r->uri;
+        args = r->args;
+
         loc_len = (r->valid_location && ctx->vars.uri.len)
-                  ? ngx_min(plcf->location.len, r->uri.len) : 0;
+                  ? ngx_min(plcf->location.len, uri.len) : 0;
 
         if (r->quoted_uri || r->internal) {
-            escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
-                                        r->uri.len - loc_len, NGX_ESCAPE_URI);
+            escape = 2 * ngx_escape_uri(NULL, uri.data + loc_len,
+                                        uri.len - loc_len, NGX_ESCAPE_URI);
         }
 
-        uri_len = ctx->vars.uri.len + r->uri.len - loc_len + escape
-                  + sizeof("?") - 1 + r->args.len;
+        uri_len = ctx->vars.uri.len + uri.len - loc_len + escape
+                  + sizeof("?") - 1 + args.len;
     }
 
     if (uri_len == 0) {
@@ -1402,18 +1410,18 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         }
 
         if (escape) {
-            ngx_escape_uri(b->last, r->uri.data + loc_len,
-                           r->uri.len - loc_len, NGX_ESCAPE_URI);
-            b->last += r->uri.len - loc_len + escape;
+            ngx_escape_uri(b->last, uri.data + loc_len,
+                           uri.len - loc_len, NGX_ESCAPE_URI);
+            b->last += uri.len - loc_len + escape;
 
         } else {
-            b->last = ngx_copy(b->last, r->uri.data + loc_len,
-                               r->uri.len - loc_len);
+            b->last = ngx_copy(b->last, uri.data + loc_len,
+                               uri.len - loc_len);
         }
 
-        if (r->args.len > 0) {
+        if (args.len > 0) {
             *b->last++ = '?';
-            b->last = ngx_copy(b->last, r->args.data, r->args.len);
+            b->last = ngx_copy(b->last, args.data, args.len);
         }
     }
 
