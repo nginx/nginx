@@ -553,6 +553,10 @@ ngx_int_t ngx_http_get_forwarded_addr(ngx_http_request_t *r, ngx_addr_t *addr,
     int recursive);
 
 ngx_int_t ngx_http_link_multi_headers(ngx_http_request_t *r);
+ngx_uint_t ngx_http_sort_linked_headers(ngx_http_request_t *r,
+    ngx_table_elt_t **linked, void *buf);
+ngx_uint_t ngx_http_find_linked_header(ngx_table_elt_t **linked, ngx_uint_t n,
+    ngx_table_elt_t *header);
 
 
 extern ngx_module_t  ngx_http_core_module;
