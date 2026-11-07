@@ -859,6 +859,17 @@ if [ $HTTP = YES ]; then
         . auto/module
     fi
 
+    if [ $HTTP_REDIS = YES ]; then
+        ngx_module_name=ngx_http_redis_module
+        ngx_module_incs=
+        ngx_module_deps=
+        ngx_module_srcs=src/http/modules/ngx_http_redis_module.c
+        ngx_module_libs=
+        ngx_module_link=$HTTP_REDIS
+
+        . auto/module
+    fi
+
     if [ $HTTP_EMPTY_GIF = YES ]; then
         ngx_module_name=ngx_http_empty_gif_module
         ngx_module_incs=
