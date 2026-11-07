@@ -867,6 +867,11 @@ ngx_mail_auth_sleep_handler(ngx_event_t *rev)
     c = rev->data;
     s = c->data;
 
+    if (c->close) {
+        ngx_mail_close_connection(c);
+        return;
+    }
+
     if (rev->timedout) {
 
         rev->timedout = 0;
