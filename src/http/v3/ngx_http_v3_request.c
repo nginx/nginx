@@ -1285,6 +1285,21 @@ ngx_http_v3_read_request_body(ngx_http_request_t *r)
     ngx_http_request_body_t   *rb;
     ngx_http_core_loc_conf_t  *clcf;
 
+    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+    if (r->headers_in.content_length_n != -1
+        && !r->discard_body
+        && clcf->client_max_body_size
+        && clcf->client_max_body_size < r->headers_in.content_length_n)
+    {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "client intended to send too large body: %O bytes",
+                      r->headers_in.content_length_n);
+
+        r->expect_tested = 1;
+        return NGX_HTTP_REQUEST_ENTITY_TOO_LARGE;
+    }
+
     rb = r->request_body;
 
     preread = r->header_in->last - r->header_in->pos;
