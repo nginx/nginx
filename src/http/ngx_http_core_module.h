@@ -400,6 +400,7 @@ struct ngx_http_core_loc_conf_s {
     ngx_flag_t    client_body_in_single_buffer;
                                            /* client_body_in_singe_buffer */
     ngx_flag_t    internal;                /* internal */
+    ngx_flag_t    accept_extended_connect; /* accept_extended_connect */
     ngx_flag_t    sendfile;                /* sendfile */
     ngx_flag_t    aio;                     /* aio */
     ngx_flag_t    aio_write;               /* aio_write */
