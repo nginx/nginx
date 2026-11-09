@@ -1990,6 +1990,65 @@ ngx_escape_json(u_char *dst, u_char *src, size_t size)
 }
 
 
+uintptr_t
+ngx_escape_xtext(u_char *dst, u_char *src, size_t size)
+{
+    u_char         ch;
+    ngx_uint_t     n;
+    static u_char  hex[] = "0123456789ABCDEF";
+
+    /*
+     * RFC 1891 / 3461 xtext encoding:
+     *
+     * xtext = *( xchar / hexchar )
+     *
+     * xchar = any ASCII CHAR between "!" (33) and "~" (126) inclusive,
+     *         except for "+" and "=".
+     *
+     * hexchar = ASCII "+" immediately followed by two upper case
+     *           hexadecimal digits
+     *
+     * Mostly equivalent to URI escaping, but uses "+" instead of "%".
+     */
+
+    if (dst == NULL) {
+
+        /* find the number of the characters to be escaped */
+
+        n = 0;
+
+        while (size) {
+            ch = *src++;
+
+            if (ch <= 0x20 || ch >= 0x7f || ch == '+' || ch == '=') {
+                n++;
+            }
+
+            size--;
+        }
+
+        return (uintptr_t) n;
+    }
+
+    while (size) {
+        ch = *src++;
+
+        if (ch <= 0x20 || ch >= 0x7f || ch == '+' || ch == '=') {
+            *dst++ = '+';
+            *dst++ = hex[ch >> 4];
+            *dst++ = hex[ch & 0xf];
+
+        } else {
+            *dst++ = ch;
+        }
+
+        size--;
+    }
+
+    return (uintptr_t) dst;
+}
+
+
 void
 ngx_str_rbtree_insert_value(ngx_rbtree_node_t *temp,
     ngx_rbtree_node_t *node, ngx_rbtree_node_t *sentinel)
