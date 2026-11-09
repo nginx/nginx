@@ -1672,7 +1672,9 @@ ngx_http_ssi_evaluate_string(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
         data = text->data;
         p = data;
 
-        if ((flags & NGX_HTTP_SSI_ADD_PREFIX) && text->data[0] != '/') {
+        if ((flags & NGX_HTTP_SSI_ADD_PREFIX)
+            && text->len && text->data[0] != '/')
+        {
 
             for (prefix = r->uri.len; prefix; prefix--) {
                 if (r->uri.data[prefix - 1] == '/') {
