@@ -6211,12 +6211,6 @@ ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     len = cert.len - 1;
 
-    for (i = 0; i < cert.len - 1; i++) {
-        if (cert.data[i] == LF) {
-            len++;
-        }
-    }
-
     s->len = len;
     s->data = ngx_pnalloc(pool, len);
     if (s->data == NULL) {
@@ -6226,9 +6220,12 @@ ngx_ssl_get_certificate(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     p = s->data;
 
     for (i = 0; i < cert.len - 1; i++) {
-        *p++ = cert.data[i];
         if (cert.data[i] == LF) {
-            *p++ = '\t';
+            *p++ = ' ';
+        } else if (cert.data[i] < ' ' || cert.data[i] > '~') {
+            return NGX_ERROR;
+        } else {
+            *p++ = cert.data[i];
         }
     }
 
