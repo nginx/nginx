@@ -283,6 +283,10 @@ ngx_quic_handle_ack_frame_range(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx,
         if (f->pnum >= min) {
             ngx_quic_congestion_ack(c, f);
 
+            if (ctx->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
+                ngx_quic_path_mtu_ack(c, qc->path, f);
+            }
+
             switch (f->type) {
             case NGX_QUIC_FT_ACK:
             case NGX_QUIC_FT_ACK_ECN:
@@ -770,6 +774,10 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic resend packet pnum:%uL", start->pnum);
+
+    if (ctx->level == NGX_QUIC_ENCRYPTION_APPLICATION) {
+        ngx_quic_path_mtu_lost(c, qc->path, start);
+    }
 
     ngx_quic_congestion_lost(c, start);
 
