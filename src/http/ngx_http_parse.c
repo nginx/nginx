@@ -1959,6 +1959,10 @@ ngx_http_parse_unsafe_uri(ngx_http_request_t *r, ngx_str_t *uri,
         len = uri->len;
         p = uri->data;
 
+        if (len == 0) {
+            goto unsafe;
+        }
+
         if (p[0] == '.' && len > 1 && p[1] == '.'
             && (len == 2 || ngx_path_separator(p[2])))
         {
