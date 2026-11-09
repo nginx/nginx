@@ -2916,7 +2916,8 @@ ngx_http_upstream_test_next(ngx_http_request_t *r, ngx_http_upstream_t *u)
             valid = ngx_http_file_cache_valid(u->conf->cache_valid,
                                               u->headers_in.status_n);
             if (valid) {
-                valid = now + valid;
+                valid = ngx_min((ngx_uint_t) now + valid,
+                                NGX_MAX_INT_T_VALUE);
             }
         }
 
@@ -3014,7 +3015,9 @@ ngx_http_upstream_intercept_errors(ngx_http_request_t *r,
                         valid = ngx_http_file_cache_valid(u->conf->cache_valid,
                                                           status);
                         if (valid) {
-                            r->cache->valid_sec = ngx_time() + valid;
+                            valid = ngx_min((ngx_uint_t) ngx_time() + valid,
+                                            NGX_MAX_INT_T_VALUE);
+                            r->cache->valid_sec = valid;
                         }
                     }
 
@@ -3451,7 +3454,8 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
             valid = ngx_http_file_cache_valid(u->conf->cache_valid,
                                               u->headers_in.status_n);
             if (valid) {
-                r->cache->valid_sec = now + valid;
+                r->cache->valid_sec = ngx_min((ngx_uint_t) now + valid,
+                                              NGX_MAX_INT_T_VALUE);
             }
         }
 
@@ -4896,7 +4900,9 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                 valid = ngx_http_file_cache_valid(u->conf->cache_valid, rc);
 
                 if (valid) {
-                    r->cache->valid_sec = ngx_time() + valid;
+                    valid = ngx_min((ngx_uint_t) ngx_time() + valid,
+                                    NGX_MAX_INT_T_VALUE);
+                    r->cache->valid_sec = valid;
                     r->cache->error = rc;
                 }
             }
@@ -5342,7 +5348,8 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
             return NGX_OK;
 
         default:
-            r->cache->valid_sec = ngx_time() + n;
+            r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time() + n,
+                                          NGX_MAX_INT_T_VALUE);
             u->headers_in.no_cache = 0;
             u->headers_in.expired = 0;
             return NGX_OK;
