@@ -115,36 +115,51 @@ struct ngx_stream_upstream_rr_peers_s {
 
 #if (NGX_STREAM_UPSTREAM_ZONE)
 
-#define ngx_stream_upstream_rr_peers_rlock(peers)                             \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_rlock(&peers->rwlock);                                     \
+static ngx_inline void
+ngx_stream_upstream_rr_peers_rlock(ngx_stream_upstream_rr_peers_t *peers)
+{
+    if (peers->shpool) {
+        ngx_rwlock_rlock(&peers->rwlock);
     }
-
-#define ngx_stream_upstream_rr_peers_wlock(peers)                             \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_wlock(&peers->rwlock);                                     \
-    }
-
-#define ngx_stream_upstream_rr_peers_unlock(peers)                            \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_unlock(&peers->rwlock);                                    \
-    }
+}
 
 
-#define ngx_stream_upstream_rr_peer_lock(peers, peer)                         \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_wlock(&peer->lock);                                        \
+static ngx_inline void
+ngx_stream_upstream_rr_peers_wlock(ngx_stream_upstream_rr_peers_t *peers)
+{
+    if (peers->shpool) {
+        ngx_rwlock_wlock(&peers->rwlock);
     }
+}
 
-#define ngx_stream_upstream_rr_peer_unlock(peers, peer)                       \
-                                                                              \
-    if (peers->shpool) {                                                      \
-        ngx_rwlock_unlock(&peer->lock);                                       \
+
+static ngx_inline void
+ngx_stream_upstream_rr_peers_unlock(ngx_stream_upstream_rr_peers_t *peers)
+{
+    if (peers->shpool) {
+        ngx_rwlock_unlock(&peers->rwlock);
     }
+}
+
+
+static ngx_inline void
+ngx_stream_upstream_rr_peer_lock(ngx_stream_upstream_rr_peers_t *peers,
+    ngx_stream_upstream_rr_peer_t *peer)
+{
+    if (peers->shpool) {
+        ngx_rwlock_wlock(&peer->lock);
+    }
+}
+
+
+static ngx_inline void
+ngx_stream_upstream_rr_peer_unlock(ngx_stream_upstream_rr_peers_t *peers,
+    ngx_stream_upstream_rr_peer_t *peer)
+{
+    if (peers->shpool) {
+        ngx_rwlock_unlock(&peer->lock);
+    }
+}
 
 
 #define ngx_stream_upstream_rr_peer_ref(peers, peer)                          \
