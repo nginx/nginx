@@ -13,7 +13,6 @@
 
 
 typedef struct {
-    ngx_flag_t  enable;
     ngx_flag_t  pass_error_message;
     ngx_flag_t  xclient;
     ngx_flag_t  smtp_auth;
@@ -49,13 +48,6 @@ static ngx_conf_enum_t  ngx_mail_proxy_protocol_versions[] = {
 
 
 static ngx_command_t  ngx_mail_proxy_commands[] = {
-
-    { ngx_string("proxy"),
-      NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_MAIL_SRV_CONF_OFFSET,
-      offsetof(ngx_mail_proxy_conf_t, enable),
-      NULL },
 
     { ngx_string("proxy_buffer"),
       NGX_MAIL_MAIN_CONF|NGX_MAIL_SRV_CONF|NGX_CONF_TAKE1,
@@ -1397,7 +1389,6 @@ ngx_mail_proxy_create_conf(ngx_conf_t *cf)
         return NULL;
     }
 
-    pcf->enable = NGX_CONF_UNSET;
     pcf->pass_error_message = NGX_CONF_UNSET;
     pcf->xclient = NGX_CONF_UNSET;
     pcf->smtp_auth = NGX_CONF_UNSET;
@@ -1415,7 +1406,6 @@ ngx_mail_proxy_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_mail_proxy_conf_t *prev = parent;
     ngx_mail_proxy_conf_t *conf = child;
 
-    ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_value(conf->pass_error_message, prev->pass_error_message, 0);
     ngx_conf_merge_value(conf->xclient, prev->xclient, 1);
     ngx_conf_merge_value(conf->smtp_auth, prev->smtp_auth, 0);
