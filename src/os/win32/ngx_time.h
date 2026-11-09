@@ -19,6 +19,23 @@ typedef ngx_rbtree_key_int_t  ngx_msec_int_t;
 typedef SYSTEMTIME            ngx_tm_t;
 typedef FILETIME              ngx_mtime_t;
 
+typedef struct {
+    time_t                    tv_sec;
+    long                      tv_usec;
+} ngx_timeval_t;
+
+
+#define NGX_WIN32_EPOCH_FILETIME  116444736000000000ULL
+
+static ngx_inline void
+ngx_filetime_to_timeval(uint64_t intervals, ngx_timeval_t *tp)
+{
+    intervals -= NGX_WIN32_EPOCH_FILETIME;
+
+    tp->tv_sec = (time_t) (intervals / 10000000);
+    tp->tv_usec = (long) ((intervals % 10000000) / 10);
+}
+
 #define ngx_tm_sec            wSecond
 #define ngx_tm_min            wMinute
 #define ngx_tm_hour           wHour
@@ -46,6 +63,7 @@ ngx_int_t ngx_gettimezone(void);
 void ngx_libc_localtime(time_t s, struct tm *tm);
 void ngx_libc_gmtime(time_t s, struct tm *tm);
 void ngx_gettimeofday(struct timeval *tp);
+void ngx_gettimeofday64(ngx_timeval_t *tp);
 
 
 #endif /* _NGX_TIME_H_INCLUDED_ */
