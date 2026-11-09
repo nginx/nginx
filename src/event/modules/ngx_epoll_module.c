@@ -123,7 +123,18 @@ static ngx_int_t ngx_epoll_notify(ngx_event_handler_pt handler);
 static ngx_int_t ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer,
     ngx_uint_t flags);
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_IO_URING)
+static void ngx_epoll_io_uring_done(ngx_cycle_t *cycle);
+static ngx_int_t ngx_epoll_io_uring_submit_cancel(ngx_log_t *log,
+    ngx_event_t *ev, ngx_uint_t flags);
+static ngx_int_t ngx_epoll_io_uring_drain(ngx_log_t *log, ngx_uint_t wait,
+    ngx_int_t *cancel, ngx_uint_t *seen);
+static ngx_int_t ngx_epoll_io_uring_wait_event(ngx_log_t *log,
+    ngx_event_t *ev);
+static void ngx_epoll_io_uring_handle_cqe(ngx_log_t *log,
+    struct io_uring_cqe *cqe, ngx_uint_t post);
+#endif
+#if (NGX_HAVE_IO_URING || NGX_HAVE_FILE_AIO)
 static void ngx_epoll_eventfd_handler(ngx_event_t *ev);
 #endif
 
@@ -140,7 +151,25 @@ static ngx_event_t          notify_event;
 static ngx_connection_t     notify_conn;
 #endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_IO_URING)
+
+int                         ngx_eventfd = -1;
+struct io_uring            *ngx_io_uring_ring = NULL;
+ngx_queue_t                 ngx_io_uring_active;
+ngx_uint_t                  ngx_io_uring_nreqs;
+
+static ngx_event_t          ngx_eventfd_event;
+static ngx_connection_t     ngx_eventfd_conn;
+
+#ifndef IORING_ASYNC_CANCEL_ALL
+#define IORING_ASYNC_CANCEL_ALL  (1U << 0)
+#endif
+
+#ifndef IORING_ASYNC_CANCEL_ANY
+#define IORING_ASYNC_CANCEL_ANY  (1U << 2)
+#endif
+
+#elif (NGX_HAVE_FILE_AIO)
 
 int                         ngx_eventfd = -1;
 aio_context_t               ngx_aio_ctx = 0;
@@ -215,7 +244,104 @@ ngx_module_t  ngx_epoll_module = {
 };
 
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_IO_URING)
+static void
+ngx_epoll_io_uring_init(ngx_cycle_t *cycle, ngx_epoll_conf_t *epcf)
+{
+    int                 n, ret;
+    struct epoll_event  ee;
+
+#if (NGX_HAVE_SYS_EVENTFD_H)
+    ngx_eventfd = eventfd(0, 0);
+#else
+    ngx_eventfd = syscall(SYS_eventfd, 0);
+#endif
+
+    if (ngx_eventfd == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                      "eventfd() failed");
+        ngx_io_uring = 0;
+        return;
+    }
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, cycle->log, 0,
+                   "eventfd: %d", ngx_eventfd);
+
+    n = 1;
+
+    if (ioctl(ngx_eventfd, FIONBIO, &n) == -1) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                       "ioctl(eventfd, FIONBIO) failed");
+        goto failed;
+    }
+
+    if (ngx_io_uring_ring == NULL) {
+        ngx_io_uring_ring = ngx_palloc(cycle->pool, sizeof(struct io_uring));
+        if (ngx_io_uring_ring == NULL) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                          "ngx_palloc failed");
+            goto failed;
+        }
+    }
+
+    ret = io_uring_queue_init(epcf->aio_requests, ngx_io_uring_ring, 0);
+    if (ret < 0) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, -ret,
+                      "io_uring_queue_init() failed");
+        goto free_ring;
+    }
+
+    ngx_queue_init(&ngx_io_uring_active);
+    ngx_io_uring_nreqs = 0;
+
+    ret = io_uring_register_eventfd(ngx_io_uring_ring, ngx_eventfd);
+    if (ret < 0) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, -ret,
+                      "io_uring_register_eventfd() failed");
+        goto exit_ring;
+    }
+
+    ngx_eventfd_event.data = &ngx_eventfd_conn;
+    ngx_eventfd_event.handler = ngx_epoll_eventfd_handler;
+    ngx_eventfd_event.log = cycle->log;
+    ngx_eventfd_event.active = 1;
+    ngx_eventfd_conn.fd = ngx_eventfd;
+    ngx_eventfd_conn.read = &ngx_eventfd_event;
+    ngx_eventfd_conn.log = cycle->log;
+
+    ee.events = EPOLLIN|EPOLLET;
+    ee.data.ptr = &ngx_eventfd_conn;
+
+    if (epoll_ctl(ep, EPOLL_CTL_ADD, ngx_eventfd, &ee) != -1) {
+        return;
+    }
+
+    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno,
+                  "epoll_ctl(EPOLL_CTL_ADD, eventfd) failed");
+    goto exit_ring;
+
+exit_ring:
+
+    if (ngx_io_uring_ring) {
+        ngx_epoll_io_uring_done(cycle);
+    }
+
+free_ring:
+
+    ngx_pfree(cycle->pool, ngx_io_uring_ring);
+    ngx_io_uring_ring = NULL;
+
+failed:
+
+    if (close(ngx_eventfd) == -1) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                      "eventfd close() failed");
+    }
+
+    ngx_eventfd = -1;
+    ngx_io_uring = 0;
+}
+#elif (NGX_HAVE_FILE_AIO)
 
 /*
  * We call io_setup(), io_destroy() io_submit(), and io_getevents() directly
@@ -341,7 +467,9 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         }
 #endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_IO_URING)
+        ngx_epoll_io_uring_init(cycle, epcf);
+#elif (NGX_HAVE_FILE_AIO)
         ngx_epoll_aio_init(cycle, epcf);
 #endif
 
@@ -526,6 +654,294 @@ failed:
 #endif
 
 
+#if (NGX_HAVE_IO_URING)
+
+static void
+ngx_epoll_io_uring_done(ngx_cycle_t *cycle)
+{
+    ngx_int_t                cancel;
+    ngx_uint_t               fallback, seen;
+    ngx_queue_t             *q;
+    ngx_event_io_uring_t    *io_uring;
+
+    (void) ngx_epoll_io_uring_drain(cycle->log, 0, NULL, NULL);
+
+    fallback = 0;
+
+    if (ngx_io_uring_nreqs) {
+        cancel = 0;
+        seen = 0;
+
+        if (ngx_epoll_io_uring_submit_cancel(cycle->log, NULL,
+                                             IORING_ASYNC_CANCEL_ANY
+                                             | IORING_ASYNC_CANCEL_ALL)
+            != NGX_OK)
+        {
+            fallback = 1;
+
+        } else {
+            while (!seen) {
+                if (ngx_epoll_io_uring_drain(cycle->log, 1, &cancel, &seen)
+                    != NGX_OK)
+                {
+                    break;
+                }
+            }
+
+            if (seen && cancel == -EINVAL) {
+                fallback = 1;
+            }
+        }
+    }
+
+    if (fallback) {
+        for (q = ngx_queue_head(&ngx_io_uring_active);
+             q != ngx_queue_sentinel(&ngx_io_uring_active);
+             q = ngx_queue_next(q))
+        {
+            io_uring = ngx_queue_data(q, ngx_event_io_uring_t, queue);
+            (void) ngx_epoll_io_uring_submit_cancel(cycle->log,
+                                                    &io_uring->event, 0);
+        }
+    }
+
+    while (ngx_io_uring_nreqs) {
+        if (ngx_epoll_io_uring_drain(cycle->log, 1, NULL, NULL) != NGX_OK) {
+            break;
+        }
+    }
+
+    (void) ngx_epoll_io_uring_drain(cycle->log, 0, NULL, NULL);
+
+    if (ngx_io_uring_nreqs) {
+        ngx_log_error(NGX_LOG_ALERT, cycle->log, 0,
+                      "io_uring queue exit with %ui active requests",
+                      ngx_io_uring_nreqs);
+    }
+
+    io_uring_queue_exit(ngx_io_uring_ring);
+
+    ngx_queue_init(&ngx_io_uring_active);
+    ngx_io_uring_nreqs = 0;
+}
+
+
+ngx_int_t
+ngx_epoll_io_uring_cancel(ngx_event_t *ev, ngx_log_t *log)
+{
+    if (ngx_epoll_io_uring_submit_cancel(log, ev, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return ngx_epoll_io_uring_wait_event(log, ev);
+}
+
+
+static ngx_int_t
+ngx_epoll_io_uring_submit_cancel(ngx_log_t *log, ngx_event_t *ev,
+    ngx_uint_t flags)
+{
+    int                    ret;
+    struct io_uring_sqe   *sqe;
+
+    sqe = io_uring_get_sqe(ngx_io_uring_ring);
+
+    if (sqe == NULL) {
+        ret = io_uring_submit(ngx_io_uring_ring);
+
+        if (ret < 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, -ret,
+                          "io_uring_submit() failed");
+        }
+
+        sqe = io_uring_get_sqe(ngx_io_uring_ring);
+    }
+
+    if (sqe == NULL) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "io_uring_get_sqe() failed");
+        return NGX_ERROR;
+    }
+
+    if (ev) {
+        io_uring_prep_cancel(sqe, ev, flags);
+
+    } else {
+        io_uring_prep_cancel64(sqe, 0, flags);
+    }
+
+    io_uring_sqe_set_data(sqe, NULL);
+
+    ret = io_uring_submit(ngx_io_uring_ring);
+
+    if (ret < 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, -ret,
+                      "io_uring_submit() failed");
+        return NGX_ERROR;
+    }
+
+    if (ret == 0) {
+        ngx_log_error(NGX_LOG_ALERT, log, 0,
+                      "io_uring_submit() submitted no requests");
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_epoll_io_uring_drain(ngx_log_t *log, ngx_uint_t wait,
+    ngx_int_t *cancel, ngx_uint_t *seen)
+{
+    int                    ret;
+    ngx_event_t           *e;
+    struct io_uring_cqe   *cqe;
+
+    for ( ;; ) {
+
+        if (wait) {
+            ret = io_uring_wait_cqe(ngx_io_uring_ring, &cqe);
+
+        } else {
+            ret = io_uring_peek_cqe(ngx_io_uring_ring, &cqe);
+        }
+
+        if (ret == -EINTR) {
+            continue;
+        }
+
+        if (ret == -EAGAIN) {
+            return NGX_AGAIN;
+        }
+
+        if (ret < 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, -ret,
+                          wait ? "io_uring_wait_cqe() failed":
+                                 "io_uring_peek_cqe() failed");
+            return NGX_ERROR;
+        }
+
+        if (cqe == NULL) {
+            return NGX_AGAIN;
+        }
+
+        e = io_uring_cqe_get_data(cqe);
+
+        if (e == NULL && cancel != NULL && !*seen) {
+            *cancel = cqe->res;
+            *seen = 1;
+
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                           "io_uring cancel cqe: %d", cqe->res);
+
+        } else {
+            ngx_epoll_io_uring_handle_cqe(log, cqe, 0);
+        }
+
+        io_uring_cqe_seen(ngx_io_uring_ring, cqe);
+
+        if (wait) {
+            return NGX_OK;
+        }
+    }
+}
+
+
+static ngx_int_t
+ngx_epoll_io_uring_wait_event(ngx_log_t *log, ngx_event_t *ev)
+{
+    int                    ret;
+    ngx_event_t           *e;
+    struct io_uring_cqe   *cqe;
+
+    for ( ;; ) {
+        ret = io_uring_wait_cqe(ngx_io_uring_ring, &cqe);
+
+        if (ret == -EINTR) {
+            continue;
+        }
+
+        if (ret < 0) {
+            ngx_log_error(NGX_LOG_ALERT, log, -ret,
+                          "io_uring_wait_cqe() failed");
+            return NGX_ERROR;
+        }
+
+        if (cqe == NULL) {
+            continue;
+        }
+
+        e = io_uring_cqe_get_data(cqe);
+
+        if (e == ev) {
+            ngx_epoll_io_uring_handle_cqe(log, cqe, 0);
+            io_uring_cqe_seen(ngx_io_uring_ring, cqe);
+
+            return NGX_OK;
+        }
+
+        if (e == NULL) {
+            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                           "io_uring cancel cqe: %d", cqe->res);
+
+        } else {
+            ngx_epoll_io_uring_handle_cqe(log, cqe, 1);
+        }
+
+        io_uring_cqe_seen(ngx_io_uring_ring, cqe);
+    }
+}
+
+
+static void
+ngx_epoll_io_uring_handle_cqe(ngx_log_t *log, struct io_uring_cqe *cqe,
+    ngx_uint_t post)
+{
+    ngx_event_t           *e;
+    ngx_event_io_uring_t  *io_uring;
+
+    e = io_uring_cqe_get_data(cqe);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, log, 0,
+                   "io_uring cqe: %p %d", e, cqe->res);
+
+    if (e == NULL) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "io_uring null cqe: %d", cqe->res);
+        return;
+    }
+
+    io_uring = e->data;
+
+    if (!e->active) {
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, log, 0,
+                       "io_uring stale cqe: %p", e);
+        return;
+    }
+
+    e->active = 0;
+
+    if (ngx_io_uring_nreqs) {
+        ngx_io_uring_nreqs--;
+    }
+
+    ngx_queue_remove(&io_uring->queue);
+    ngx_queue_init(&io_uring->queue);
+
+    e->complete = 1;
+    e->ready = 1;
+
+    io_uring->res = cqe->res;
+
+    if (post) {
+        ngx_post_event(e, &ngx_posted_events);
+    }
+}
+
+#endif
+
+
 static void
 ngx_epoll_done(ngx_cycle_t *cycle)
 {
@@ -547,7 +963,22 @@ ngx_epoll_done(ngx_cycle_t *cycle)
 
 #endif
 
-#if (NGX_HAVE_FILE_AIO)
+#if (NGX_HAVE_IO_URING)
+    if (ngx_io_uring_ring) {
+        ngx_epoll_io_uring_done(cycle);
+        ngx_io_uring_ring = NULL;
+    }
+
+    if (ngx_eventfd != -1) {
+        if (close(ngx_eventfd) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+                          "eventfd close() failed");
+        }
+
+        ngx_eventfd = -1;
+    }
+
+#elif (NGX_HAVE_FILE_AIO)
 
     if (ngx_eventfd != -1) {
 
@@ -935,8 +1366,64 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     return NGX_OK;
 }
 
+#if (NGX_HAVE_IO_URING)
 
-#if (NGX_HAVE_FILE_AIO)
+static void
+ngx_epoll_eventfd_handler(ngx_event_t *ev)
+{
+    int                    ret;
+    ssize_t                n;
+    uint64_t               ready;
+    ngx_err_t              err;
+    struct io_uring_cqe   *cqe;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, ev->log, 0,
+                   "io_uring eventfd handler");
+
+    n = read(ngx_eventfd, &ready, 8);
+
+    err = ngx_errno;
+
+    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, ev->log, 0, "eventfd: %z", n);
+
+    if (n != 8) {
+        if (n == -1) {
+            if (err == NGX_EAGAIN) {
+                return;
+            }
+
+            ngx_log_error(NGX_LOG_ALERT, ev->log, err, "read(eventfd) failed");
+            return;
+        }
+
+        ngx_log_error(NGX_LOG_ALERT, ev->log, 0,
+                      "read(eventfd) returned only %z bytes", n);
+        return;
+    }
+
+    for ( ;; ) {
+        ret = io_uring_peek_cqe(ngx_io_uring_ring, &cqe);
+
+        if (ret == -EAGAIN) {
+            return;
+        }
+
+        if (ret < 0) {
+            ngx_log_error(NGX_LOG_ALERT, ev->log, -ret,
+                          "io_uring_peek_cqe() failed");
+            return;
+        }
+
+        if (cqe == NULL) {
+            return;
+        }
+
+        ngx_epoll_io_uring_handle_cqe(ev->log, cqe, 1);
+
+        io_uring_cqe_seen(ngx_io_uring_ring, cqe);
+    }
+}
+#elif (NGX_HAVE_FILE_AIO)
 
 static void
 ngx_epoll_eventfd_handler(ngx_event_t *ev)
