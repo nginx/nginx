@@ -100,8 +100,16 @@ ngx_quic_connstate_dbg(ngx_connection_t *c)
     if (qc) {
 
         if (qc->push.timer_set) {
-            p = ngx_slprintf(p, last, " push:%M",
-                             qc->push.timer.key - ngx_current_msec);
+            if (qc->push.timer_precise) {
+                p = ngx_slprintf(p, last, " push:%uius",
+                      (ngx_rbtree_key_t) (qc->push.timer.key
+                                        - (ngx_rbtree_key_t)
+                                          ngx_monotonic_usec()));
+
+            } else {
+                p = ngx_slprintf(p, last, " push:%M",
+                                 qc->push.timer.key - ngx_current_msec);
+            }
         }
 
         if (qc->pto.timer_set) {
