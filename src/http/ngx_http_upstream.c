@@ -5547,7 +5547,7 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
 
 #if (NGX_HTTP_CACHE)
     {
-    u_char     *p;
+    u_char     *p, *last;
     size_t      len;
     ngx_str_t   vary;
 
@@ -5556,11 +5556,6 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
     }
 
     if (r->cache == NULL || !u->cacheable) {
-        return NGX_OK;
-    }
-
-    if (h->value.len == 1 && h->value.data[0] == '*') {
-        u->cacheable = 0;
         return NGX_OK;
     }
 
@@ -5598,6 +5593,25 @@ ngx_http_upstream_process_vary(ngx_http_request_t *r,
 
     if (vary.len > NGX_HTTP_CACHE_VARY_LEN) {
         u->cacheable = 0;
+    }
+
+    /* a response with "*" among the Vary members never matches */
+
+    p = vary.data;
+    last = p + vary.len;
+
+    while (p < last) {
+
+        while (p < last && (*p == ' ' || *p == '\t' || *p == ',')) { p++; }
+
+        if (p < last && *p == '*'
+            && (p + 1 == last || p[1] == ' ' || p[1] == '\t' || p[1] == ','))
+        {
+            u->cacheable = 0;
+            break;
+        }
+
+        while (p < last && *p != ',' && *p != ' ' && *p != '\t') { p++; }
     }
 
     r->cache->vary = vary;
