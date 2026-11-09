@@ -416,6 +416,7 @@ struct ngx_http_upstream_s {
     unsigned                         buffering:1;
     unsigned                         keepalive:1;
     unsigned                         upgrade:1;
+    unsigned                         allow_stream_connect:1;
     unsigned                         error:1;
 
     unsigned                         request_sent:1;
