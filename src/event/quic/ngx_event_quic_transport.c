@@ -1985,8 +1985,6 @@ ngx_quic_create_retire_connection_id(u_char *p,
 ngx_int_t
 ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
 {
-    ngx_uint_t  nstreams;
-
     ngx_memzero(tp, sizeof(ngx_quic_tp_t));
 
     /*
@@ -2005,13 +2003,10 @@ ngx_quic_init_transport_params(ngx_quic_tp_t *tp, ngx_quic_conf_t *qcf)
 
     tp->max_udp_payload_size = NGX_QUIC_MAX_UDP_PAYLOAD_SIZE;
 
-    nstreams = qcf->max_concurrent_streams_bidi
-               + qcf->max_concurrent_streams_uni;
-
-    tp->initial_max_data = nstreams * qcf->stream_buffer_size;
-    tp->initial_max_stream_data_bidi_local = qcf->stream_buffer_size;
-    tp->initial_max_stream_data_bidi_remote = qcf->stream_buffer_size;
-    tp->initial_max_stream_data_uni = qcf->stream_buffer_size;
+    tp->initial_max_data = qcf->stream_buffer_size;
+    tp->initial_max_stream_data_bidi_local = qcf->stream_recv_window;
+    tp->initial_max_stream_data_bidi_remote = qcf->stream_recv_window;
+    tp->initial_max_stream_data_uni = qcf->stream_recv_window;
 
     tp->initial_max_streams_bidi = qcf->max_concurrent_streams_bidi;
     tp->initial_max_streams_uni = qcf->max_concurrent_streams_uni;

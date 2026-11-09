@@ -277,6 +277,10 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->push.data = c;
     qc->push.handler = ngx_quic_push_handler;
 
+    qc->pull.log = c->log;
+    qc->pull.data = c;
+    qc->pull.handler = ngx_quic_pull_streams;
+
     qc->close.log = c->log;
     qc->close.data = c;
     qc->close.handler = ngx_quic_close_handler;
@@ -304,6 +308,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     ctp->active_connection_id_limit = 2;
 
     ngx_queue_init(&qc->streams.uninitialized);
+    ngx_queue_init(&qc->streams.blocked);
     ngx_queue_init(&qc->streams.free);
 
     qc->streams.recv_max_data = qc->tp.initial_max_data;
@@ -318,6 +323,7 @@ ngx_quic_new_connection(ngx_connection_t *c, ngx_quic_conf_t *conf,
     qc->congestion.ssthresh = (size_t) -1;
     qc->congestion.mtu = NGX_QUIC_MIN_INITIAL_SIZE;
     qc->congestion.recovery_start = ngx_current_msec - 1;
+    qc->congestion.pacing_time = ngx_current_msec;
 
     qc->max_frames = (conf->max_concurrent_streams_uni
                       + conf->max_concurrent_streams_bidi)
@@ -462,6 +468,17 @@ ngx_quic_input_handler(ngx_event_t *rev)
     qc->send_timer_set = 0;
     ngx_add_timer(rev, qc->tp.max_idle_timeout);
 
+    /* run the posted output early, to avoid delaying acknowledgments */
+
+    if (qc->push.posted) {
+        ngx_delete_posted_event(&qc->push);
+
+        if (ngx_quic_output(c) != NGX_OK) {
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
+    }
+
     ngx_quic_connstate_dbg(c);
 }
 
@@ -566,6 +583,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
         ngx_del_timer(&qc->push);
     }
 
+    if (qc->pull.timer_set) {
+        ngx_del_timer(&qc->pull);
+    }
+
     if (qc->pto.timer_set) {
         ngx_del_timer(&qc->pto);
     }
@@ -576,6 +597,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
 
     if (qc->push.posted) {
         ngx_delete_posted_event(&qc->push);
+    }
+
+    if (qc->pull.posted) {
+        ngx_delete_posted_event(&qc->pull);
     }
 
     if (qc->key_update.posted) {
@@ -591,6 +616,10 @@ ngx_quic_close_connection(ngx_connection_t *c, ngx_int_t rc)
     }
 
     ngx_quic_close_sockets(c);
+
+    for (i = 0; i < NGX_QUIC_SEND_CTX_LAST; i++) {
+        ngx_quic_discard_ctx(c, i);
+    }
 
     ngx_quic_keys_cleanup(qc->keys);
 
@@ -1030,7 +1059,10 @@ ngx_quic_handle_payload(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (!qc->path->validated) {
             qc->path->validated = 1;
             ngx_quic_path_dbg(c, "in handshake", qc->path);
-            ngx_post_event(&qc->push, &ngx_posted_events);
+
+            if (!qc->push.timer_set) {
+                ngx_post_event(&qc->push, &ngx_posted_events);
+            }
         }
     }
 

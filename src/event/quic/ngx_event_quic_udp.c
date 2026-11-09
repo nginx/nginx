@@ -11,6 +11,9 @@
 #include <ngx_event_quic_connection.h>
 
 
+#define NGX_QUIC_MAX_RECV_DATAGRAMS      64
+
+
 static void ngx_quic_close_accepted_connection(ngx_connection_t *c);
 static ngx_connection_t *ngx_quic_lookup_connection(ngx_listening_t *ls,
     ngx_str_t *key, struct sockaddr *local_sockaddr, socklen_t local_socklen);
@@ -32,13 +35,15 @@ ngx_quic_recvmsg(ngx_event_t *ev)
     ngx_sockaddr_t      sa, lsa;
     struct sockaddr    *sockaddr, *local_sockaddr;
     ngx_listening_t    *ls;
-    ngx_event_conf_t   *ecf;
     ngx_connection_t   *c, *lc;
     ngx_quic_socket_t  *qsock;
     static u_char       buffer[NGX_QUIC_MAX_UDP_PAYLOAD_SIZE];
 
 #if (NGX_HAVE_ADDRINFO_CMSG)
     u_char             msg_control[CMSG_SPACE(sizeof(ngx_addrinfo_t))];
+#endif
+#if (NGX_DEBUG)
+    ngx_event_conf_t   *ecf;
 #endif
 
     if (ev->timedout) {
@@ -49,10 +54,15 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         ev->timedout = 0;
     }
 
-    ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
-
     if (!(ngx_event_flags & NGX_USE_KQUEUE_EVENT)) {
-        ev->available = ecf->multi_accept;
+        /*
+         * Here datagrams from both new and existing connections are read,
+         * unlike TCP, where reading from existing connections is not
+         * limited.  Read a fixed number of them, which still keeps a busy
+         * socket from occupying the worker.
+         */
+
+        ev->available = NGX_QUIC_MAX_RECV_DATAGRAMS;
     }
 
     lc = ev->data;
@@ -335,6 +345,8 @@ ngx_quic_recvmsg(ngx_event_t *ev)
         ngx_str_t  addr;
         u_char     text[NGX_SOCKADDR_STRLEN];
 
+        ecf = ngx_event_get_conf(ngx_cycle->conf_ctx, ngx_event_core_module);
+
         ngx_debug_accepted_connection(ecf, c);
 
         if (log->log_level & NGX_LOG_DEBUG_EVENT) {
@@ -359,6 +371,9 @@ ngx_quic_recvmsg(ngx_event_t *ev)
 
         if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
             ev->available -= n;
+
+        } else {
+            ev->available--;
         }
 
     } while (ev->available);
