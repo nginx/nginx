@@ -37,6 +37,10 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
             }
 
             if (rc == NGX_BUSY) {
+                if (p->input_state) {
+                    goto done;
+                }
+
                 return NGX_OK;
             }
         }
@@ -57,8 +61,14 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         do_write = 1;
     }
 
+done:
+
+    if (p->input_state) {
+        p->input_state(p);
+    }
+
     if (p->upstream
-        && p->upstream->fd != (ngx_socket_t) -1)
+        && (p->upstream->fd != (ngx_socket_t) -1 || p->upstream->logical))
     {
         rev = p->upstream->read;
 
@@ -69,7 +79,7 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
         }
 
         if (!rev->delayed) {
-            if (rev->active && !rev->ready) {
+            if ((rev->active || p->upstream->logical) && !rev->ready) {
                 ngx_add_timer(rev, p->read_timeout);
 
             } else if (rev->timer_set) {
@@ -121,6 +131,11 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     if (p->aio) {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, p->log, 0,
                        "pipe read upstream: aio");
+
+        if (p->input_state) {
+            p->input_state(p);
+        }
+
         return NGX_AGAIN;
     }
 
@@ -136,6 +151,10 @@ ngx_event_pipe_read_upstream(ngx_event_pipe_t *p)
     }
 
 #endif
+
+    if (p->input_state) {
+        p->input_state(p);
+    }
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, p->log, 0,
                    "pipe read upstream: %d", p->upstream->read->ready);
