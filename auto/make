@@ -184,11 +184,17 @@ do
     ngx_all_srcs="$ngx_all_srcs $ngx_obj"
 done
 
-ngx_all_objs=`echo $ngx_all_srcs \
-    | sed -e "s#\([^ ]*\.\)cpp#$NGX_OBJS\/\1$ngx_objext#g" \
-          -e "s#\([^ ]*\.\)cc#$NGX_OBJS\/\1$ngx_objext#g" \
-          -e "s#\([^ ]*\.\)c#$NGX_OBJS\/\1$ngx_objext#g" \
-          -e "s#\([^ ]*\.\)S#$NGX_OBJS\/\1$ngx_objext#g"`
+ngx_all_objs=
+for ngx_src in $ngx_all_srcs
+do
+    ngx_obj=`echo $ngx_src \
+        | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+              -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
+
+    ngx_all_objs="$ngx_all_objs $ngx_obj"
+done
 
 ngx_modules_c=`echo $NGX_MODULES_C | sed -e "s/\//$ngx_regex_dirsep/g"`
 
@@ -585,11 +591,19 @@ END
         ngx_module_objs="$ngx_module_objs $ngx_obj"
     done
 
-    ngx_module_objs=`echo $ngx_module_objs \
-        | sed -e "s#\([^ ]*\.\)cpp#$NGX_OBJS\/\1$ngx_objext#g" \
-              -e "s#\([^ ]*\.\)cc#$NGX_OBJS\/\1$ngx_objext#g" \
-              -e "s#\([^ ]*\.\)c#$NGX_OBJS\/\1$ngx_objext#g" \
-              -e "s#\([^ ]*\.\)S#$NGX_OBJS\/\1$ngx_objext#g"`
+    ngx_all_module_objs=
+    for ngx_src in $ngx_module_objs
+    do
+        ngx_obj=`echo $ngx_src | sed -e "s/\//$ngx_regex_dirsep/g"`
+        ngx_obj=`echo $ngx_obj \
+            | sed -e "s#^\(.*\.\)cpp\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)cc\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)c\\$#$ngx_objs_dir\1$ngx_objext#g" \
+                  -e "s#^\(.*\.\)S\\$#$ngx_objs_dir\1$ngx_objext#g"`
+
+        ngx_all_module_objs="$ngx_all_module_objs $ngx_obj"
+    done
+    ngx_module_objs=$ngx_all_module_objs
 
     ngx_deps=`echo $ngx_module_objs $ngx_modules_obj $LINK_DEPS \
         | sed -e "s/  *\([^ ][^ ]*\)/$ngx_regex_cont\1/g" \
