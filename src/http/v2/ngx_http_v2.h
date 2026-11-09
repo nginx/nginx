@@ -62,6 +62,7 @@ typedef u_char *(*ngx_http_v2_handler_pt) (ngx_http_v2_connection_t *h2c,
 
 typedef struct {
     ngx_flag_t                       enable;
+    ngx_flag_t                       fair_scheduling;
     size_t                           pool_size;
     ngx_uint_t                       concurrent_streams;
     size_t                           preread_size;
@@ -166,6 +167,7 @@ struct ngx_http_v2_connection_s {
     unsigned                         table_update:1;
     unsigned                         blocked:1;
     unsigned                         goaway:1;
+    unsigned                         fair_scheduling:1;
 };
 
 
@@ -238,13 +240,17 @@ struct ngx_http_v2_out_frame_s {
 };
 
 
-/* a non-incremental response completes sooner, equal priority is FIFO */
+/* non-incremental responses are sequential, incremental responses are FIFO */
 
 static ngx_inline ngx_uint_t
 ngx_http_v2_stream_precedes(ngx_http_v2_stream_t *s,
     ngx_http_v2_stream_t *stream)
 {
     ngx_http_priority_t  *a, *b;
+
+    if (s->connection->fair_scheduling) {
+        return 1;
+    }
 
     a = &s->priority.effective;
     b = &stream->priority.effective;
@@ -257,7 +263,7 @@ ngx_http_v2_stream_precedes(ngx_http_v2_stream_t *s,
         return !a->incremental;
     }
 
-    return s->node->id <= stream->node->id;
+    return a->incremental || s->node->id <= stream->node->id;
 }
 
 
