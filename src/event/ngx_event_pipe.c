@@ -22,9 +22,12 @@ static ngx_int_t ngx_event_pipe_drain_chains(ngx_event_pipe_t *p);
 ngx_int_t
 ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
 {
+    off_t         sent;
     ngx_int_t     rc;
     ngx_uint_t    flags;
     ngx_event_t  *rev, *wev;
+
+    sent = p->downstream->sent;
 
     for ( ;; ) {
         if (do_write) {
@@ -88,7 +91,9 @@ ngx_event_pipe(ngx_event_pipe_t *p, ngx_int_t do_write)
 
         if (!wev->delayed) {
             if (wev->active && !wev->ready) {
-                ngx_add_timer(wev, p->send_timeout);
+                if (p->downstream->sent != sent || !wev->timer_set) {
+                    ngx_add_timer(wev, p->send_timeout);
+                }
 
             } else if (wev->timer_set) {
                 ngx_del_timer(wev);
