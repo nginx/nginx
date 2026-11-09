@@ -1006,8 +1006,6 @@ ngx_stream_add_listening(ngx_conf_t *cf, ngx_stream_conf_addr_t *addr)
     cscf = addr->default_server;
 
     ls->logp = cscf->error_log;
-    ls->log.data = &ls->addr_text;
-    ls->log.handler = ngx_accept_log_error;
 
     ls->type = addr->opt.type;
     ls->protocol = addr->opt.protocol;
