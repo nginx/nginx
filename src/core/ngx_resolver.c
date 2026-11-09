@@ -842,7 +842,10 @@ ngx_resolve_name_locked(ngx_resolver_t *r, ngx_resolver_ctx_t *ctx,
     if (rc == NGX_DECLINED) {
         ngx_rbtree_delete(tree, &rn->node);
 
-        ngx_resolver_free(r, rn->query);
+        if (rn->query) {
+            ngx_resolver_free(r, rn->query);
+        }
+
         ngx_resolver_free(r, rn->name);
         ngx_resolver_free(r, rn);
 
@@ -3670,7 +3673,11 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     ngx_resolver_qs_t   *qs;
     ngx_resolver_hdr_t  *query;
 
-    nlen = name->len ? (1 + name->len + 1) : 1;
+    if (name->len == 0 || name->len > 253) {
+        return NGX_DECLINED;
+    }
+
+    nlen = 1 + name->len + 1;
 
     len = sizeof(ngx_resolver_hdr_t) + nlen + sizeof(ngx_resolver_qs_t);
 
@@ -3729,17 +3736,13 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     p--;
     *p-- = '\0';
 
-    if (name->len == 0)  {
-        return NGX_DECLINED;
-    }
-
     for (s = name->data + name->len - 1; s >= name->data; s--) {
         if (*s != '.') {
             *p = *s;
             len++;
 
         } else {
-            if (len == 0 || len > 255) {
+            if (len == 0 || len > 63) {
                 return NGX_DECLINED;
             }
 
@@ -3750,7 +3753,7 @@ ngx_resolver_create_name_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         p--;
     }
 
-    if (len == 0 || len > 255) {
+    if (len == 0 || len > 63) {
         return NGX_DECLINED;
     }
 
@@ -3798,7 +3801,11 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     ngx_resolver_qs_t   *qs;
     ngx_resolver_hdr_t  *query;
 
-    nlen = name->len ? (1 + name->len + 1) : 1;
+    if (name->len == 0 || name->len > 253) {
+        return NGX_DECLINED;
+    }
+
+    nlen = 1 + name->len + 1;
 
     len = sizeof(ngx_resolver_hdr_t) + nlen + sizeof(ngx_resolver_qs_t);
 
@@ -3845,17 +3852,13 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
     p--;
     *p-- = '\0';
 
-    if (name->len == 0)  {
-        return NGX_DECLINED;
-    }
-
     for (s = name->data + name->len - 1; s >= name->data; s--) {
         if (*s != '.') {
             *p = *s;
             len++;
 
         } else {
-            if (len == 0 || len > 255) {
+            if (len == 0 || len > 63) {
                 return NGX_DECLINED;
             }
 
@@ -3866,7 +3869,7 @@ ngx_resolver_create_srv_query(ngx_resolver_t *r, ngx_resolver_node_t *rn,
         p--;
     }
 
-    if (len == 0 || len > 255) {
+    if (len == 0 || len > 63) {
         return NGX_DECLINED;
     }
 
@@ -3993,6 +3996,11 @@ ngx_resolver_copy(ngx_resolver_t *r, ngx_str_t *name, u_char *buf, u_char *src,
         n = *p++;
 
         if (n == 0) {
+            if (len > 254) {
+                err = "too long name in DNS response";
+                goto invalid;
+            }
+
             goto done;
         }
 
