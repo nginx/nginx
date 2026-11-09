@@ -77,6 +77,12 @@ ngx_os_init(ngx_log_t *log)
 
     ngx_cpuinfo();
 
+    if (ngx_cacheline_size < 32
+        || (ngx_cacheline_size & (ngx_cacheline_size - 1)) != 0)
+    {
+        ngx_cacheline_size = NGX_CPU_CACHE_LINE;
+    }
+
     if (getrlimit(RLIMIT_NOFILE, &rlmt) == -1) {
         ngx_log_error(NGX_LOG_ALERT, log, errno,
                       "getrlimit(RLIMIT_NOFILE) failed");
