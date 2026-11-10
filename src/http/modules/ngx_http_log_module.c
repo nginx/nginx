@@ -1144,7 +1144,7 @@ ngx_http_log_json_variable_getlen(ngx_http_request_t *r, uintptr_t data)
         return 0;
     }
 
-    len = ngx_escape_json(NULL, value->data, value->len);
+    len = ngx_escape_json_utf8(NULL, value->data, value->len);
 
     value->escape = len ? 1 : 0;
 
@@ -1173,7 +1173,7 @@ ngx_http_log_json_variable(ngx_http_request_t *r, u_char *buf, u_char *end,
         return ngx_cpymem(buf, value->data, value->len);
 
     } else {
-        len = ngx_escape_json(NULL, value->data, value->len);
+        len = ngx_escape_json_utf8(NULL, value->data, value->len);
 
         if (ngx_http_log_check_length(r, buf, end, value->len + len)
             != NGX_OK)
@@ -1181,7 +1181,7 @@ ngx_http_log_json_variable(ngx_http_request_t *r, u_char *buf, u_char *end,
             return NULL;
         }
 
-        return (u_char *) ngx_escape_json(buf, value->data, value->len);
+        return (u_char *) ngx_escape_json_utf8(buf, value->data, value->len);
     }
 }
 
