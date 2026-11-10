@@ -65,6 +65,44 @@ ngx_wsasend_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
                 continue;
             }
 
+            if (!ngx_buf_in_memory(cl->buf)) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "bad buf in output chain "
+                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                              cl->buf->temporary,
+                              cl->buf->recycled,
+                              cl->buf->in_file,
+                              cl->buf->start,
+                              cl->buf->pos,
+                              cl->buf->last,
+                              cl->buf->file,
+                              cl->buf->file_pos,
+                              cl->buf->file_last);
+
+                ngx_debug_point();
+
+                return NGX_CHAIN_ERROR;
+            }
+
+            if (cl->buf->last < cl->buf->pos) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "negative size buf in output chain "
+                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                              cl->buf->temporary,
+                              cl->buf->recycled,
+                              cl->buf->in_file,
+                              cl->buf->start,
+                              cl->buf->pos,
+                              cl->buf->last,
+                              cl->buf->file,
+                              cl->buf->file_pos,
+                              cl->buf->file_last);
+
+                ngx_debug_point();
+
+                return NGX_CHAIN_ERROR;
+            }
+
             size = cl->buf->last - cl->buf->pos;
 
             if (send + size > limit) {

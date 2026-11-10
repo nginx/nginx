@@ -159,6 +159,25 @@ ngx_udp_output_chain_to_iovec(ngx_iovec_t *vec, ngx_chain_t *in, ngx_log_t *log)
             return NGX_CHAIN_ERROR;
         }
 
+        if (in->buf->last < in->buf->pos) {
+            ngx_log_error(NGX_LOG_ALERT, log, 0,
+                          "negative size buf in output chain "
+                          "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                          in->buf->temporary,
+                          in->buf->recycled,
+                          in->buf->in_file,
+                          in->buf->start,
+                          in->buf->pos,
+                          in->buf->last,
+                          in->buf->file,
+                          in->buf->file_pos,
+                          in->buf->file_last);
+
+            ngx_debug_point();
+
+            return NGX_CHAIN_ERROR;
+        }
+
         size = in->buf->last - in->buf->pos;
 
         if (prev == in->buf->pos) {
