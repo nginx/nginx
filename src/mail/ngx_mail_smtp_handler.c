@@ -668,6 +668,7 @@ ngx_mail_smtp_helo(ngx_mail_session_t *s, ngx_connection_t *c)
     sscf = ngx_mail_get_module_srv_conf(s, ngx_mail_smtp_module);
 
     if (s->command == NGX_SMTP_HELO) {
+        s->esmtp = 0;
         s->out = sscf->server_name;
 
     } else {
@@ -903,6 +904,7 @@ ngx_mail_smtp_starttls(ngx_mail_session_t *s, ngx_connection_t *c)
             ngx_str_null(&s->smtp_helo);
             ngx_str_null(&s->smtp_from);
             ngx_str_null(&s->smtp_to);
+            s->esmtp = 0;
 
             s->buffer->pos = s->buffer->start;
             s->buffer->last = s->buffer->start;
