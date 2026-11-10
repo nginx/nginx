@@ -603,6 +603,25 @@ ngx_quic_write_buffer(ngx_connection_t *c, ngx_quic_buffer_t *qb,
                 continue;
             }
 
+            if (in->buf->last < in->buf->pos) {
+                ngx_log_error(NGX_LOG_ALERT, c->log, 0,
+                              "negative size buf in quic write buffer "
+                              "t:%d r:%d f:%d %p %p-%p %p %O-%O",
+                              in->buf->temporary,
+                              in->buf->recycled,
+                              in->buf->in_file,
+                              in->buf->start,
+                              in->buf->pos,
+                              in->buf->last,
+                              in->buf->file,
+                              in->buf->file_pos,
+                              in->buf->file_last);
+
+                ngx_debug_point();
+
+                return NGX_CHAIN_ERROR;
+            }
+
             if (p == b->last || limit == 0) {
                 break;
             }
