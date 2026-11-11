@@ -18,6 +18,8 @@ typedef struct {
 typedef struct {
     off_t                start;
     off_t                end;
+    off_t                rest;
+    off_t                complete_length;
     ngx_str_t            range;
     ngx_str_t            etag;
     unsigned             last:1;
@@ -170,7 +172,18 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
         return NGX_ERROR;
     }
 
+    if (r == r->main) {
+        ctx->complete_length = cr.complete_length;
+
+    } else if (cr.complete_length != ctx->complete_length) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "unexpected complete length in slice response: %O, "
+                      "expected: %O", cr.complete_length, ctx->complete_length);
+        return NGX_ERROR;
+    }
+
     ctx->start = end;
+    ctx->rest = cr.end - cr.start;
     ctx->active = 1;
 
     r->headers_out.status = NGX_HTTP_OK;
@@ -217,6 +230,7 @@ ngx_http_slice_header_filter(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 {
+    off_t                       size;
     ngx_int_t                   rc;
     ngx_chain_t                *cl;
     ngx_http_slice_ctx_t       *ctx;
@@ -224,7 +238,30 @@ ngx_http_slice_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_slice_filter_module);
 
-    if (ctx == NULL || r != r->main) {
+    if (ctx == NULL) {
+        return ngx_http_next_body_filter(r, in);
+    }
+
+    for (cl = in; cl; cl = cl->next) {
+        size = ngx_buf_size(cl->buf);
+
+        if (size > ctx->rest) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "slice response body is longer than its range");
+            return NGX_ERROR;
+        }
+
+        ctx->rest -= size;
+
+        if ((cl->buf->last_buf || cl->buf->last_in_chain) && ctx->rest) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "slice response body is shorter than its range, "
+                          "missing: %O", ctx->rest);
+            return NGX_ERROR;
+        }
+    }
+
+    if (r != r->main) {
         return ngx_http_next_body_filter(r, in);
     }
 
