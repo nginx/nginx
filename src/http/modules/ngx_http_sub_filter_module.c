@@ -287,7 +287,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_int_t                  rc;
     ngx_buf_t                 *b;
     ngx_str_t                 *sub;
-    ngx_uint_t                 flush, last;
+    ngx_uint_t                 flush, last, rescan;
     ngx_chain_t               *cl;
     ngx_http_sub_ctx_t        *ctx;
     ngx_http_sub_match_t      *match;
@@ -354,7 +354,15 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
         b = NULL;
 
-        while (ctx->pos < ctx->buf->last) {
+        /*
+         * a partial match buffered earlier cannot be completed
+         * after the last buffer, so the buffered data are parsed again
+         */
+
+        rescan = ctx->looked.len
+                 && (ctx->buf->last_buf || ctx->buf->last_in_chain);
+
+        while (ctx->pos < ctx->buf->last || rescan) {
 
             rc = ngx_http_sub_parse(r, ctx, last);
 
@@ -423,6 +431,7 @@ ngx_http_sub_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             if (rc == NGX_AGAIN) {
+                rescan = 0;
                 continue;
             }
 
@@ -781,6 +790,12 @@ ngx_http_sub_match(ngx_http_sub_ctx_t *ctx, ngx_int_t start, ngx_str_t *m)
     }
 
     if (pat != pat_end) {
+
+        if (ctx->buf->last_buf || ctx->buf->last_in_chain) {
+            /* no more data to complete a partial match */
+            return NGX_DECLINED;
+        }
+
         /* partial match */
         return NGX_AGAIN;
     }
