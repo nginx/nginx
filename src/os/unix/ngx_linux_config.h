@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>        /* TCP_NODELAY, TCP_CORK */
+#include <net/if.h>             /* IF_NAMESIZE */
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/un.h>

@@ -104,6 +104,24 @@ ngx_event_connect_peer(ngx_peer_connection_t *pc)
         goto failed;
     }
 
+#if (NGX_HAVE_SO_BINDTODEVICE)
+    if (pc->device.len) {
+        u_char  ifname[IF_NAMESIZE];
+
+        ngx_cpystrn(ifname, pc->device.data, pc->device.len + 1);
+
+        if (setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, ifname,
+                       pc->device.len + 1)
+            == -1)
+        {
+            ngx_log_error(NGX_LOG_CRIT, pc->log, ngx_socket_errno,
+                          "setsockopt(SO_BINDTODEVICE, %V) failed",
+                          &pc->device);
+            goto failed;
+        }
+    }
+#endif
+
     if (pc->local) {
 
 #if (NGX_HAVE_TRANSPARENT_PROXY)
