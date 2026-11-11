@@ -540,6 +540,9 @@ ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf)
  * Does nothing if the upstream is already initialized, and leaves the
  * upstream untouched if initialization fails, so that a failed call cannot
  * leave peer.init pointing to a keepalive cache which was never built.
+ *
+ * Only cf->pool is used.  The cache size is set by the "keepalive"
+ * directive, if the caller parsed one, and is 32 otherwise.
  */
 
 ngx_int_t
@@ -604,16 +607,15 @@ ngx_http_upstream_keepalive_init(ngx_conf_t *cf,
 
 /*
  * Drains the keepalive cache of a single upstream.  To be used by modules
- * which delete upstreams at runtime, before the memory backing the upstream
- * is released.
+ * which delete upstreams at runtime.
  *
- * The upstream is first marked as draining, so that connections still held
- * by active requests are closed instead of being cached once these requests
- * complete, and then all currently cached connections are closed.
+ * Cached connections are closed, which runs their pool cleanup handlers.
+ * Connections still in use are closed when released instead of being
+ * cached.  Draining is permanent.
  *
- * Connections are closed with ngx_http_upstream_keepalive_close(), which
- * destroys the connection pool, and hence runs the cleanup handlers
- * registered in it.
+ * A request in flight still refers to the upstream configuration after
+ * drain() returns, so the caller has to keep it alive until such requests
+ * complete.
  */
 
 void
