@@ -94,7 +94,7 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
       ngx_stream_variable_server_port, 0, 0, 0 },
 
     { ngx_string("server_name"), NULL, ngx_stream_variable_server_name,
-      0, 0, 0 },
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("bytes_sent"), NULL, ngx_stream_variable_bytes,
       0, 0, 0 },
