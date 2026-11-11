@@ -190,6 +190,7 @@ static ngx_int_t ngx_http_upstream_set_local(ngx_http_request_t *r,
 
 static void *ngx_http_upstream_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf);
+static void ngx_http_upstream_delay_handler(ngx_event_t *ev);
 
 #if (NGX_HTTP_SSL)
 static void ngx_http_upstream_ssl_init_connection(ngx_http_request_t *,
@@ -4765,6 +4766,16 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         u->peer.connection = NULL;
     }
 
+    if (u->conf->next_upstream_delay && u->conf->next_upstream_tries) {
+        u->next_upstream_delay_event.handler = ngx_http_upstream_delay_handler;
+        u->next_upstream_delay_event.data = r;
+        u->next_upstream_delay_event.log = r->connection->log;
+
+        ngx_add_timer(&u->next_upstream_delay_event, u->conf->next_upstream_delay);
+
+        return;
+    }
+
     ngx_http_upstream_connect(r, u);
 }
 
@@ -4798,6 +4809,10 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     *u->cleanup = NULL;
     u->cleanup = NULL;
+
+    if (u->next_upstream_delay_event.timer_set) {
+        ngx_del_timer(&u->next_upstream_delay_event);
+    }
 
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
@@ -7402,4 +7417,24 @@ ngx_http_upstream_init_main_conf(ngx_conf_t *cf, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static void
+ngx_http_upstream_delay_handler(ngx_event_t *ev)
+{
+    ngx_http_request_t  *r;
+    ngx_http_upstream_t *u;
+
+    r = ev->data;
+    u = r->upstream;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "http upstream retry handler");
+
+    if (u->cleanup == NULL) {
+        return;
+    }
+
+    ngx_http_upstream_connect(r, u);
 }
