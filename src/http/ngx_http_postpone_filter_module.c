@@ -87,7 +87,7 @@ ngx_http_postpone_filter(ngx_http_request_t *r, ngx_chain_t *in)
 
     if (r->postponed == NULL) {
 
-        if (in || c->buffered) {
+        if (in || c->buffered || r->main->out) {
             return ngx_http_next_body_filter(r->main, in);
         }
 
