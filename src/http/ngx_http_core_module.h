@@ -152,6 +152,10 @@ typedef struct {
 } ngx_http_phase_t;
 
 
+typedef ngx_int_t (*ngx_http_server_name_resolver_pt)(ngx_connection_t *c,
+    ngx_pool_t *pool, ngx_str_t *host, ngx_str_t *name);
+
+
 typedef struct {
     ngx_array_t                servers;         /* ngx_http_core_srv_conf_t */
 
@@ -174,6 +178,8 @@ typedef struct {
     ngx_hash_keys_arrays_t    *variables_keys;
 
     ngx_array_t               *ports;
+
+    ngx_http_server_name_resolver_pt  server_name_resolver;
 
     ngx_http_phase_t           phases[NGX_HTTP_LOG_PHASE + 1];
 } ngx_http_core_main_conf_t;
