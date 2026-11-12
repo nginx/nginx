@@ -41,6 +41,11 @@ typedef struct {
 } ngx_http_gunzip_ctx_t;
 
 
+#if (NGX_HTTP_SLICE)
+extern ngx_module_t  ngx_http_slice_filter_module;
+#endif
+
+
 static ngx_int_t ngx_http_gunzip_filter_inflate_start(ngx_http_request_t *r,
     ngx_http_gunzip_ctx_t *ctx);
 static ngx_int_t ngx_http_gunzip_filter_add_data(ngx_http_request_t *r,
@@ -137,6 +142,26 @@ ngx_http_gunzip_header_filter(ngx_http_request_t *r)
     {
         return ngx_http_next_header_filter(r);
     }
+
+#if (NGX_HTTP_SLICE)
+
+    if (r != r->main
+        && ngx_http_get_module_ctx(r, ngx_http_slice_filter_module))
+    {
+        /* a slice continues the gzip stream of the main request */
+
+        ctx = ngx_http_get_module_ctx(r->main, ngx_http_gunzip_filter_module);
+
+        if (ctx) {
+            ngx_http_set_ctx(r, ctx, ngx_http_gunzip_filter_module);
+            r->filter_need_in_memory = 1;
+            ngx_http_clear_accept_ranges(r);
+        }
+
+        return ngx_http_next_header_filter(r);
+    }
+
+#endif
 
     r->gzip_vary = 1;
 
@@ -360,10 +385,14 @@ ngx_http_gunzip_filter_add_data(ngx_http_request_t *r,
                    ctx->in_buf,
                    ctx->zstream.next_in, ctx->zstream.avail_in);
 
-    if (ctx->in_buf->last_buf || ctx->in_buf->last_in_chain) {
+    /* a main request's stream, continued by slices, ends with last_buf only */
+
+    if (ctx->in_buf->last_buf
+        || (ctx->in_buf->last_in_chain && ctx->request != ctx->request->main))
+    {
         ctx->flush = Z_FINISH;
 
-    } else if (ctx->in_buf->flush) {
+    } else if (ctx->in_buf->flush || ctx->in_buf->last_in_chain) {
         ctx->flush = Z_SYNC_FLUSH;
 
     } else if (ctx->zstream.avail_in == 0) {
