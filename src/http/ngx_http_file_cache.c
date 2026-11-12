@@ -1481,13 +1481,14 @@ ngx_http_file_cache_update(ngx_http_request_t *r, ngx_temp_file_t *tf)
 
     c->node->count--;
     c->node->error = 0;
-    c->node->uniq = uniq;
-    c->node->body_start = c->body_start;
-
-    cache->sh->size += fs_size - c->node->fs_size;
-    c->node->fs_size = fs_size;
 
     if (rc == NGX_OK) {
+        c->node->uniq = uniq;
+        c->node->body_start = c->body_start;
+
+        cache->sh->size += fs_size - c->node->fs_size;
+        c->node->fs_size = fs_size;
+
         c->node->exists = 1;
     }
 
