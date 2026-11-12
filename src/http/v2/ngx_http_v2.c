@@ -2358,7 +2358,7 @@ ngx_http_v2_state_settings_params(ngx_http_v2_connection_t *h2c, u_char *pos,
         if (ngx_http_v2_adjust_windows(h2c, h2c->state.window_delta) != NGX_OK)
         {
             return ngx_http_v2_connection_error(h2c,
-                                                NGX_HTTP_V2_INTERNAL_ERROR);
+                                                NGX_HTTP_V2_FLOW_CTRL_ERROR);
         }
 
         h2c->state.window_delta = 0;
@@ -5069,14 +5069,13 @@ ngx_http_v2_adjust_windows(ngx_http_v2_connection_t *h2c, ssize_t delta)
                 && stream->send_window
                       > (ssize_t) (NGX_HTTP_V2_MAX_WINDOW - delta))
             {
-                if (ngx_http_v2_terminate_stream(h2c, stream,
-                                                 NGX_HTTP_V2_FLOW_CTRL_ERROR)
-                    == NGX_ERROR)
-                {
-                    return NGX_ERROR;
-                }
-
-                continue;
+                ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                              "client violated flow control for stream %ui: "
+                              "received INITIAL_WINDOW_SIZE "
+                              "with window increment %uz "
+                              "not allowed for window %z",
+                              node->id, delta, stream->send_window);
+                return NGX_ERROR;
             }
 
             stream->send_window += delta;
