@@ -1276,6 +1276,11 @@ ngx_inet_add_addr(ngx_pool_t *pool, ngx_url_t *u, struct sockaddr *sockaddr,
     nports = u->last_port ? u->last_port - u->port + 1 : 1;
 
     if (u->addrs == NULL) {
+        if (total > NGX_MAX_SIZE_T_VALUE / sizeof(ngx_addr_t) / nports) {
+            u->err = "too many addresses";
+            return NGX_ERROR;
+        }
+
         u->addrs = ngx_palloc(pool, total * nports * sizeof(ngx_addr_t));
         if (u->addrs == NULL) {
             return NGX_ERROR;
