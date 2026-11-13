@@ -230,7 +230,10 @@ ngx_quic_retire_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
         return ngx_quic_free_client_id(c, cid);
     }
 
-    /* we are going to retire client id which is in use */
+    /*
+     * we are going to retire client id which is in use;
+     * it may be shared by several paths after NAT rebinding
+     */
 
     q = ngx_queue_head(&qc->paths);
 
@@ -251,12 +254,23 @@ ngx_quic_retire_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
             }
 
             qc->path->cid = new_cid;
-            new_cid->used = 1;
+            new_cid->used++;
 
-            return ngx_quic_free_client_id(c, cid);
+            if (--cid->used == 0) {
+                return ngx_quic_free_client_id(c, cid);
+            }
+
+            continue;
         }
 
-        return ngx_quic_free_path(c, path);
+        if (cid->used == 1) {
+            /* the last path using it, CID is retired with the path */
+            return ngx_quic_free_path(c, path);
+        }
+
+        if (ngx_quic_free_path(c, path) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
