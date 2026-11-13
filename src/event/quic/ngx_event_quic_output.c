@@ -118,7 +118,8 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
     ssize_t                 n;
     u_char                 *p;
     uint64_t                preserved_pnum[NGX_QUIC_SEND_CTX_LAST];
-    ngx_uint_t              i, pad;
+    ngx_err_t               err;
+    ngx_uint_t              i, pad, log_error;
     ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_congestion_t  *cg;
@@ -174,9 +175,31 @@ ngx_quic_create_datagrams(ngx_connection_t *c)
             break;
         }
 
+        log_error = c->log_error;
+
+        if (path->mtu > NGX_QUIC_MIN_INITIAL_SIZE) {
+            /* EMSGSIZE is handled below */
+            c->log_error = NGX_ERROR_IGNORE_EMSGSIZE;
+        }
+
         n = ngx_quic_send(c, dst, len, path->sockaddr, path->socklen);
 
+        err = ngx_socket_errno;
+        c->log_error = log_error;
+
         if (n == NGX_ERROR) {
+
+            if (err == NGX_EMSGSIZE
+                && ngx_quic_fallback_path_mtu(c, path, "sendmsg() EMSGSIZE")
+                   == NGX_OK)
+            {
+                /* send the same frames again in smaller datagrams */
+
+                c->write->error = 0;
+                ngx_quic_revert_send(c, preserved_pnum);
+                continue;
+            }
+
             return NGX_ERROR;
         }
 
