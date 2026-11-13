@@ -97,7 +97,7 @@ struct ngx_quic_client_id_s {
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
     u_char                            sr_token[NGX_QUIC_SR_TOKEN_LEN];
-    ngx_uint_t                        used;  /* unsigned  used:1; */
+    ngx_uint_t                        used;
 };
 
 

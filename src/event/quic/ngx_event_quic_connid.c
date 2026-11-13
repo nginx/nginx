@@ -81,6 +81,20 @@ ngx_quic_handle_new_connection_id_frame(ngx_connection_t *c,
 
     qc = ngx_quic_get_connection(c);
 
+    if (qc->path->cid->len == 0) {
+        /*
+         * RFC 9000, 19.15.  NEW_CONNECTION_ID Frames
+         *
+         *  An endpoint that is sending packets with a zero-length
+         *  Destination Connection ID MUST treat receipt of
+         *  a NEW_CONNECTION_ID frame as a connection error of type
+         *  PROTOCOL_VIOLATION.
+         */
+        qc->error = NGX_QUIC_ERR_PROTOCOL_VIOLATION;
+        qc->error_reason = "new connection id from client with zero-length id";
+        return NGX_ERROR;
+    }
+
     if (f->seqnum < qc->max_retired_seqnum) {
         /*
          * RFC 9000, 19.15.  NEW_CONNECTION_ID Frame
@@ -216,7 +230,10 @@ ngx_quic_retire_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
         return ngx_quic_free_client_id(c, cid);
     }
 
-    /* we are going to retire client id which is in use */
+    /*
+     * we are going to retire client id which is in use;
+     * it may be shared by several paths after NAT rebinding
+     */
 
     q = ngx_queue_head(&qc->paths);
 
@@ -237,12 +254,23 @@ ngx_quic_retire_client_id(ngx_connection_t *c, ngx_quic_client_id_t *cid)
             }
 
             qc->path->cid = new_cid;
-            new_cid->used = 1;
+            new_cid->used++;
 
-            return ngx_quic_free_client_id(c, cid);
+            if (--cid->used == 0) {
+                return ngx_quic_free_client_id(c, cid);
+            }
+
+            continue;
         }
 
-        return ngx_quic_free_path(c, path);
+        if (cid->used == 1) {
+            /* the last path using it, CID is retired with the path */
+            return ngx_quic_free_path(c, path);
+        }
+
+        if (ngx_quic_free_path(c, path) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
     return NGX_OK;
@@ -330,7 +358,8 @@ ngx_quic_next_client_id(ngx_connection_t *c)
     {
         cid = ngx_queue_data(q, ngx_quic_client_id_t, queue);
 
-        if (!cid->used) {
+        if (!cid->used || cid->len == 0) {
+            /* a zero-length client id is used on all paths */
             return cid;
         }
     }
