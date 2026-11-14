@@ -32,6 +32,7 @@ typedef struct {
     ngx_flag_t                       next_upstream;
     ngx_uint_t                       proxy_protocol;
     ngx_flag_t                       half_close;
+    ngx_stream_complex_value_t      *device;
     ngx_stream_upstream_local_t     *local;
     ngx_flag_t                       socket_keepalive;
     size_t                           socket_rcvbuf;
@@ -91,6 +92,8 @@ static void *ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf);
 static char *ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent,
     void *child);
 static char *ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf);
+static char *ngx_stream_proxy_bind_device(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 static char *ngx_stream_proxy_bind(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
@@ -158,6 +161,13 @@ static ngx_command_t  ngx_stream_proxy_commands[] = {
     { ngx_string("proxy_pass"),
       NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_stream_proxy_pass,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("proxy_bind_device"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_stream_proxy_bind_device,
       NGX_STREAM_SRV_CONF_OFFSET,
       0,
       NULL },
@@ -471,6 +481,24 @@ ngx_stream_proxy_handler(ngx_stream_session_t *s)
 
     u->peer.log = c->log;
     u->peer.log_error = NGX_ERROR_ERR;
+
+#if (NGX_HAVE_SO_BINDTODEVICE)
+    if (pscf->device != NULL) {
+        if (ngx_stream_complex_value(s, pscf->device, &u->peer.device)
+            != NGX_OK)
+        {
+            ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (u->peer.device.len > IF_NAMESIZE - 1) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                          "device name \"%V\" too long", &u->peer.device);
+            ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+#endif
 
     if (ngx_stream_proxy_set_local(s, u, pscf->local) != NGX_OK) {
         ngx_stream_proxy_finalize(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
@@ -2428,6 +2456,7 @@ ngx_stream_proxy_create_srv_conf(ngx_conf_t *cf)
     conf->next_upstream_tries = NGX_CONF_UNSET_UINT;
     conf->next_upstream = NGX_CONF_UNSET;
     conf->proxy_protocol = NGX_CONF_UNSET_UINT;
+    conf->device = NGX_CONF_UNSET_PTR;
     conf->local = NGX_CONF_UNSET_PTR;
     conf->socket_keepalive = NGX_CONF_UNSET;
     conf->socket_rcvbuf = NGX_CONF_UNSET_SIZE;
@@ -2487,6 +2516,8 @@ ngx_stream_proxy_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->next_upstream, prev->next_upstream, 1);
 
     ngx_conf_merge_uint_value(conf->proxy_protocol, prev->proxy_protocol, 0);
+
+    ngx_conf_merge_ptr_value(conf->device, prev->device, NULL);
 
     ngx_conf_merge_ptr_value(conf->local, prev->local, NULL);
 
@@ -2804,6 +2835,61 @@ ngx_stream_proxy_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 
     return NGX_CONF_OK;
+}
+
+
+static char *
+ngx_stream_proxy_bind_device(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+#if (NGX_HAVE_SO_BINDTODEVICE)
+    ngx_stream_proxy_srv_conf_t *pscf = conf;
+
+    ngx_str_t                           *value;
+    ngx_stream_complex_value_t          *device, cv;
+    ngx_stream_compile_complex_value_t   ccv;
+
+    if (pscf->device != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        pscf->device = NULL;
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_stream_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_stream_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cv.lengths == NULL && value[1].len > IF_NAMESIZE - 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid device name \"%V\"",
+                           &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    device = ngx_palloc(cf->pool, sizeof(ngx_stream_complex_value_t));
+    if (device == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    *device = cv;
+
+    pscf->device = device;
+
+    return NGX_CONF_OK;
+#else
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"%V\" is not supported on this platform", &cmd->name);
+    return NGX_CONF_ERROR;
+#endif
 }
 
 
