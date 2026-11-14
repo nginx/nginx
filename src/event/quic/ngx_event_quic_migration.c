@@ -1005,3 +1005,40 @@ ngx_quic_handle_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path,
 
     return NGX_OK;
 }
+
+
+ngx_int_t
+ngx_quic_fallback_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path,
+    const char *reason)
+{
+    /*
+     * RFC 9000, 14.2.1.  Handling of ICMP Messages by PMTUD
+     *
+     * The kernel learned a path MTU smaller than the one discovered on
+     * this path, typically from an ICMP "fragmentation needed" message,
+     * and refuses datagrams of the discovered size.  Fall back to the
+     * minimum size every QUIC path supports and stop probing this path.
+     * At the minimum size there is nothing to fall back to and the
+     * caller keeps its error handling.
+     */
+
+    if (path->mtu <= NGX_QUIC_MIN_INITIAL_SIZE) {
+        return NGX_DECLINED;
+    }
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                  "quic path seq:%uL %s at mtu:%uz, falling back to mtu:%d",
+                  path->seqnum, reason, path->mtu, NGX_QUIC_MIN_INITIAL_SIZE);
+
+    path->mtu = NGX_QUIC_MIN_INITIAL_SIZE;
+    path->max_mtu = NGX_QUIC_MIN_INITIAL_SIZE;
+
+    if (path->state == NGX_QUIC_PATH_WAITING
+        || path->state == NGX_QUIC_PATH_MTUD)
+    {
+        path->state = NGX_QUIC_PATH_IDLE;
+        ngx_quic_set_path_timer(c);
+    }
+
+    return NGX_OK;
+}
