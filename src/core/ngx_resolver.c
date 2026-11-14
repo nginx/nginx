@@ -2757,7 +2757,12 @@ ngx_resolver_process_srv(ngx_resolver_t *r, u_char *buf, size_t n,
 
         case NGX_RESOLVE_SRV:
 
-            if (i + 6 >= n) {
+            if (len < 7) {
+                err = "invalid SRV record in DNS response";
+                goto invalid;
+            }
+
+            if (i + len > n) {
                 goto short_response;
             }
 
