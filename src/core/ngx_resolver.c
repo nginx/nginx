@@ -2128,6 +2128,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         }
 #endif
 
+    error:
+
         next = rn->waiting;
         rn->waiting = NULL;
 
@@ -2436,7 +2438,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         } else {
             addrs = ngx_resolver_export(r, rn, 0);
             if (addrs == NULL) {
-                goto failed;
+                code = NGX_RESOLVE_SERVFAIL;
+                goto error;
             }
         }
 
@@ -2503,7 +2506,8 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
         }
 
         if (ngx_resolver_copy(r, &name, buf, cname, buf + n) != NGX_OK) {
-            goto failed;
+            code = NGX_RESOLVE_SERVFAIL;
+            goto error;
         }
 
         ngx_log_debug1(NGX_LOG_DEBUG_CORE, r->log, 0,
@@ -2560,7 +2564,18 @@ ngx_resolver_process_a(ngx_resolver_t *r, u_char *buf, size_t n,
 
     ngx_log_error(r->log_level, r->log, 0,
                   "no A or CNAME types in DNS response");
-    return;
+
+    if (rn->naddrs == (u_short) -1
+#if (NGX_HAVE_INET6)
+        || rn->naddrs6 == (u_short) -1
+#endif
+        )
+    {
+        goto next;
+    }
+
+    code = NGX_RESOLVE_SERVFAIL;
+    goto error;
 
 short_response:
 
