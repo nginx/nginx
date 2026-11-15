@@ -427,7 +427,12 @@ ngx_quic_create_segments(ngx_connection_t *c)
 
             if (n == NGX_ERROR) {
 
-                if (err == NGX_EMSGSIZE
+                /*
+                 * older Linux kernels return EINVAL instead of EMSGSIZE
+                 * if the segment size exceeds the path MTU
+                 */
+
+                if ((err == NGX_EMSGSIZE || err == NGX_EINVAL)
                     && segsize > NGX_QUIC_MIN_INITIAL_SIZE)
                 {
                     /*
