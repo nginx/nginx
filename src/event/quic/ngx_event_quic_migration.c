@@ -1005,3 +1005,29 @@ ngx_quic_handle_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path,
 
     return NGX_OK;
 }
+
+
+void
+ngx_quic_path_mtu_rejected(ngx_connection_t *c, ngx_quic_path_t *path,
+    size_t size)
+{
+    /*
+     * RFC 8899, 4.6.2.  Use of PTB Messages
+     *
+     * The kernel learned a path MTU smaller than this datagram, typically
+     * from an ICMP "fragmentation needed" or "packet too big" message, and
+     * refused to send it.  Reduce the path MTU to the minimum size and
+     * start a new search, which only probes sizes below the refused one.
+     */
+
+    ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                  "quic path seq:%uL rejected size:%uz mtu:%uz",
+                  path->seqnum, size, path->mtu);
+
+    path->max_mtu = size;
+    path->mtu = NGX_QUIC_MIN_INITIAL_SIZE;
+
+    if (path->state != NGX_QUIC_PATH_VALIDATING) {
+        ngx_quic_discover_path_mtu(c, path);
+    }
+}
