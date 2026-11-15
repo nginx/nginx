@@ -359,7 +359,8 @@ ngx_quic_create_segments(ngx_connection_t *c)
     size_t                  len, segsize;
     ssize_t                 n;
     u_char                 *p, *end;
-    ngx_uint_t              nseg, level;
+    ngx_err_t               err;
+    ngx_uint_t              nseg, level, log_error;
     ngx_quic_path_t        *path;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_congestion_t  *cg;
@@ -411,9 +412,38 @@ ngx_quic_create_segments(ngx_connection_t *c)
         }
 
         if (n == 0 || nseg == NGX_QUIC_MAX_SEGMENTS) {
+            log_error = c->log_error;
+
+            if (segsize > NGX_QUIC_MIN_INITIAL_SIZE) {
+                /* EMSGSIZE is handled below */
+                c->log_error = NGX_ERROR_IGNORE_EMSGSIZE;
+            }
+
             n = ngx_quic_send_segments(c, dst, p - dst, path->sockaddr,
                                        path->socklen, segsize);
+
+            err = ngx_socket_errno;
+            c->log_error = log_error;
+
             if (n == NGX_ERROR) {
+
+                if (err == NGX_EMSGSIZE
+                    && segsize > NGX_QUIC_MIN_INITIAL_SIZE)
+                {
+                    /*
+                     * the kernel may have sent a part of the batch, so
+                     * packet numbers are not reused: the same frames are
+                     * sent again in new packets of the minimum size
+                     */
+
+                    c->write->error = 0;
+                    preserved_pnum[level] = ctx->pnum;
+                    ngx_quic_revert_send(c, preserved_pnum);
+                    ngx_quic_path_mtu_rejected(c, path, segsize);
+                    ngx_post_event(&qc->push, &ngx_posted_events);
+                    break;
+                }
+
                 return NGX_ERROR;
             }
 
