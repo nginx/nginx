@@ -130,6 +130,7 @@ struct ngx_quic_path_s {
     u_char                            text[NGX_SOCKADDR_STRLEN];
     unsigned                          validated:1;
     unsigned                          mtu_unvalidated:1;
+    unsigned                          challenge_pending:1;
 };
 
 

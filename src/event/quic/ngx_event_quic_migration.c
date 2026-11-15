@@ -18,8 +18,6 @@ static void ngx_quic_set_connection_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_validate_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
-static ngx_int_t ngx_quic_send_path_challenge(ngx_connection_t *c,
-    ngx_quic_path_t *path);
 static void ngx_quic_set_path_timer(ngx_connection_t *c);
 static ngx_int_t ngx_quic_expire_path_validation(ngx_connection_t *c,
     ngx_quic_path_t *path);
@@ -594,16 +592,19 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     size_t             min;
+    ngx_int_t          rc;
     ngx_uint_t         n;
     ngx_quic_frame_t  *frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL send path_challenge tries:%ui",
                    path->seqnum, path->tries);
+
+    path->challenge_pending = 1;
 
     for (n = 0; n < 2; n++) {
 
@@ -647,8 +648,14 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
             min = 1200;
         }
 
-        if (ngx_quic_frame_sendto(c, frame, min, path) == NGX_ERROR) {
+        rc = ngx_quic_frame_sendto(c, frame, min, path);
+
+        if (rc == NGX_ERROR) {
             return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK) {
+            path->challenge_pending = 0;
         }
     }
 

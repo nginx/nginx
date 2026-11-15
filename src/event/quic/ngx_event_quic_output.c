@@ -80,6 +80,17 @@ ngx_quic_output(ngx_connection_t *c)
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
 
+    /* resend PATH_CHALLENGE before data exhausts anti-amplification limit */
+
+    if (qc->path->challenge_pending
+        && qc->path->state == NGX_QUIC_PATH_VALIDATING
+        && !qc->closing)
+    {
+        if (ngx_quic_send_path_challenge(c, qc->path) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
     in_flight = cg->in_flight;
 
 #if ((NGX_HAVE_UDP_SEGMENT) && (NGX_HAVE_MSGHDR_MSG_CONTROL))
