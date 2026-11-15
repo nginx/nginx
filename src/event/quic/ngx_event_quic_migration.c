@@ -132,9 +132,7 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
             continue;
         }
 
-        if (ngx_memcmp(path->challenge[0], f->data, sizeof(f->data)) == 0
-            || ngx_memcmp(path->challenge[1], f->data, sizeof(f->data)) == 0)
-        {
+        if (ngx_memcmp(path->challenge, f->data, sizeof(f->data)) == 0) {
             goto valid;
         }
     }
@@ -597,67 +595,59 @@ ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
     size_t             min;
     ngx_int_t          rc;
-    ngx_uint_t         n;
     ngx_quic_frame_t  *frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL send path_challenge tries:%ui",
                    path->seqnum, path->tries);
 
-    path->challenge_pending = 1;
-
-    for (n = 0; n < 2; n++) {
-
-        frame = ngx_quic_alloc_frame(c);
-        if (frame == NULL) {
-            return NGX_ERROR;
-        }
-
-        frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
-        frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
-        frame->ignore_congestion = 1;
-
-        /*
-         * RFC 9000, 9.4. Loss Detection and Congestion Control
-         *
-         * A sender can make exceptions for probe packets so that their loss
-         * detection is independent and does not unduly cause the congestion
-         * controller to reduce its sending rate.
-         */
-
-        frame->ignore_loss = 1;
-
-        ngx_memcpy(frame->u.path_challenge.data, path->challenge[n], 8);
-
-        /*
-         * RFC 9000, 8.2.1.  Initiating Path Validation
-         *
-         * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
-         * to at least the smallest allowed maximum datagram size of 1200 bytes,
-         * unless the anti-amplification limit for the path does not permit
-         * sending a datagram of this size.
-         */
-
-        if (path->mtu_unvalidated
-            || ngx_quic_path_limit(c, path, 1200) < 1200)
-        {
-            min = 0;
-            path->mtu_unvalidated = 1;
-
-        } else {
-            min = 1200;
-        }
-
-        rc = ngx_quic_frame_sendto(c, frame, min, path);
-
-        if (rc == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-
-        if (rc == NGX_OK) {
-            path->challenge_pending = 0;
-        }
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        return NGX_ERROR;
     }
+
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
+    frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
+    frame->ignore_congestion = 1;
+
+    /*
+     * RFC 9000, 9.4. Loss Detection and Congestion Control
+     *
+     * A sender can make exceptions for probe packets so that their loss
+     * detection is independent and does not unduly cause the congestion
+     * controller to reduce its sending rate.
+     */
+
+    frame->ignore_loss = 1;
+
+    ngx_memcpy(frame->u.path_challenge.data, path->challenge, 8);
+
+    /*
+     * RFC 9000, 8.2.1.  Initiating Path Validation
+     *
+     * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
+     * to at least the smallest allowed maximum datagram size of 1200 bytes,
+     * unless the anti-amplification limit for the path does not permit
+     * sending a datagram of this size.
+     */
+
+    if (path->mtu_unvalidated
+        || ngx_quic_path_limit(c, path, 1200) < 1200)
+    {
+        min = 0;
+        path->mtu_unvalidated = 1;
+
+    } else {
+        min = 1200;
+    }
+
+    rc = ngx_quic_frame_sendto(c, frame, min, path);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    path->challenge_pending = (rc == NGX_AGAIN);
 
     return NGX_OK;
 }
