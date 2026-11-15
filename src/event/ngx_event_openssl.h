@@ -47,6 +47,12 @@
 #endif
 
 
+#if ((defined OPENSSL_IS_BORINGSSL || defined OPENSSL_IS_AWSLC)               \
+     && defined SSL_R_ECH_REJECTED)
+#define NGX_SSL_ECH_BORINGSSL_API  1
+#endif
+
+
 #if (OPENSSL_VERSION_NUMBER >= 0x10100001L)
 
 #define ngx_ssl_version()       OpenSSL_version(OPENSSL_VERSION)
