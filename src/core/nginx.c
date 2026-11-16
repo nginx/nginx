@@ -39,6 +39,13 @@ static ngx_conf_enum_t  ngx_debug_points[] = {
 };
 
 
+static ngx_conf_enum_t  ngx_term_signal[] = {
+    { ngx_string("fast"), NGX_TERM_SIGNAL_FAST },
+    { ngx_string("graceful"), NGX_TERM_SIGNAL_GRACEFUL },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
@@ -131,6 +138,13 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       offsetof(ngx_core_conf_t, shutdown_timeout),
       NULL },
+
+    { ngx_string("term_signal"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      0,
+      offsetof(ngx_core_conf_t, term_signal),
+      &ngx_term_signal },
 
     { ngx_string("working_directory"),
       NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
@@ -1166,6 +1180,7 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
 
     ccf->worker_processes = NGX_CONF_UNSET;
     ccf->debug_points = NGX_CONF_UNSET;
+    ccf->term_signal = NGX_CONF_UNSET_UINT;
 
     ccf->rlimit_nofile = NGX_CONF_UNSET;
     ccf->rlimit_core = NGX_CONF_UNSET;
@@ -1195,6 +1210,7 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
 
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
+    ngx_conf_init_uint_value(ccf->term_signal, NGX_TERM_SIGNAL_FAST);
 
 #if (NGX_HAVE_CPU_AFFINITY)
 
