@@ -562,9 +562,17 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (next->validated) {
         ngx_quic_set_connection_path(c, next);
 
-    } else if (next->state != NGX_QUIC_PATH_VALIDATING) {
-        if (ngx_quic_validate_path(c, next) != NGX_OK) {
-            return NGX_ERROR;
+    } else {
+        /* prevent old path packets contribution to congestion control */
+
+        ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+        qc->rst_pnum = ctx->pnum;
+        qc->congestion.in_flight = 0;
+
+        if (next->state != NGX_QUIC_PATH_VALIDATING) {
+            if (ngx_quic_validate_path(c, next) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
     }
 
