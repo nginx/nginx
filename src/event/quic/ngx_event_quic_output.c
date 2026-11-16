@@ -72,6 +72,8 @@ ngx_quic_output(ngx_connection_t *c)
 {
     size_t                  in_flight;
     ngx_int_t               rc;
+    ngx_queue_t            *q;
+    ngx_quic_path_t        *path;
     ngx_quic_congestion_t  *cg;
     ngx_quic_connection_t  *qc;
 
@@ -79,6 +81,25 @@ ngx_quic_output(ngx_connection_t *c)
 
     qc = ngx_quic_get_connection(c);
     cg = &qc->congestion;
+
+    /* resend PATH_CHALLENGE before data exhausts anti-amplification limit */
+
+    if (!qc->closing) {
+
+        for (q = ngx_queue_head(&qc->paths);
+             q != ngx_queue_sentinel(&qc->paths);
+             q = ngx_queue_next(q))
+        {
+            path = ngx_queue_data(q, ngx_quic_path_t, queue);
+
+            if (path->challenge_pending
+                && path->state == NGX_QUIC_PATH_VALIDATING
+                && ngx_quic_send_path_challenge(c, path) != NGX_OK)
+            {
+                return NGX_ERROR;
+            }
+        }
+    }
 
     in_flight = cg->in_flight;
 

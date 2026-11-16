@@ -123,7 +123,7 @@ struct ngx_quic_path_s {
     size_t                            max_mtu;
     off_t                             sent;
     off_t                             received;
-    u_char                            challenge[2][8];
+    u_char                            challenge[8];
     uint64_t                          seqnum;
     uint64_t                          sid_seqnum;
     uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
@@ -131,6 +131,7 @@ struct ngx_quic_path_s {
     u_char                            text[NGX_SOCKADDR_STRLEN];
     unsigned                          validated:1;
     unsigned                          mtu_unvalidated:1;
+    unsigned                          challenge_pending:1;
 };
 
 
