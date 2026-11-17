@@ -2680,7 +2680,11 @@ ngx_http_request_handler(ngx_event_t *ev)
 void
 ngx_http_run_posted_requests(ngx_connection_t *c)
 {
+    ngx_time_t                 *tp;
+    ngx_msec_int_t              elapsed;
+    struct timeval              tv;
     ngx_http_request_t         *r;
+    ngx_http_core_loc_conf_t   *clcf;
     ngx_http_posted_request_t  *pr;
 
     for ( ;; ) {
@@ -2704,6 +2708,39 @@ ngx_http_run_posted_requests(ngx_connection_t *c)
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                        "http posted request: \"%V?%V\"", &r->uri, &r->args);
+
+        /*
+         * a chain of subrequests served without blocking, such as cached
+         * slices read by a fast client, never returns to the event loop,
+         * so limit the time posted requests run in one iteration;
+         * the request is already dequeued and only the active request
+         * is run again by the write event, so break only on it
+         */
+
+        if (r == c->data && !r->terminated) {
+            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+            if (clcf->posted_requests_time_limit) {
+                tp = ngx_timeofday();
+                ngx_gettimeofday(&tv);
+
+                elapsed = (tv.tv_sec - tp->sec) * 1000
+                          + (tv.tv_usec / 1000 - tp->msec);
+
+                if (elapsed > (ngx_msec_int_t) clcf->posted_requests_time_limit)
+                {
+                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                                   "http posted requests time limit: %M",
+                                   (ngx_msec_t) elapsed);
+
+                    c->write->delayed = 1;
+                    ngx_add_timer(c->write, 1);
+                    ngx_post_event(c->write, &ngx_posted_next_events);
+
+                    return;
+                }
+            }
+        }
 
         r->write_event_handler(r);
     }
