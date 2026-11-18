@@ -57,9 +57,12 @@ static ngx_uint_t ngx_http_browser(ngx_http_request_t *r,
     ngx_http_browser_conf_t *cf);
 
 static ngx_int_t ngx_http_browser_add_variables(ngx_conf_t *cf);
+static ngx_int_t ngx_http_browser_init(ngx_conf_t *cf);
 static void *ngx_http_browser_create_conf(ngx_conf_t *cf);
 static char *ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent,
     void *child);
+static ngx_int_t ngx_http_browser_init_modern_browsers(ngx_conf_t *cf,
+    ngx_http_browser_conf_t *conf);
 static int ngx_libc_cdecl ngx_http_modern_browser_sort(const void *one,
     const void *two);
 static char *ngx_http_modern_browser(ngx_conf_t *cf, ngx_command_t *cmd,
@@ -108,7 +111,7 @@ static ngx_command_t  ngx_http_browser_commands[] = {
 
 static ngx_http_module_t  ngx_http_browser_module_ctx = {
     ngx_http_browser_add_variables,        /* preconfiguration */
-    NULL,                                  /* postconfiguration */
+    ngx_http_browser_init,                 /* postconfiguration */
 
     NULL,                                  /* create main configuration */
     NULL,                                  /* init main configuration */
@@ -446,13 +449,13 @@ ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_http_browser_conf_t *prev = parent;
     ngx_http_browser_conf_t *conf = child;
 
-    ngx_uint_t                  i, n;
-    ngx_http_modern_browser_t  *browsers, *opera;
-
     /*
-     * At the merge the skip field is used to store the browser slot,
-     * it will be used in sorting and then will overwritten
-     * with a real skip value.  The zero value means Opera.
+     * The modern_browsers array is finalized (see
+     * ngx_http_browser_init_modern_browsers) when it is defined in the
+     * current configuration level.  A level that only inherits the array
+     * keeps the pointer to the already finalized parent array; the top-level
+     * (http) array is finalized separately in the postconfiguration handler,
+     * since it is never merged as a child.
      */
 
     if (conf->modern_browsers == NULL && conf->modern_unlisted_browsers == 0) {
@@ -460,42 +463,8 @@ ngx_http_browser_merge_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->modern_unlisted_browsers = prev->modern_unlisted_browsers;
 
     } else if (conf->modern_browsers != NULL) {
-        browsers = conf->modern_browsers->elts;
-
-        for (i = 0; i < conf->modern_browsers->nelts; i++) {
-            if (browsers[i].skip == 0) {
-                goto found;
-            }
-        }
-
-        /*
-         * Opera may contain MSIE string, so if Opera was not enumerated
-         * as modern browsers, then add it and set a unreachable version
-         */
-
-        opera = ngx_array_push(conf->modern_browsers);
-        if (opera == NULL) {
+        if (ngx_http_browser_init_modern_browsers(cf, conf) != NGX_OK) {
             return NGX_CONF_ERROR;
-        }
-
-        opera->skip = 0;
-        opera->version = 4001000000U;
-
-        browsers = conf->modern_browsers->elts;
-
-found:
-
-        ngx_qsort(browsers, (size_t) conf->modern_browsers->nelts,
-                  sizeof(ngx_http_modern_browser_t),
-                  ngx_http_modern_browser_sort);
-
-        for (i = 0; i < conf->modern_browsers->nelts; i++) {
-             n = browsers[i].skip;
-
-             browsers[i].skip = ngx_http_modern_browser_masks[n].skip;
-             browsers[i].add = ngx_http_modern_browser_masks[n].add;
-             (void) ngx_cpystrn(browsers[i].name,
-                                ngx_http_modern_browser_masks[n].name, 12);
         }
     }
 
@@ -521,6 +490,84 @@ found:
     }
 
     return NGX_CONF_OK;
+}
+
+
+static ngx_int_t
+ngx_http_browser_init(ngx_conf_t *cf)
+{
+    ngx_http_browser_conf_t  *bcf;
+
+    /*
+     * finalize the top-level (http) modern_browsers array; it is never
+     * merged as a child, so it would otherwise be inherited by servers and
+     * locations while still in its temporary parse-time layout
+     */
+
+    bcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_browser_module);
+
+    if (bcf->modern_browsers != NULL) {
+        if (ngx_http_browser_init_modern_browsers(cf, bcf) != NGX_OK) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_http_browser_init_modern_browsers(ngx_conf_t *cf,
+    ngx_http_browser_conf_t *conf)
+{
+    ngx_uint_t                  i, n;
+    ngx_http_modern_browser_t  *browsers, *opera;
+
+    /*
+     * At this point the skip field stores the browser slot; it is used in
+     * sorting and then overwritten with a real skip value.  The zero value
+     * means Opera.
+     */
+
+    browsers = conf->modern_browsers->elts;
+
+    for (i = 0; i < conf->modern_browsers->nelts; i++) {
+        if (browsers[i].skip == 0) {
+            goto found;
+        }
+    }
+
+    /*
+     * Opera may contain MSIE string, so if Opera was not enumerated
+     * as modern browsers, then add it and set a unreachable version
+     */
+
+    opera = ngx_array_push(conf->modern_browsers);
+    if (opera == NULL) {
+        return NGX_ERROR;
+    }
+
+    opera->skip = 0;
+    opera->version = 4001000000U;
+
+    browsers = conf->modern_browsers->elts;
+
+found:
+
+    ngx_qsort(browsers, (size_t) conf->modern_browsers->nelts,
+              sizeof(ngx_http_modern_browser_t),
+              ngx_http_modern_browser_sort);
+
+    for (i = 0; i < conf->modern_browsers->nelts; i++) {
+        n = browsers[i].skip;
+
+        browsers[i].skip = ngx_http_modern_browser_masks[n].skip;
+        browsers[i].add = ngx_http_modern_browser_masks[n].add;
+        (void) ngx_cpystrn(browsers[i].name,
+                           ngx_http_modern_browser_masks[n].name, 12);
+    }
+
+    return NGX_OK;
 }
 
 
