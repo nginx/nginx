@@ -1027,6 +1027,10 @@ recode:
         src = buf->pos;
     }
 
+    if (size < NGX_UTF_LEN) {
+        size += NGX_UTF_LEN;
+    }
+
     cl = ngx_http_charset_get_buffer(pool, ctx, size);
     if (cl == NULL) {
         return NULL;
