@@ -121,11 +121,14 @@ struct ngx_quic_path_s {
     size_t                            mtu;
     size_t                            mtud;
     size_t                            max_mtu;
+    ngx_uint_t                        mtu_lost;
+    ngx_msec_t                        mtu_lost_time;
     off_t                             sent;
     off_t                             received;
     u_char                            challenge[2][8];
     uint64_t                          seqnum;
     uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
+    uint64_t                          mtu_largest_ack;
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
     unsigned                          validated:1;

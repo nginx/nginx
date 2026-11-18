@@ -12,6 +12,8 @@
 
 #define NGX_QUIC_PATH_MTU_DELAY       100
 #define NGX_QUIC_PATH_MTU_PRECISION   16
+#define NGX_QUIC_PATH_MTU_LOSS        3 /* packets */
+#define NGX_QUIC_PATH_MTU_LOSS_THR    3 /* PTO */
 
 
 static void ngx_quic_set_connection_path(ngx_connection_t *c,
@@ -1004,4 +1006,77 @@ ngx_quic_handle_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path,
     }
 
     return NGX_OK;
+}
+
+
+void
+ngx_quic_path_mtu_ack(ngx_connection_t *c, ngx_quic_path_t *path,
+    ngx_quic_frame_t *f)
+{
+    ngx_quic_connection_t  *qc;
+
+    if (f->plen <= NGX_QUIC_MIN_INITIAL_SIZE) {
+        return;
+    }
+
+    qc = ngx_quic_get_connection(c);
+
+    if (f->pnum < qc->rst_pnum) {
+        return;
+    }
+
+    if (f->pnum > path->mtu_largest_ack) {
+        path->mtu_largest_ack = f->pnum;
+    }
+
+    path->mtu_lost = 0;
+}
+
+
+void
+ngx_quic_path_mtu_lost(ngx_connection_t *c, ngx_quic_path_t *path,
+    ngx_quic_frame_t *f)
+{
+    ngx_msec_t              duration;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
+
+    /* RFC 8899, 4.3.  Black Hole Detection and Reducing the PLPMTU */
+
+    if (f->plen <= NGX_QUIC_MIN_INITIAL_SIZE
+        || f->plen > path->mtu
+        || f->ignore_loss)
+    {
+        return;
+    }
+
+    qc = ngx_quic_get_connection(c);
+
+    if (f->pnum < qc->rst_pnum || f->pnum < path->mtu_largest_ack) {
+        return;
+    }
+
+    if (path->mtu_lost++ == 0) {
+        path->mtu_lost_time = f->send_time;
+    }
+
+    ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+    duration = ngx_quic_pto(c, ctx) * NGX_QUIC_PATH_MTU_LOSS_THR;
+
+    if (path->mtu_lost < NGX_QUIC_PATH_MTU_LOSS
+        || f->send_time - path->mtu_lost_time <= duration
+        || path->state == NGX_QUIC_PATH_VALIDATING)
+    {
+        return;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic path seq:%uL black hole mtu:%uz",
+                   path->seqnum, path->mtu);
+
+    path->max_mtu = path->mtu;
+    path->mtu = NGX_QUIC_MIN_INITIAL_SIZE;
+    path->mtu_lost = 0;
+
+    ngx_quic_discover_path_mtu(c, path);
 }
