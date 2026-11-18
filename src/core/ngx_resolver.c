@@ -4265,7 +4265,9 @@ ngx_resolver_dup(ngx_resolver_t *r, void *src, size_t size)
         return dst;
     }
 
-    ngx_memcpy(dst, src, size);
+    if (size) {
+        ngx_memcpy(dst, src, size);
+    }
 
     return dst;
 }
