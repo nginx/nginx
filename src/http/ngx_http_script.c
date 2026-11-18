@@ -1017,7 +1017,7 @@ ngx_http_script_copy_var_code(ngx_http_script_engine_t *e)
             value = ngx_http_get_flushed_variable(e->request, code->index);
         }
 
-        if (value && !value->not_found) {
+        if (value && !value->not_found && value->len) {
 
             if (ngx_http_script_check_length(e, value->len) != NGX_OK) {
                 return;
