@@ -180,6 +180,8 @@ ngx_thread_pool_destroy(ngx_thread_pool_t *tp)
     task.handler = ngx_thread_pool_exit_handler;
     task.ctx = (void *) &lock;
 
+    tp->max_queue = NGX_MAX_INT_T_VALUE;
+
     for (n = 0; n < tp->threads; n++) {
         lock = 1;
 
