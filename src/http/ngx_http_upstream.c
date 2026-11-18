@@ -4927,7 +4927,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
         if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
 
-            if (!u->header_sent) {
+            if (!u->header_sent && !r->cache->updated) {
                 if (ngx_http_upstream_no_cache(r, u) != NGX_OK) {
                     u->cacheable = 0;
                 }
