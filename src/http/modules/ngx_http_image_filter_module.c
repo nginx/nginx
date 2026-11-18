@@ -508,7 +508,7 @@ ngx_http_image_read(ngx_http_request_t *r, ngx_chain_t *in)
         p = ngx_cpymem(p, b->pos, size);
         b->pos += size;
 
-        if (b->last_buf) {
+        if (b->last_buf || b->last_in_chain) {
             ctx->last = p;
             ctx->length = p - ctx->image;
             return NGX_OK;
@@ -588,7 +588,8 @@ ngx_http_image_json(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     }
 
     b->memory = 1;
-    b->last_buf = 1;
+    b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
 
     ngx_http_clean_header(r);
 
@@ -642,7 +643,8 @@ ngx_http_image_asis(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
     b->pos = ctx->image;
     b->last = ctx->last;
     b->memory = 1;
-    b->last_buf = 1;
+    b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
 
     ngx_http_image_length(r, b);
 
@@ -1080,7 +1082,8 @@ transparent:
     b->pos = out;
     b->last = out + size;
     b->memory = 1;
-    b->last_buf = 1;
+    b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
 
     ngx_http_image_length(r, b);
     ngx_http_weak_etag(r);
