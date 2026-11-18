@@ -412,6 +412,21 @@ eintr:
                            "sendmsg() was interrupted");
             goto eintr;
 
+	case EACCES:
+	    /*
+	     * on OpenBSD pf(4) may block outbound local packet
+	     * with EACCESS error.
+	     *
+	     * QUIC stack should not distinguish between drop
+	     * in sendmsg() and packet dropped along the network
+	     * path. The local drop may be just temporal
+	     * for example due to packet queue or probability
+	     * match on rule.
+	     */
+            ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, err,
+                           "sendmsg() dropped packet");
+	    return NGX_AGAIN;
+
         default:
             c->write->error = 1;
             ngx_connection_error(c, err, "sendmsg() failed");
