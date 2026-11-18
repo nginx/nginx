@@ -100,6 +100,7 @@ typedef struct {
     ngx_buf_t                     *trailers;
 
     unsigned                       head:1;
+    unsigned                       upgrade:1;
     unsigned                       internal_chunked:1;
     unsigned                       header_sent:1;
 } ngx_http_proxy_ctx_t;
