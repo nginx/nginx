@@ -841,6 +841,12 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
             /* fall through */
 
         default:
+            if (f->type == NGX_QUIC_FT_CRYPTO
+                && ctx->level != NGX_QUIC_ENCRYPTION_APPLICATION)
+            {
+                f->ignore_congestion = 1;
+            }
+
             ngx_queue_insert_tail(&ctx->frames, &f->queue);
         }
 
