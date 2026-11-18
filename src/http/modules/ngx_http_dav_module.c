@@ -828,6 +828,10 @@ overwrite_done:
                                       ngx_create_dir_n, copy.path.data);
         }
 
+        if (depth == 0) {
+            return NGX_HTTP_CREATED;
+        }
+
         copy.len = path.len;
 
         tree.init_handler = NULL;
