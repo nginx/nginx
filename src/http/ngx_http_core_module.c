@@ -1518,7 +1518,9 @@ ngx_http_core_find_location(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            if (vv->len && (vv->len != 1 || vv->data[0] != '0')) {
+            if (!vv->not_found
+                && vv->len && (vv->len != 1 || vv->data[0] != '0'))
+            {
                 r->loc_conf = (*clcfp)->loc_conf;
 
                 /* look up nested locations */
