@@ -933,13 +933,11 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
 
         if (ngx_strncasecmp(arg[0].data, (u_char *) "PLAIN", 5) == 0) {
 
-            if (s->args.nelts == 1) {
+            if (s->args.nelts == 1 || s->args.nelts == 2) {
                 return NGX_MAIL_AUTH_PLAIN;
             }
 
-            if (s->args.nelts == 2) {
-                return ngx_mail_auth_plain(s, c, 1);
-            }
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
         return NGX_MAIL_PARSE_INVALID_COMMAND;
@@ -958,13 +956,11 @@ ngx_mail_auth_parse(ngx_mail_session_t *s, ngx_connection_t *c)
 
         if (ngx_strncasecmp(arg[0].data, (u_char *) "EXTERNAL", 8) == 0) {
 
-            if (s->args.nelts == 1) {
+            if (s->args.nelts == 1 || s->args.nelts == 2) {
                 return NGX_MAIL_AUTH_EXTERNAL;
             }
 
-            if (s->args.nelts == 2) {
-                return ngx_mail_auth_external(s, c, 1);
-            }
+            return NGX_MAIL_PARSE_INVALID_COMMAND;
         }
 
         return NGX_MAIL_PARSE_INVALID_COMMAND;
