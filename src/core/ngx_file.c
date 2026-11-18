@@ -759,11 +759,14 @@ ngx_ext_rename_file(ngx_str_t *src, ngx_str_t *to, ngx_ext_rename_file_t *ext)
             ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
                           ngx_rename_file_n " \"%s\" to \"%s\" failed",
                           name, to->data);
+        }
 
-            if (ngx_delete_file(name) == NGX_FILE_ERROR) {
-                ngx_log_error(NGX_LOG_CRIT, ext->log, ngx_errno,
+        if (ngx_delete_file(name) == NGX_FILE_ERROR) {
+            err = ngx_errno;
+
+            if (err != NGX_ENOENT) {
+                ngx_log_error(NGX_LOG_CRIT, ext->log, err,
                               ngx_delete_file_n " \"%s\" failed", name);
-
             }
         }
 
