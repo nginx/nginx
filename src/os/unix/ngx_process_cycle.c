@@ -453,9 +453,10 @@ ngx_pass_open_channel(ngx_cycle_t *cycle)
 static void
 ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 {
-    ngx_int_t      i;
-    ngx_err_t      err;
-    ngx_channel_t  ch;
+    ngx_int_t         i;
+    ngx_err_t         err;
+    ngx_channel_t     ch;
+    ngx_core_conf_t  *ccf;
 
     ngx_memzero(&ch, sizeof(ngx_channel_t));
 
@@ -487,6 +488,20 @@ ngx_signal_worker_processes(ngx_cycle_t *cycle, int signo)
 
     ch.fd = -1;
 
+    if (signo == ngx_signal_value(NGX_TERMINATE_SIGNAL)) {
+        ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx,
+                                               ngx_core_module);
+
+        if (ccf->term_signal == NGX_TERM_SIGNAL_GRACEFUL) {
+
+            /*
+             * "term_signal graceful", SIGINT still terminates
+             * if the command cannot be passed via the channel
+             */
+
+            signo = SIGINT;
+        }
+    }
 
     for (i = 0; i < ngx_last_process; i++) {
 

@@ -22,6 +22,7 @@ typedef struct {
 
 static void ngx_execute_proc(ngx_cycle_t *cycle, void *data);
 static void ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext);
+static ngx_uint_t ngx_signal_term_graceful(void);
 static void ngx_process_get_status(void);
 static void ngx_unlock_mutexes(ngx_pid_t pid);
 
@@ -318,6 +319,7 @@ ngx_init_signals(ngx_log_t *log)
 static void
 ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 {
+    int              command;
     char            *action;
     ngx_int_t        ignore;
     ngx_err_t        err;
@@ -336,12 +338,21 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     ngx_time_sigsafe_update();
 
     action = "";
+    command = signo;
+
+    if (signo == ngx_signal_value(NGX_TERMINATE_SIGNAL)
+        && ngx_signal_term_graceful())
+    {
+        /* "term_signal graceful", handle as a shutdown signal */
+
+        command = ngx_signal_value(NGX_SHUTDOWN_SIGNAL);
+    }
 
     switch (ngx_process) {
 
     case NGX_PROCESS_MASTER:
     case NGX_PROCESS_SINGLE:
-        switch (signo) {
+        switch (command) {
 
         case ngx_signal_value(NGX_SHUTDOWN_SIGNAL):
             ngx_quit = 1;
@@ -407,7 +418,7 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
 
     case NGX_PROCESS_WORKER:
     case NGX_PROCESS_HELPER:
-        switch (signo) {
+        switch (command) {
 
         case ngx_signal_value(NGX_NOACCEPT_SIGNAL):
             if (!ngx_daemonized) {
@@ -464,6 +475,28 @@ ngx_signal_handler(int signo, siginfo_t *siginfo, void *ucontext)
     }
 
     ngx_set_errno(err);
+}
+
+
+static ngx_uint_t
+ngx_signal_term_graceful(void)
+{
+    ngx_core_conf_t  *ccf;
+
+    if (ngx_cycle->conf_ctx == NULL) {
+
+        /*
+         * the process is exiting and the cycle is already destroyed,
+         * see ngx_master_process_exit() and ngx_worker_process_exit()
+         */
+
+        return 0;
+    }
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
+                                           ngx_core_module);
+
+    return ccf->term_signal == NGX_TERM_SIGNAL_GRACEFUL;
 }
 
 
@@ -631,16 +664,30 @@ ngx_debug_point(void)
 ngx_int_t
 ngx_os_signal_process(ngx_cycle_t *cycle, char *name, ngx_pid_t pid)
 {
-    ngx_signal_t  *sig;
+    int               signo;
+    ngx_signal_t     *sig;
+    ngx_core_conf_t  *ccf;
+
+    ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
     for (sig = signals; sig->signo != 0; sig++) {
         if (ngx_strcmp(name, sig->name) == 0) {
-            if (kill(pid, sig->signo) != -1) {
+            signo = sig->signo;
+
+            if (signo == ngx_signal_value(NGX_TERMINATE_SIGNAL)
+                && ccf->term_signal == NGX_TERM_SIGNAL_GRACEFUL)
+            {
+                /* "term_signal graceful", SIGINT still terminates */
+
+                signo = SIGINT;
+            }
+
+            if (kill(pid, signo) != -1) {
                 return 0;
             }
 
             ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
-                          "kill(%P, %d) failed", pid, sig->signo);
+                          "kill(%P, %d) failed", pid, signo);
         }
     }
 
