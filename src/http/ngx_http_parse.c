@@ -2200,6 +2200,21 @@ ngx_http_split_args(ngx_http_request_t *r, ngx_str_t *uri, ngx_str_t *args)
 }
 
 
+u_char *
+ngx_http_copy_field_value(u_char *dst, u_char *src, size_t len)
+{
+    size_t  i;
+
+    /* CR, LF and NUL are not allowed in HTTP field values */
+
+    for (i = 0; i < len; i++) {
+        dst[i] = (src[i] == CR || src[i] == LF || src[i] == '\0') ? ' ' : src[i];
+    }
+
+    return dst + len;
+}
+
+
 ngx_int_t
 ngx_http_parse_chunked(ngx_http_request_t *r, ngx_buf_t *b,
     ngx_http_chunked_t *ctx, ngx_uint_t keep_trailers)
