@@ -616,7 +616,7 @@ ngx_http_header_filter(ngx_http_request_t *r)
     /* the end of HTTP header */
     *b->last++ = CR; *b->last++ = LF;
 
-    r->header_size = b->last - b->pos;
+    r->header_size += b->last - b->pos;
 
     if (r->header_only) {
         b->last_buf = 1;
@@ -720,7 +720,7 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
     /* the end of HTTP early hints */
     *b->last++ = CR; *b->last++ = LF;
 
-    r->header_size = b->last - b->pos;
+    r->header_size += b->last - b->pos;
 
     b->flush = 1;
 
