@@ -20,6 +20,7 @@ typedef struct {
     ngx_queue_t                        free;
 
     ngx_http_upstream_init_peer_pt     original_init_peer;
+    ngx_http_upstream_init_pt          original_init_upstream;
 
     ngx_uint_t                         local; /* unsigned  local:1; */
 
@@ -80,6 +81,9 @@ static void ngx_http_upstream_keepalive_save_session(ngx_peer_connection_t *pc,
 
 static void ngx_http_upstream_notify_keepalive_peer(ngx_peer_connection_t *pc,
     void *data, ngx_uint_t type);
+
+static ngx_int_t ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
+    ngx_http_upstream_srv_conf_t *us);
 
 static void *ngx_http_upstream_keepalive_create_conf(ngx_conf_t *cf);
 static char *ngx_http_upstream_keepalive_init_main_conf(ngx_conf_t *cf,
@@ -151,6 +155,62 @@ ngx_module_t  ngx_http_upstream_keepalive_module = {
     NULL,                                  /* exit master */
     NGX_MODULE_V1_PADDING
 };
+
+
+static ngx_int_t
+ngx_http_upstream_init_keepalive(ngx_conf_t *cf,
+    ngx_http_upstream_srv_conf_t *us)
+{
+    ngx_uint_t                               i;
+    ngx_http_upstream_keepalive_srv_conf_t  *kcf;
+    ngx_http_upstream_keepalive_cache_t     *cached;
+
+    kcf = ngx_http_conf_upstream_srv_conf(us,
+                                          ngx_http_upstream_keepalive_module);
+
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, cf->log, 0,
+                   "init keepalive upstream");
+
+    /* skip upstreams with keepalive disabled */
+    if (kcf->max_cached == 0) {
+        return kcf->original_init_upstream(cf, us);
+    }
+
+    ngx_conf_init_msec_value(kcf->time, 3600000);
+    ngx_conf_init_msec_value(kcf->timeout, 60000);
+    ngx_conf_init_uint_value(kcf->requests, 1000);
+
+    if (kcf->max_cached == NGX_CONF_UNSET_UINT) {
+        kcf->local = 1;
+        kcf->max_cached = 32;
+    }
+
+    if (kcf->original_init_upstream(cf, us) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    kcf->original_init_peer = us->peer.init;
+
+    us->peer.init = ngx_http_upstream_init_keepalive_peer;
+
+    /* allocate cache items and add to free queue */
+
+    cached = ngx_pcalloc(cf->pool,
+             sizeof(ngx_http_upstream_keepalive_cache_t) * kcf->max_cached);
+    if (cached == NULL) {
+        return NGX_ERROR;
+    }
+
+    ngx_queue_init(&kcf->cache);
+    ngx_queue_init(&kcf->free);
+
+    for (i = 0; i < kcf->max_cached; i++) {
+        ngx_queue_insert_head(&kcf->free, &cached[i].queue);
+        cached[i].conf = kcf;
+    }
+
+    return NGX_OK;
+}
 
 
 static ngx_int_t
@@ -545,6 +605,12 @@ ngx_http_upstream_keepalive_init_main_conf(ngx_conf_t *cf, void *conf)
             continue;
         }
 
+        /* skip upstreams already wired by the keepalive directive handler;
+         * these will be initialized via the init_upstream chain */
+        if (kcf->original_init_upstream != NULL) {
+            continue;
+        }
+
         ngx_conf_init_msec_value(kcf->time, 3600000);
         ngx_conf_init_msec_value(kcf->timeout, 60000);
         ngx_conf_init_uint_value(kcf->requests, 1000);
@@ -582,6 +648,7 @@ ngx_http_upstream_keepalive_init_main_conf(ngx_conf_t *cf, void *conf)
 static char *
 ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
+    ngx_http_upstream_srv_conf_t            *uscf;
     ngx_http_upstream_keepalive_srv_conf_t  *kcf = conf;
 
     ngx_int_t    n;
@@ -616,6 +683,16 @@ ngx_http_upstream_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return NGX_CONF_ERROR;
         }
     }
+
+    /* init upstream handler: wire keepalive into the init_upstream chain */
+
+    uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+
+    kcf->original_init_upstream = uscf->peer.init_upstream
+                                  ? uscf->peer.init_upstream
+                                  : ngx_http_upstream_init_round_robin;
+
+    uscf->peer.init_upstream = ngx_http_upstream_init_keepalive;
 
     return NGX_CONF_OK;
 }
