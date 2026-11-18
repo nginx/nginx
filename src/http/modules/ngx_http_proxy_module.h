@@ -72,6 +72,7 @@ typedef struct {
     ngx_flag_t                     redirect;
 
     ngx_uint_t                     http_version;
+    ngx_uint_t                     http2_max_concurrent_streams;
 
     ngx_uint_t                     headers_hash_max_size;
     ngx_uint_t                     headers_hash_bucket_size;
