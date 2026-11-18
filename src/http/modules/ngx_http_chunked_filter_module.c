@@ -259,6 +259,20 @@ ngx_http_chunked_create_trailers(ngx_http_request_t *r,
             continue;
         }
 
+        if (ngx_http_valid_header_name(&header[i].key) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Invalid HTTP trailer name");
+            return NULL;
+        }
+
+        if (ngx_http_valid_header_value(&header[i].value) != NGX_OK) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "Invalid HTTP trailer value "
+                          "(do you use variables in trailer values that"
+                          " can contain CR or LF?)");
+            return NULL;
+        }
+
         len += header[i].key.len + sizeof(": ") - 1
                + header[i].value.len + sizeof(CRLF) - 1;
     }

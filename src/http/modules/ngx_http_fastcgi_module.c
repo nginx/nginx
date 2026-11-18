@@ -554,14 +554,14 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
 
     { ngx_string("fastcgi_pass_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
+      ngx_http_hdr_key_maybe_value,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.pass_headers),
       NULL },
 
     { ngx_string("fastcgi_hide_header"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_array_slot,
+      ngx_http_hdr_key_maybe_value,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.hide_headers),
       NULL },
@@ -858,10 +858,11 @@ static ngx_int_t
 ngx_http_fastcgi_create_request(ngx_http_request_t *r)
 {
     off_t                         file_pos;
-    u_char                        ch, sep, *pos, *lowcase_key;
+    u_char                        ch, sep, *pos, *lowcase_key, *ptr;
     size_t                        size, len, params_len,
                                   key_len, val_len, padding, allocated;
     ngx_uint_t                    i, n, next, hash, skip_empty, header_params;
+    ngx_str_t                     field_name;
     ngx_buf_t                    *b;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -1146,10 +1147,27 @@ ngx_http_fastcgi_create_request(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
-            ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                           "fastcgi param: \"%*s: %*s\"",
-                           key_len, e.pos - (key_len + val_len),
-                           val_len, e.pos - val_len);
+            field_name.data = e.pos - (key_len + val_len);
+            field_name.len = key_len;
+
+            if (ngx_http_valid_header_name(&field_name) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "fastcgi invalid field name");
+                return NGX_ERROR;
+            }
+
+            for (ptr = e.pos - val_len; ptr < e.pos; ++ptr) {
+                if (*ptr == '\0' || *ptr == '\r' || *ptr == '\n') {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                                  "fastcgi invalid value for field %V",
+                                  &field_name);
+                    return NGX_ERROR;
+                }
+            }
+
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                           "fastcgi param: \"%V: %*s\"",
+                           &field_name, val_len, e.pos - val_len);
         }
 
         if (e.pos != e.end) {
