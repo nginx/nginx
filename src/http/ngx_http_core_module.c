@@ -2909,6 +2909,10 @@ ngx_http_get_forwarded_addr_internal(ngx_http_request_t *r, ngx_addr_t *addr,
             return found ? NGX_DONE : NGX_DECLINED;
         }
 
+        if (xfflen == 0) {
+            return found ? NGX_DONE : NGX_DECLINED;
+        }
+
         for (p = xff + xfflen - 1; p > xff; p--, xfflen--) {
             if (*p != ' ' && *p != ',') {
                 break;
