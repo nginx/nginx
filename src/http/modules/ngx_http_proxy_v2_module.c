@@ -326,7 +326,7 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
                                   loc_len, body_len;
     uintptr_t                     escape;
     ngx_buf_t                    *b;
-    ngx_str_t                     method, host;
+    ngx_str_t                     method, host, uri, args;
     ngx_uint_t                    i, next, unparsed_uri;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
@@ -405,6 +405,11 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
     loc_len = 0;
     unparsed_uri = 0;
 
+#if (NGX_SUPPRESS_WARN)
+    ngx_str_null(&uri);
+    ngx_str_null(&args);
+#endif
+
     if (plcf->proxy_lengths && ctx->ctx.vars.uri.len) {
         uri_len = ctx->ctx.vars.uri.len;
 
@@ -413,16 +418,19 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         uri_len = r->unparsed_uri.len;
 
     } else {
+        uri = r->uri;
+        args = r->args;
+
         loc_len = (r->valid_location && ctx->ctx.vars.uri.len)
-                  ? ngx_min(plcf->location.len, r->uri.len) : 0;
+                  ? ngx_min(plcf->location.len, uri.len) : 0;
 
         if (r->quoted_uri || r->internal) {
-            escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
-                                        r->uri.len - loc_len, NGX_ESCAPE_URI);
+            escape = 2 * ngx_escape_uri(NULL, uri.data + loc_len,
+                                        uri.len - loc_len, NGX_ESCAPE_URI);
         }
 
-        uri_len = ctx->ctx.vars.uri.len + r->uri.len - loc_len + escape
-                  + sizeof("?") - 1 + r->args.len;
+        uri_len = ctx->ctx.vars.uri.len + uri.len - loc_len + escape
+                  + sizeof("?") - 1 + args.len;
     }
 
     if (uri_len == 0) {
@@ -712,17 +720,17 @@ ngx_http_proxy_v2_create_request(ngx_http_request_t *r)
         }
 
         if (escape) {
-            ngx_escape_uri(p, r->uri.data + loc_len,
-                           r->uri.len - loc_len, NGX_ESCAPE_URI);
-            p += r->uri.len - loc_len + escape;
+            ngx_escape_uri(p, uri.data + loc_len,
+                           uri.len - loc_len, NGX_ESCAPE_URI);
+            p += uri.len - loc_len + escape;
 
         } else {
-            p = ngx_copy(p, r->uri.data + loc_len, r->uri.len - loc_len);
+            p = ngx_copy(p, uri.data + loc_len, uri.len - loc_len);
         }
 
-        if (r->args.len > 0) {
+        if (args.len > 0) {
             *p++ = '?';
-            p = ngx_copy(p, r->args.data, r->args.len);
+            p = ngx_copy(p, args.data, args.len);
         }
 
         *b->last++ = ngx_http_v2_inc_indexed(NGX_HTTP_V2_PATH_INDEX);
