@@ -259,6 +259,13 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_srv_conf_t, ocsp_responder),
       NULL },
 
+    { ngx_string("ssl_ocsp_responder_certificate"),
+      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_STREAM_SRV_CONF_OFFSET,
+      offsetof(ngx_stream_ssl_srv_conf_t, ocsp_responder_certificate),
+      NULL },
+
     { ngx_string("ssl_ocsp_cache"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
       ngx_stream_ssl_ocsp_cache,
@@ -993,6 +1000,8 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_uint_value(conf->ocsp, prev->ocsp, 0);
     ngx_conf_merge_str_value(conf->ocsp_responder, prev->ocsp_responder, "");
+    ngx_conf_merge_str_value(conf->ocsp_responder_certificate,
+                             prev->ocsp_responder_certificate, "");
     ngx_conf_merge_ptr_value(conf->ocsp_cache_zone,
                          prev->ocsp_cache_zone, NULL);
 
@@ -1144,6 +1153,13 @@ ngx_stream_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
         if (ngx_ssl_ocsp(cf, &conf->ssl, &conf->ocsp_responder, conf->ocsp,
                          conf->ocsp_cache_zone)
+            != NGX_OK)
+        {
+            return NGX_CONF_ERROR;
+        }
+
+        if (ngx_ssl_ocsp_responder_certificate(cf, &conf->ssl,
+                                               &conf->ocsp_responder_certificate)
             != NGX_OK)
         {
             return NGX_CONF_ERROR;
