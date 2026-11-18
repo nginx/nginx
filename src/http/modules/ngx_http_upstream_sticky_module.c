@@ -131,6 +131,7 @@ static void ngx_http_upstream_sticky_notify_peer(
 static ngx_int_t ngx_http_upstream_sticky_cookie_insert(
     ngx_peer_connection_t *pc, ngx_http_upstream_sticky_peer_data_t *stp);
 static ngx_int_t ngx_http_upstream_sticky_samesite(ngx_str_t *value);
+static ngx_int_t ngx_http_upstream_sticky_valid_domain(ngx_str_t *value);
 
 
 static ngx_http_upstream_sticky_sess_node_t *
@@ -600,6 +601,15 @@ ngx_http_upstream_sticky_cookie_insert(ngx_peer_connection_t *pc,
         {
             return NGX_ERROR;
         }
+
+        if (stcf->cookie_domain->lengths && domain.len
+            && ngx_http_upstream_sticky_valid_domain(&domain) != NGX_OK)
+        {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                          "sticky: invalid cookie domain value \"%V\", "
+                          "omitting \"Domain\" attribute", &domain);
+            ngx_str_set(&domain, "");
+        }
     }
 
     if (domain.len) {
@@ -731,6 +741,39 @@ ngx_http_upstream_sticky_samesite(ngx_str_t *value)
     }
 
     return NGX_ERROR;
+}
+
+
+static ngx_int_t
+ngx_http_upstream_sticky_valid_domain(ngx_str_t *value)
+{
+    size_t  i;
+    u_char  c;
+
+    /*
+     * Ensure the value cannot introduce additional cookie attributes
+     * when serialized into "Set-Cookie".  Only characters valid in a
+     * domain name are allowed (letters, digits, "-", "."); notably
+     * this excludes ";" and ",".  A stricter RFC 1034 <subdomain>
+     * check is deliberately avoided, as it would reject the leading
+     * dot form ".example.com" which RFC 6265, 5.2.3 requires clients
+     * to accept.
+     */
+
+    for (i = 0; i < value->len; i++) {
+        c = value->data[i];
+
+        if (((c | 0x20) >= 'a' && (c | 0x20) <= 'z')
+            || (c >= '0' && c <= '9')
+            || c == '-' || c == '.')
+        {
+            continue;
+        }
+
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
