@@ -7,6 +7,7 @@
 #ifndef _NGX_CONTROL_H_INCLUDED_
 #define _NGX_CONTROL_H_INCLUDED_
 
+#define NGX_CONTROL_CONF    0x02020202
 
 #include <ngx_config.h>
 #include <ngx_core.h>
