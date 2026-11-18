@@ -37,6 +37,8 @@ ngx_int_t ngx_quic_handle_migration(ngx_connection_t *c,
     ngx_quic_header_t *pkt);
 
 void ngx_quic_path_handler(ngx_event_t *ev);
+ngx_int_t ngx_quic_send_path_challenge(ngx_connection_t *c,
+    ngx_quic_path_t *path);
 
 void ngx_quic_discover_path_mtu(ngx_connection_t *c, ngx_quic_path_t *path);
 ngx_int_t ngx_quic_handle_path_mtu(ngx_connection_t *c,
