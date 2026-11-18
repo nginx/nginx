@@ -412,7 +412,7 @@ ngx_http_v3_reset_stream(ngx_connection_t *c)
 
     h3c = ngx_http_v3_get_session(c);
 
-    if (!c->read->eof && !h3c->hq
+    if (!c->close && !c->read->eof && !h3c->hq
         && h3c->known_streams[NGX_HTTP_V3_STREAM_SERVER_DECODER]
         && (c->quic->id & NGX_QUIC_STREAM_UNIDIRECTIONAL) == 0)
     {
