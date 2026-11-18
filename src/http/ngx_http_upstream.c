@@ -5129,7 +5129,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     start = h->value.data;
     last = start + h->value.len;
 
-    if (r->cache->valid_sec != 0 && u->headers_in.x_accel_expires != NULL) {
+    if (u->headers_in.accel_expires) {
         goto extensions;
     }
 
@@ -5138,7 +5138,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
         || ngx_strlcasestrn(start, last, (u_char *) "private", 7 - 1) != NULL)
     {
         u->headers_in.no_cache = 1;
-        return NGX_OK;
+        goto extensions;
     }
 
     p = ngx_strlcasestrn(start, last, (u_char *) "s-maxage=", 9 - 1);
@@ -5152,14 +5152,9 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     if (p) {
         n = ngx_http_upstream_process_delta_seconds(p + offset, last);
 
-        if (n == NGX_ERROR) {
-            u->cacheable = 0;
-            return NGX_OK;
-        }
-
-        if (n == 0) {
+        if (n == NGX_ERROR || n == 0) {
             u->headers_in.no_cache = 1;
-            return NGX_OK;
+            goto extensions;
         }
 
         r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time() + n,
@@ -5345,6 +5340,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
             r->cache->valid_sec = ngx_time() + n;
             u->headers_in.no_cache = 0;
             u->headers_in.expired = 0;
+            u->headers_in.accel_expires = 1;
             return NGX_OK;
         }
     }
@@ -5358,6 +5354,7 @@ ngx_http_upstream_process_accel_expires(ngx_http_request_t *r,
         r->cache->valid_sec = n;
         u->headers_in.no_cache = 0;
         u->headers_in.expired = 0;
+        u->headers_in.accel_expires = 1;
     }
     }
 #endif
