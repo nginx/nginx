@@ -19,33 +19,37 @@
 #define NGX_QUIC_STREAM_FRAME_OFF      0x04
 
 
-#if (NGX_HAVE_NONALIGNED)
+static ngx_inline uint32_t
+ngx_quic_parse_uint32(const u_char *p)
+{
+    uint32_t  v;
 
-#define ngx_quic_parse_uint16(p)  ntohs(*(uint16_t *) (p))
-#define ngx_quic_parse_uint32(p)  ntohl(*(uint32_t *) (p))
+    ngx_memcpy(&v, p, sizeof(uint32_t));
 
-#define ngx_quic_write_uint16  ngx_quic_write_uint16_aligned
-#define ngx_quic_write_uint32  ngx_quic_write_uint32_aligned
+    return ntohl(v);
+}
 
-#else
 
-#define ngx_quic_parse_uint16(p)  ((p)[0] << 8 | (p)[1])
-#define ngx_quic_parse_uint32(p)                                              \
-    ((uint32_t) (p)[0] << 24 | (p)[1] << 16 | (p)[2] << 8 | (p)[3])
+static ngx_inline u_char *
+ngx_quic_write_uint16(u_char *p, ngx_uint_t s)
+{
+    uint16_t  v = htons((uint16_t) s);
 
-#define ngx_quic_write_uint16(p, s)                                           \
-    ((p)[0] = (u_char) ((s) >> 8),                                            \
-     (p)[1] = (u_char)  (s),                                                  \
-     (p) + sizeof(uint16_t))
+    ngx_memcpy(p, &v, sizeof(uint16_t));
 
-#define ngx_quic_write_uint32(p, s)                                           \
-    ((p)[0] = (u_char) ((s) >> 24),                                           \
-     (p)[1] = (u_char) ((s) >> 16),                                           \
-     (p)[2] = (u_char) ((s) >> 8),                                            \
-     (p)[3] = (u_char)  (s),                                                  \
-     (p) + sizeof(uint32_t))
+    return p + sizeof(uint16_t);
+}
 
-#endif
+
+static ngx_inline u_char *
+ngx_quic_write_uint32(u_char *p, ngx_uint_t s)
+{
+    uint32_t  v = htonl((uint32_t) s);
+
+    ngx_memcpy(p, &v, sizeof(uint32_t));
+
+    return p + sizeof(uint32_t);
+}
 
 #define ngx_quic_write_uint64(p, s)                                           \
     ((p)[0] = (u_char) ((s) >> 56),                                           \
