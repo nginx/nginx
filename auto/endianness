@@ -1,4 +1,3 @@
-
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
 
@@ -13,7 +12,47 @@ checking for system byte ordering
 END
 
 
+# Where the compiler predefines __BYTE_ORDER__ it is preferred: it gives
+# the byte order of the target, while running a test program gives that
+# of the build host. The two differ when cross compiling.
+
 cat << END > $NGX_AUTOTEST.c
+
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) \
+    && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+ngx_byte_order=ngx_little
+#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) \
+    && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+ngx_byte_order=ngx_big
+#else
+ngx_byte_order=
+#endif
+
+END
+
+ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS -E $NGX_AUTOTEST.c"
+
+ngx_byte_order=`eval "$ngx_test" 2>> $NGX_AUTOCONF_ERR \
+                | sed -n -e 's/^ngx_byte_order=ngx_//p'`
+
+rm -rf $NGX_AUTOTEST*
+
+
+if [ ".$ngx_byte_order" = ".little" ]; then
+
+    echo " little endian"
+    have=NGX_HAVE_LITTLE_ENDIAN . auto/have
+
+elif [ ".$ngx_byte_order" = ".big" ]; then
+
+    echo " big endian"
+
+else
+
+    # The compiler does not predefine __BYTE_ORDER__, fall back to
+    # building and running a test program.
+
+    cat << END > $NGX_AUTOTEST.c
 
 int main(void) {
     int i = 0x11223344;
@@ -26,25 +65,26 @@ int main(void) {
 
 END
 
-ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
-          -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
+    ngx_test="$CC $CC_TEST_FLAGS $CC_AUX_FLAGS \
+              -o $NGX_AUTOTEST $NGX_AUTOTEST.c $NGX_LD_OPT $ngx_feature_libs"
 
-eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
+    eval "$ngx_test >> $NGX_AUTOCONF_ERR 2>&1"
 
-if [ -x $NGX_AUTOTEST ]; then
-    if $NGX_AUTOTEST >/dev/null 2>&1; then
-        echo " little endian"
-        have=NGX_HAVE_LITTLE_ENDIAN . auto/have
+    if [ -x $NGX_AUTOTEST ]; then
+        if $NGX_AUTOTEST >/dev/null 2>&1; then
+            echo " little endian"
+            have=NGX_HAVE_LITTLE_ENDIAN . auto/have
+        else
+            echo " big endian"
+        fi
+
+        rm -rf $NGX_AUTOTEST*
+
     else
-        echo " big endian"
+        rm -rf $NGX_AUTOTEST*
+
+        echo
+        echo "$0: error: cannot detect system byte ordering"
+        exit 1
     fi
-
-    rm -rf $NGX_AUTOTEST*
-
-else
-    rm -rf $NGX_AUTOTEST*
-
-    echo
-    echo "$0: error: cannot detect system byte ordering"
-    exit 1
 fi
