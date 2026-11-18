@@ -838,7 +838,18 @@ ngx_quic_resend_frames(ngx_connection_t *c, ngx_quic_send_ctx_t *ctx)
                 break;
             }
 
-            /* fall through */
+            /*
+             * Refresh the frame's priority from the stream (it may have
+             * changed via PRIORITY_UPDATE since the frame was first sent) and
+             * requeue through ngx_quic_queue_frame() so the retransmitted
+             * STREAM frame is re-inserted by urgency (RFC 9218) rather than
+             * dropped at the tail behind lower-priority traffic.
+             */
+            f->urgency = qs->urgency;
+            f->incremental = qs->incremental;
+
+            ngx_quic_queue_frame(qc, f);
+            break;
 
         default:
             ngx_queue_insert_tail(&ctx->frames, &f->queue);
