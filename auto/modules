@@ -431,6 +431,8 @@ if [ $HTTP = YES ]; then
     fi
 
     if [ $HTTP_SLICE = YES ]; then
+        have=NGX_HTTP_SLICE . auto/have
+
         ngx_module_name=ngx_http_slice_filter_module
         ngx_module_incs=
         ngx_module_deps=
