@@ -541,6 +541,10 @@ ngx_http_image_process(ngx_http_request_t *r)
         return ngx_http_image_json(r, rc == NGX_OK ? ctx : NULL);
     }
 
+    if (rc == NGX_ERROR) {
+        return NULL;
+    }
+
     ctx->angle = ngx_http_image_filter_get_value(r, conf->acv, conf->angle);
 
     if (conf->filter == NGX_HTTP_IMAGE_ROTATE) {
@@ -747,8 +751,17 @@ ngx_http_image_size(ngx_http_request_t *r, ngx_http_image_filter_ctx_t *ctx)
             return NGX_DECLINED;
         }
 
-        width = p[18] * 256 + p[19];
-        height = p[22] * 256 + p[23];
+        width = ((ngx_uint_t) p[16] << 24) | (p[17] << 16)
+                | (p[18] << 8) | p[19];
+        height = ((ngx_uint_t) p[20] << 24) | (p[21] << 16)
+                 | (p[22] << 8) | p[23];
+
+        if (width > 0xffff || height > 0xffff) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "PNG image dimensions %ui x %ui are too large",
+                          width, height);
+            return NGX_ERROR;
+        }
 
         break;
 
