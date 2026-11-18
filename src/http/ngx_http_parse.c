@@ -1012,6 +1012,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_before_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 r->header_start = p;
@@ -1036,6 +1037,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 r->header_end = p;
                 state = sw_space_after_value;
                 break;
@@ -1056,6 +1058,7 @@ ngx_http_parse_header_line(ngx_http_request_t *r, ngx_buf_t *b,
         case sw_space_after_value:
             switch (ch) {
             case ' ':
+            case '\t':
                 break;
             case CR:
                 state = sw_almost_done;
@@ -2042,7 +2045,10 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
                 goto skip;
             }
 
-            for (start += name->len; start < end && *start == ' '; start++) {
+            for (start += name->len;
+                 start < end && (*start == ' ' || *start == '\t');
+                 start++)
+            {
                 /* void */
             }
 
@@ -2061,7 +2067,9 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
 
             start++;
 
-            while (start < end && *start == ' ') { start++; }
+            while (start < end && (*start == ' ' || *start == '\t')) {
+                start++;
+            }
 
             for (last = start; last < end && *last != sep; last++) {
                 /* void */
@@ -2081,7 +2089,9 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
                 }
             }
 
-            while (start < end && *start == ' ') { start++; }
+            while (start < end && (*start == ' ' || *start == '\t')) {
+                start++;
+            }
         }
     }
 
@@ -2112,7 +2122,10 @@ ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
             continue;
         }
 
-        for (start += name->len; start < end && *start == ' '; start++) {
+        for (start += name->len;
+             start < end && (*start == ' ' || *start == '\t');
+             start++)
+        {
             /* void */
         }
 
@@ -2121,7 +2134,7 @@ ngx_http_parse_set_cookie_lines(ngx_http_request_t *r,
             continue;
         }
 
-        while (start < end && *start == ' ') { start++; }
+        while (start < end && (*start == ' ' || *start == '\t')) { start++; }
 
         for (last = start; last < end && *last != ';'; last++) {
             /* void */

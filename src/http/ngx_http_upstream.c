@@ -1218,7 +1218,7 @@ ngx_http_upstream_cache_check_range(ngx_http_request_t *r,
 
     p = h->value.data + 6;
 
-    while (*p == ' ') { p++; }
+    while (*p == ' ' || *p == '\t') { p++; }
 
     if (*p == '-') {
         return NGX_DECLINED;
@@ -5216,7 +5216,7 @@ ngx_http_upstream_process_delta_seconds(u_char *p, u_char *last)
     n = 0;
 
     for ( /* void */ ; p < last; p++) {
-        if (*p == ',' || *p == ';' || *p == ' ') {
+        if (*p == ',' || *p == ';' || *p == ' ' || *p == '\t') {
             break;
         }
 
