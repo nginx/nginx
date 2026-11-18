@@ -2723,6 +2723,7 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
         } else {
             ngx_log_error(NGX_LOG_INFO, c->log, 0,
                           "upstream sent too big early hints");
+            return NGX_HTTP_UPSTREAM_INVALID_HEADER;
         }
     }
 
