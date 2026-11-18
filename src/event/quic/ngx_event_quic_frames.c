@@ -38,41 +38,23 @@ ngx_quic_alloc_buf(ngx_connection_t *c)
 
     if (b) {
         qc->free_bufs = b->shadow;
-        p = b->start;
 
     } else {
-        b = qc->free_shadow_bufs;
-
-        if (b) {
-            qc->free_shadow_bufs = b->shadow;
-
-#ifdef NGX_QUIC_DEBUG_ALLOC
-            ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic use shadow buffer n:%ui %ui",
-                           ++qc->nbufs, --qc->nshadowbufs);
-#endif
-
-        } else {
-            b = ngx_palloc(c->pool, sizeof(ngx_buf_t));
-            if (b == NULL) {
-                return NULL;
-            }
-
-#ifdef NGX_QUIC_DEBUG_ALLOC
-            ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                           "quic new buffer n:%ui", ++qc->nbufs);
-#endif
-        }
-
-        p = ngx_pnalloc(c->pool, NGX_QUIC_BUFFER_SIZE);
-        if (p == NULL) {
+        b = ngx_palloc(c->pool, sizeof(ngx_buf_t));
+        if (b == NULL) {
             return NULL;
         }
-    }
 
 #ifdef NGX_QUIC_DEBUG_ALLOC
-    ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic alloc buffer %p", b);
+        ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                       "quic new buffer n:%ui", ++qc->nbufs);
 #endif
+    }
+
+    p = ngx_alloc(NGX_QUIC_BUFFER_SIZE, c->log);
+    if (p == NULL) {
+        return NULL;
+    }
 
     ngx_memzero(b, sizeof(ngx_buf_t));
 
@@ -110,13 +92,14 @@ ngx_quic_free_buf(ngx_connection_t *c, ngx_buf_t *b)
     shadow = b->shadow;
 
     if (ngx_quic_buf_refs(b) == 0) {
+        ngx_free(shadow->start);
         shadow->shadow = qc->free_bufs;
         qc->free_bufs = shadow;
     }
 
     if (b != shadow) {
-        b->shadow = qc->free_shadow_bufs;
-        qc->free_shadow_bufs = b;
+        b->shadow = qc->free_bufs;
+        qc->free_bufs = b;
     }
 
 }
@@ -130,10 +113,10 @@ ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b)
 
     qc = ngx_quic_get_connection(c);
 
-    nb = qc->free_shadow_bufs;
+    nb = qc->free_bufs;
 
     if (nb) {
-        qc->free_shadow_bufs = nb->shadow;
+        qc->free_bufs = nb->shadow;
 
     } else {
         nb = ngx_palloc(c->pool, sizeof(ngx_buf_t));
@@ -143,7 +126,7 @@ ngx_quic_clone_buf(ngx_connection_t *c, ngx_buf_t *b)
 
 #ifdef NGX_QUIC_DEBUG_ALLOC
         ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0,
-                       "quic new shadow buffer n:%ui", ++qc->nshadowbufs);
+                       "quic new buffer n:%ui", ++qc->nbufs);
 #endif
     }
 
@@ -311,7 +294,9 @@ ngx_quic_queue_frame(ngx_quic_connection_t *qc, ngx_quic_frame_t *frame)
         return;
     }
 
-    ngx_post_event(&qc->push, &ngx_posted_events);
+    if (!qc->push.timer_set) {
+        ngx_post_event(&qc->push, &ngx_posted_events);
+    }
 }
 
 

@@ -237,12 +237,12 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_size_value(conf->quic.stream_buffer_size,
                               prev->quic.stream_buffer_size,
-                              65536);
+                              4194304);
 
     conf->quic.max_concurrent_streams_bidi = conf->max_concurrent_streams;
 
     ngx_conf_merge_value(conf->quic.retry, prev->quic.retry, 0);
-    ngx_conf_merge_value(conf->quic.gso_enabled, prev->quic.gso_enabled, 0);
+    ngx_conf_merge_value(conf->quic.gso_enabled, prev->quic.gso_enabled, 1);
 
     ngx_conf_merge_str_value(conf->quic.host_key, prev->quic.host_key, "");
 
@@ -284,6 +284,14 @@ ngx_http_v3_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 
     cscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_core_module);
     conf->quic.handshake_timeout = cscf->client_header_timeout;
+
+    /*
+     * The window is enough to receive request headers.  It is extended
+     * later when reading the request body.
+     */
+
+    conf->quic.stream_recv_window = cscf->large_client_header_buffers.size
+                                    * cscf->large_client_header_buffers.num;
 
     sscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_ssl_module);
     conf->quic.ssl = &sscf->ssl;

@@ -149,9 +149,11 @@ typedef struct {
     ngx_rbtree_node_t                 sentinel;
 
     ngx_queue_t                       uninitialized;
+    ngx_queue_t                       blocked;
     ngx_queue_t                       free;
 
     uint64_t                          sent;
+    uint64_t                          acked;
     uint64_t                          recv_offset;
     uint64_t                          recv_window;
     uint64_t                          recv_last;
@@ -185,6 +187,8 @@ typedef struct {
     ngx_msec_t                        recovery_start;
     ngx_msec_t                        idle_start;
     ngx_msec_t                        k;
+    ngx_msec_t                        pacing_time;
+    size_t                            pacing_credit;
     ngx_uint_t                        idle; /* unsigned  idle:1; */
 } ngx_quic_congestion_t;
 
@@ -215,7 +219,6 @@ struct ngx_quic_send_ctx_s {
     uint64_t                          largest_range;
     uint64_t                          first_range;
     ngx_msec_t                        largest_received;
-    ngx_msec_t                        ack_delay_start;
     ngx_uint_t                        nranges;
     ngx_quic_ack_range_t              ranges[NGX_QUIC_MAX_RANGES];
     ngx_uint_t                        send_ack;
@@ -251,6 +254,7 @@ struct ngx_quic_connection_s {
     ngx_quic_conf_t                  *conf;
 
     ngx_event_t                       push;
+    ngx_event_t                       pull;
     ngx_event_t                       pto;
     ngx_event_t                       close;
     ngx_event_t                       path_validation;
@@ -268,13 +272,11 @@ struct ngx_quic_connection_s {
 
     ngx_queue_t                       free_frames;
     ngx_buf_t                        *free_bufs;
-    ngx_buf_t                        *free_shadow_bufs;
 
     ngx_uint_t                        nframes;
     ngx_uint_t                        max_frames;
 #ifdef NGX_QUIC_DEBUG_ALLOC
     ngx_uint_t                        nbufs;
-    ngx_uint_t                        nshadowbufs;
 #endif
 
 #if (NGX_QUIC_OPENSSL_COMPAT)
@@ -304,6 +306,7 @@ struct ngx_quic_connection_s {
     unsigned                          key_phase:1;
     unsigned                          validated:1;
     unsigned                          client_tp_done:1;
+    unsigned                          gso_disabled:1;
 
 #if (NGX_QUIC_OPENSSL_API)
     unsigned                          read_level:2;

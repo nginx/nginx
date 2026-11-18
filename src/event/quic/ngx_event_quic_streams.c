@@ -646,6 +646,40 @@ ngx_quic_do_init_streams(ngx_connection_t *c)
 }
 
 
+void
+ngx_quic_pull_streams(ngx_event_t *ev)
+{
+    ngx_event_t            *wev;
+    ngx_queue_t            *q;
+    ngx_connection_t       *c;
+    ngx_quic_stream_t      *qs;
+    ngx_quic_connection_t  *qc;
+
+    c = ev->data;
+
+    ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "quic pull streams");
+
+    qc = ngx_quic_get_connection(c);
+
+    while (!qc->closing
+           && !ngx_queue_empty(&qc->streams.blocked)
+           && qc->streams.sent - qc->streams.acked < 2 * qc->congestion.window)
+    {
+        q = ngx_queue_head(&qc->streams.blocked);
+        qs = ngx_queue_data(q, ngx_quic_stream_t, queue);
+
+        ngx_queue_remove(q);
+        qs->blocked = 0;
+
+        if (qs->connection) {
+            wev = qs->connection->write;
+            wev->ready = 1;
+            wev->handler(wev);
+        }
+    }
+}
+
+
 static ngx_quic_stream_t *
 ngx_quic_create_stream(ngx_connection_t *c, uint64_t id)
 {
@@ -844,6 +878,26 @@ ngx_quic_cancelable_stream(ngx_connection_t *c)
 }
 
 
+ngx_int_t
+ngx_quic_set_recv_window(ngx_connection_t *c, size_t window)
+{
+    ngx_quic_stream_t  *qs;
+
+    qs = c->quic;
+
+    if (qs->recv_window >= window) {
+        return NGX_OK;
+    }
+
+    ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
+                   "quic stream id:0x%xL recv window:%uz", qs->id, window);
+
+    qs->recv_window = window;
+
+    return ngx_quic_update_max_stream_data(qs);
+}
+
+
 static void
 ngx_quic_empty_handler(ngx_event_t *ev)
 {
@@ -953,7 +1007,7 @@ ngx_quic_stream_send(ngx_connection_t *c, u_char *buf, size_t size)
 static ngx_chain_t *
 ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 {
-    uint64_t                n, flow;
+    uint64_t                n, flow1, flow2, flow;
     ngx_event_t            *wev;
     ngx_connection_t       *pc;
     ngx_quic_stream_t      *qs;
@@ -973,9 +1027,20 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
 
     qs->send_state = NGX_QUIC_STREAM_SEND_SEND;
 
-    flow = qs->acked + qc->conf->stream_buffer_size - qs->sent;
+    flow1 = qc->streams.sent - qc->streams.acked >= 2 * qc->congestion.window
+            ? 0
+            : qc->streams.acked + 2 * qc->congestion.window - qc->streams.sent;
+
+    flow2 = qs->acked + qc->conf->stream_buffer_size - qs->sent;
+
+    flow = ngx_min(flow1, flow2);
 
     if (flow == 0) {
+        if (flow2 > 0 && !qs->blocked) {
+            ngx_queue_insert_tail(&qc->streams.blocked, &qs->queue);
+            qs->blocked = 1;
+        }
+
         wev->ready = 0;
         return in;
     }
@@ -997,6 +1062,11 @@ ngx_quic_stream_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
     qc->streams.sent += n;
 
     if (flow == n) {
+        if (flow2 > n && !qs->blocked) {
+            ngx_queue_insert_tail(&qc->streams.blocked, &qs->queue);
+            qs->blocked = 1;
+        }
+
         wev->ready = 0;
     }
 
@@ -1157,6 +1227,11 @@ ngx_quic_close_stream(ngx_quic_stream_t *qs)
 
     ngx_quic_free_buffer(pc, &qs->send);
     ngx_quic_free_buffer(pc, &qs->recv);
+
+    if (qs->blocked) {
+        ngx_queue_remove(&qs->queue);
+        qs->blocked = 0;
+    }
 
     ngx_rbtree_delete(&qc->streams.tree, &qs->node);
     ngx_queue_insert_tail(&qc->streams.free, &qs->queue);
@@ -1588,7 +1663,6 @@ ngx_quic_handle_max_streams_frame(ngx_connection_t *c,
 void
 ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
 {
-    uint64_t                acked;
     ngx_quic_stream_t      *qs;
     ngx_quic_connection_t  *qc;
 
@@ -1618,8 +1692,8 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
             return;
         }
 
-        acked = qs->acked;
         qs->acked += f->u.stream.length;
+        qc->streams.acked += f->u.stream.length;
 
         if (f->u.stream.fin) {
             qs->fin_acked = 1;
@@ -1636,11 +1710,18 @@ ngx_quic_handle_stream_ack(ngx_connection_t *c, ngx_quic_frame_t *f)
                        qs->id, f->u.stream.length, f->u.stream.fin,
                        qs->sent - qs->acked);
 
-        if (qs->connection
-            && qs->sent - acked == qc->conf->stream_buffer_size
-            && f->u.stream.length > 0)
+        if (f->u.stream.length > 0
+            && qs->connection
+            && qs->connection->write->active
+            && !qs->connection->write->ready
+            && !qs->blocked)
         {
-            ngx_quic_set_event(qs->connection->write);
+            ngx_queue_insert_tail(&qc->streams.blocked, &qs->queue);
+            qs->blocked = 1;
+        }
+
+        if (!ngx_queue_empty(&qc->streams.blocked)) {
+            ngx_post_event(&qc->pull, &ngx_posted_events);
         }
 
         break;
