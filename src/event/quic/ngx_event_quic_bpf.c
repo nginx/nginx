@@ -823,7 +823,12 @@ ngx_quic_bpf_add_worker_socket(ngx_cycle_t *cycle, ngx_quic_sock_group_t *grp,
 
 #if (NGX_HAVE_IP_MTU_DISCOVER)
 
-    if (ls->sockaddr->sa_family == AF_INET) {
+    if (ls->sockaddr->sa_family == AF_INET
+#if (NGX_HAVE_INET6)
+        || (ls->sockaddr->sa_family == AF_INET6 && !ls->ipv6only)
+#endif
+       )
+    {
         value = IP_PMTUDISC_DO;
 
         if (setsockopt(s, IPPROTO_IP, IP_MTU_DISCOVER,
