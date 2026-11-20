@@ -1169,6 +1169,7 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     size_t                     size;
     ngx_uint_t                 padded, priority;
     ngx_uint_t                 status;
+    ngx_uint_t                 discard;
     ngx_http_v2_node_t        *node;
     ngx_http_v2_stream_t      *stream;
     ngx_http_v2_srv_conf_t    *h2scf;
@@ -1194,19 +1195,6 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
                       h2c->state.length);
 
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
-    }
-
-    if (h2c->state.length == size) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent HEADERS frame with empty header block");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
-    }
-
-    if (h2c->goaway) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
-                       "skipping http2 HEADERS frame");
-        return ngx_http_v2_state_skip(h2c, pos, end);
     }
 
     if ((size_t) (end - pos) < size) {
@@ -1240,7 +1228,25 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
                    "http2 HEADERS frame sid:%ui", h2c->state.sid);
 
-    if (h2c->state.sid % 2 == 0 || h2c->state.sid <= h2c->last_sid) {
+    stream = NULL;
+    discard = 0;
+
+    if (h2c->state.sid % 2 && h2c->state.sid <= h2c->last_sid) {
+        node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
+
+        if (node) {
+            if (node->stream && !node->stream->in_closed) {
+                stream = node->stream;
+
+            } else if (node->stream == NULL && node->rst_sent) {
+                discard = 1;
+            }
+        }
+    }
+
+    if (!discard && stream == NULL
+        && (h2c->state.sid % 2 == 0 || h2c->state.sid <= h2c->last_sid))
+    {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent HEADERS frame with incorrect identifier "
                       "%ui, the last was %ui", h2c->state.sid, h2c->last_sid);
@@ -1248,7 +1254,16 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
-    h2c->last_sid = h2c->state.sid;
+    if (h2c->state.length == 0 && stream == NULL && !discard) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent HEADERS frame with empty header block");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_SIZE_ERROR);
+    }
+
+    if (stream == NULL && !discard && !h2c->goaway) {
+        h2c->last_sid = h2c->state.sid;
+    }
 
     h2c->state.pool = ngx_create_pool(1024, h2c->connection->log);
     if (h2c->state.pool == NULL) {
@@ -1260,6 +1275,29 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->state.header_limit = cscf->large_client_header_buffers.size
                               * cscf->large_client_header_buffers.num;
+
+    if (stream) {
+        h2c->state.stream = stream;
+        h2c->state.trailers =
+            (h2c->state.flags & NGX_HTTP_V2_END_STREAM_FLAG) ? 1 : 2;
+
+        return ngx_http_v2_state_header_block(h2c, pos, end);
+    }
+
+    if (discard || h2c->goaway) {
+        return ngx_http_v2_state_header_block(h2c, pos, end);
+    }
+
+    node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
+
+    if (node == NULL) {
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
+    }
+
+    if (node->priority_set) {
+        ngx_queue_remove(&node->reuse);
+        h2c->closed_nodes--;
+    }
 
     h2scf = ngx_http_get_module_srv_conf(h2c->http_connection->conf_ctx,
                                          ngx_http_v2_module);
@@ -1290,17 +1328,6 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
         status = NGX_HTTP_V2_REFUSED_STREAM;
         goto rst_stream;
-    }
-
-    node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 1);
-
-    if (node == NULL) {
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
-    }
-
-    if (node->priority_set) {
-        ngx_queue_remove(&node->reuse);
-        h2c->closed_nodes--;
     }
 
     stream = ngx_http_v2_create_stream(h2c);
@@ -1355,6 +1382,9 @@ ngx_http_v2_state_headers(ngx_http_v2_connection_t *h2c, u_char *pos,
 
 rst_stream:
 
+    ngx_queue_insert_tail(&h2c->closed, &node->reuse);
+    h2c->closed_nodes++;
+
     if (h2c->refused_streams++ > ngx_max(h2scf->concurrent_streams, 100)) {
         ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
                       "client sent too many refused streams");
@@ -1376,6 +1406,10 @@ ngx_http_v2_state_header_block(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char      ch;
     ngx_int_t   value;
     ngx_uint_t  indexed, size_update, prefix;
+
+    if (h2c->state.length == 0) {
+        return ngx_http_v2_state_header_complete(h2c, pos, end);
+    }
 
     if (end - pos < 1) {
         return ngx_http_v2_state_headers_save(h2c, pos, end,
@@ -1768,6 +1802,20 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     r = h2c->state.stream->request;
     fc = r->connection;
 
+    if (h2c->state.trailers) {
+        cscf = ngx_http_get_module_srv_conf(r, ngx_http_core_module);
+
+        if (header->name.len && header->name.data[0] == ':') {
+            h2c->state.trailers = 2;
+        }
+
+        if (r->headers_in.count++ >= cscf->max_headers) {
+            h2c->state.trailers = 2;
+        }
+
+        return ngx_http_v2_state_header_complete(h2c, pos, end);
+    }
+
     /* TODO Optimization: validate headers while parsing. */
     if (ngx_http_v2_validate_header(r, header) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
@@ -1889,6 +1937,9 @@ static u_char *
 ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
     u_char *end)
 {
+    ngx_int_t              rc;
+    ngx_connection_t      *fc;
+    ngx_http_request_t    *r;
     ngx_http_v2_stream_t  *stream;
 
     if (h2c->state.length) {
@@ -1908,7 +1959,7 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     stream = h2c->state.stream;
 
-    if (stream) {
+    if (stream && !h2c->state.trailers) {
         ngx_http_v2_run_request(stream->request);
     }
 
@@ -1918,6 +1969,39 @@ ngx_http_v2_state_header_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->state.pool = NULL;
     h2c->state.keep_pool = 0;
+
+    if (stream && h2c->state.trailers) {
+        if (h2c->state.trailers == 2) {
+            if (ngx_http_v2_terminate_stream(h2c, stream,
+                                             NGX_HTTP_V2_PROTOCOL_ERROR)
+                == NGX_ERROR)
+            {
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+
+        } else {
+            stream->in_closed = 1;
+            r = stream->request;
+            fc = r->connection;
+
+            if (!stream->skip_data
+                && !(r->reading_body && !r->request_body_no_buffering)
+                && !(r->headers_in.content_length_n < 0
+                     && !r->headers_in.chunked)
+                && r->request_body)
+            {
+                rc = ngx_http_v2_process_request_body(r, NULL, 0, 1, 0);
+
+                if (rc != NGX_OK && rc != NGX_AGAIN) {
+                    stream->skip_data = 1;
+                    ngx_http_finalize_request(r, rc);
+                }
+
+                ngx_http_run_posted_requests(fc);
+            }
+        }
+    }
 
     if (h2c->state.padding) {
         return ngx_http_v2_state_skip_padded(h2c, pos, end);
@@ -1985,6 +2069,14 @@ ngx_http_v2_handle_continuation(ngx_http_v2_connection_t *h2c, u_char *pos,
     }
 
     h2c->state.handler = handler;
+
+    if (handler == ngx_http_v2_state_header_complete
+        && h2c->state.length == 0
+        && (h2c->state.flags & NGX_HTTP_V2_END_HEADERS_FLAG))
+    {
+        return handler(h2c, pos, end);
+    }
+
     return pos;
 }
 
@@ -2628,6 +2720,7 @@ ngx_http_v2_state_complete(ngx_http_v2_connection_t *h2c, u_char *pos,
 
     h2c->state.stream = NULL;
     h2c->state.handler = ngx_http_v2_state_head;
+    h2c->state.trailers = 0;
 
     return pos;
 }
@@ -2703,7 +2796,7 @@ ngx_http_v2_state_headers_save(ngx_http_v2_connection_t *h2c, u_char *pos,
     ngx_http_request_t        *r;
     ngx_http_core_srv_conf_t  *cscf;
 
-    if (h2c->state.stream) {
+    if (h2c->state.stream && !h2c->state.trailers) {
         r = h2c->state.stream->request;
         rev = r->connection->read;
 
@@ -2914,6 +3007,7 @@ ngx_http_v2_send_rst_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
     ngx_uint_t status)
 {
     ngx_buf_t                *buf;
+    ngx_http_v2_node_t        *node;
     ngx_http_v2_out_frame_t  *frame;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
@@ -2932,6 +3026,14 @@ ngx_http_v2_send_rst_stream(ngx_http_v2_connection_t *h2c, ngx_uint_t sid,
     buf->last = ngx_http_v2_write_uint32(buf->last, status);
 
     ngx_http_v2_queue_blocked_frame(h2c, frame);
+
+    node = ngx_http_v2_get_node_by_id(h2c, sid, 0);
+
+    if (node && (status == NGX_HTTP_V2_REFUSED_STREAM
+                 || (node->stream && !node->stream->in_closed)))
+    {
+        node->rst_sent = 1;
+    }
 
     return NGX_OK;
 }
@@ -4542,7 +4644,7 @@ ngx_http_v2_read_client_request_body_handler(ngx_http_request_t *r)
 
     window = buf->end - buf->start;
 
-    if (h2c->state.stream == stream) {
+    if (h2c->state.stream == stream && !h2c->state.trailers) {
         window -= h2c->state.length;
     }
 
@@ -4638,7 +4740,7 @@ ngx_http_v2_read_unbuffered_request_body(ngx_http_request_t *r)
     window = buf->end - buf->start;
     h2c = stream->connection;
 
-    if (h2c->state.stream == stream) {
+    if (h2c->state.stream == stream && !h2c->state.trailers) {
         window -= h2c->state.length;
     }
 
