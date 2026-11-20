@@ -3324,6 +3324,7 @@ ngx_ssl_write(ngx_connection_t *c, u_char *data, size_t size)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_write: want read");
 
+        c->write->ready = 0;
         c->read->ready = 0;
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -3439,6 +3440,7 @@ ngx_ssl_write_early(ngx_connection_t *c, u_char *data, size_t size)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_write_early_data: want read");
 
+        c->write->ready = 0;
         c->read->ready = 0;
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -3619,6 +3621,7 @@ ngx_ssl_sendfile(ngx_connection_t *c, ngx_buf_t *file, size_t size)
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "SSL_sendfile: want read");
 
+        c->write->ready = 0;
         c->read->ready = 0;
 
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -3661,6 +3664,8 @@ ngx_ssl_read_handler(ngx_event_t *rev)
     c = rev->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL read handler");
+
+    c->write->ready = 1;
 
     c->write->handler(c->write);
 }
