@@ -84,6 +84,7 @@ typedef struct {
 
     unsigned                         incomplete:1;
     unsigned                         keep_pool:1;
+    unsigned                         trailers:2;
 
     /* HPACK */
     unsigned                         parse_name:1;
@@ -177,6 +178,7 @@ struct ngx_http_v2_node_s {
     ngx_http_v2_stream_t            *stream;
     ngx_http_priority_t              priority;
     ngx_uint_t                       priority_set; /* unsigned priority_set:1 */
+    unsigned                         rst_sent:1;
 };
 
 
