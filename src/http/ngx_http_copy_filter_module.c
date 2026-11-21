@@ -139,10 +139,10 @@ ngx_http_copy_filter(ngx_http_request_t *r, ngx_chain_t *in)
             ctx->thread_handler = ngx_http_copy_thread_handler;
         }
 #endif
+    }
 
-        if (in && in->buf && ngx_buf_size(in->buf)) {
-            r->request_output = 1;
-        }
+    if (in && in->buf && ngx_buf_size(in->buf)) {
+        r->request_output = 1;
     }
 
 #if (NGX_HAVE_FILE_AIO || NGX_THREADS)
