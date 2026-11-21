@@ -53,6 +53,10 @@ struct ngx_peer_connection_s {
     ngx_event_save_peer_session_pt   save_session;
 #endif
 
+#if (NGX_HAVE_SO_BINDTODEVICE || NGX_COMPAT)
+    ngx_str_t                        device;
+#endif
+
     ngx_addr_t                      *local;
 
     int                              type;

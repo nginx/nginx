@@ -60,6 +60,13 @@ static ngx_command_t  ngx_http_memcached_commands[] = {
       0,
       NULL },
 
+    { ngx_string("memcached_bind_device"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_http_upstream_bind_device_set_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_memcached_loc_conf_t, upstream.device),
+      NULL },
+
     { ngx_string("memcached_bind"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
       ngx_http_upstream_bind_set_slot,
@@ -609,6 +616,7 @@ ngx_http_memcached_create_loc_conf(ngx_conf_t *cf)
      *     conf->upstream.temp_path = NULL;
      */
 
+    conf->upstream.device = NGX_CONF_UNSET_PTR;
     conf->upstream.local = NGX_CONF_UNSET_PTR;
     conf->upstream.socket_keepalive = NGX_CONF_UNSET;
     conf->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
@@ -646,6 +654,9 @@ ngx_http_memcached_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_memcached_loc_conf_t *prev = parent;
     ngx_http_memcached_loc_conf_t *conf = child;
+
+    ngx_conf_merge_ptr_value(conf->upstream.device,
+                              prev->upstream.device, NULL);
 
     ngx_conf_merge_ptr_value(conf->upstream.local,
                               prev->upstream.local, NULL);
