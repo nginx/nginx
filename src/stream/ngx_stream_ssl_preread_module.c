@@ -423,12 +423,11 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
 
             size = (p[1] << 8) + p[2];
 
-            if (ext < 3 + size) {
+            if (size == 0 || ext != 3 + size) {
                 ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                                "ssl preread: SNI format error");
                 return NGX_DECLINED;
             }
-            ext -= 3 + size;
 
             ctx->host.data = ngx_pnalloc(ctx->pool, size);
             if (ctx->host.data == NULL) {
@@ -444,7 +443,7 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
 
             state = sw_ext;
             dst = NULL;
-            size = ext;
+            size = 0;
             break;
 
         case sw_alpn_len:
