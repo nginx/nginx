@@ -27,6 +27,7 @@ typedef struct {
     ngx_log_t      *log;
     ngx_pool_t     *pool;
     ngx_uint_t      state;
+    unsigned        supver:1;
 } ngx_stream_ssl_preread_ctx_t;
 
 
@@ -233,7 +234,8 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         sw_alpn_len,        /* ALPN length */
         sw_alpn_proto_len,  /* ALPN protocol_name length */
         sw_alpn_proto_data, /* ALPN protocol_name */
-        sw_supver_len       /* supported_versions length */
+        sw_supver_len,      /* supported_versions length */
+        sw_supver           /* supported_versions entry */
     } state;
 
     ngx_log_debug2(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
@@ -404,6 +406,16 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
 
             if (p[0] == 0 && p[1] == 43) {
                 /* supported_versions extension */
+
+                if (ctx->supver) {
+                    ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                                   "ssl preread: "
+                                   "duplicate supported_versions");
+                    return NGX_DECLINED;
+                }
+
+                ctx->supver = 1;
+
                 state = sw_supver_len;
                 dst = p;
                 size = 1;
@@ -521,7 +533,7 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
         case sw_supver_len:
             size = p[0];
 
-            if (ext < 3 || ext != 1 + size) {
+            if (ext < 3 || ext != 1 + size || (size & 1)) {
                 ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                                "ssl preread: supported_versions format error");
                 return NGX_DECLINED;
@@ -530,12 +542,39 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
                            "ssl preread: supported_versions");
 
-            /* set TLSv1.3 */
-            ctx->version[0] = 3;
-            ctx->version[1] = 4;
+            /* supported_versions supersedes the legacy client_version */
+            ctx->version[0] = 0;
+            ctx->version[1] = 0;
+            ext = size;
+
+            state = sw_supver;
+            dst = p;
+            size = 2;
+            break;
+
+        case sw_supver:
+            if (p[0] == 3 && p[1] <= 4 && p[1] >= ctx->version[1]) {
+                ctx->version[0] = p[0];
+                ctx->version[1] = p[1];
+            }
+
+            ext -= 2;
+
+            if (ext) {
+                dst = p;
+                size = 2;
+                break;
+            }
+
+            if (ctx->version[0] == 0) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: no known supported version");
+                return NGX_DECLINED;
+            }
 
             state = sw_ext;
             dst = NULL;
+            size = 0;
             break;
         }
 
