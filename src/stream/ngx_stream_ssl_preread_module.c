@@ -308,9 +308,16 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             break;
 
         case sw_cs_len:
+            size = (p[0] << 8) + p[1];
+
+            if (size == 0 || (size & 1)) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: cipher_suites length error");
+                return NGX_DECLINED;
+            }
+
             state = sw_cs;
             dst = NULL;
-            size = (p[0] << 8) + p[1];
             break;
 
         case sw_cs:
@@ -320,9 +327,16 @@ ngx_stream_ssl_preread_parse_record(ngx_stream_ssl_preread_ctx_t *ctx,
             break;
 
         case sw_cm_len:
+            size = p[0];
+
+            if (size == 0) {
+                ngx_log_debug0(NGX_LOG_DEBUG_STREAM, ctx->log, 0,
+                               "ssl preread: empty compression_methods");
+                return NGX_DECLINED;
+            }
+
             state = sw_cm;
             dst = NULL;
-            size = p[0];
             break;
 
         case sw_cm:
