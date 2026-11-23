@@ -166,6 +166,10 @@ ngx_http_v3_shutdown(ngx_connection_t *c)
     if (!h3c->goaway) {
         h3c->goaway = 1;
 
+        if (h3c->keepalive.timer_set) {
+            ngx_del_timer(&h3c->keepalive);
+        }
+
         if (!h3c->hq) {
             (void) ngx_http_v3_send_goaway(c, h3c->next_request_id);
         }
@@ -442,6 +446,12 @@ ngx_http_v3_cleanup_connection(void *data)
     h3c = ngx_http_v3_get_session(c);
 
     if (--h3c->nrequests == 0) {
+        if (h3c->goaway) {
+            ngx_http_v3_shutdown_connection(c, NGX_HTTP_V3_ERR_NO_ERROR,
+                                            "connection shutdown");
+            return;
+        }
+
         clcf = ngx_http_v3_get_module_loc_conf(c, ngx_http_core_module);
         ngx_add_timer(&h3c->keepalive, clcf->keepalive_timeout);
     }
