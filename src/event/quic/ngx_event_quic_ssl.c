@@ -694,6 +694,7 @@ static ngx_int_t
 ngx_quic_handshake(ngx_connection_t *c)
 {
     int                     n, sslerr;
+    ngx_uint_t              reusable;
     ngx_ssl_conn_t         *ssl_conn;
     ngx_quic_frame_t       *frame;
     ngx_quic_connection_t  *qc;
@@ -702,7 +703,18 @@ ngx_quic_handshake(ngx_connection_t *c)
 
     ssl_conn = c->ssl->connection;
 
+    /*
+     * SSL callbacks may open connections, for example to an OCSP
+     * responder, which may drain reusable connections; make sure
+     * this connection is not closed while handshake is in progress
+     */
+
+    reusable = c->reusable;
+    ngx_reusable_connection(c, 0);
+
     n = SSL_do_handshake(ssl_conn);
+
+    ngx_reusable_connection(c, reusable);
 
     ngx_log_debug1(NGX_LOG_DEBUG_EVENT, c->log, 0, "SSL_do_handshake: %d", n);
 
