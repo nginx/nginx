@@ -3713,6 +3713,7 @@ static void
 ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
     ngx_uint_t from_upstream, ngx_uint_t do_write)
 {
+    char                      *action;
     size_t                     size;
     ssize_t                    n;
     ngx_buf_t                 *b;
@@ -3782,7 +3783,12 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
             if (size && dst->write->ready) {
 
+                action = dst->log->action;
+                dst->log->action = from_upstream
+                                   ? "proxying upgraded connection to client"
+                                   : "proxying upgraded connection to upstream";
                 n = dst->send(dst, b->pos, size);
+                dst->log->action = action;
 
                 if (n == NGX_ERROR) {
                     ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
@@ -3804,7 +3810,12 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
         if (size && src->read->ready) {
 
+            action = src->log->action;
+            src->log->action = from_upstream
+                               ? "proxying upgraded connection from upstream"
+                               : "proxying upgraded connection from client";
             n = src->recv(src, b->last, size);
+            src->log->action = action;
 
             if (n == NGX_AGAIN || n == 0) {
                 break;
