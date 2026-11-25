@@ -16,6 +16,7 @@
 typedef struct {
     ngx_addr_t                  *addr;
     ngx_stream_complex_value_t  *addr_value;
+    ngx_uint_t                   keep_port;
 } ngx_stream_pass_srv_conf_t;
 
 
@@ -30,7 +31,7 @@ static char *ngx_stream_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_command_t  ngx_stream_pass_commands[] = {
 
     { ngx_string("pass"),
-      NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
+      NGX_STREAM_SRV_CONF|NGX_CONF_TAKE12,
       ngx_stream_pass,
       NGX_STREAM_SRV_CONF_OFFSET,
       0,
@@ -74,6 +75,7 @@ ngx_stream_pass_handler(ngx_stream_session_t *s)
     ngx_url_t                    u;
     ngx_str_t                    url;
     ngx_addr_t                  *addr;
+    ngx_int_t                    port;
     ngx_uint_t                   i;
     ngx_listening_t             *ls;
     ngx_connection_t            *c;
@@ -147,6 +149,15 @@ ngx_stream_pass_handler(ngx_stream_session_t *s)
             continue;
         }
 
+        port = 0;
+
+        if (pscf->keep_port) {
+            port = ngx_connection_local_port(c);
+            if (port == NGX_ERROR) {
+                goto failed;
+            }
+        }
+
         c->listening = &ls[i];
 
         c->data = NULL;
@@ -158,6 +169,7 @@ ngx_stream_pass_handler(ngx_stream_session_t *s)
 
         c->local_sockaddr = addr->sockaddr;
         c->local_socklen = addr->socklen;
+        c->local_port_override = (in_port_t) port;
 
         c->listening->handler(c);
 
@@ -256,6 +268,7 @@ ngx_stream_pass_create_srv_conf(ngx_conf_t *cf)
      *
      *     conf->addr = NULL;
      *     conf->addr_value = NULL;
+     *     conf->keep_port = 0;
      */
 
     return conf;
@@ -282,6 +295,16 @@ ngx_stream_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     cscf->handler = ngx_stream_pass_handler;
 
     value = cf->args->elts;
+
+    if (cf->args->nelts == 3) {
+        if (ngx_strcmp(value[2].data, "keep_port") != 0) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "invalid parameter \"%V\"", &value[2]);
+            return NGX_CONF_ERROR;
+        }
+
+        pscf->keep_port = 1;
+    }
 
     url = &value[1];
 
