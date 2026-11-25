@@ -3642,6 +3642,7 @@ ngx_http_upstream_upgrade(ngx_http_request_t *r, ngx_http_upstream_t *u)
     }
 
     r->keepalive = 0;
+    r->upgraded_bytes_received = r->header_in->last - r->header_in->pos;
     c->log->action = "proxying upgraded connection";
 
     u->read_event_handler = ngx_http_upstream_upgraded_read_upstream;
@@ -3816,6 +3817,9 @@ ngx_http_upstream_process_upgraded(ngx_http_request_t *r,
 
                 if (from_upstream) {
                     u->state->bytes_received += n;
+
+                } else {
+                    r->upgraded_bytes_received += n;
                 }
 
                 continue;

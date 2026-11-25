@@ -288,6 +288,9 @@ static ngx_http_variable_t  ngx_http_core_variables[] = {
     { ngx_string("bytes_sent"), NULL, ngx_http_variable_bytes_sent,
       0, 0, 0 },
 
+    { ngx_string("bytes_received"), NULL, ngx_http_variable_request_length,
+      1, NGX_HTTP_VAR_NOCACHEABLE, 0 },
+
     { ngx_string("body_bytes_sent"), NULL, ngx_http_variable_body_bytes_sent,
       0, 0, 0 },
 
@@ -2248,6 +2251,7 @@ static ngx_int_t
 ngx_http_variable_request_length(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
+    off_t    length;
     u_char  *p;
 
     p = ngx_pnalloc(r->pool, NGX_OFF_T_LEN);
@@ -2255,7 +2259,13 @@ ngx_http_variable_request_length(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    v->len = ngx_sprintf(p, "%O", r->request_length) - p;
+    length = r->request_length;
+
+    if (data) {
+        length += r->upgraded_bytes_received;
+    }
+
+    v->len = ngx_sprintf(p, "%O", length) - p;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
