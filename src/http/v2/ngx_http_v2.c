@@ -2508,7 +2508,10 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
                       "client sent WINDOW_UPDATE frame "
                       "with incorrect window increment 0");
 
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
+        if (h2c->state.sid == 0) {
+            return ngx_http_v2_connection_error(h2c,
+                                                NGX_HTTP_V2_PROTOCOL_ERROR);
+        }
     }
 
     if (h2c->state.sid) {
@@ -2522,6 +2525,18 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
         }
 
         stream = node->stream;
+
+        if (window == 0) {
+            if (ngx_http_v2_terminate_stream(h2c, stream,
+                                             NGX_HTTP_V2_PROTOCOL_ERROR)
+                == NGX_ERROR)
+            {
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+
+            return ngx_http_v2_state_complete(h2c, pos, end);
+        }
 
         if (window > (size_t) (NGX_HTTP_V2_MAX_WINDOW - stream->send_window)) {
 
