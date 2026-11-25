@@ -263,6 +263,7 @@ struct ngx_quic_connection_s {
     ngx_msec_t                        avg_rtt;
     ngx_msec_t                        min_rtt;
     ngx_msec_t                        rttvar;
+    uint64_t                          rtt_start_pnum;
 
     ngx_uint_t                        pto_count;
 

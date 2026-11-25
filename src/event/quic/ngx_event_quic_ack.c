@@ -154,7 +154,10 @@ ngx_quic_handle_ack_frame(ngx_connection_t *c, ngx_quic_header_t *pkt,
          *  - at least one of the newly acknowledged packets was ack-eliciting.
          */
 
-        if (send_time.max_pn != NGX_TIMER_INFINITE) {
+        if (send_time.max_pn != NGX_TIMER_INFINITE
+            && (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION
+                || max >= qc->rtt_start_pnum))
+        {
             ngx_quic_rtt_sample(c, ack, pkt->level, send_time.max_pn);
         }
     }
