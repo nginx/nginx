@@ -10,6 +10,9 @@
 #include <nginx.h>
 
 
+#define NGX_WORKER_PROCESSES_AUTO  -2
+
+
 static void ngx_show_version_info(void);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static void ngx_cleanup_environment(void *data);
@@ -1198,6 +1201,22 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
     ngx_conf_init_msec_value(ccf->shutdown_timeout, 0);
 
+    if (ccf->worker_processes == NGX_WORKER_PROCESSES_AUTO) {
+
+#if (NGX_HAVE_CPU_AFFINITY)
+
+        /*
+         * Without "worker_cpu_affinity" nothing widens the inherited cpu
+         * mask, so the workers are limited to it.
+         */
+
+        ccf->worker_processes = ccf->cpu_affinity ? ngx_ncpu
+                                                  : ngx_ncpu_inherited;
+#else
+        ccf->worker_processes = ngx_ncpu;
+#endif
+    }
+
     ngx_conf_init_value(ccf->worker_processes, 1);
     ngx_conf_init_value(ccf->debug_points, 0);
 
@@ -1657,7 +1676,7 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "auto") == 0) {
-        ccf->worker_processes = ngx_ncpu;
+        ccf->worker_processes = NGX_WORKER_PROCESSES_AUTO;
         return NGX_CONF_OK;
     }
 

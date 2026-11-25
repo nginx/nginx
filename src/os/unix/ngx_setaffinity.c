@@ -11,6 +11,7 @@
 #if (NGX_HAVE_CPU_AFFINITY)
 
 ngx_cpuset_t  ngx_cpu_allowed;
+ngx_int_t     ngx_ncpu_inherited;
 
 #endif
 
@@ -58,6 +59,34 @@ ngx_get_cpu_allowed(ngx_cpuset_t *mask, ngx_log_t *log)
     }
 
     return CPU_COUNT(mask);
+
+#else
+
+    return 0;
+
+#endif
+}
+
+
+/*
+ * The number of CPUs in the process's own mask, which may be narrower
+ * than its cpuset, e.g. as set by "cpuset -l".
+ */
+
+ngx_int_t
+ngx_get_cpu_inherited(void)
+{
+#if (NGX_HAVE_CPUSET_GETAFFINITY && NGX_HAVE_CPU_COUNT)
+    cpuset_t  mask;
+
+    if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, -1,
+                           sizeof(cpuset_t), &mask)
+        == -1)
+    {
+        return 0;
+    }
+
+    return CPU_COUNT(&mask);
 
 #else
 
@@ -124,6 +153,30 @@ ngx_get_cpu_allowed(ngx_cpuset_t *mask, ngx_log_t *log)
     }
 
     return CPU_COUNT(mask);
+
+#else
+
+    return 0;
+
+#endif
+}
+
+
+/*
+ * The number of CPUs in the inherited mask, e.g. as set by taskset(1).
+ */
+
+ngx_int_t
+ngx_get_cpu_inherited(void)
+{
+#if (NGX_HAVE_SCHED_GETAFFINITY && NGX_HAVE_CPU_COUNT)
+    cpu_set_t  mask;
+
+    if (sched_getaffinity(0, sizeof(cpu_set_t), &mask) == -1) {
+        return 0;
+    }
+
+    return CPU_COUNT(&mask);
 
 #else
 

@@ -72,6 +72,8 @@ ngx_os_init(ngx_log_t *log)
     }
 
 #if (NGX_HAVE_CPU_AFFINITY)
+    ngx_ncpu_inherited = ngx_get_cpu_inherited();
+
     ncpu = ngx_get_cpu_allowed(&ngx_cpu_allowed, log);
 
     if (ncpu > 0) {
@@ -82,6 +84,10 @@ ngx_os_init(ngx_log_t *log)
         for (n = 0; n < (ngx_uint_t) ngx_min(ngx_ncpu, CPU_SETSIZE); n++) {
             CPU_SET(n, &ngx_cpu_allowed);
         }
+    }
+
+    if (ngx_ncpu_inherited < 1 || ngx_ncpu_inherited > ngx_ncpu) {
+        ngx_ncpu_inherited = ngx_ncpu;
     }
 #endif
 
