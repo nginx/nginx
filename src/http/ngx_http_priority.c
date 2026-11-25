@@ -44,13 +44,49 @@ static ngx_int_t ngx_http_priority_parse_value(u_char **pos, u_char *end,
     ngx_int_t *type, ngx_int_t *value);
 static ngx_int_t ngx_http_priority_parse_inner_list(u_char **pos, u_char *end);
 static ngx_int_t ngx_http_priority_parse_bare_item(u_char **pos, u_char *end,
-    ngx_int_t *type, ngx_int_t *value);
-static ngx_int_t ngx_http_priority_parse_params(u_char **pos, u_char *end);
+    ngx_int_t *type, ngx_int_t *value, ngx_uint_t extended);
+static ngx_int_t ngx_http_priority_parse_params(u_char **pos, u_char *end,
+    ngx_uint_t extended);
+static ngx_int_t ngx_http_sf_parse_date(u_char **pos, u_char *end);
+static ngx_int_t ngx_http_sf_parse_display_string(u_char **pos, u_char *end);
 static ngx_int_t ngx_http_priority_parse_number(u_char **pos, u_char *end,
     ngx_int_t *type, ngx_int_t *value);
 static ngx_int_t ngx_http_priority_parse_string(u_char **pos, u_char *end);
 static ngx_int_t ngx_http_priority_parse_token(u_char **pos, u_char *end);
-static ngx_int_t ngx_http_priority_parse_binary(u_char **pos, u_char *end);
+static ngx_int_t ngx_http_priority_parse_binary(u_char **pos, u_char *end,
+    ngx_uint_t extended);
+
+
+/* RFC 9651, Section 4.2.3: Item with a Boolean bare item. */
+
+ngx_int_t
+ngx_http_parse_sf_boolean(ngx_str_t *field)
+{
+    u_char     *last, *end;
+    ngx_int_t   type, value;
+
+    last = field->data;
+    end = last + field->len;
+
+    while (last < end && *last == ' ') {
+        last++;
+    }
+
+    while (last < end && end[-1] == ' ') {
+        end--;
+    }
+
+    if (last == end || *last != '?'
+        || ngx_http_priority_parse_bare_item(&last, end, &type, &value, 1)
+           != NGX_OK
+        || ngx_http_priority_parse_params(&last, end, 1) != NGX_OK
+        || last != end)
+    {
+        return NGX_ERROR;
+    }
+
+    return value;
+}
 
 
 void
@@ -203,7 +239,7 @@ ngx_http_priority_parse_member(u_char **pos, u_char *end, ngx_str_t *key,
         *type = NGX_HTTP_PRIORITY_BOOLEAN;
         *value = 1;
 
-        if (ngx_http_priority_parse_params(&last, end) != NGX_OK) {
+        if (ngx_http_priority_parse_params(&last, end, 0) != NGX_OK) {
             return NGX_ERROR;
         }
     }
@@ -233,14 +269,14 @@ ngx_http_priority_parse_value(u_char **pos, u_char *end, ngx_int_t *type,
         }
 
     } else {
-        if (ngx_http_priority_parse_bare_item(&last, end, type, value)
+        if (ngx_http_priority_parse_bare_item(&last, end, type, value, 0)
             != NGX_OK)
         {
             return NGX_ERROR;
         }
     }
 
-    if (ngx_http_priority_parse_params(&last, end) != NGX_OK) {
+    if (ngx_http_priority_parse_params(&last, end, 0) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -293,7 +329,7 @@ ngx_http_priority_parse_key(u_char **pos, u_char *end, ngx_str_t *key)
 /* RFC 8941, Section 4.2.3.2 */
 
 static ngx_int_t
-ngx_http_priority_parse_params(u_char **pos, u_char *end)
+ngx_http_priority_parse_params(u_char **pos, u_char *end, ngx_uint_t extended)
 {
     u_char     *last;
     ngx_str_t   key;
@@ -323,7 +359,8 @@ ngx_http_priority_parse_params(u_char **pos, u_char *end)
         if (last < end && *last == '=') {
             last++;
 
-            if (ngx_http_priority_parse_bare_item(&last, end, &type, &value)
+            if (ngx_http_priority_parse_bare_item(&last, end, &type, &value,
+                                                 extended)
                 != NGX_OK)
             {
                 return NGX_ERROR;
@@ -332,6 +369,114 @@ ngx_http_priority_parse_params(u_char **pos, u_char *end)
     }
 
     *pos = last;
+
+    return NGX_OK;
+}
+
+
+/* RFC 9651, Section 4.2.9: Date */
+
+static ngx_int_t
+ngx_http_sf_parse_date(u_char **pos, u_char *end)
+{
+    u_char  *last, *start;
+
+    last = *pos + 1;
+
+    if (last < end && *last == '-') {
+        last++;
+    }
+
+    start = last;
+
+    while (last < end && *last >= '0' && *last <= '9') {
+        last++;
+    }
+
+    if (last == start || last - start > 15) {
+        return NGX_ERROR;
+    }
+
+    *pos = last;
+
+    return NGX_OK;
+}
+
+
+/* RFC 9651, Section 4.2.10: Display String */
+
+static ngx_int_t
+ngx_http_sf_parse_display_string(u_char **pos, u_char *end)
+{
+    u_char     *last, *p, *start, *decoded, ch;
+    uint32_t    codepoint;
+    ngx_int_t   byte;
+    u_char      text[NGX_HTTP_PRIORITY_MAX_STRING];
+
+    last = *pos + 1;
+
+    if (last == end || *last++ != '"') {
+        return NGX_ERROR;
+    }
+
+    decoded = text;
+
+    while (last < end && *last != '"') {
+        ch = *last++;
+
+        if (decoded == text + sizeof(text) || ch < 0x20 || ch >= 0x7f) {
+            return NGX_ERROR;
+        }
+
+        if (ch == '%') {
+            if (end - last < 2
+                || (last[0] >= 'A' && last[0] <= 'F')
+                || (last[1] >= 'A' && last[1] <= 'F'))
+            {
+                return NGX_ERROR;
+            }
+
+            byte = ngx_hextoi(last, 2);
+            if (byte == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+
+            ch = (u_char) byte;
+            last += 2;
+        }
+
+        *decoded++ = ch;
+    }
+
+    if (last == end) {
+        return NGX_ERROR;
+    }
+
+    p = text;
+
+    while (p < decoded) {
+        if (*p < 0x80) {
+            p++;
+            continue;
+        }
+
+        start = p;
+        codepoint = ngx_utf8_decode(&p, decoded - p);
+
+        if (codepoint > 0x10ffff
+            || (codepoint >= 0xd800 && codepoint <= 0xdfff))
+        {
+            return NGX_ERROR;
+        }
+
+        while (++start < p) {
+            if (*start > 0xbf) {
+                return NGX_ERROR;
+            }
+        }
+    }
+
+    *pos = last + 1;
 
     return NGX_OK;
 }
@@ -364,13 +509,13 @@ ngx_http_priority_parse_inner_list(u_char **pos, u_char *end)
             return NGX_ERROR;
         }
 
-        if (ngx_http_priority_parse_bare_item(&last, end, &type, &value)
+        if (ngx_http_priority_parse_bare_item(&last, end, &type, &value, 0)
             != NGX_OK)
         {
             return NGX_ERROR;
         }
 
-        if (ngx_http_priority_parse_params(&last, end) != NGX_OK) {
+        if (ngx_http_priority_parse_params(&last, end, 0) != NGX_OK) {
             return NGX_ERROR;
         }
 
@@ -389,7 +534,7 @@ ngx_http_priority_parse_inner_list(u_char **pos, u_char *end)
 
 static ngx_int_t
 ngx_http_priority_parse_bare_item(u_char **pos, u_char *end, ngx_int_t *type,
-    ngx_int_t *value)
+    ngx_int_t *value, ngx_uint_t extended)
 {
     u_char  ch;
 
@@ -424,7 +569,15 @@ ngx_http_priority_parse_bare_item(u_char **pos, u_char *end, ngx_int_t *type,
     }
 
     if (ch == ':') {
-        return ngx_http_priority_parse_binary(pos, end);
+        return ngx_http_priority_parse_binary(pos, end, extended);
+    }
+
+    if (extended && ch == '@') {
+        return ngx_http_sf_parse_date(pos, end);
+    }
+
+    if (extended && ch == '%') {
+        return ngx_http_sf_parse_display_string(pos, end);
     }
 
     if (((ch | 0x20) >= 'a' && (ch | 0x20) <= 'z') || ch == '*') {
@@ -623,13 +776,14 @@ ngx_http_priority_parse_token(u_char **pos, u_char *end)
 /* RFC 8941, Section 4.2.7: Byte Sequence */
 
 static ngx_int_t
-ngx_http_priority_parse_binary(u_char **pos, u_char *end)
+ngx_http_priority_parse_binary(u_char **pos, u_char *end, ngx_uint_t extended)
 {
     u_char      *last, ch;
-    ngx_uint_t   len;
+    ngx_uint_t   len, padding;
 
     last = *pos + 1;
     len = 0;
+    padding = 0;
 
     while (last < end) {
         ch = *last++;
@@ -638,7 +792,7 @@ ngx_http_priority_parse_binary(u_char **pos, u_char *end)
 
             /* the content has to decode: 4n + 1 characters cannot */
 
-            if (len % 4 == 1) {
+            if (len % 4 == 1 || padding > (4 - len % 4) % 4) {
                 return NGX_ERROR;
             }
 
@@ -646,9 +800,17 @@ ngx_http_priority_parse_binary(u_char **pos, u_char *end)
             return NGX_OK;
         }
 
-        if (!(((ch | 0x20) >= 'a' && (ch | 0x20) <= 'z')
-              || (ch >= '0' && ch <= '9')
-              || ch == '+' || ch == '/' || ch == '='))
+        if (extended && ch == '=') {
+            if (++padding > 2) {
+                return NGX_ERROR;
+            }
+
+            continue;
+        }
+
+        if (padding || !(((ch | 0x20) >= 'a' && (ch | 0x20) <= 'z')
+                         || (ch >= '0' && ch <= '9')
+                         || ch == '+' || ch == '/' || ch == '='))
         {
             return NGX_ERROR;
         }

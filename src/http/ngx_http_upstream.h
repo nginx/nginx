@@ -55,6 +55,7 @@
 #define NGX_HTTP_UPSTREAM_IGN_XA_BUFFERING   0x00000080
 #define NGX_HTTP_UPSTREAM_IGN_XA_CHARSET     0x00000100
 #define NGX_HTTP_UPSTREAM_IGN_VARY           0x00000200
+#define NGX_HTTP_UPSTREAM_IGN_INCREMENTAL    0x00000400
 
 
 #define NGX_HTTP_UPSTREAM_NOTIFY_HEADER      0x1
@@ -305,6 +306,7 @@ typedef struct {
     ngx_table_elt_t                 *www_authenticate;
     ngx_table_elt_t                 *transfer_encoding;
     ngx_table_elt_t                 *vary;
+    ngx_table_elt_t                 *incremental;
 
     ngx_table_elt_t                 *cache_control;
     ngx_table_elt_t                 *set_cookie;
