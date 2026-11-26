@@ -13,6 +13,10 @@ NGX_ICONS="$NGX_WIN32_ICONS"
 SELECT_SRCS=$WIN32_SELECT_SRCS
 POLL_SRCS=$WIN32_POLL_SRCS
 
+# ngx_time.c includes ngx_times.c with the private Win32 clock type.
+CORE_DEPS="$CORE_DEPS src/core/ngx_times.c"
+CORE_SRCS=`echo "$CORE_SRCS" | sed -e 's@src/core/ngx_times\.c@@'`
+
 ngx_pic_opt=
 ngx_binext=".exe"
 
