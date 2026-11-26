@@ -1,0 +1,22 @@
+Upstream: the "smooth" parameter of the "least_time" directive.
+
+Average times are updated with a fixed weight of 0.05 per response.
+With a finer "bucket", the resulting noise becomes visible: with mixed
+fast and slow requests, a few slow responses in a row are enough to
+make a server look slower than the others, and least_time can perform
+worse than least_conn.
+
+The new "smooth" parameter sets a time over which averages are
+smoothed instead.  Each response is given the weight of the fraction
+of this time elapsed since the previous one, but not less than 0.01,
+and the average is replaced if the time has fully elapsed.  Busy
+servers thus get a stable average, while averages of servers with
+few requests still follow changes within about the specified time:
+
+    upstream u {
+        least_time header bucket=5ms smooth=3s;
+        server a;
+        server b;
+    }
+
+By default, the fixed weight of 0.05 is used as before.

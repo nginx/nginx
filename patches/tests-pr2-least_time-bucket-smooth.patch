@@ -1,0 +1,148 @@
+diff --git a/stream_upstream_least_time.t b/stream_upstream_least_time.t
+index 7874db7..0bf3084 100644
+--- a/stream_upstream_least_time.t
++++ b/stream_upstream_least_time.t
+@@ -99,6 +99,18 @@ stream {
+         server 127.0.0.1:8082;
+     }
+ 
++    upstream u12 {
++        least_time last_byte bucket=5s;
++        server 127.0.0.1:8081;
++        server 127.0.0.1:8082;
++    }
++
++    upstream u13 {
++        least_time last_byte smooth=10s;
++        server 127.0.0.1:8081;
++        server 127.0.0.1:8082;
++    }
++
+     server {
+         listen      127.0.0.1:8085;
+         proxy_pass  u;
+@@ -153,6 +165,16 @@ stream {
+         listen      127.0.0.1:8096;
+         proxy_pass  u11;
+     }
++
++    server {
++        listen      127.0.0.1:8097;
++        proxy_pass  u12;
++    }
++
++    server {
++        listen      127.0.0.1:8098;
++        proxy_pass  u13;
++    }
+ }
+ 
+ http {
+@@ -193,7 +215,7 @@ $t->write_file('index.html', '0123456789' x 204);
+ 
+ $t->run_daemon(\&http_daemon, port(8083));
+ $t->run_daemon(\&http_daemon, port(8084));
+-$t->try_run('no least_time')->plan(13);
++$t->try_run('no least_time')->plan(15);
+ 
+ $t->waitforsocket('127.0.0.1:' . port(8083));
+ $t->waitforsocket('127.0.0.1:' . port(8084));
+@@ -265,6 +287,31 @@ http_end $_ for @s;
+ is(many('/', 10, "127.0.0.1:$p9"), "$p1: 10", 'greater last byte time');
+ 
+ 
++# last byte times within the same bucket are considered equal,
++# so the slower peer is still selected
++
++my $p17 = port(8097);
++
++@s = map {
++	http_get('/?r=1', start => 1, socket => getconn("127.0.0.1:$p17"))
++} (1 .. 6);
++http_end $_ for @s;
++
++like(many('/', 10, "127.0.0.1:$p17"), qr/$p1: [1-9], $p2: [1-9]/, 'bucket');
++
++
++# smoothed last byte time, faster peer wins
++
++my $p18 = port(8098);
++
++@s = map {
++	http_get('/?r=1', start => 1, socket => getconn("127.0.0.1:$p18"))
++} (1 .. 6);
++http_end $_ for @s;
++
++is(many('/', 10, "127.0.0.1:$p18"), "$p2: 10", 'smooth');
++
++
+ SKIP: {
+ skip 'unsafe on VM', 2 unless $ENV{TEST_NGINX_UNSAFE};
+ 
+diff --git a/upstream_least_time.t b/upstream_least_time.t
+index 86970a7..889fbc3 100644
+--- a/upstream_least_time.t
++++ b/upstream_least_time.t
+@@ -93,6 +93,16 @@ http {
+         server 127.0.0.1:8081;
+         server 127.0.0.1:8082;
+     }
++    upstream u11 {
++        least_time last_byte bucket=5s;
++        server 127.0.0.1:8081;
++        server 127.0.0.1:8082;
++    }
++    upstream u12 {
++        least_time last_byte smooth=10s;
++        server 127.0.0.1:8081;
++        server 127.0.0.1:8082;
++    }
+ 
+     map $server_port:$arg_r $map_rate {
+         %%PORT_8081%%:1    500;
+@@ -136,6 +146,12 @@ http {
+         location /u10/ {
+             proxy_pass http://u10/;
+         }
++        location /u11/ {
++            proxy_pass http://u11/;
++        }
++        location /u12/ {
++            proxy_pass http://u12/;
++        }
+     }
+ 
+     server {
+@@ -164,7 +180,7 @@ EOF
+ $t->write_file('index.html', '0123456789' x 204);
+ 
+ $t->run_daemon(\&http_daemon, port(8083));
+-$t->try_run('no least_time')->plan(12);
++$t->try_run('no least_time')->plan(14);
+ 
+ $t->waitforsocket('127.0.0.1:' . port(8083));
+ 
+@@ -226,6 +242,23 @@ http_end $_ for @s;
+ is(many('/u4/', 10), "$p1: 10", 'greater response time');
+ 
+ 
++# response times within the same bucket are considered equal,
++# so the slower peer is still selected
++
++@s = map { http_get('/u11/?r=1', start => 1) } (1 .. 6);
++http_end $_ for @s;
++
++like(many('/u11/', 10), qr/$p1: [1-9], $p2: [1-9]/, 'bucket');
++
++
++# smoothed response time, faster peer wins
++
++@s = map { http_get('/u12/?r=1', start => 1) } (1 .. 6);
++http_end $_ for @s;
++
++is(many('/u12/', 10), "$p2: 10", 'smooth');
++
++
+ SKIP: {
+ skip 'unsafe on VM', 2 unless $ENV{TEST_NGINX_UNSAFE};
+ 

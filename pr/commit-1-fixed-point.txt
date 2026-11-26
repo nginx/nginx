@@ -1,0 +1,15 @@
+Upstream: fixed rounding of least_time average response times.
+
+Average times used by the least_time balancer were kept in whole
+milliseconds and updated as avg = 0.5 + v * 0.05 + avg * 0.95, then
+truncated.  A sample changed the average only if it differed from it
+by at least 10ms, so the average could stay anywhere within 10ms of
+the actual time.  In particular, the average of a server responding
+in less than 10ms could only grow, on occasional slow responses, and
+never decreased again: such averages converged to about 10ms
+regardless of the actual response time.
+
+Averages are now kept in 1/64ms units and converted back to
+milliseconds when computing the estimated time, before the 5000ms
+limit and the 20ms clustering are applied.  Values are limited to
+NGX_MAX_INT32_VALUE to avoid overflow on 32-bit platforms.

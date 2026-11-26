@@ -1,0 +1,114 @@
+diff --git a/xml/en/docs/http/ngx_http_upstream_module.xml b/xml/en/docs/http/ngx_http_upstream_module.xml
+index 034712d..7ca169b 100644
+--- a/xml/en/docs/http/ngx_http_upstream_module.xml
++++ b/xml/en/docs/http/ngx_http_upstream_module.xml
+@@ -10,7 +10,7 @@
+ <module name="Module ngx_http_upstream_module"
+         link="/en/docs/http/ngx_http_upstream_module.html"
+         lang="en"
+-        rev="96">
++        rev="97">
+ 
+ <section id="summary">
+ 
+@@ -827,7 +827,9 @@ weighted round-robin balancing method.
+ <syntax>
+     <literal>header</literal> |
+     <literal>last_byte</literal>
+-    [<literal>inflight</literal>]</syntax>
++    [<literal>inflight</literal>]
++    [<literal>bucket</literal>=<value>time</value>]
++    [<literal>smooth</literal>=<value>time</value>]</syntax>
+ <default/>
+ <context>upstream</context>
+ <appeared-in>1.7.10</appeared-in>
+@@ -854,6 +856,32 @@ Prior to version 1.11.6, incomplete requests were taken into account by default.
+ </note>
+ </para>
+ 
++<para>
++The <literal>bucket</literal> parameter (1.31.12) sets the precision with which
++average times are compared:
++averages are rounded up to a multiple of the specified
++<value>time</value>, and servers with equal rounded averages are
++considered equally fast.
++By default, the precision is 20 milliseconds.
++With servers that respond faster than that,
++a smaller value, for example, <literal>5ms</literal>, allows
++the faster servers to receive proportionally more requests.
++</para>
++
++<para>
++The <literal>smooth</literal> parameter (1.31.12) sets a
++<value>time</value> over which average times are smoothed.
++Each response is given the weight of the fraction of this time elapsed
++since the previous one, but not less than 0.01.
++This keeps averages of busy servers stable, for example,
++when fast and slow requests are mixed,
++while averages of servers with few requests still follow changes
++within about the specified time.
++By default, each response has the weight of 0.05.
++The value of <literal>3s</literal> is a good starting point
++when using a small <literal>bucket</literal>.
++</para>
++
+ <para>
+ <note>
+ Prior to version 1.31.0,
+diff --git a/xml/en/docs/stream/ngx_stream_upstream_module.xml b/xml/en/docs/stream/ngx_stream_upstream_module.xml
+index a7e2b64..dc7a3ac 100644
+--- a/xml/en/docs/stream/ngx_stream_upstream_module.xml
++++ b/xml/en/docs/stream/ngx_stream_upstream_module.xml
+@@ -9,7 +9,7 @@
+ <module name="Module ngx_stream_upstream_module"
+         link="/en/docs/stream/ngx_stream_upstream_module.html"
+         lang="en"
+-        rev="42">
++        rev="43">
+ 
+ <section id="summary">
+ 
+@@ -467,7 +467,9 @@ weighted round-robin balancing method.
+     <literal>connect</literal> |
+     <literal>first_byte</literal> |
+     <literal>last_byte</literal>
+-    [<literal>inflight</literal>]</syntax>
++    [<literal>inflight</literal>]
++    [<literal>bucket</literal>=<value>time</value>]
++    [<literal>smooth</literal>=<value>time</value>]</syntax>
+ <default/>
+ <context>upstream</context>
+ <appeared-in>1.7.11</appeared-in>
+@@ -499,6 +501,32 @@ incomplete connections were taken into account by default.
+ </note>
+ </para>
+ 
++<para>
++The <literal>bucket</literal> parameter (1.31.12) sets the precision with which
++average times are compared:
++averages are rounded up to a multiple of the specified
++<value>time</value>, and servers with equal rounded averages are
++considered equally fast.
++By default, the precision is 20 milliseconds.
++With servers that respond faster than that,
++a smaller value, for example, <literal>5ms</literal>, allows
++the faster servers to receive proportionally more connections.
++</para>
++
++<para>
++The <literal>smooth</literal> parameter (1.31.12) sets a
++<value>time</value> over which average times are smoothed.
++Each connection is given the weight of the fraction of this time elapsed
++since the previous one, but not less than 0.01.
++This keeps averages of busy servers stable, for example,
++when fast and slow connections are mixed,
++while averages of servers with few connections still follow changes
++within about the specified time.
++By default, each connection has the weight of 0.05.
++The value of <literal>3s</literal> is a good starting point
++when using a small <literal>bucket</literal>.
++</para>
++
+ <para>
+ <note>
+ Prior to version 1.31.0,

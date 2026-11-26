@@ -1,0 +1,426 @@
+diff --git a/src/http/modules/ngx_http_upstream_least_time_module.c b/src/http/modules/ngx_http_upstream_least_time_module.c
+index 8ea0da810..2ae6a9042 100644
+--- a/src/http/modules/ngx_http_upstream_least_time_module.c
++++ b/src/http/modules/ngx_http_upstream_least_time_module.c
+@@ -18,6 +18,7 @@ typedef struct {
+     ngx_uint_t                         use_inflight;
+                                                 /* unsigned  use_inflight:1; */
+     ngx_msec_t                         bucket;
++    ngx_msec_t                         smooth;
+ } ngx_http_upstream_lt_conf_t;
+ 
+ 
+@@ -35,6 +36,8 @@ static ngx_int_t ngx_http_upstream_init_least_time_peer(ngx_http_request_t *r,
+     ngx_http_upstream_srv_conf_t *us);
+ static ngx_int_t ngx_http_upstream_get_least_time_peer(
+     ngx_peer_connection_t *pc, void *data);
++static double ngx_http_upstream_least_time_weight(
++    ngx_http_upstream_lt_peer_data_t *ltp, ngx_http_upstream_rr_peer_t *peer);
+ static ngx_uint_t ngx_http_upstream_least_time_eta(
+     ngx_http_upstream_lt_peer_data_t *ltp, ngx_http_upstream_rr_peer_t *peer);
+ static void ngx_http_upstream_least_time_notify(ngx_peer_connection_t *pc,
+@@ -60,7 +63,7 @@ static ngx_conf_enum_t  ngx_http_upstream_least_time_mode[] = {
+ static ngx_command_t  ngx_http_upstream_least_time_commands[] = {
+ 
+     { ngx_string("least_time"),
+-      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE123,
++      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1234,
+       ngx_http_upstream_least_time,
+       NGX_HTTP_SRV_CONF_OFFSET,
+       offsetof(ngx_http_upstream_lt_conf_t, mode),
+@@ -244,7 +247,8 @@ ngx_http_upstream_get_least_time_peer(ngx_peer_connection_t *pc, void *data)
+             ift = peer->inflight_last / peer->inflight_reqs
+                   + (ngx_current_msec - peer->inflight_reqs_changed);
+ 
+-            ngx_http_upstream_response_time_avg(&peer->inflight_time, ift);
++            ngx_http_upstream_response_time_avg(&peer->inflight_time, ift,
++                                                NGX_HTTP_UPSTREAM_AVG_WEIGHT);
+         }
+ 
+         /*
+@@ -408,6 +412,36 @@ busy:
+ }
+ 
+ 
++static double
++ngx_http_upstream_least_time_weight(ngx_http_upstream_lt_peer_data_t *ltp,
++    ngx_http_upstream_rr_peer_t *peer)
++{
++    double      w;
++    ngx_msec_t  elapsed;
++
++    if (ltp->conf->smooth == 0) {
++        return NGX_HTTP_UPSTREAM_AVG_WEIGHT;
++    }
++
++    /*
++     * a sample has the weight of at least the fraction of the smoothing
++     * time elapsed since the previous sample, so averages of peers with
++     * few requests also adapt within about the smoothing time
++     */
++
++    elapsed = ngx_current_msec - peer->avg_updated;
++    peer->avg_updated = ngx_current_msec;
++
++    if (elapsed >= ltp->conf->smooth) {
++        return 1.0;
++    }
++
++    w = (double) elapsed / ltp->conf->smooth;
++
++    return ngx_max(w, 0.01);
++}
++
++
+ static ngx_uint_t
+ ngx_http_upstream_least_time_eta(ngx_http_upstream_lt_peer_data_t *ltp,
+     ngx_http_upstream_rr_peer_t *peer)
+@@ -473,6 +507,7 @@ ngx_http_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
+ {
+     ngx_http_upstream_lt_peer_data_t *ltp = data;
+ 
++    double                             w;
+     ngx_msec_t                         last, *metric;
+     ngx_http_upstream_t               *u;
+     ngx_http_upstream_rr_peer_t       *peer;
+@@ -510,7 +545,9 @@ ngx_http_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
+     ngx_http_upstream_rr_peers_rlock(peers);
+     ngx_http_upstream_rr_peer_lock(peers, peer);
+ 
+-    ngx_http_upstream_response_time_avg(metric, last);
++    w = ngx_http_upstream_least_time_weight(ltp, peer);
++
++    ngx_http_upstream_response_time_avg(metric, last, w);
+ 
+     if (ltp->inflight) {
+         ngx_http_upstream_least_time_inflight_done(ltp, peers, peer, last);
+@@ -552,6 +589,7 @@ ngx_http_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
+ {
+     ngx_http_upstream_lt_peer_data_t *ltp = data;
+ 
++    double                             w;
+     ngx_http_upstream_t               *u;
+     ngx_http_upstream_rr_peer_t       *peer;
+     ngx_http_upstream_rr_peers_t      *peers;
+@@ -585,17 +623,23 @@ ngx_http_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
+         goto done;
+     }
+ 
+-    ngx_http_upstream_response_time_avg(&peer->response_time,
+-                                        u->state->response_time);
+-
+     if (ltp->conf->use_inflight
+         && ltp->conf->mode == NGX_HTTP_UPSTREAM_LT_HEADER)
+     {
++        /* header time is accounted in peer.notify() */
++
++        ngx_http_upstream_response_time_avg(&peer->response_time,
++                                            u->state->response_time,
++                                            NGX_HTTP_UPSTREAM_AVG_WEIGHT);
+         goto done;
+     }
+ 
++    w = ngx_http_upstream_least_time_weight(ltp, peer);
++
++    ngx_http_upstream_response_time_avg(&peer->response_time,
++                                        u->state->response_time, w);
+     ngx_http_upstream_response_time_avg(&peer->header_time,
+-                                        u->state->header_time);
++                                        u->state->header_time, w);
+ 
+ done:
+ 
+@@ -617,6 +661,7 @@ ngx_http_upstream_least_time_create_conf(ngx_conf_t *cf)
+      * set by ngx_pcalloc():
+      *
+      *     conf->use_inflight = 0;
++     *     conf->smooth = 0;
+      */
+ 
+     conf->mode = NGX_CONF_UNSET_UINT;
+@@ -680,6 +725,23 @@ ngx_http_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+             continue;
+         }
+ 
++        if (ngx_strncmp(value[i].data, "smooth=", 7) == 0) {
++            s.len = value[i].len - 7;
++            s.data = value[i].data + 7;
++
++            ltcf->smooth = ngx_parse_time(&s, 0);
++
++            if (ltcf->smooth == (ngx_msec_t) NGX_ERROR
++                || ltcf->smooth == 0)
++            {
++                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
++                                   "invalid smooth \"%V\"", &value[i]);
++                return NGX_CONF_ERROR;
++            }
++
++            continue;
++        }
++
+         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                            "invalid parameter \"%V\"", &value[i]);
+         return NGX_CONF_ERROR;
+diff --git a/src/http/ngx_http_upstream_round_robin.h b/src/http/ngx_http_upstream_round_robin.h
+index cda666cd2..290c69420 100644
+--- a/src/http/ngx_http_upstream_round_robin.h
++++ b/src/http/ngx_http_upstream_round_robin.h
+@@ -98,9 +98,10 @@ struct ngx_http_upstream_rr_peer_s {
+     ngx_msec_t                      inflight_last;
+     ngx_msec_t                      inflight_reqs_changed;
+     ngx_uint_t                      inflight_reqs;
++    ngx_msec_t                      avg_updated;
+ #endif
+ 
+-    NGX_COMPAT_BEGIN(7)
++    NGX_COMPAT_BEGIN(6)
+     NGX_COMPAT_END
+ };
+ 
+@@ -252,7 +253,8 @@ typedef struct {
+  * milliseconds, rounding discards any sample within 10 ms of the average,
+  * so the average cannot track response times that change by less than that
+  */
+-#define NGX_HTTP_UPSTREAM_AVG_SCALE  64
++#define NGX_HTTP_UPSTREAM_AVG_SCALE   64
++#define NGX_HTTP_UPSTREAM_AVG_WEIGHT  0.05
+ 
+ #define ngx_http_upstream_avg_msec(avg)                                        \
+     (((avg) + NGX_HTTP_UPSTREAM_AVG_SCALE / 2) / NGX_HTTP_UPSTREAM_AVG_SCALE)
+@@ -260,14 +262,14 @@ typedef struct {
+ 
+ /* exponential moving average + rounding */
+ static ngx_inline void
+-ngx_http_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v)
++ngx_http_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v, double w)
+ {
+     double  a;
+ 
+     a = (double) v * NGX_HTTP_UPSTREAM_AVG_SCALE;
+ 
+     if (*avg) {
+-        a = 0.5 + a * 0.05 + (double) *avg * 0.95;
++        a = 0.5 + a * w + (double) *avg * (1.0 - w);
+     }
+ 
+     *avg = (a < (double) NGX_MAX_INT32_VALUE) ? (ngx_msec_t) a
+diff --git a/src/stream/ngx_stream_upstream_least_time_module.c b/src/stream/ngx_stream_upstream_least_time_module.c
+index 6cbcd0b4e..e27fa2b12 100644
+--- a/src/stream/ngx_stream_upstream_least_time_module.c
++++ b/src/stream/ngx_stream_upstream_least_time_module.c
+@@ -19,6 +19,7 @@ typedef struct {
+     ngx_uint_t                           use_inflight;
+                                                 /* unsigned  use_inflight:1; */
+     ngx_msec_t                           bucket;
++    ngx_msec_t                           smooth;
+ } ngx_stream_upstream_lt_conf_t;
+ 
+ 
+@@ -36,6 +37,9 @@ static ngx_int_t ngx_stream_upstream_init_least_time_peer(
+     ngx_stream_session_t *s, ngx_stream_upstream_srv_conf_t *us);
+ static ngx_int_t ngx_stream_upstream_get_least_time_peer(
+     ngx_peer_connection_t *pc, void *data);
++static double ngx_stream_upstream_least_time_weight(
++    ngx_stream_upstream_lt_peer_data_t *ltp,
++    ngx_stream_upstream_rr_peer_t *peer);
+ static ngx_uint_t ngx_stream_upstream_least_time_eta(
+     ngx_stream_upstream_lt_peer_data_t *ltp,
+     ngx_stream_upstream_rr_peer_t *peer);
+@@ -64,7 +68,7 @@ static ngx_conf_enum_t  ngx_stream_upstream_least_time_mode[] = {
+ static ngx_command_t  ngx_stream_upstream_least_time_commands[] = {
+ 
+     { ngx_string("least_time"),
+-      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE123,
++      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE1234,
+       ngx_stream_upstream_least_time,
+       NGX_STREAM_SRV_CONF_OFFSET,
+       offsetof(ngx_stream_upstream_lt_conf_t, mode),
+@@ -238,7 +242,8 @@ ngx_stream_upstream_get_least_time_peer(ngx_peer_connection_t *pc, void *data)
+             ift = peer->inflight_last / peer->inflight_reqs
+                   + (ngx_current_msec - peer->inflight_reqs_changed);
+ 
+-            ngx_stream_upstream_response_time_avg(&peer->inflight_time, ift);
++            ngx_stream_upstream_response_time_avg(&peer->inflight_time, ift,
++                                    NGX_STREAM_UPSTREAM_AVG_WEIGHT);
+         }
+ 
+         /*
+@@ -394,6 +399,37 @@ busy:
+ }
+ 
+ 
++static double
++ngx_stream_upstream_least_time_weight(
++    ngx_stream_upstream_lt_peer_data_t *ltp,
++    ngx_stream_upstream_rr_peer_t *peer)
++{
++    double      w;
++    ngx_msec_t  elapsed;
++
++    if (ltp->conf->smooth == 0) {
++        return NGX_STREAM_UPSTREAM_AVG_WEIGHT;
++    }
++
++    /*
++     * a sample has the weight of at least the fraction of the smoothing
++     * time elapsed since the previous sample, so averages of peers with
++     * few requests also adapt within about the smoothing time
++     */
++
++    elapsed = ngx_current_msec - peer->avg_updated;
++    peer->avg_updated = ngx_current_msec;
++
++    if (elapsed >= ltp->conf->smooth) {
++        return 1.0;
++    }
++
++    w = (double) elapsed / ltp->conf->smooth;
++
++    return ngx_max(w, 0.01);
++}
++
++
+ static ngx_uint_t
+ ngx_stream_upstream_least_time_eta(ngx_stream_upstream_lt_peer_data_t *ltp,
+     ngx_stream_upstream_rr_peer_t *peer)
+@@ -463,6 +499,7 @@ ngx_stream_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
+ {
+     ngx_stream_upstream_lt_peer_data_t *ltp = data;
+ 
++    double                               w;
+     ngx_msec_t                           last, *metric;
+     ngx_stream_upstream_t               *u;
+     ngx_stream_upstream_rr_peer_t       *peer;
+@@ -511,7 +548,9 @@ ngx_stream_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
+     ngx_stream_upstream_rr_peer_lock(peers, peer);
+ 
+     if (metric) {
+-        ngx_stream_upstream_response_time_avg(metric, last);
++        w = ngx_stream_upstream_least_time_weight(ltp, peer);
++
++        ngx_stream_upstream_response_time_avg(metric, last, w);
+ 
+         if (ltp->inflight) {
+             ngx_stream_upstream_least_time_inflight_done(ltp, peers, peer,
+@@ -555,6 +594,7 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
+ {
+     ngx_stream_upstream_lt_peer_data_t *ltp = data;
+ 
++    double                               w;
+     ngx_stream_upstream_t               *u;
+     ngx_stream_upstream_rr_peer_t       *peer;
+     ngx_stream_upstream_rr_peers_t      *peers;
+@@ -581,14 +621,25 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
+      * of failing peers
+      */
+     if (!(state & (NGX_PEER_FAILED|NGX_PEER_NEXT))) {
++
++        if (ltp->conf->use_inflight
++            && ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_LAST_BYTE)
++        {
++            /* the balancing time is accounted in peer.notify() */
++            w = NGX_STREAM_UPSTREAM_AVG_WEIGHT;
++
++        } else {
++            w = ngx_stream_upstream_least_time_weight(ltp, peer);
++        }
++
+         ngx_stream_upstream_response_time_avg(&peer->response_time,
+-                                              u->state->response_time);
++                                              u->state->response_time, w);
+ 
+         if (!ltp->conf->use_inflight
+             || ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_CONNECT)
+         {
+             ngx_stream_upstream_response_time_avg(&peer->connect_time,
+-                                                  u->state->connect_time);
++                                                  u->state->connect_time, w);
+         }
+ 
+         if (u->state->first_byte_time != (ngx_msec_t) -1
+@@ -596,7 +647,8 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
+                 || ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_FIRST_BYTE))
+         {
+             ngx_stream_upstream_response_time_avg(&peer->first_byte_time,
+-                                                  u->state->first_byte_time);
++                                                  u->state->first_byte_time,
++                                                  w);
+         }
+     }
+ 
+@@ -618,6 +670,7 @@ ngx_stream_upstream_least_time_create_conf(ngx_conf_t *cf)
+      * set by ngx_pcalloc():
+      *
+      *     conf->use_inflight = 0;
++     *     conf->smooth = 0;
+      */
+ 
+     conf->mode = NGX_CONF_UNSET_UINT;
+@@ -681,6 +734,23 @@ ngx_stream_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+             continue;
+         }
+ 
++        if (ngx_strncmp(value[i].data, "smooth=", 7) == 0) {
++            s.len = value[i].len - 7;
++            s.data = value[i].data + 7;
++
++            ltcf->smooth = ngx_parse_time(&s, 0);
++
++            if (ltcf->smooth == (ngx_msec_t) NGX_ERROR
++                || ltcf->smooth == 0)
++            {
++                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
++                                   "invalid smooth \"%V\"", &value[i]);
++                return NGX_CONF_ERROR;
++            }
++
++            continue;
++        }
++
+         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                            "invalid parameter \"%V\"", &value[i]);
+         return NGX_CONF_ERROR;
+diff --git a/src/stream/ngx_stream_upstream_round_robin.h b/src/stream/ngx_stream_upstream_round_robin.h
+index 34f28f2ab..f278e6b71 100644
+--- a/src/stream/ngx_stream_upstream_round_robin.h
++++ b/src/stream/ngx_stream_upstream_round_robin.h
+@@ -81,9 +81,10 @@ struct ngx_stream_upstream_rr_peer_s {
+     ngx_msec_t                       inflight_last;
+     ngx_msec_t                       inflight_reqs_changed;
+     ngx_uint_t                       inflight_reqs;
++    ngx_msec_t                       avg_updated;
+ #endif
+ 
+-    NGX_COMPAT_BEGIN(7)
++    NGX_COMPAT_BEGIN(6)
+     NGX_COMPAT_END
+ };
+ 
+@@ -232,7 +233,8 @@ typedef struct {
+  * milliseconds, rounding discards any sample within 10 ms of the average,
+  * so the average cannot track response times that change by less than that
+  */
+-#define NGX_STREAM_UPSTREAM_AVG_SCALE  64
++#define NGX_STREAM_UPSTREAM_AVG_SCALE   64
++#define NGX_STREAM_UPSTREAM_AVG_WEIGHT  0.05
+ 
+ #define ngx_stream_upstream_avg_msec(avg)                                      \
+     (((avg) + NGX_STREAM_UPSTREAM_AVG_SCALE / 2)                               \
+@@ -241,14 +243,14 @@ typedef struct {
+ 
+ /* exponential moving average + rounding */
+ static ngx_inline void
+-ngx_stream_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v)
++ngx_stream_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v, double w)
+ {
+     double  a;
+ 
+     a = (double) v * NGX_STREAM_UPSTREAM_AVG_SCALE;
+ 
+     if (*avg) {
+-        a = 0.5 + a * 0.05 + (double) *avg * 0.95;
++        a = 0.5 + a * w + (double) *avg * (1.0 - w);
+     }
+ 
+     *avg = (a < (double) NGX_MAX_INT32_VALUE) ? (ngx_msec_t) a

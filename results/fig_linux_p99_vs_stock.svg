@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="580" viewBox="0 0 860 580" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<rect width="860" height="580" fill="#fcfcfb"/>
+<text x="16" y="28" font-size="17" font-weight="600" fill="#1f1f1e">Real nginx p99 relative to stock least_time</text>
+<text x="16" y="49" font-size="12.5" fill="#5f5e5a">Linux VM, -O2 builds, 70 % and 85 % load, 5 paired repetitions · whiskers: 95 % CI</text>
+<rect x="17.5" y="65.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="32" y="74" font-size="12.5" fill="#1f1f1e">least_conn</text>
+<polygon points="124.0,64.0 129.5,74.0 118.5,74.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<text x="134.0" y="74" font-size="12.5" fill="#1f1f1e">P1: fixed point</text>
+<circle cx="262.0" cy="70.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="272.0" y="74" font-size="12.5" fill="#1f1f1e">P1+P2+P3: bucket=5ms smooth=3s</text>
+<line x1="230.0" y1="86" x2="230.0" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="230.0" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">-50 %</text>
+<line x1="341.5" y1="86" x2="341.5" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="341.5" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">-33 %</text>
+<line x1="412.1" y1="86" x2="412.1" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="412.1" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">-20 %</text>
+<line x1="498.5" y1="86" x2="498.5" y2="508" stroke="#5f5e5a" stroke-width="1.5"/>
+<text x="498.5" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">stock</text>
+<line x1="585.0" y1="86" x2="585.0" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="585.0" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">+25 %</text>
+<line x1="655.6" y1="86" x2="655.6" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="655.6" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">+50 %</text>
+<line x1="767.1" y1="86" x2="767.1" y2="508" stroke="#e4e3df" stroke-width="1"/>
+<text x="767.1" y="526" font-size="11.5" fill="#5f5e5a" text-anchor="middle">+100 %</text>
+<text x="517" y="548" font-size="12" fill="#5f5e5a" text-anchor="middle">p99 latency relative to stock least_time (log scale; left is better)</text>
+<text x="16" y="566" font-size="11" fill="#5f5e5a">slowdown rows: p99 over the 20 s slow window</text>
+<rect x="8" y="92.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="109.0" font-size="12" fill="#1f1f1e" text-anchor="end">fast3 @70%</text>
+<line x1="615.1" y1="99.0" x2="642.5" y2="99.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="624.3" y="94.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="490.1" y1="105.0" x2="502.8" y2="105.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="496.5,99.0 502.0,109.0 491.0,109.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="374.2" y1="111.0" x2="402.0" y2="111.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="388.1" cy="111.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="135.0" font-size="12" fill="#1f1f1e" text-anchor="end">fast3 @85%</text>
+<line x1="648.2" y1="125.0" x2="700.8" y2="125.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="670.0" y="120.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="484.5" y1="131.0" x2="518.9" y2="131.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="501.7,125.0 507.2,135.0 496.2,135.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="422.5" y1="137.0" x2="473.5" y2="137.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="448.0" cy="137.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="144.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="161.0" font-size="12" fill="#1f1f1e" text-anchor="end">slow3 @70%</text>
+<line x1="694.0" y1="151.0" x2="788.2" y2="151.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="736.6" y="146.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="471.8" y1="157.0" x2="491.7" y2="157.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="481.7,151.0 487.2,161.0 476.2,161.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="457.1" y1="163.0" x2="515.8" y2="163.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="486.4" cy="163.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="187.0" font-size="12" fill="#1f1f1e" text-anchor="end">hetero8 @70%</text>
+<line x1="563.2" y1="177.0" x2="593.7" y2="177.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="573.9" y="172.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="491.9" y1="183.0" x2="509.1" y2="183.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="500.5,177.0 506.0,187.0 495.0,187.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="426.9" y1="189.0" x2="442.4" y2="189.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="434.6" cy="189.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="196.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="213.0" font-size="12" fill="#1f1f1e" text-anchor="end">hetero8 @85%</text>
+<line x1="550.5" y1="203.0" x2="569.1" y2="203.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="555.3" y="198.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="480.3" y1="209.0" x2="507.3" y2="209.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="493.8,203.0 499.3,213.0 488.3,213.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="431.7" y1="215.0" x2="455.3" y2="215.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="443.5" cy="215.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="239.0" font-size="12" fill="#1f1f1e" text-anchor="end">lognorm_het @70%</text>
+<line x1="530.8" y1="229.0" x2="575.8" y2="229.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="548.8" y="224.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="489.7" y1="235.0" x2="518.6" y2="235.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="504.2,229.0 509.7,239.0 498.7,239.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="420.7" y1="241.0" x2="456.3" y2="241.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="438.5" cy="241.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="248.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="265.0" font-size="12" fill="#1f1f1e" text-anchor="end">lognorm_het @85%</text>
+<line x1="548.3" y1="255.0" x2="574.0" y2="255.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="556.7" y="250.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="486.6" y1="261.0" x2="514.6" y2="261.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="500.6,255.0 506.1,265.0 495.1,265.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="443.4" y1="267.0" x2="479.5" y2="267.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="461.5" cy="267.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="291.0" font-size="12" fill="#1f1f1e" text-anchor="end">bimodal4 @70%</text>
+<line x1="402.1" y1="281.0" x2="500.2" y2="281.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="446.6" y="276.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="442.5" y1="287.0" x2="558.4" y2="287.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="500.5,281.0 506.0,291.0 495.0,291.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="419.8" y1="293.0" x2="529.8" y2="293.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="474.8" cy="293.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="300.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="317.0" font-size="12" fill="#1f1f1e" text-anchor="end">bimodal4 @85%</text>
+<line x1="386.1" y1="307.0" x2="496.4" y2="307.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="436.7" y="302.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="444.8" y1="313.0" x2="573.1" y2="313.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="509.0,307.0 514.5,317.0 503.5,317.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="409.9" y1="319.0" x2="469.8" y2="319.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="439.9" cy="319.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="343.0" font-size="12" fill="#1f1f1e" text-anchor="end">bimodal4_het @70%</text>
+<line x1="482.7" y1="333.0" x2="600.8" y2="333.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="537.3" y="328.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="442.3" y1="339.0" x2="585.3" y2="339.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="513.8,333.0 519.3,343.0 508.3,343.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="391.1" y1="345.0" x2="504.7" y2="345.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="447.9" cy="345.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="352.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="369.0" font-size="12" fill="#1f1f1e" text-anchor="end">bimodal4_het @85%</text>
+<line x1="489.2" y1="359.0" x2="542.8" y2="359.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="511.5" y="354.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="455.2" y1="365.0" x2="539.1" y2="365.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="497.1,359.0 502.6,369.0 491.6,369.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="396.9" y1="371.0" x2="507.0" y2="371.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="452.0" cy="371.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="395.0" font-size="12" fill="#1f1f1e" text-anchor="end">slowdown @70%</text>
+<line x1="663.1" y1="385.0" x2="723.5" y2="385.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="688.8" y="380.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="481.4" y1="391.0" x2="523.6" y2="391.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="502.5,385.0 508.0,395.0 497.0,395.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="443.5" y1="397.0" x2="457.2" y2="397.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="450.3" cy="397.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="404.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="421.0" font-size="12" fill="#1f1f1e" text-anchor="end">homog8 @70%</text>
+<line x1="489.6" y1="411.0" x2="495.4" y2="411.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="488.0" y="406.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="492.1" y1="417.0" x2="499.5" y2="417.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="495.8,411.0 501.3,421.0 490.3,421.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="487.8" y1="423.0" x2="495.7" y2="423.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="491.8" cy="423.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="447.0" font-size="12" fill="#1f1f1e" text-anchor="end">homog8 @85%</text>
+<line x1="442.7" y1="437.0" x2="478.3" y2="437.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="456.0" y="432.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="483.3" y1="443.0" x2="508.2" y2="443.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="495.8,437.0 501.3,447.0 490.3,447.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="441.9" y1="449.0" x2="477.4" y2="449.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="459.7" cy="449.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<rect x="8" y="456.0" width="844" height="26" fill="#f3f2ee" opacity="0.6"/>
+<text x="220" y="473.0" font-size="12" fill="#1f1f1e" text-anchor="end">hetero8 @85% (4w+zone)</text>
+<line x1="568.0" y1="463.0" x2="591.6" y2="463.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="575.3" y="458.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="486.7" y1="469.0" x2="508.9" y2="469.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="497.8,463.0 503.3,473.0 492.3,473.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="438.0" y1="475.0" x2="462.6" y2="475.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="450.3" cy="475.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="220" y="499.0" font-size="12" fill="#1f1f1e" text-anchor="end">bimodal4_het @85% (4w+zone)</text>
+<line x1="384.0" y1="489.0" x2="633.9" y2="489.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<rect x="504.5" y="484.5" width="9" height="9" rx="1.5" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="373.3" y1="495.0" x2="641.9" y2="495.0" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<polygon points="507.6,489.0 513.1,499.0 502.1,499.0" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<line x1="311.7" y1="501.0" x2="551.6" y2="501.0" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="431.6" cy="501.0" r="5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+</svg>
