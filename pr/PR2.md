@@ -1,6 +1,10 @@
 Title: Upstream: "bucket" and "smooth" parameters of the "least_time" directive
 
-Depends on #PR1 (fixed rounding of least_time averages); this branch contains that commit plus two more. Documentation: nginx/nginx.org#TBD. Tests: nginx/nginx-tests#TBD.
+This builds on #2048 (fixed rounding of `least_time` averages) and comes from the same simulation and benchmark work described there. With the rounding fixed, `least_time` can tell apart servers that differ by a few milliseconds, but two constants still stop it from doing so: the 20 ms rounding step and the fixed weight of each new response in the average. This PR makes both configurable, as `bucket=` and `smooth=`. Both are off by default, so existing configurations behave exactly as before.
+
+With `bucket=5ms smooth=3s`, p99 latency on real nginx improves by 9-44 % when servers differ in speed and by up to 14 % with a mix of cheap and expensive requests. No tested configuration gets significantly worse than stock `least_time` or `least_conn`.
+
+The branch contains the commit of #2048 plus two more, so only the last two need review here. Documentation: nginx/nginx.org#TBD. Tests: nginx/nginx-tests#TBD.
 
 ## Problem
 

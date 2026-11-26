@@ -16,6 +16,26 @@ The code lives on other branches of this fork:
 | `least-time-evidence` | only the files described here, no nginx code |
 | `least-time-work` | `lt-smooth` plus these files: everything in one place |
 
+## Pull requests
+
+| PR | branch | status | description |
+| --- | --- | --- | --- |
+| [nginx/nginx#2048](https://github.com/nginx/nginx/pull/2048): fixed rounding of least_time averages | `lt-fixed-point` | open, F5 CLA signed (2026-11-26) | [pr/PR1.md](pr/PR1.md) |
+| PR 2: `bucket` and `smooth` parameters of `least_time` | `lt-smooth` | not opened yet; depends on #2048 | [pr/PR2.md](pr/PR2.md) |
+| PR 2 tests (nginx/nginx-tests) | local only | not opened yet; needs a fork of nginx-tests | `patches/tests-pr2-*` |
+| PR 2 docs (nginx/nginx.org) | local only | not opened yet; needs a fork of nginx.org | `patches/docs-pr2-*` |
+
+Explorations, opened inside this fork against `least-time-work` (not sent to nginx):
+
+| PR | branch | verdict |
+| --- | --- | --- |
+| [#1](https://github.com/psygo/nginx_plus/pull/1): worker processes with and without `zone` | `explore/zone-workers` | docs note drafted (local nginx.org branch) |
+| [#2](https://github.com/psygo/nginx_plus/pull/2): learn how response time grows with load | `explore/speed-estimator` | not ready: diverges on processor-sharing backends |
+| [#3](https://github.com/psygo/nginx_plus/pull/3): routing by request cost | `explore/cost-routing` | promising, needs a way to get cost hints |
+| [#4](https://github.com/psygo/nginx_plus/pull/4): admission control and queueing | `explore/admission-control` | existing features; docs note at most |
+| [#5](https://github.com/psygo/nginx_plus/pull/5): learning-augmented balancing with a floor | `explore/learning-augmented` | research only |
+| [#6](https://github.com/psygo/nginx_plus/pull/6): unbiased `smooth=` weighting | `explore/smooth-weighting` | rejected; PR 2 unchanged |
+
 ## Reports
 
 - [results/sim_pr.md](results/sim_pr.md): simulation, 12 scenarios × 4 loads, 20 paired seeds × 300,000 requests per cell, plus a bucket × smooth sweep (10 seeds × 200,000).
