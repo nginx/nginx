@@ -56,5 +56,3 @@ No new test: with the default 20 ms clustering the fix does not change which ser
 ## Release Notes
 
 Bugfix: the "least_time" balancer could use average response times which differed from actual ones by up to 10 milliseconds.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)

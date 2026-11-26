@@ -123,5 +123,3 @@ Parameter sweep (8 scenarios, mean p99 change vs stock / worst scenario):
 ## Release Notes
 
 Feature: the "bucket" and "smooth" parameters of the "least_time" directive.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
