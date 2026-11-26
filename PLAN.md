@@ -38,6 +38,19 @@ Remaining (the user said not to open PRs yet):
 1. Open the PRs (F5 CLA on the first), then fill in the cross-references (`#PR1`, `#PR2`, `#TBD`).
 2. Fork nginx-tests and nginx.org, push their branches, open the companion PRs.
 
+## Explorations (2026-11-26)
+
+Six `explore/*` branches, each with code, tests, results and report, have PRs inside the fork (base `least-time-work`, not nginx). The simulations used 10 paired seeds × 200k requests and the 6 robustness scenarios where relevant.
+
+| PR | branch | verdict |
+| --- | --- | --- |
+| [#1](https://github.com/psygo/nginx_plus/pull/1) | `explore/zone-workers` | Without `zone`, 4 workers cost least_conn +16…36 % and patched least_time +11…20 % p99 on real nginx; the sim agrees. Docs note drafted locally on an nginx.org branch (`zone-workers-note`). |
+| [#2](https://github.com/psygo/nginx_plus/pull/2) | `explore/speed-estimator` | Learning `rt = a + b·conns` nearly matches the true-capacity rule, but diverges on processor-sharing backends near saturation (+642 %). Next: lower bound on the slope. |
+| [#3](https://github.com/psygo/nginx_plus/pull/3) | `explore/cost-routing` | With exact per-class cost hints, least-work routing gives −15…−58 %. It degrades with noisy hints and needs a way for nginx to get the hint. |
+| [#4](https://github.com/psygo/nginx_plus/pull/4) | `explore/admission-control` | `max_conns` / `queue` cut the tail a lot, but this is existing (or NGINX Plus) functionality, so at most a docs note. |
+| [#5](https://github.com/psygo/nginx_plus/pull/5) | `explore/learning-augmented` | A least_time shortlist bounds damage (+43 % worst vs +1625 % without), per decision rather than per outcome; eps 0.25 trades −16 %/+16 %. Research only. |
+| [#6](https://github.com/psygo/nginx_plus/pull/6) | `explore/smooth-weighting` | Unbiased `smooth=` weightings give no better p99 (+0.4…+1.9 %), so PR 2 stays unchanged. Rejected (`rejected_ideas.md` §5). |
+
 ## 0. Findings so far (2026-11-25)
 
 ### The integer EWMA has a ±10 ms dead band
