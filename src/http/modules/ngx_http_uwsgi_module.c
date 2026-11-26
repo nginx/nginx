@@ -883,6 +883,7 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
     size_t                        key_len, val_len, len, params_len, allocated;
     ngx_uint_t                    i, n, hash, skip_empty, header_params;
     ngx_buf_t                    *b;
+    ngx_str_t                     field_name, field_value;
     ngx_chain_t                  *cl, *body;
     ngx_list_part_t              *part;
     ngx_table_elt_t              *header, *hn, **ignored;
@@ -1106,6 +1107,8 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             *e.pos++ = (u_char) (key_len & 0xff);
             *e.pos++ = (u_char) ((key_len >> 8) & 0xff);
 
+            field_name.data = e.pos;
+
             code = *(ngx_http_script_code_pt *) e.ip;
             code((ngx_http_script_engine_t *) &e);
 
@@ -1117,8 +1120,24 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
                 return NGX_ERROR;
             }
 
+            field_name.len = (size_t)(e.pos - field_name.data);
+
+            if (field_name.len != key_len) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "uwsgi field name length mismatch");
+                return NGX_ERROR;
+            }
+
+            if (ngx_valid_http_field_name(&field_name) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "uwsgi invalid field name");
+                return NGX_ERROR;
+            }
+
             *e.pos++ = (u_char) (val_len & 0xff);
             *e.pos++ = (u_char) ((val_len >> 8) & 0xff);
+
+            field_value.data = e.pos;
 
             while (*(uintptr_t *) e.ip) {
                 code = *(ngx_http_script_code_pt *) e.ip;
@@ -1126,6 +1145,21 @@ ngx_http_uwsgi_create_request(ngx_http_request_t *r)
             }
 
             if (e.status) {
+                return NGX_ERROR;
+            }
+
+            field_value.len = (size_t)(e.pos - field_value.data);
+
+            if (field_value.len != val_len) {
+                ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
+                              "uwsgi field value length mismatch");
+                return NGX_ERROR;
+            }
+
+            if (ngx_valid_http_field_value(&field_value) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "uwsgi invalid value for field %V",
+                              &field_name);
                 return NGX_ERROR;
             }
 
