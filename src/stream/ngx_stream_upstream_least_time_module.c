@@ -19,6 +19,7 @@ typedef struct {
     ngx_uint_t                           use_inflight;
                                                 /* unsigned  use_inflight:1; */
     ngx_msec_t                           bucket;
+    ngx_msec_t                           smooth;
 } ngx_stream_upstream_lt_conf_t;
 
 
@@ -36,6 +37,9 @@ static ngx_int_t ngx_stream_upstream_init_least_time_peer(
     ngx_stream_session_t *s, ngx_stream_upstream_srv_conf_t *us);
 static ngx_int_t ngx_stream_upstream_get_least_time_peer(
     ngx_peer_connection_t *pc, void *data);
+static double ngx_stream_upstream_least_time_weight(
+    ngx_stream_upstream_lt_peer_data_t *ltp,
+    ngx_stream_upstream_rr_peer_t *peer);
 static ngx_uint_t ngx_stream_upstream_least_time_eta(
     ngx_stream_upstream_lt_peer_data_t *ltp,
     ngx_stream_upstream_rr_peer_t *peer);
@@ -64,7 +68,7 @@ static ngx_conf_enum_t  ngx_stream_upstream_least_time_mode[] = {
 static ngx_command_t  ngx_stream_upstream_least_time_commands[] = {
 
     { ngx_string("least_time"),
-      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE123,
+      NGX_STREAM_UPS_CONF|NGX_CONF_TAKE1234,
       ngx_stream_upstream_least_time,
       NGX_STREAM_SRV_CONF_OFFSET,
       offsetof(ngx_stream_upstream_lt_conf_t, mode),
@@ -238,7 +242,8 @@ ngx_stream_upstream_get_least_time_peer(ngx_peer_connection_t *pc, void *data)
             ift = peer->inflight_last / peer->inflight_reqs
                   + (ngx_current_msec - peer->inflight_reqs_changed);
 
-            ngx_stream_upstream_response_time_avg(&peer->inflight_time, ift);
+            ngx_stream_upstream_response_time_avg(&peer->inflight_time, ift,
+                                    NGX_STREAM_UPSTREAM_AVG_WEIGHT);
         }
 
         /*
@@ -394,6 +399,37 @@ busy:
 }
 
 
+static double
+ngx_stream_upstream_least_time_weight(
+    ngx_stream_upstream_lt_peer_data_t *ltp,
+    ngx_stream_upstream_rr_peer_t *peer)
+{
+    double      w;
+    ngx_msec_t  elapsed;
+
+    if (ltp->conf->smooth == 0) {
+        return NGX_STREAM_UPSTREAM_AVG_WEIGHT;
+    }
+
+    /*
+     * a sample has the weight of at least the fraction of the smoothing
+     * time elapsed since the previous sample, so averages of peers with
+     * few requests also adapt within about the smoothing time
+     */
+
+    elapsed = ngx_current_msec - peer->avg_updated;
+    peer->avg_updated = ngx_current_msec;
+
+    if (elapsed >= ltp->conf->smooth) {
+        return 1.0;
+    }
+
+    w = (double) elapsed / ltp->conf->smooth;
+
+    return ngx_max(w, 0.01);
+}
+
+
 static ngx_uint_t
 ngx_stream_upstream_least_time_eta(ngx_stream_upstream_lt_peer_data_t *ltp,
     ngx_stream_upstream_rr_peer_t *peer)
@@ -463,6 +499,7 @@ ngx_stream_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
 {
     ngx_stream_upstream_lt_peer_data_t *ltp = data;
 
+    double                               w;
     ngx_msec_t                           last, *metric;
     ngx_stream_upstream_t               *u;
     ngx_stream_upstream_rr_peer_t       *peer;
@@ -511,7 +548,9 @@ ngx_stream_upstream_least_time_notify(ngx_peer_connection_t *pc, void *data,
     ngx_stream_upstream_rr_peer_lock(peers, peer);
 
     if (metric) {
-        ngx_stream_upstream_response_time_avg(metric, last);
+        w = ngx_stream_upstream_least_time_weight(ltp, peer);
+
+        ngx_stream_upstream_response_time_avg(metric, last, w);
 
         if (ltp->inflight) {
             ngx_stream_upstream_least_time_inflight_done(ltp, peers, peer,
@@ -555,6 +594,7 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
 {
     ngx_stream_upstream_lt_peer_data_t *ltp = data;
 
+    double                               w;
     ngx_stream_upstream_t               *u;
     ngx_stream_upstream_rr_peer_t       *peer;
     ngx_stream_upstream_rr_peers_t      *peers;
@@ -581,14 +621,25 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
      * of failing peers
      */
     if (!(state & (NGX_PEER_FAILED|NGX_PEER_NEXT))) {
+
+        if (ltp->conf->use_inflight
+            && ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_LAST_BYTE)
+        {
+            /* the balancing time is accounted in peer.notify() */
+            w = NGX_STREAM_UPSTREAM_AVG_WEIGHT;
+
+        } else {
+            w = ngx_stream_upstream_least_time_weight(ltp, peer);
+        }
+
         ngx_stream_upstream_response_time_avg(&peer->response_time,
-                                              u->state->response_time);
+                                              u->state->response_time, w);
 
         if (!ltp->conf->use_inflight
             || ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_CONNECT)
         {
             ngx_stream_upstream_response_time_avg(&peer->connect_time,
-                                                  u->state->connect_time);
+                                                  u->state->connect_time, w);
         }
 
         if (u->state->first_byte_time != (ngx_msec_t) -1
@@ -596,7 +647,8 @@ ngx_stream_upstream_free_least_time_peer(ngx_peer_connection_t *pc,
                 || ltp->conf->mode != NGX_STREAM_UPSTREAM_LT_FIRST_BYTE))
         {
             ngx_stream_upstream_response_time_avg(&peer->first_byte_time,
-                                                  u->state->first_byte_time);
+                                                  u->state->first_byte_time,
+                                                  w);
         }
     }
 
@@ -618,6 +670,7 @@ ngx_stream_upstream_least_time_create_conf(ngx_conf_t *cf)
      * set by ngx_pcalloc():
      *
      *     conf->use_inflight = 0;
+     *     conf->smooth = 0;
      */
 
     conf->mode = NGX_CONF_UNSET_UINT;
@@ -675,6 +728,23 @@ ngx_stream_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "invalid bucket \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "smooth=", 7) == 0) {
+            s.len = value[i].len - 7;
+            s.data = value[i].data + 7;
+
+            ltcf->smooth = ngx_parse_time(&s, 0);
+
+            if (ltcf->smooth == (ngx_msec_t) NGX_ERROR
+                || ltcf->smooth == 0)
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid smooth \"%V\"", &value[i]);
                 return NGX_CONF_ERROR;
             }
 

@@ -81,9 +81,10 @@ struct ngx_stream_upstream_rr_peer_s {
     ngx_msec_t                       inflight_last;
     ngx_msec_t                       inflight_reqs_changed;
     ngx_uint_t                       inflight_reqs;
+    ngx_msec_t                       avg_updated;
 #endif
 
-    NGX_COMPAT_BEGIN(7)
+    NGX_COMPAT_BEGIN(6)
     NGX_COMPAT_END
 };
 
@@ -232,7 +233,8 @@ typedef struct {
  * milliseconds, rounding discards any sample within 10 ms of the average,
  * so the average cannot track response times that change by less than that
  */
-#define NGX_STREAM_UPSTREAM_AVG_SCALE  64
+#define NGX_STREAM_UPSTREAM_AVG_SCALE   64
+#define NGX_STREAM_UPSTREAM_AVG_WEIGHT  0.05
 
 #define ngx_stream_upstream_avg_msec(avg)                                      \
     (((avg) + NGX_STREAM_UPSTREAM_AVG_SCALE / 2)                               \
@@ -241,14 +243,14 @@ typedef struct {
 
 /* exponential moving average + rounding */
 static ngx_inline void
-ngx_stream_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v)
+ngx_stream_upstream_response_time_avg(ngx_msec_t *avg, ngx_msec_t v, double w)
 {
     double  a;
 
     a = (double) v * NGX_STREAM_UPSTREAM_AVG_SCALE;
 
     if (*avg) {
-        a = 0.5 + a * 0.05 + (double) *avg * 0.95;
+        a = 0.5 + a * w + (double) *avg * (1.0 - w);
     }
 
     *avg = (a < (double) NGX_MAX_INT32_VALUE) ? (ngx_msec_t) a
