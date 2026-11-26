@@ -1,0 +1,20 @@
+Upstream: the "bucket" parameter of the "least_time" directive.
+
+The least_time balancer rounds average times up to a multiple of 20ms
+before comparing servers, so that servers with close response times
+are selected in round-robin.  For servers responding faster than
+20ms, all averages round to 20ms and the balancer degrades to
+least_conn.
+
+The new "bucket" parameter makes the rounding step configurable:
+
+    upstream u {
+        least_time header bucket=5ms;
+        server a;
+        server b;
+    }
+
+The default remains 20ms.  Note that the step also lets a server whose
+average has been halved by the inactivity decay compete again with
+faster servers once its average falls within the same step; with very
+small values this happens later.
