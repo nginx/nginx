@@ -24,6 +24,8 @@ Wrapping rules that do apply elsewhere: git commit messages at 72 columns (nginx
 ## Conventions
 
 - Workspace layout and status: see `PLAN.md` (PR status first) and `Docs.md` (layout, reports, how to reproduce).
+- `work/` is the checkout of `least-time-work` and the single copy of the evidence files: the workspace-root `sim`, `bench`, `results`, `patches`, `pr`, `PLAN.md`, `Docs.md` and `CLAUDE.md` are symlinks into it. Edit and commit there.
+- Benchmark runs are valid only if the load generator kept pace: the reports exclude runs whose send lag p99 is over 2 ms and over 3x the median of the same cell (a pause of the load generator, not of nginx), and such runs are re-run with the same seed.
 - Docs go in `Docs.md`; never create or edit `README.md` or `TODO.md`.
 - nginx commits: "Upstream:" prefix, subject plus explanatory body, HTTP and stream changed together. Keep the Claude co-authorship line on commits and the "Generated with Claude Code" line on PR texts.
 - Nothing goes to nginx/nginx, nginx-tests or nginx.org (issues, PRs, comments) without the user's go-ahead. Pushing to the fork github.com/psygo/nginx_plus is fine when asked.
