@@ -17,6 +17,7 @@ typedef struct {
     ngx_uint_t                         mode;
     ngx_uint_t                         use_inflight;
                                                 /* unsigned  use_inflight:1; */
+    ngx_msec_t                         bucket;
 } ngx_http_upstream_lt_conf_t;
 
 
@@ -59,7 +60,7 @@ static ngx_conf_enum_t  ngx_http_upstream_least_time_mode[] = {
 static ngx_command_t  ngx_http_upstream_least_time_commands[] = {
 
     { ngx_string("least_time"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
+      NGX_HTTP_UPS_CONF|NGX_CONF_TAKE123,
       ngx_http_upstream_least_time,
       NGX_HTTP_SRV_CONF_OFFSET,
       offsetof(ngx_http_upstream_lt_conf_t, mode),
@@ -456,7 +457,7 @@ ngx_http_upstream_least_time_eta(ngx_http_upstream_lt_peer_data_t *ltp,
          * divide response times into clusters to allow round-robin for peers
          * with close response times
          */
-        rt += 20 - rt % 20;
+        rt += ltp->conf->bucket - rt % ltp->conf->bucket;
     }
 
     /*
@@ -619,6 +620,7 @@ ngx_http_upstream_least_time_create_conf(ngx_conf_t *cf)
      */
 
     conf->mode = NGX_CONF_UNSET_UINT;
+    conf->bucket = 20;
 
     return conf;
 }
@@ -627,7 +629,8 @@ ngx_http_upstream_least_time_create_conf(ngx_conf_t *cf)
 static char *
 ngx_http_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
-    ngx_str_t                     *value;
+    ngx_str_t                     *value, s;
+    ngx_uint_t                     i;
     ngx_http_upstream_lt_conf_t   *ltcf;
     ngx_http_upstream_srv_conf_t  *uscf;
 
@@ -649,18 +652,37 @@ ngx_http_upstream_least_time(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                   |NGX_HTTP_UPSTREAM_DOWN
                   |NGX_HTTP_UPSTREAM_BACKUP;
 
-    if (cf->args->nelts == 3) {
-        value = cf->args->elts;
-        ltcf = ngx_http_conf_upstream_srv_conf(uscf,
+    value = cf->args->elts;
+    ltcf = ngx_http_conf_upstream_srv_conf(uscf,
                                           ngx_http_upstream_least_time_module);
-        if (ngx_strcmp(value[2].data, "inflight") == 0) {
-            ltcf->use_inflight = 1;
 
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "invalid parameter \"%V\"", &value[2]);
-            return NGX_CONF_ERROR;
+    for (i = 2; i < cf->args->nelts; i++) {
+
+        if (ngx_strcmp(value[i].data, "inflight") == 0) {
+            ltcf->use_inflight = 1;
+            continue;
         }
+
+        if (ngx_strncmp(value[i].data, "bucket=", 7) == 0) {
+            s.len = value[i].len - 7;
+            s.data = value[i].data + 7;
+
+            ltcf->bucket = ngx_parse_time(&s, 0);
+
+            if (ltcf->bucket == (ngx_msec_t) NGX_ERROR
+                || ltcf->bucket == 0 || ltcf->bucket > 5000)
+            {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "invalid bucket \"%V\"", &value[i]);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                           "invalid parameter \"%V\"", &value[i]);
+        return NGX_CONF_ERROR;
     }
 
     return ngx_conf_set_enum_slot(cf, cmd, conf);
