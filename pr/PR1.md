@@ -1,4 +1,10 @@
-Title: Upstream: fixed rounding of least_time average response times
+Title: Upstream: fixed rounding of least_time average response times.
+
+I've been looking at nginx's load balancing through [queueing theory](https://en.wikipedia.org/wiki/Queueing_theory). I'm not an expert in it, so I worked with an AI assistant (Claude) to build a simulator that reproduces least_time's exact arithmetic, checked it against known queueing results, and confirmed the findings on real nginx builds.
+
+This PR is the smallest of those findings: a rounding error in the averages least_time keeps. On its own it changes little with the default settings (p99 within ±4 % on real nginx), but a follow-up PR depends on it: that PR makes the 20 ms clustering configurable, which improves p99 by 9-44 % on real nginx when servers differ in speed.
+
+The simulator, data and benchmark scripts are in [this branch](https://github.com/psygo/nginx_plus/tree/least-time-evidence). I couldn't find a load-balancing simulator in the nginx ecosystem; if one would be useful, I'd be happy to open a discussion about it.
 
 ## Problem
 
