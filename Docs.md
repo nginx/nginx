@@ -14,13 +14,15 @@ The code lives on other branches of this fork:
 | `lt-smooth` | change 1, then `bucket`, then `smooth` (three commits) |
 | `lt-bucket` | change 1, then `bucket` (intermediate, used by the benchmarks) |
 | `lt-trace` | experiment-only prototype with trace logging and compile-time knobs |
-
-This branch (`least-time-evidence`) has no nginx code.
+| `least-time-evidence` | only the files described here, no nginx code |
+| `least-time-work` | `lt-smooth` plus these files: everything in one place |
 
 ## Reports
 
 - [results/sim_pr.md](results/sim_pr.md): simulation, 12 scenarios × 4 loads, 20 paired
   seeds × 300,000 requests per cell, plus a bucket × smooth sweep (10 seeds × 200,000).
+- [results/sim_validation.md](results/sim_validation.md): the simulator checked against exact
+  queueing-theory formulas (also at the end of `sim_pr.md`).
 - [results/linux_pr.md](results/linux_pr.md): real nginx on Linux, 18 configurations ×
   6 variants × 5 paired repetitions, with a simulator-vs-real comparison.
 - [pr/PR1.md](pr/PR1.md), [pr/PR2.md](pr/PR2.md): pull request descriptions;
@@ -35,6 +37,7 @@ This branch (`least-time-evidence`) has no nginx code.
 | `sim/lbsim.py` | discrete-event simulator of nginx balancers. `LeastTime` is stock; `LeastTimePatch` reproduces the patched C arithmetic. |
 | `sim/experiments.py` | scenarios and job sets (`pr`, `sweep`, and the earlier `h1`... sets) |
 | `sim/report_pr.py` | builds `results/sim_pr.md` and the simulation figures |
+| `sim/validate.py` | checks the simulator against queueing-theory formulas (M/M/1, M/M/c, M/G/1, PS) |
 | `bench/linux/` | real-nginx benchmark: Dockerfile, Go backend and open-loop load generator, `run.py`, `matrix.sh`, `report_linux.py` |
 | `bench/*.py`, `bench/exp_*.sh` | earlier macOS harness (Python backends, `-O0` builds), superseded by `bench/linux/` |
 | `build/mkvariant.sh` | builds `lt-trace` variants for the macOS harness |
@@ -49,6 +52,7 @@ Python 3, no dependencies. From this branch's root:
 
     python3 sim/experiments.py pr --seeds 20 --n 300000
     python3 sim/experiments.py sweep --seeds 10 --n 200000
+    python3 sim/validate.py          # about a minute
     python3 sim/report_pr.py
 
 Jobs run in parallel on all cores (`--jobs` to change it).

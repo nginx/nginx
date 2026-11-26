@@ -114,7 +114,10 @@ point, rounding, decay, the weight formula). It covers 12 scenarios × 4 load le
 (50/70/85/95 %), 20 paired seeds × 300,000 requests per cell, and was checked against the
 real runs above: p99 and per-server shares agree within a few percent where the real
 runs are tight (for example, 3 servers at 50 %: least_conn / stock / patched p99 of
-60.2 / 47.7 / 25.8 ms simulated vs 61.2 / 49.2 / 27.5 ms real).
+60.2 / 47.7 / 25.8 ms simulated vs 61.2 / 49.2 / 27.5 ms real). It was also checked
+against exact queueing theory (M/M/1, M/M/c, M/G/1, processor sharing, random routing):
+mean and p99 latency match the formulas within 1.3 %, inside the 95 % CI in 27 of 27
+comparisons, and `least_conn` lies between its theoretical bounds.
 
 `bucket=5ms smooth=3s` vs stock `least_time`, p99:
 

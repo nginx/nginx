@@ -49,11 +49,17 @@ Evidence:
 - nginx-tests: `upstream*.t` and `stream_upstream*.t` pass on macOS/clang and Linux/gcc 14
   (`-Werror`, run as root with `TEST_NGINX_GLOBALS="user root;"`).
 
-Remaining before submitting (needs the user):
+Pushed 2026-11-26 to the fork github.com/psygo/nginx_plus (remote `fork` in `nginx/`):
+`lt-fixed-point` (PR 1), `lt-smooth` (PR 2: P1, bucket, smooth), `lt-bucket`, `lt-trace`
+(experiment only) and the orphan `least-time-evidence` branch (Docs.md, sim, bench, results,
+patches, pr). The nginx-tests and nginx.org changes are committed locally only; pushing them
+needs forks of those repos.
 
-1. Publish the evidence (sim, bench, results) somewhere public, and fill `EVIDENCE_LINK`.
-2. Commit on fork branches with the `pr/commit-*.txt` messages, push, open the PRs (sign the
-   F5 CLA), then fill in the cross-references (`#PR1`, `#PR2`, `#TBD`).
+Remaining (the user said not to open PRs yet):
+
+1. Open the PRs (F5 CLA on the first), then fill in the cross-references (`#PR1`, `#PR2`,
+   `#TBD`).
+2. Fork nginx-tests and nginx.org, push their branches, open the companion PRs.
 
 ## 0. Findings so far (2026-11-25)
 

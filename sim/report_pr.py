@@ -288,6 +288,11 @@ def main():
                           f"{(g - 1) * 100:+.1f} % | {worst_s[0]} {(worst_s[1] - 1) * 100:+.0f} % |")
         md.append("")
 
+    vpath = os.path.join(RES, "sim_validation.json")
+    if os.path.exists(vpath):
+        from validate import report as vreport
+        md += vreport(json.load(open(vpath)))[0]
+
     out = os.path.join(RES, "sim_pr.md")
     with open(out, "w") as f:
         f.write("\n".join(md))
