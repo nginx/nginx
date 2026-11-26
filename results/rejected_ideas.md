@@ -1,27 +1,16 @@
 # Rejected and abandoned ideas
 
-These are the ideas that were tried and not proposed, with the data, the reason, and
-what would change the verdict. They are kept so they don't get re-tried blindly, and
-because a reviewer may well ask "did you consider X?".
+These are the ideas that were tried and not proposed, with the data, the reason, and what would change the verdict. They are kept so they don't get re-tried blindly, and because a reviewer may well ask "did you consider X?".
 
-All simulation numbers are p99 latency in ms, the mean over seeds. The scenarios are
-described in [sim_pr.md](sim_pr.md#scenarios).
+All simulation numbers are p99 latency in ms, the mean over seeds. The scenarios are described in [sim_pr.md](sim_pr.md#scenarios).
 
-The early experiments (H3, H5, H6) used 5 seeds × 100,000 requests, which is weaker
-evidence than the 20 × 300,000 of the PR matrix. Differences under about 5 % in them
-are noise. The conclusions below rest on larger differences.
+The early experiments (H3, H5, H6) used 5 seeds × 100,000 requests, which is weaker evidence than the 20 × 300,000 of the PR matrix. Differences under about 5 % in them are noise. The conclusions below rest on larger differences.
 
 ## 1. Power of two choices
 
-**Idea.** Instead of scanning every server, pick two at random and send the request to
-the better of the two. This is a classic queueing-theory result (Mitzenmacher; Vvedenskaya
-et al.): two random choices are exponentially better than one. Finagle and Linkerd
-balance this way, and NGINX Plus offers `random two least_time`. Open-source nginx only
-has `random two least_conn`, so adding `least_time` there looked like an easy feature.
+**Idea.** Instead of scanning every server, pick two at random and send the request to the better of the two. This is a classic queueing-theory result (Mitzenmacher; Vvedenskaya et al.): two random choices are exponentially better than one. Finagle and Linkerd balance this way, and NGINX Plus offers `random two least_time`. Open-source nginx only has `random two least_conn`, so adding `least_time` there looked like an easy feature.
 
-**Experiment.** H5, in `results/sim_h5.json`. Servers have random speeds between ½ and 2
-(`bigN`). Two setups: 1 worker with shared state, and 8 workers each with private state
-(nginx without `zone`).
+**Experiment.** H5, in `results/sim_h5.json`. Servers have random speeds between ½ and 2 (`bigN`). Two setups: 1 worker with shared state, and 8 workers each with private state (nginx without `zone`).
 
 | servers | load | workers | least_conn | least_time | random two least_conn | random two least_time | P2C Peak EWMA |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -33,33 +22,17 @@ has `random two least_conn`, so adding `least_time` there looked like an easy fe
 | 64 | 0.7 | 8 private | 138.8 | 50.7 | 186.4 | 95.9 | 94.0 |
 | 64 | 0.9 | 8 private | 160.0 | 80.4 | 311.7 | 146.0 | 145.3 |
 
-**Verdict: rejected on latency.** Every two-choice variant is worse than full
-`least_time`, by 1.1-1.4× at 4 servers and up to 2.2× at 64.
+**Verdict: rejected on latency.** Every two-choice variant is worse than full `least_time`, by 1.1-1.4× at 4 servers and up to 2.2× at 64.
 
-**Why.** The two-choices result compares against picking *one* random server. It
-matters when looking at every server is expensive or the information is stale (many
-independent dispatchers, remote state). nginx keeps all server state in memory, and
-scanning even 64 servers costs nanoseconds, so sampling only throws information away.
+**Why.** The two-choices result compares against picking *one* random server. It matters when looking at every server is expensive or the information is stale (many independent dispatchers, remote state). nginx keeps all server state in memory, and scanning even 64 servers costs nanoseconds, so sampling only throws information away.
 
-**What would change it.** CPU time and lock contention are not modeled. With hundreds
-of servers and many workers contending for the `zone` lock, a full scan could become
-the bottleneck. That has not been measured. `random two least_time` may still be worth
-adding for parity with NGINX Plus, but not on latency grounds.
+**What would change it.** CPU time and lock contention are not modeled. With hundreds of servers and many workers contending for the `zone` lock, a full scan could become the bottleneck. That has not been measured. `random two least_time` may still be worth adding for parity with NGINX Plus, but not on latency grounds.
 
 ## 2. A pure service-rate rule ("shortest expected delay")
 
-**Idea.** `least_time` multiplies the average *response* time by the number of requests in
-progress. A response time already includes time spent waiting, so the wait gets counted
-twice. Queueing theory's shortest-expected-delay rule uses the *service* time instead.
-So the idea was to estimate each server's service time as `response_time / (1 + requests
-in progress when it was sent)`, which is exact for a server that handles one request at a
-time in arrival order (FCFS), and to choose the server with the lowest
-`service_time × (1 + in progress)`.
+**Idea.** `least_time` multiplies the average *response* time by the number of requests in progress. A response time already includes time spent waiting, so the wait gets counted twice. Queueing theory's shortest-expected-delay rule uses the *service* time instead. So the idea was to estimate each server's service time as `response_time / (1 + requests in progress when it was sent)`, which is exact for a server that handles one request at a time in arrival order (FCFS), and to choose the server with the lowest `service_time × (1 + in progress)`.
 
-**Experiment.** H3 (`results/sim_h3.json`) covers the slowdown scenarios: one of 4
-servers drops to ¼ speed for 20 s, and p99 is measured during the slow window. The
-backends are FCFS with 1 worker, FCFS with 4 workers (`_c4`), and processor sharing
-(`_ps`). H6 (`results/sim_h6.json`) covers mixed 2 ms / 80 ms requests.
+**Experiment.** H3 (`results/sim_h3.json`) covers the slowdown scenarios: one of 4 servers drops to ¼ speed for 20 s, and p99 is measured during the slow window. The backends are FCFS with 1 worker, FCFS with 4 workers (`_c4`), and processor sharing (`_ps`). H6 (`results/sim_h6.json`) covers mixed 2 ms / 80 ms requests.
 
 | scenario | load | least_conn | least_time | least_time, bucket 1 | service-rate rule |
 | --- | --- | --- | --- | --- | --- |
@@ -71,22 +44,11 @@ backends are FCFS with 1 worker, FCFS with 4 workers (`_c4`), and processor shar
 | bimodal4 | 0.85 | **637.2** | 740.9 | 761.1 | 784.1 |
 | bimodal4_het | 0.85 | 799.3 | 791.7 | 805.7 | **712.1** |
 
-**Verdict: rejected as a default.** It wins on FCFS backends, by 15-22 % against
-`least_time`. It loses by 22 % on processor-sharing backends at 70 % load, and on
-equal servers with mixed requests it is the worst of all. A balancer that is sometimes
-much better and sometimes much worse can't be nginx's behavior for everyone.
+**Verdict: rejected as a default.** It wins on FCFS backends, by 15-22 % against `least_time`. It loses by 22 % on processor-sharing backends at 70 % load, and on equal servers with mixed requests it is the worst of all. A balancer that is sometimes much better and sometimes much worse can't be nginx's behavior for everyone.
 
-**Why.** The formula `response_time / (1 + in progress)` assumes the backend processes
-requests one at a time, in order. A backend that shares its CPU among all requests
-(processor sharing), or has several workers, slows down differently as load grows, so
-the estimate is biased, in different directions for different backends. nginx has no
-way of knowing which kind of backend it is talking to.
+**Why.** The formula `response_time / (1 + in progress)` assumes the backend processes requests one at a time, in order. A backend that shares its CPU among all requests (processor sharing), or has several workers, slows down differently as load grows, so the estimate is biased, in different directions for different backends. nginx has no way of knowing which kind of backend it is talking to.
 
-**What would change it.** An estimator that learns each backend's behavior, by watching
-how its response time grows with the number of requests in progress. Then the service
-time and the concurrency could be estimated together. This is the most promising
-follow-up (see the headroom measurement in `sim_headroom.json`: on 3 very unequal
-servers, a balancer that knows true speeds beats patched `least_time` by 26–38 %).
+**What would change it.** An estimator that learns each backend's behavior, by watching how its response time grows with the number of requests in progress. Then the service time and the concurrency could be estimated together. This is the most promising follow-up (see the headroom measurement in `sim_headroom.json`: on 3 very unequal servers, a balancer that knows true speeds beats patched `least_time` by 26–38 %).
 
 ## 3. Smaller tweaks that lost
 

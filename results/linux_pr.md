@@ -4,7 +4,7 @@ nginx 1.31 master and the patched trees, `-O2`, no debug logging, one worker unl
 
 Backends are Go HTTP servers with one FCFS worker each that hold the request for cost/speed ms. The load generator is open loop (Poisson), with latency measured from each request's scheduled send time. It draws every request's cost from the scenario's distribution with seed = repetition and passes it in the URL, so all variants of a repetition see identical arrivals and costs. Variants run in shuffled order inside each repetition. Each run is 5 s warm-up plus 30 s measured (slow3: 90 s, slowdown: 60 s, with p99 over the 20 s slow window).
 
-Load generator send lag (scheduled to actual send), p99 across runs: median 0.03 ms, max 7.81 ms. Errors: 0 in 540 runs.
+Load generator send lag (scheduled to actual send), p99 across runs: median 0.03 ms, max 7.81 ms. Errors: 0 in 540 runs. Disturbed runs excluded (send lag p99 over 2 ms and over 3x the median of the same cell): 0.
 
 ## p99 change vs stock least_time (paired by repetition, 95 % CI)
 

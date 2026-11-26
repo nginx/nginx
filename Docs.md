@@ -2,8 +2,7 @@
 
 Evidence for two proposed changes to the nginx `least_time` upstream balancer:
 
-1. Fixed-point averages, a bug fix. Averages are kept in whole milliseconds, so they can be
-   off by up to 10 ms, and fast servers converge to about 10 ms.
+1. Fixed-point averages, a bug fix. Averages are kept in whole milliseconds, so they can be off by up to 10 ms, and fast servers converge to about 10 ms.
 2. The `bucket=time` and `smooth=time` parameters of `least_time`.
 
 The code lives on other branches of this fork:
@@ -19,18 +18,12 @@ The code lives on other branches of this fork:
 
 ## Reports
 
-- [results/sim_pr.md](results/sim_pr.md): simulation, 12 scenarios × 4 loads, 20 paired
-  seeds × 300,000 requests per cell, plus a bucket × smooth sweep (10 seeds × 200,000).
-- [results/sim_validation.md](results/sim_validation.md): the simulator checked against exact
-  queueing-theory formulas (also at the end of `sim_pr.md`).
-- [results/rejected_ideas.md](results/rejected_ideas.md): ideas that were tried and not
-  proposed (power of two choices, a service-rate rule, smaller tweaks), with data and reasons.
-- [results/linux_pr.md](results/linux_pr.md): real nginx on Linux, 18 configurations ×
-  6 variants × 5 paired repetitions, with a simulator-vs-real comparison.
-- [pr/PR1.md](pr/PR1.md), [pr/PR2.md](pr/PR2.md): pull request descriptions;
-  [pr/](pr/) also holds the commit messages.
-- [PLAN.md](PLAN.md): working notes, with the earlier hypotheses (H1 to H6) and
-  prototype measurements.
+- [results/sim_pr.md](results/sim_pr.md): simulation, 12 scenarios × 4 loads, 20 paired seeds × 300,000 requests per cell, plus a bucket × smooth sweep (10 seeds × 200,000).
+- [results/sim_validation.md](results/sim_validation.md): the simulator checked against exact queueing-theory formulas (also at the end of `sim_pr.md`).
+- [results/rejected_ideas.md](results/rejected_ideas.md): ideas that were tried and not proposed (power of two choices, a service-rate rule, smaller tweaks), with data and reasons.
+- [results/linux_pr.md](results/linux_pr.md): real nginx on Linux, 18 configurations × 6 variants × 5 paired repetitions, with a simulator-vs-real comparison.
+- [pr/PR1.md](pr/PR1.md), [pr/PR2.md](pr/PR2.md): pull request descriptions; [pr/](pr/) also holds the commit messages.
+- [PLAN.md](PLAN.md): working notes, with the earlier hypotheses (H1 to H6) and prototype measurements.
 
 ## Layout
 
@@ -78,14 +71,11 @@ The benchmark expects a workspace where this branch sits next to the nginx sourc
     docker exec ltbench sh /w/bench/linux/matrix.sh      # about 6.5 h
     python3 bench/linux/report_linux.py
 
-The runs used Docker Desktop on an Apple M2 Max with 12 vCPUs. CPU sets are nginx 0-3,
-backends 4-7 and load generator 8-11, so the VM needs at least 12 CPUs. Keep the host
-idle while the matrix runs.
+The runs used Docker Desktop on an Apple M2 Max with 12 vCPUs. CPU sets are nginx 0-3, backends 4-7 and load generator 8-11, so the VM needs at least 12 CPUs. Keep the host idle while the matrix runs.
 
 ### nginx-tests
 
-The test changes are in `patches/tests-pr2-least_time-bucket-smooth.patch`. Apply it to
-nginx/nginx-tests, build `lt-smooth` with default modules plus `--with-stream`, and run:
+The test changes are in `patches/tests-pr2-least_time-bucket-smooth.patch`. Apply it to nginx/nginx-tests, build `lt-smooth` with default modules plus `--with-stream`, and run:
 
     TEST_NGINX_BINARY=/path/to/nginx prove upstream*.t stream_upstream*.t
 

@@ -20,6 +20,19 @@ from report_pr import (LABEL, SCEN, RES, mean_ci, paired_ratio,  # noqa: E402
                        fmt_ratio, dotplot, load)
 
 
+def disturbed(rows, key):
+    """Runs the load generator could not pace: send lag p99 over 2 ms and over 3x the median
+    lag of the other runs of the same cell. Some cells have a systematic lag of a few ms
+    (slow3: about 7.7 ms in every run, at most 2 % of p99, identical for every variant);
+    a disturbance shows up as one run far above its siblings."""
+    import statistics
+    cells = {}
+    for r in rows:
+        cells.setdefault(key(r), []).append(r["send_lag_p99"])
+    med = {k: statistics.median(v) for k, v in cells.items()}
+    return [r for r in rows if r["send_lag_p99"] > 2.0 and r["send_lag_p99"] > 3 * med[key(r)]]
+
+
 def metric(r):
     return r["window"]["p99"] if "window" in r else r["p99"]
 
@@ -35,6 +48,9 @@ def main():
                 rows.append(r)
     if not rows:
         raise SystemExit("no results/linux_*.jsonl")
+    bad = disturbed(rows, lambda r: (r["scenario"], r["util"], r["workers"]))
+    ids = {id(r) for r in bad}
+    rows = [r for r in rows if id(r) not in ids]
 
     def key(r):
         cfg = "1 worker" if r["workers"] == 1 else f"{r['workers']} workers + zone"
@@ -60,7 +76,8 @@ def main():
           "slowdown: 60 s, with p99 over the 20 s slow window).", "",
           f"Load generator send lag (scheduled to actual send), p99 across runs: median "
           f"{lag[len(lag) // 2]:.2f} ms, max {lag[-1]:.2f} ms. Errors: {errors} in "
-          f"{len(rows)} runs.", ""]
+          f"{len(rows)} runs. Disturbed runs excluded (send lag p99 over 2 ms and over 3x the "
+          f"median of the same cell): {len(bad)}.", ""]
 
     md += ["## p99 change vs stock least_time (paired by repetition, 95 % CI)", "",
            "| config | scenario | util | n | " + " | ".join(LABEL[v] for v in variants if v != "lt") + " |",
