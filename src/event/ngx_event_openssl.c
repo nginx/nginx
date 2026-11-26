@@ -5776,6 +5776,15 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     int          nid;
     const char  *name;
 
+#if (OPENSSL_VERSION_NUMBER < 0x30500000L)
+
+    if (SSL_get0_session(c->ssl->connection) == NULL) {
+        s->len = 0;
+        return NGX_OK;
+    }
+
+#endif
+
     nid = SSL_get_negotiated_group(c->ssl->connection);
 
     if (nid != NID_undef) {
