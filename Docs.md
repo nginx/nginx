@@ -23,6 +23,8 @@ The code lives on other branches of this fork:
   seeds × 300,000 requests per cell, plus a bucket × smooth sweep (10 seeds × 200,000).
 - [results/sim_validation.md](results/sim_validation.md): the simulator checked against exact
   queueing-theory formulas (also at the end of `sim_pr.md`).
+- [results/rejected_ideas.md](results/rejected_ideas.md): ideas that were tried and not
+  proposed (power of two choices, a service-rate rule, smaller tweaks), with data and reasons.
 - [results/linux_pr.md](results/linux_pr.md): real nginx on Linux, 18 configurations ×
   6 variants × 5 paired repetitions, with a simulator-vs-real comparison.
 - [pr/PR1.md](pr/PR1.md), [pr/PR2.md](pr/PR2.md): pull request descriptions;

@@ -80,9 +80,9 @@ bucket is made smaller.
 | --- | --- | --- |
 | H1 bucket | **Confirmed.** Sim and real nginx agree. | fast3 (2/6/15 ms) at 50 % utilization, p99: lc 60.7, stock lt 47.1, bucket 1 (int) 40.1, bucket 1 + fixed point 25.2. Real nginx at 250 rps: lc 66, lt 48, fp_b1 31. No regression on homogeneous or slow backends. |
 | H2 no zone | **Confirmed.** Smaller effect on macOS. | Sim homog8 at 0.7: lc 54 with a zone vs 87 with 8 private workers. Real macOS: about 13 % (accept is skewed across workers). Expect it to be larger on Linux with `reuseport`. Documentation or warning material, not code. |
-| H3 SED / service rate | **Rejected as a default.** | Helps FCFS c=1, hurts processor sharing (75.5 vs 60.3). Peak EWMA is about equal to lt with bucket 1. |
+| H3 SED / service rate | **Rejected as a default.** | Helps FCFS backends (-15 to -22 % vs lt), hurts processor sharing (104 vs 85 at 0.7) and equal servers with mixed requests. Peak EWMA is about equal to lt with bucket 1. Details: `results/rejected_ideas.md`. |
 | H4 EWMA | **Confirmed**, as alpha/tau. | Stock lt is worse than lc on bimodal traffic (sim 317 vs 268, real 307 vs 277). A smaller bucket makes it worse (360) because EWMA noise becomes visible. alpha 0.01 with a 3 s time floor fixes it (286) and keeps the gains. |
-| H5 random two least_time | **Rejected on latency.** | big64 at 0.7: 75 vs 41 for full least_time. CPU and lock contention are not modeled; revisit only if lock contention shows up on Linux. |
+| H5 random two least_time | **Rejected on latency.** | big64 at 0.7: 75 vs 41 for full least_time. CPU and lock contention are not modeled; revisit only if lock contention shows up on Linux. Details: `results/rejected_ideas.md`. |
 | H6 least_work | **Promising, out of tree.** | Bimodal heterogeneous: about −40 % p99 vs lc and lt with learned per-class cost; about −30 % at σ=0.5 estimation error. It needs cost hints, so it belongs in a dynamic module. |
 
 ### Staged-patch simulation (p99 ms, 5 seeds, ±95 % CI in `results/sim_staged.json`)
@@ -282,7 +282,8 @@ the target scenario, or a > 2 % regression on homogeneous traffic, drop it.
 
 10. **`random two least_time=header|last_byte`** in the HTTP and stream random modules. Plus has
     this, it is self-contained and it is the most likely to be accepted upstream. Do it even if
-    other hypotheses fail, provided H5 holds.
+    other hypotheses fail, provided H5 holds. **Outcome: H5 did not hold** (two choices lose
+    to a full scan on latency); not pursued. See `results/rejected_ideas.md`.
 11. Bucket fix (H1): a configurable or relative bucket, e.g. `least_time header bucket=5ms`,
     or a bucket derived from group median rt. Default behavior stays unchanged.
 12. Estimator changes (H3/H4) behind an explicit parameter, never a silent default change.
