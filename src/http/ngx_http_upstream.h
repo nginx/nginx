@@ -66,6 +66,7 @@ typedef struct {
     ngx_msec_t                       connect_time;
     ngx_msec_t                       header_time;
     ngx_msec_t                       queue_time;
+    ngx_msec_t                       resolve_time;
     off_t                            response_length;
     off_t                            bytes_received;
     off_t                            bytes_sent;
@@ -332,6 +333,9 @@ typedef struct {
     ngx_str_t                        name;
 
     ngx_resolver_ctx_t              *ctx;
+
+    ngx_msec_t                       start_time;
+    ngx_msec_t                       resolve_time;
 } ngx_http_upstream_resolved_t;
 
 
