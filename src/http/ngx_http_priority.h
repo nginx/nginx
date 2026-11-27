@@ -27,6 +27,8 @@ typedef struct {
 } ngx_http_priority_state_t;
 
 
+ngx_int_t ngx_http_parse_sf_boolean(ngx_str_t *field);
+
 void ngx_http_priority_state_init(ngx_http_priority_state_t *ps);
 ngx_int_t ngx_http_priority_parse(ngx_str_t *field, ngx_http_priority_t *p);
 void ngx_http_priority_state_update(ngx_http_priority_state_t *ps);

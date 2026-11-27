@@ -325,6 +325,11 @@ static ngx_http_upstream_header_t  ngx_http_upstream_headers_in[] = {
                  ngx_http_upstream_process_buffering, 0,
                  ngx_http_upstream_copy_header_line, 0, 0 },
 
+    { ngx_string("Incremental"),
+                 ngx_http_upstream_process_multi_header_lines,
+                 offsetof(ngx_http_upstream_headers_in_t, incremental),
+                 ngx_http_upstream_copy_header_line, 0, 0 },
+
     { ngx_string("X-Accel-Charset"),
                  ngx_http_upstream_process_charset, 0,
                  ngx_http_upstream_copy_header_line, 0, 0 },
@@ -508,6 +513,7 @@ ngx_conf_bitmask_t  ngx_http_upstream_ignore_headers_masks[] = {
     { ngx_string("Cache-Control"), NGX_HTTP_UPSTREAM_IGN_CACHE_CONTROL },
     { ngx_string("Set-Cookie"), NGX_HTTP_UPSTREAM_IGN_SET_COOKIE },
     { ngx_string("Vary"), NGX_HTTP_UPSTREAM_IGN_VARY },
+    { ngx_string("Incremental"), NGX_HTTP_UPSTREAM_IGN_INCREMENTAL },
     { ngx_null_string, 0 }
 };
 
@@ -3222,6 +3228,15 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
     r->headers_out.content_length_n = u->headers_in.content_length_n;
 
     r->disable_not_modified = !u->cacheable;
+
+    if (u->buffering && u->conf->change_buffering
+        && !(u->conf->ignore_headers & NGX_HTTP_UPSTREAM_IGN_INCREMENTAL)
+        && u->headers_in.incremental != NULL
+        && u->headers_in.incremental->next == NULL
+        && ngx_http_parse_sf_boolean(&u->headers_in.incremental->value) == 1)
+    {
+        u->buffering = 0;
+    }
 
     if (u->conf->force_ranges) {
         r->allow_ranges = 1;
