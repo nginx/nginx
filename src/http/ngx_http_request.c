@@ -2559,10 +2559,50 @@ ngx_http_find_virtual_server(ngx_connection_t *c,
     ngx_http_virtual_names_t *virtual_names, ngx_str_t *host,
     ngx_http_request_t *r, ngx_http_core_srv_conf_t **cscfp)
 {
-    ngx_http_core_srv_conf_t  *cscf;
+    ngx_int_t                   rc;
+    ngx_str_t                   name;
+    ngx_http_core_srv_conf_t   *cscf;
+    ngx_http_core_main_conf_t  *cmcf;
 
     if (virtual_names == NULL) {
         return NGX_DECLINED;
+    }
+
+    cmcf = ngx_http_cycle_get_module_main_conf(ngx_cycle, ngx_http_core_module);
+
+    if (cmcf->server_name_resolver
+        && host->len
+        && virtual_names->names.hash.buckets)
+    {
+        cscf = ngx_hash_find(&virtual_names->names.hash,
+                             ngx_hash_key(host->data, host->len),
+                             host->data, host->len);
+        if (cscf) {
+            *cscfp = cscf;
+            return NGX_OK;
+        }
+
+        ngx_str_null(&name);
+
+        rc = cmcf->server_name_resolver(c, r ? r->pool : c->pool, host, &name);
+
+        if (rc == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (rc == NGX_OK && name.len) {
+            cscf = ngx_hash_find(&virtual_names->names.hash,
+                                 ngx_hash_key(name.data, name.len),
+                                 name.data, name.len);
+            if (cscf) {
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                               "http server name \"%V\" resolved to \"%V\"",
+                               host, &name);
+
+                *cscfp = cscf;
+                return NGX_OK;
+            }
+        }
     }
 
     cscf = ngx_hash_find_combined(&virtual_names->names,

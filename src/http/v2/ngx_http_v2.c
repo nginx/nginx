@@ -3139,6 +3139,7 @@ ngx_http_v2_create_stream(ngx_http_v2_connection_t *h2c)
     fc->buffered = 0;
     fc->sndlowat = 1;
     fc->tcp_nodelay = NGX_TCP_NODELAY_DISABLED;
+    fc->reusable = 0;
 
     r = ngx_http_create_request(fc);
     if (r == NULL) {
