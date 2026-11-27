@@ -677,6 +677,24 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         return;
     }
 
+#if (NGX_HAVE_SO_BINDTODEVICE)
+    if (u->conf->device != NULL) {
+        if (ngx_http_complex_value(r, u->conf->device, &u->peer.device)
+            != NGX_OK)
+        {
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+
+        if (u->peer.device.len > IF_NAMESIZE - 1) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "device name \"%V\" too long", &u->peer.device);
+            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+            return;
+        }
+    }
+#endif
+
     if (ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
@@ -7043,6 +7061,62 @@ ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     }
 
     return NGX_CONF_OK;
+}
+
+
+char *
+ngx_http_upstream_bind_device_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
+    void *conf)
+{
+#if (NGX_HAVE_SO_BINDTODEVICE)
+    char  *p = conf;
+
+    ngx_str_t                          *value;
+    ngx_http_complex_value_t          **device, cv;
+    ngx_http_compile_complex_value_t    ccv;
+
+    device = (ngx_http_complex_value_t **) (p + cmd->offset);
+
+    if (*device != NGX_CONF_UNSET_PTR) {
+        return "is duplicate";
+    }
+
+    value = cf->args->elts;
+
+    if (ngx_strcmp(value[1].data, "off") == 0) {
+        *device = NULL;
+        return NGX_CONF_OK;
+    }
+
+    ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
+
+    ccv.cf = cf;
+    ccv.value = &value[1];
+    ccv.complex_value = &cv;
+
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
+        return NGX_CONF_ERROR;
+    }
+
+    if (cv.lengths == NULL && value[1].len > IF_NAMESIZE - 1) {
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid device name \"%V\"",
+                           &value[1]);
+        return NGX_CONF_ERROR;
+    }
+
+    *device = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
+    if (*device == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    **device = cv;
+
+    return NGX_CONF_OK;
+#else
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                       "\"%V\" is not supported on this platform", &cmd->name);
+    return NGX_CONF_ERROR;
+#endif
 }
 
 
