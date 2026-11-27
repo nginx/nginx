@@ -891,6 +891,7 @@ ngx_http_gzip_filter_deflate_end(ngx_http_request_t *r,
     }
 
     ngx_pfree(r->pool, ctx->preallocated);
+    ctx->preallocated = NULL;
 
     cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
