@@ -21,6 +21,9 @@
 #define NGX_DEBUG_POINTS_STOP   1
 #define NGX_DEBUG_POINTS_ABORT  2
 
+#define NGX_TERM_SIGNAL_FAST      0
+#define NGX_TERM_SIGNAL_GRACEFUL  1
+
 
 typedef struct ngx_shm_zone_s  ngx_shm_zone_t;
 
@@ -95,6 +98,7 @@ typedef struct {
 
     ngx_int_t                 worker_processes;
     ngx_int_t                 debug_points;
+    ngx_uint_t                term_signal;
 
     ngx_int_t                 rlimit_nofile;
     off_t                     rlimit_core;

@@ -151,6 +151,21 @@ Shut down gracefully.
 .It Dv SIGUSR1
 Reopen log files.
 .El
+.Pp
+If the
+.Va term_signal
+directive is set to
+.Cm graceful ,
+both the master and worker processes handle
+.Dv SIGTERM
+the same way as
+.Dv SIGQUIT ,
+and
+.Fl s Cm stop
+sends
+.Dv SIGINT
+instead of
+.Dv SIGTERM .
 .Sh DEBUGGING LOG
 To enable a debugging log, reconfigure
 .Nm
