@@ -3619,6 +3619,14 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     u->read_event_handler = ngx_http_upstream_process_upstream;
     r->write_event_handler = ngx_http_upstream_process_downstream;
 
+    if (p->preread_size == 0 && !p->downstream_error) {
+        /* flush headers if body delayed */
+        if (ngx_http_send_special(r, NGX_HTTP_FLUSH) == NGX_ERROR) {
+            ngx_http_upstream_finalize_request(r, u, NGX_ERROR);
+            return;
+        }
+    }
+
     ngx_http_upstream_process_upstream(r, u);
 }
 
