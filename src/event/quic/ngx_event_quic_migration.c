@@ -190,6 +190,7 @@ valid:
         qc->congestion.recovery_start = ngx_current_msec - 1;
 
         ngx_quic_init_rtt(qc);
+        qc->rtt_start_pnum = ctx->pnum;
     }
 
     path->validated = 1;
@@ -809,6 +810,15 @@ ngx_quic_expire_path_validation(ngx_connection_t *c, ngx_quic_path_t *path)
 
         qc->path = bkp;
         qc->path->tag = NGX_QUIC_PATH_ACTIVE;
+
+        if (ngx_cmp_sockaddr(path->sockaddr, path->socklen,
+                             bkp->sockaddr, bkp->socklen, 0)
+            != NGX_OK)
+        {
+            /* Do not measure the restored path using earlier packets. */
+            ngx_quic_init_rtt(qc);
+            qc->rtt_start_pnum = ctx->pnum;
+        }
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic path seq:%uL addr:%V is restored from backup",
