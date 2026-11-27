@@ -678,6 +678,8 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
             return rc;
         }
 
+        r->request_length += size - (r->header_in->last - r->header_in->pos);
+
         if (r->headers_in.content_length_n == 0) {
             return NGX_OK;
         }
@@ -826,6 +828,8 @@ ngx_http_read_discarded_request_body(ngx_http_request_t *r)
 
         b.pos = buffer;
         b.last = buffer + n;
+
+        r->request_length += n;
 
         rc = ngx_http_discard_request_body_filter(r, &b);
 
