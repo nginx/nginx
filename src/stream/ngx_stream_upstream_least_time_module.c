@@ -432,6 +432,8 @@ ngx_stream_upstream_least_time_eta(ngx_stream_upstream_lt_peer_data_t *ltp,
         rt = ngx_max(rt, peer->inflight_time);
     }
 
+    rt = ngx_stream_upstream_avg_msec(rt);
+
     if (rt > 5000) {
         /*
          * consider peers with response time greater than max equally bad
