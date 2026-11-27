@@ -2503,14 +2503,6 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
                    "http2 WINDOW_UPDATE frame sid:%ui window:%uz",
                    h2c->state.sid, window);
 
-    if (window == 0) {
-        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
-                      "client sent WINDOW_UPDATE frame "
-                      "with incorrect window increment 0");
-
-        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
-    }
-
     if (h2c->state.sid) {
         node = ngx_http_v2_get_node_by_id(h2c, h2c->state.sid, 0);
 
@@ -2522,6 +2514,26 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
         }
 
         stream = node->stream;
+
+        if (window == 0) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, h2c->connection->log, 0,
+                           "http2 WINDOW_UPDATE frame with zero window "
+                           "increment on stream %ui", h2c->state.sid);
+
+            ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                          "client sent WINDOW_UPDATE frame "
+                          "with incorrect window increment 0");
+
+            if (ngx_http_v2_terminate_stream(h2c, stream,
+                                             NGX_HTTP_V2_PROTOCOL_ERROR)
+                == NGX_ERROR)
+            {
+                return ngx_http_v2_connection_error(h2c,
+                                                    NGX_HTTP_V2_INTERNAL_ERROR);
+            }
+
+            return ngx_http_v2_state_complete(h2c, pos, end);
+        }
 
         if (window > (size_t) (NGX_HTTP_V2_MAX_WINDOW - stream->send_window)) {
 
@@ -2559,6 +2571,14 @@ ngx_http_v2_state_window_update(ngx_http_v2_connection_t *h2c, u_char *pos,
         }
 
         return ngx_http_v2_state_complete(h2c, pos, end);
+    }
+
+    if (window == 0) {
+        ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
+                      "client sent WINDOW_UPDATE frame "
+                      "with incorrect window increment 0");
+
+        return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_PROTOCOL_ERROR);
     }
 
     if (window > NGX_HTTP_V2_MAX_WINDOW - h2c->send_window - h2c->send_queued) {
