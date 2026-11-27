@@ -163,13 +163,11 @@ ngx_freebsd_sendfile_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit)
             hdtr.trl_cnt = trailer.count;
 
             /*
-             * the "nbytes bug" of the old sendfile() syscall:
-             * http://bugs.freebsd.org/33771
+             * the header is passed to sendfile() via sf_hdtr and its
+             * size is not counted in the nbytes argument
              */
 
-            if (!ngx_freebsd_sendfile_nbytes_bug) {
-                header.size = 0;
-            }
+            header.size = 0;
 
             sent = 0;
 
