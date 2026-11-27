@@ -1536,6 +1536,18 @@ ngx_http_v2_state_field_len(ngx_http_v2_connection_t *h2c, u_char *pos,
     h2c->state.field_rest = len;
 
     if (h2c->state.stream == NULL && !h2c->state.index) {
+
+        h2c->state.field_start = NULL;
+
+        if (h2c->state.parse_name) {
+            h2c->state.header.name.len = len;
+            h2c->state.header.name.data = NULL;
+
+        } else {
+            h2c->state.header.value.len = len;
+            h2c->state.header.value.data = NULL;
+        }
+
         return ngx_http_v2_state_field_skip(h2c, pos, end);
     }
 
@@ -1720,8 +1732,10 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (h2c->state.parse_name) {
         h2c->state.parse_name = 0;
 
-        header->name.len = h2c->state.field_end - h2c->state.field_start;
-        header->name.data = h2c->state.field_start;
+        if (h2c->state.field_start) {
+            header->name.len = h2c->state.field_end - h2c->state.field_start;
+            header->name.data = h2c->state.field_start;
+        }
 
         if (header->name.len == 0) {
             ngx_log_error(NGX_LOG_INFO, h2c->connection->log, 0,
@@ -1737,8 +1751,10 @@ ngx_http_v2_state_process_header(ngx_http_v2_connection_t *h2c, u_char *pos,
     if (h2c->state.parse_value) {
         h2c->state.parse_value = 0;
 
-        header->value.len = h2c->state.field_end - h2c->state.field_start;
-        header->value.data = h2c->state.field_start;
+        if (h2c->state.field_start) {
+            header->value.len = h2c->state.field_end - h2c->state.field_start;
+            header->value.data = h2c->state.field_start;
+        }
     }
 
     len = header->name.len + header->value.len;
