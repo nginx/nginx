@@ -1468,7 +1468,8 @@ ngx_shutdown_timer_handler(ngx_event_t *ev)
             || c[i].read == NULL
             || c[i].read->accept
             || c[i].read->channel
-            || c[i].read->resolver)
+            || c[i].read->resolver
+            || c[i].read->quic)
         {
             continue;
         }
