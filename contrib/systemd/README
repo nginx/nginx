@@ -1,0 +1,99 @@
+Simple systemd unit file example for nginx
+==========================================
+
+This directory contains a small, practical example of a systemd unit file
+for running nginx under systemd. It is intended for users who build nginx
+from source or otherwise install it outside their distribution packages.
+
+About the unit file
+-------------------
+
+The included nginx.service file uses a systemd-native approach:
+
+  * Type=simple with "daemon off" so systemd tracks the main process
+  * No PIDFile (systemd uses the main PID it started)
+  * Reload via HUP
+  * Graceful stop via QUIT
+
+Installation
+------------
+
+1. Copy the unit file:
+
+   $ sudo cp nginx.service /etc/systemd/system/
+
+2. Adjust paths if needed:
+
+   The example assumes nginx is at /usr/sbin/nginx. If your nginx binary is
+   elsewhere (e.g. /usr/local/nginx/sbin/nginx), update ExecStartPre/ExecStart.
+
+3. Reload systemd:
+
+   $ sudo systemctl daemon-reload
+
+4. Enable and start:
+
+   $ sudo systemctl enable nginx.service
+   $ sudo systemctl start nginx.service
+
+5. Check status and logs:
+
+   $ sudo systemctl status nginx.service
+   $ journalctl -u nginx.service
+
+Customization
+-------------
+
+Binary path:
+
+  ExecStartPre=/usr/local/nginx/sbin/nginx -t -q
+  ExecStart=/usr/local/nginx/sbin/nginx -g 'daemon off;'
+
+Configuration file location:
+
+  If your nginx.conf is not in the default location:
+
+  ExecStart=/usr/sbin/nginx -c /path/to/nginx.conf -g 'daemon off;'
+
+systemd options:
+
+  systemd provides many optional settings (User=, Group=, limits, and various
+  hardening features). This example intentionally stays minimal; adjust it to
+  match your environment and requirements.
+
+Managing the service
+--------------------
+
+Start:    systemctl start nginx.service
+Stop:     systemctl stop nginx.service
+Restart:  systemctl restart nginx.service
+Reload:   systemctl reload nginx.service
+Status:   systemctl status nginx.service
+Logs:     journalctl -u nginx.service
+
+Notes
+-----
+
+1. Foreground operation:
+   This unit is intended for Type=simple and starts nginx with "daemon off".
+   If nginx is configured to daemonize, systemd may not track the service as
+   expected.
+
+2. Testing configuration:
+   The unit runs "nginx -t" via ExecStartPre before starting. You can also test
+   manually with:
+
+     $ nginx -t
+
+3. Distribution packages:
+   If you installed nginx using your distribution package manager, prefer the
+   unit file shipped by your distribution. This example is mainly for self-built
+   installs.
+
+For more information
+--------------------
+
+  * nginx documentation: https://nginx.org/en/docs/
+  * nginx control signals: https://nginx.org/en/docs/control.html
+  * systemd.service(5): man systemd.service
+  * systemd.exec(5): man systemd.exec
