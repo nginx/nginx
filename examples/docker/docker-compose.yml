@@ -1,0 +1,14 @@
+# Local development setup: NGINX serving a static site.
+# Start with:  docker compose up
+# Stop with:   docker compose down
+
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      # Config and content are mounted read-only; edit the files on the
+      # host and reload with: docker compose exec web nginx -s reload
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html:/usr/share/nginx/html:ro
