@@ -109,6 +109,8 @@ static ngx_int_t ngx_stream_geoip_country_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_geoip_org_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
+static ngx_int_t ngx_stream_geoip_asn_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_geoip_city_variable(ngx_stream_session_t *s,
     ngx_stream_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_stream_geoip_region_name_variable(ngx_stream_session_t *s,
@@ -219,6 +221,10 @@ static ngx_stream_variable_t  ngx_stream_geoip_vars[] = {
 
     { ngx_string("geoip_org"), NULL,
       ngx_stream_geoip_org_variable,
+      0, 0, 0 },
+
+    { ngx_string("geoip_asn"), NULL,
+      ngx_stream_geoip_asn_variable,
       0, 0, 0 },
 
     { ngx_string("geoip_city_continent_code"), NULL,
@@ -335,6 +341,10 @@ static const char  *ngx_stream_geoip_path_longitude[] = {
 
 static const char  *ngx_stream_geoip_path_dma_code[] = {
     "location", "metro_code", NULL
+};
+
+static const char  *ngx_stream_geoip_path_asn[] = {
+    "autonomous_system_number", NULL
 };
 
 
@@ -722,6 +732,56 @@ ngx_stream_geoip_org_variable(ngx_stream_session_t *s,
 #endif
 
 not_found:
+
+    v->not_found = 1;
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_stream_geoip_asn_variable(ngx_stream_session_t *s,
+    ngx_stream_variable_value_t *v, uintptr_t data)
+{
+#if (NGX_HAVE_MAXMINDDB)
+
+    int64_t                   value;
+    ngx_int_t                 rc;
+    MMDB_entry_s              entry;
+    ngx_stream_geoip_conf_t  *gcf;
+
+    gcf = ngx_stream_get_module_main_conf(s, ngx_stream_geoip_module);
+
+    if (gcf->org_mmdb == NULL) {
+        /* legacy databases are not supported */
+        goto not_found;
+    }
+
+    if (ngx_stream_geoip_lookup(s, gcf->org_mmdb, &entry) != NGX_OK) {
+        goto not_found;
+    }
+
+    rc = ngx_stream_geoip_int(&entry, ngx_stream_geoip_path_asn, &value);
+
+    if (rc != NGX_OK) {
+        goto not_found;
+    }
+
+    v->data = ngx_pnalloc(s->connection->pool, NGX_INT64_LEN);
+    if (v->data == NULL) {
+        return NGX_ERROR;
+    }
+
+    v->len = ngx_sprintf(v->data, "%L", value) - v->data;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+
+    return NGX_OK;
+
+not_found:
+
+#endif
 
     v->not_found = 1;
 
