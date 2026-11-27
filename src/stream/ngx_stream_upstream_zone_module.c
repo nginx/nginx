@@ -570,6 +570,17 @@ ngx_stream_upstream_zone_preresolve(ngx_stream_upstream_rr_peer_t *resolve,
                 peer->fail_timeout = template->fail_timeout;
                 peer->down = template->down;
 
+                if (peers->total_weight
+                    > NGX_MAX_SIZE_T_VALUE - (ngx_uint_t) peer->weight)
+                {
+                    ngx_stream_upstream_rr_peer_free(peers, peer);
+
+                    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                                  "cannot add new server to upstream \"%V\", "
+                                  "total weight is too large", peers->name);
+                    break;
+                }
+
                 (*peers->config)++;
 
                 *peerp = peer;
@@ -963,6 +974,17 @@ again:
         peer->max_fails = template->max_fails;
         peer->fail_timeout = template->fail_timeout;
         peer->down = template->down;
+
+        if (peers->total_weight
+            > NGX_MAX_SIZE_T_VALUE - (ngx_uint_t) peer->weight)
+        {
+            ngx_stream_upstream_rr_peer_free(peers, peer);
+
+            ngx_log_error(NGX_LOG_ERR, event->log, 0,
+                          "cannot add new server to upstream \"%V\", "
+                          "total weight is too large", peers->name);
+            goto done;
+        }
 
         *peerp = peer;
         peerp = &peer->next;

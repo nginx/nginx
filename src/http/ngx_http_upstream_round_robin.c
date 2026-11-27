@@ -82,6 +82,18 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 #endif
 
             n += server[i].naddrs;
+
+            if (server[i].weight > NGX_MAX_SIZE_T_VALUE / server[i].naddrs
+                || w > NGX_MAX_SIZE_T_VALUE
+                       - server[i].naddrs * server[i].weight)
+            {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "total weight is too large in upstream \"%V\" "
+                              "in %s:%ui",
+                              &us->host, us->file_name, us->line);
+                return NGX_ERROR;
+            }
+
             w += server[i].naddrs * server[i].weight;
 
             if (!server[i].down) {
@@ -261,6 +273,18 @@ ngx_http_upstream_init_round_robin(ngx_conf_t *cf,
 #endif
 
             n += server[i].naddrs;
+
+            if (server[i].weight > NGX_MAX_SIZE_T_VALUE / server[i].naddrs
+                || w > NGX_MAX_SIZE_T_VALUE
+                       - server[i].naddrs * server[i].weight)
+            {
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                              "total weight is too large in upstream \"%V\" "
+                              "in %s:%ui",
+                              &us->host, us->file_name, us->line);
+                return NGX_ERROR;
+            }
+
             w += server[i].naddrs * server[i].weight;
 
             if (!server[i].down) {
