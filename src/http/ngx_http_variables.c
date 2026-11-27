@@ -1472,14 +1472,15 @@ static ngx_int_t
 ngx_http_variable_server_port(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_uint_t  port;
+    ngx_int_t  port;
 
     v->len = 0;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    if (ngx_connection_local_sockaddr(r->connection, NULL, 0) != NGX_OK) {
+    port = ngx_connection_local_port(r->connection);
+    if (port == NGX_ERROR) {
         return NGX_ERROR;
     }
 
@@ -1488,10 +1489,8 @@ ngx_http_variable_server_port(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    port = ngx_inet_get_port(r->connection->local_sockaddr);
-
-    if (port > 0 && port < 65536) {
-        v->len = ngx_sprintf(v->data, "%ui", port) - v->data;
+    if (port > 0) {
+        v->len = ngx_sprintf(v->data, "%i", port) - v->data;
     }
 
     return NGX_OK;

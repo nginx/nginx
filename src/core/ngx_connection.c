@@ -1551,6 +1551,21 @@ ngx_connection_local_sockaddr(ngx_connection_t *c, ngx_str_t *s,
 
 
 ngx_int_t
+ngx_connection_local_port(ngx_connection_t *c)
+{
+    if (c->local_port_override) {
+        return c->local_port_override;
+    }
+
+    if (ngx_connection_local_sockaddr(c, NULL, 0) != NGX_OK) {
+        return NGX_ERROR;
+    }
+
+    return ngx_inet_get_port(c->local_sockaddr);
+}
+
+
+ngx_int_t
 ngx_tcp_nodelay(ngx_connection_t *c)
 {
     int  tcp_nodelay;
