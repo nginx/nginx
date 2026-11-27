@@ -100,6 +100,8 @@ typedef struct {
 
 static u_char *ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p,
     u_char *last, ngx_str_t *addr);
+static ngx_int_t ngx_proxy_protocol_v1_inet_addr(u_char *p, size_t len);
+static ngx_int_t ngx_proxy_protocol_v1_inet6_addr(u_char *p, size_t len);
 static u_char *ngx_proxy_protocol_read_port(u_char *p, u_char *last,
     in_port_t *port, u_char sep);
 static u_char *ngx_proxy_protocol_v2_read(ngx_connection_t *c, u_char *buf,
@@ -291,6 +293,12 @@ ngx_proxy_protocol_read_addr(ngx_connection_t *c, u_char *p, u_char *last,
 
     len = p - pos - 1;
 
+    if (ngx_proxy_protocol_v1_inet_addr(pos, len) != NGX_OK
+        && ngx_proxy_protocol_v1_inet6_addr(pos, len) != NGX_OK)
+    {
+        return NULL;
+    }
+
     addr->data = ngx_pnalloc(c->pool, len);
     if (addr->data == NULL) {
         return NULL;
@@ -325,6 +333,10 @@ ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
 
     len = p - pos - 1;
 
+    if (len > 1 && pos[0] == '0') {
+        return NULL;
+    }
+
     n = ngx_atoi(pos, len);
     if (n < 0 || n > 65535) {
         return NULL;
@@ -333,6 +345,127 @@ ngx_proxy_protocol_read_port(u_char *p, u_char *last, in_port_t *port,
     *port = (in_port_t) n;
 
     return p;
+}
+
+
+static ngx_int_t
+ngx_proxy_protocol_v1_inet_addr(u_char *p, size_t len)
+{
+    size_t      i;
+    ngx_uint_t  dots, digits, octet;
+
+    dots = 0;
+    digits = 0;
+    octet = 0;
+
+    for (i = 0; i < len; i++) {
+
+        if (p[i] >= '0' && p[i] <= '9') {
+            if (digits == 1 && octet == 0) {
+                return NGX_ERROR;
+            }
+
+            octet = octet * 10 + (p[i] - '0');
+
+            if (octet > 255) {
+                return NGX_ERROR;
+            }
+
+            digits++;
+            continue;
+        }
+
+        if (p[i] == '.' && digits > 0 && dots < 3) {
+            dots++;
+            digits = 0;
+            octet = 0;
+            continue;
+        }
+
+        return NGX_ERROR;
+    }
+
+    if (dots != 3 || digits == 0) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+
+static ngx_int_t
+ngx_proxy_protocol_v1_inet6_addr(u_char *p, size_t len)
+{
+    u_char      c;
+    size_t      i, start;
+    ngx_uint_t  groups, zeroes;
+
+    groups = 0;
+    zeroes = 0;
+    i = 0;
+
+    if (len >= 2 && p[0] == ':' && p[1] == ':') {
+        zeroes = 1;
+        i = 2;
+    }
+
+    while (i < len) {
+        start = i;
+
+        while (i < len && i - start < 5) {
+            c = (u_char) (p[i] | 0x20);
+
+            if ((p[i] >= '0' && p[i] <= '9') || (c >= 'a' && c <= 'f')) {
+                i++;
+                continue;
+            }
+
+            break;
+        }
+
+        if (i < len && p[i] == '.') {
+            if (zeroes ? groups > 5 : groups != 6) {
+                return NGX_ERROR;
+            }
+
+            return ngx_proxy_protocol_v1_inet_addr(p + start, len - start);
+        }
+
+        if (i == start || i - start > 4) {
+            return NGX_ERROR;
+        }
+
+        groups++;
+
+        if (i == len) {
+            break;
+        }
+
+        if (p[i] != ':') {
+            return NGX_ERROR;
+        }
+
+        i++;
+
+        if (i == len) {
+            return NGX_ERROR;
+        }
+
+        if (p[i] == ':') {
+            if (zeroes) {
+                return NGX_ERROR;
+            }
+
+            zeroes = 1;
+            i++;
+        }
+    }
+
+    if (zeroes ? groups > 7 : groups != 8) {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 
