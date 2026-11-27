@@ -174,6 +174,7 @@ ngx_http_rewrite_handler(ngx_http_request_t *r)
     e->quote = 1;
     e->log = rlcf->log;
     e->status = NGX_DECLINED;
+    e->flushed = 1;
 
     while (*(uintptr_t *) e->ip) {
         code = *(ngx_http_script_code_pt *) e->ip;
