@@ -427,6 +427,13 @@ ngx_quic_input_handler(ngx_event_t *rev)
     if (c->close) {
         c->close = 0;
 
+        if (c->error) {
+            qc->error = NGX_QUIC_ERR_NO_ERROR;
+            qc->error_reason = "shutdown timeout";
+            ngx_quic_close_connection(c, NGX_ERROR);
+            return;
+        }
+
         if (!ngx_exiting || !qc->streams.initialized) {
             qc->error = NGX_QUIC_ERR_NO_ERROR;
             qc->error_reason = "graceful shutdown";
