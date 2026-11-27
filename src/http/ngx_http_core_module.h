@@ -371,6 +371,8 @@ struct ngx_http_core_loc_conf_s {
     size_t        read_ahead;              /* read_ahead */
     size_t        subrequest_output_buffer_size;
                                            /* subrequest_output_buffer_size */
+    ngx_msec_t    posted_requests_time_limit;
+                                           /* posted_requests_time_limit */
 
     ngx_http_complex_value_t  *limit_rate; /* limit_rate */
     ngx_http_complex_value_t  *limit_rate_after; /* limit_rate_after */

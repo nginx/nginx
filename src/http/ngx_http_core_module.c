@@ -423,6 +423,13 @@ static ngx_command_t  ngx_http_core_commands[] = {
       offsetof(ngx_http_core_loc_conf_t, subrequest_output_buffer_size),
       &ngx_conf_size_nonzero_post },
 
+    { ngx_string("posted_requests_time_limit"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_core_loc_conf_t, posted_requests_time_limit),
+      NULL },
+
     { ngx_string("aio"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_http_core_set_aio,
@@ -3732,6 +3739,7 @@ ngx_http_core_create_loc_conf(ngx_conf_t *cf)
     clcf->sendfile = NGX_CONF_UNSET;
     clcf->sendfile_max_chunk = NGX_CONF_UNSET_SIZE;
     clcf->subrequest_output_buffer_size = NGX_CONF_UNSET_SIZE;
+    clcf->posted_requests_time_limit = NGX_CONF_UNSET_MSEC;
     clcf->aio = NGX_CONF_UNSET;
     clcf->aio_write = NGX_CONF_UNSET;
 #if (NGX_THREADS)
@@ -3961,6 +3969,8 @@ ngx_http_core_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->subrequest_output_buffer_size,
                               prev->subrequest_output_buffer_size,
                               (size_t) ngx_pagesize);
+    ngx_conf_merge_msec_value(conf->posted_requests_time_limit,
+                              prev->posted_requests_time_limit, 0);
     ngx_conf_merge_value(conf->aio, prev->aio, NGX_HTTP_AIO_OFF);
     ngx_conf_merge_value(conf->aio_write, prev->aio_write, 0);
 #if (NGX_THREADS)
