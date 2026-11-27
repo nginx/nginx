@@ -60,6 +60,8 @@ static ngx_int_t ngx_http_gunzip_filter_init(ngx_conf_t *cf);
 static void *ngx_http_gunzip_create_conf(ngx_conf_t *cf);
 static char *ngx_http_gunzip_merge_conf(ngx_conf_t *cf,
     void *parent, void *child);
+static ngx_int_t ngx_http_gunzip_rewrite_content_encoding(ngx_http_request_t *r,
+    ngx_table_elt_t *ce, ngx_str_t *new_value);
 
 
 static ngx_command_t  ngx_http_gunzip_filter_commands[] = {
@@ -116,26 +118,98 @@ ngx_module_t  ngx_http_gunzip_filter_module = {
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
 
+static ngx_int_t
+ngx_http_gunzip_rewrite_content_encoding(ngx_http_request_t *r,
+    ngx_table_elt_t *ce, ngx_str_t *new_value)
+{
+    u_char     *p, *end, *dst, *token, *out;
+    size_t     len;
+    ngx_str_t  value;
+    ngx_uint_t first, last;
+
+    value = ce->value;
+    p = value.data;
+    end = p + value.len;
+
+    out = ngx_pnalloc(r->pool, value.len);
+    if (out == NULL) {
+        return NGX_ERROR;
+    }
+
+    dst = out;
+    last = 0;
+    first = 1;
+
+    while (p < end) {
+        while (p < end && (*p == ' ' || *p == ',')) { p++; }
+        token = p;
+        while (p < end && *p != ',') { p++; }
+
+        len = p - token;
+        while (len > 0 && token[len - 1] == ' ') { len--; }
+
+        if (len == 4
+            && ngx_strncasecmp(token, (u_char *) "gzip", 4) == 0)
+        {
+            last = 1;
+            continue;
+        }
+
+        if (len == 0) {
+            continue;
+        }
+
+        last = 0;
+
+        if (!first) {
+            *dst++ = ',';
+        }
+
+        dst = ngx_cpymem(dst, token, len);
+        first = 0;
+    }
+
+    if (!last) {
+        return NGX_DECLINED;
+    }
+
+    new_value->data = out;
+    new_value->len = dst - out;
+
+    return NGX_OK;
+}
+
 
 static ngx_int_t
 ngx_http_gunzip_header_filter(ngx_http_request_t *r)
 {
+    ngx_int_t                ret;
+    ngx_str_t                new_value;
     ngx_http_gunzip_ctx_t   *ctx;
     ngx_http_gunzip_conf_t  *conf;
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_gunzip_filter_module);
 
-    /* TODO support multiple content-codings */
     /* TODO always gunzip - due to configuration or module request */
     /* TODO ignore content encoding? */
 
     if (!conf->enable
-        || r->headers_out.content_encoding == NULL
-        || r->headers_out.content_encoding->value.len != 4
-        || ngx_strncasecmp(r->headers_out.content_encoding->value.data,
-                           (u_char *) "gzip", 4) != 0)
+        || r->headers_out.content_encoding == NULL)
     {
         return ngx_http_next_header_filter(r);
+    }
+
+    ret = ngx_http_gunzip_rewrite_content_encoding(r,
+                                                   r->headers_out.content_encoding,
+                                                   &new_value);
+
+    if (ret == NGX_DECLINED) {
+        return ngx_http_next_header_filter(r);
+
+    }
+   
+    if (ret == NGX_ERROR) {
+        return NGX_ERROR;
     }
 
     r->gzip_vary = 1;
@@ -149,6 +223,13 @@ ngx_http_gunzip_header_filter(ngx_http_request_t *r)
         return ngx_http_next_header_filter(r);
     }
 
+    if (new_value.len == 0) {
+        r->headers_out.content_encoding->hash = 0;
+        r->headers_out.content_encoding = NULL;
+    } else {
+        r->headers_out.content_encoding->value = new_value;
+    }
+
     ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_gunzip_ctx_t));
     if (ctx == NULL) {
         return NGX_ERROR;
@@ -159,9 +240,6 @@ ngx_http_gunzip_header_filter(ngx_http_request_t *r)
     ctx->request = r;
 
     r->filter_need_in_memory = 1;
-
-    r->headers_out.content_encoding->hash = 0;
-    r->headers_out.content_encoding = NULL;
 
     ngx_http_clear_content_length(r);
     ngx_http_clear_accept_ranges(r);
