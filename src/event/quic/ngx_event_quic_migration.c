@@ -258,7 +258,7 @@ ngx_quic_new_path(ngx_connection_t *c,
     ngx_queue_insert_tail(&qc->paths, &path->queue);
 
     path->cid = cid;
-    cid->used = 1;
+    cid->used++;
 
     path->seqnum = qc->path_seqnum++;
 
@@ -308,7 +308,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     off_t                   len;
     ngx_queue_t            *q;
-    ngx_quic_path_t        *path, *probe;
+    ngx_quic_path_t        *path, *probe, *same;
     ngx_quic_socket_t      *qsock;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_client_id_t   *cid;
@@ -326,6 +326,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     probe = NULL;
+    same = NULL;
 
     for (q = ngx_queue_head(&qc->paths);
          q != ngx_queue_sentinel(&qc->paths);
@@ -343,6 +344,12 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (path->tag == NGX_QUIC_PATH_PROBE) {
             probe = path;
         }
+
+        if (path->sid_seqnum == qsock->sid.seqnum
+            && (same == NULL || path == qc->path))
+        {
+            same = path;
+        }
     }
 
     /* packet from new path, drop current probe, if any */
@@ -357,17 +364,50 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DONE;
     }
 
-    if (probe && ngx_quic_free_path(c, probe) != NGX_OK) {
-        return NGX_ERROR;
+    if (probe) {
+        if (same == probe) {
+            same = NULL;
+        }
+
+        if (ngx_quic_free_path(c, probe) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
-    /* new path requires new client id */
-    cid = ngx_quic_next_client_id(c);
-    if (cid == NULL) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no available client ids for new path");
-        /* stop processing of this datagram */
-        return NGX_DONE;
+    if (qsock->used) {
+        /*
+         * client arrived using new path and previously seen DCID,
+         * this indicates NAT rebinding (or bad client)
+         */
+        pkt->rebound = 1;
+    }
+
+    if (same) {
+        /*
+         * RFC 9000, 9.5.  Privacy Implications of Connection Migration
+         *
+         * Due to network changes outside the control of its peer, an
+         * endpoint might receive packets from a new source address with
+         * the same Destination Connection ID field value, in which case
+         * it MAY continue to use the current connection ID with the new
+         * remote address while still sending from the same local address.
+         *
+         * The connection id is shared with the path where this DCID
+         * was last received; a DCID seen only on a path since freed
+         * is a migration, and a new connection id is used.
+         */
+        cid = same->cid;
+
+    } else {
+
+        /* new path requires new client id */
+        cid = ngx_quic_next_client_id(c);
+        if (cid == NULL) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic no available client ids for new path");
+            /* stop processing of this datagram */
+            return NGX_DONE;
+        }
     }
 
     path = ngx_quic_new_path(c, &qsock->sockaddr.sockaddr, qsock->socklen, cid);
@@ -377,18 +417,11 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     path->tag = NGX_QUIC_PATH_PROBE;
 
-    /*
-     * client arrived using new path and previously seen DCID,
-     * this indicates NAT rebinding (or bad client)
-     */
-    if (qsock->used) {
-        pkt->rebound = 1;
-    }
-
 update:
 
     qsock->used = 1;
     pkt->path = path;
+    path->sid_seqnum = qsock->sid.seqnum;
 
     /* TODO: this may be too late in some cases;
      *       for example, if error happens during decrypt(), we cannot
@@ -418,14 +451,18 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_queue_remove(&path->queue);
     ngx_queue_insert_head(&qc->free_paths, &path->queue);
 
-    /*
-     * invalidate CID that is no longer usable for any other path;
-     * this also requests new CIDs from client;
-     * a zero-length CID is used on all paths and cannot be retired
-     */
-    if (path->cid && path->cid->len) {
-        if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
-            return NGX_ERROR;
+    if (path->cid) {
+        path->cid->used--;
+
+        /*
+         * invalidate CID that is no longer used by any other path;
+         * this also requests new CIDs from client;
+         * a zero-length CID is used on all paths and cannot be retired
+         */
+        if (path->cid->used == 0 && path->cid->len) {
+            if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
     }
 

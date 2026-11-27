@@ -97,7 +97,7 @@ struct ngx_quic_client_id_s {
     size_t                            len;
     u_char                            id[NGX_QUIC_CID_LEN_MAX];
     u_char                            sr_token[NGX_QUIC_SR_TOKEN_LEN];
-    ngx_uint_t                        used;  /* unsigned  used:1; */
+    ngx_uint_t                        used;
 };
 
 
@@ -125,6 +125,7 @@ struct ngx_quic_path_s {
     off_t                             received;
     u_char                            challenge[2][8];
     uint64_t                          seqnum;
+    uint64_t                          sid_seqnum;
     uint64_t                          mtu_pnum[NGX_QUIC_PATH_RETRIES];
     ngx_str_t                         addr_text;
     u_char                            text[NGX_SOCKADDR_STRLEN];
