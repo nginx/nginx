@@ -329,8 +329,6 @@ ngx_mail_optimize_servers(ngx_conf_t *cf, ngx_array_t *ports)
             cscf = addr->opt.ctx->srv_conf[ngx_mail_core_module.ctx_index];
 
             ls->logp = cscf->error_log;
-            ls->log.data = &ls->addr_text;
-            ls->log.handler = ngx_accept_log_error;
 
             ls->protocol = addr[i].opt.protocol;
             ls->backlog = addr[i].opt.backlog;
