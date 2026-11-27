@@ -310,6 +310,10 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
     bytes = 0;
     len = ngx_min(qc->path->mtu, NGX_QUIC_MAX_UDP_SEGMENT_BUF);
 
+    if (qc->congestion.in_flight + len * 3 >= qc->congestion.window) {
+        return 0;
+    }
+
     for (q = ngx_queue_head(&ctx->frames);
          q != ngx_queue_sentinel(&ctx->frames);
          q = ngx_queue_next(q))
@@ -317,10 +321,6 @@ ngx_quic_allow_segmentation(ngx_connection_t *c)
         f = ngx_queue_data(q, ngx_quic_frame_t, queue);
 
         bytes += f->len;
-
-        if (qc->congestion.in_flight + bytes >= qc->congestion.window) {
-            return 0;
-        }
 
         if (bytes > len * 3) {
             /* require at least ~3 full packets to batch */
