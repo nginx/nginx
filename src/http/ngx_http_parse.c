@@ -37,39 +37,51 @@ static uint32_t  usual[] = {
 };
 
 
-#if (NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED)
+#if (NGX_HAVE_LITTLE_ENDIAN)
+
+static ngx_inline uint32_t
+ngx_str_uint32(const u_char *m)
+{
+    uint32_t  v;
+
+    ngx_memcpy(&v, m, sizeof(uint32_t));
+
+    return v;
+}
+
 
 #define ngx_str3_cmp(m, c0, c1, c2, c3)                                       \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
 
 #define ngx_str3Ocmp(m, c0, c1, c2, c3)                                       \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
 
 #define ngx_str4cmp(m, c0, c1, c2, c3)                                        \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)
 
 #define ngx_str5cmp(m, c0, c1, c2, c3, c4)                                    \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)           \
         && m[4] == c4
 
 #define ngx_str6cmp(m, c0, c1, c2, c3, c4, c5)                                \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
-        && (((uint32_t *) m)[1] & 0xffff) == ((c5 << 8) | c4)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)           \
+        && (ngx_str_uint32(m + 4) & 0xffff) == ((c5 << 8) | c4)
 
 #define ngx_str7_cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                       \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
-        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)           \
+        && ngx_str_uint32(m + 4) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
 
 #define ngx_str8cmp(m, c0, c1, c2, c3, c4, c5, c6, c7)                        \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
-        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)           \
+        && ngx_str_uint32(m + 4) == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)
 
 #define ngx_str9cmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8)                    \
-    *(uint32_t *) m == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
-        && ((uint32_t *) m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)  \
+    ngx_str_uint32(m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)           \
+        && ngx_str_uint32(m + 4)                                              \
+               == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4)                  \
         && m[8] == c8
 
-#else /* !(NGX_HAVE_LITTLE_ENDIAN && NGX_HAVE_NONALIGNED) */
+#else /* !NGX_HAVE_LITTLE_ENDIAN */
 
 #define ngx_str3_cmp(m, c0, c1, c2, c3)                                       \
     m[0] == c0 && m[1] == c1 && m[2] == c2
