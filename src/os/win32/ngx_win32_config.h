@@ -216,15 +216,31 @@ typedef int                 sig_atomic_t;
 #define NGX_PTR_SIZE            8
 #define NGX_SIZE_T_LEN          (sizeof("-9223372036854775808") - 1)
 #define NGX_MAX_SIZE_T_VALUE    9223372036854775807
-#define NGX_TIME_T_LEN          (sizeof("-9223372036854775808") - 1)
-#define NGX_TIME_T_SIZE         8
-#define NGX_MAX_TIME_T_VALUE    9223372036854775807
 
 #else
 
 #define NGX_PTR_SIZE            4
 #define NGX_SIZE_T_LEN          (sizeof("-2147483648") - 1)
 #define NGX_MAX_SIZE_T_VALUE    2147483647
+
+#endif
+
+
+/*
+ * the size of time_t is determined by the C run-time, not by the size of
+ * a pointer: MSVC and MinGW use a 64-bit time_t even in 32-bit builds,
+ * unless _USE_32BIT_TIME_T is defined.  The remaining toolchains have a
+ * 32-bit time_t; for Open Watcom it is typedef'd as long above.
+ */
+
+#if (defined(_MSC_VER) || defined(__MINGW32__)) && !defined(_USE_32BIT_TIME_T)
+
+#define NGX_TIME_T_LEN          (sizeof("-9223372036854775808") - 1)
+#define NGX_TIME_T_SIZE         8
+#define NGX_MAX_TIME_T_VALUE    9223372036854775807
+
+#else
+
 #define NGX_TIME_T_LEN          (sizeof("-2147483648") - 1)
 #define NGX_TIME_T_SIZE         4
 #define NGX_MAX_TIME_T_VALUE    2147483647
