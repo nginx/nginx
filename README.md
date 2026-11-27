@@ -153,6 +153,7 @@ sudo apt install libpcre3-dev zlib1g-dev
 
 >```bash
 >sudo apt install libssl-dev
+>```
 
 ## Cloning the NGINX GitHub repository
 Using your preferred method, clone the NGINX repository into your development directory. See [Cloning a GitHub Repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) for additional help.
