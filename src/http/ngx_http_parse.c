@@ -2038,6 +2038,10 @@ ngx_http_parse_multi_header_lines_internal(ngx_http_request_t *r,
 
         while (start < end) {
 
+            if ((size_t) (end - start) < name->len) {
+                break;
+            }
+
             if (ngx_strncasecmp(start, name->data, name->len) != 0) {
                 goto skip;
             }
