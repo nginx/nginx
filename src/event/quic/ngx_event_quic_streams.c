@@ -587,6 +587,13 @@ ngx_quic_init_streams(ngx_connection_t *c)
         return NGX_OK;
     }
 
+    /*
+     * OCSP validation may open connections and drain reusable ones;
+     * keep this connection non-reusable until streams are initialized
+     */
+
+    ngx_reusable_connection(c, 0);
+
     rc = ngx_ssl_ocsp_validate(c);
 
     if (rc == NGX_ERROR) {
@@ -637,6 +644,10 @@ ngx_quic_do_init_streams(ngx_connection_t *c)
     }
 
     qc->streams.initialized = 1;
+
+    if (!c->reusable && ngx_quic_can_shutdown(c) == NGX_OK) {
+        ngx_reusable_connection(c, 1);
+    }
 
     if (!qc->closing && qc->close.timer_set) {
         ngx_del_timer(&qc->close);

@@ -105,6 +105,7 @@ typedef struct {
     size_t                smhd_size;
     size_t                dinf_size;
     size_t                size;
+    ngx_uint_t            mdhd64;  /* unsigned  mdhd64:1; */
 
     ngx_chain_t           out[NGX_HTTP_MP4_LAST_ATOM + 1];
 
@@ -969,6 +970,12 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
 
     while (mp4->offset < end) {
 
+        if (end - mp4->offset < (off_t) sizeof(uint32_t)) {
+            ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                          "\"%s\" mp4 atom is truncated", mp4->file.name.data);
+            return NGX_ERROR;
+        }
+
         if (ngx_http_mp4_read(mp4, sizeof(uint32_t)) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -986,6 +993,14 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
         if (atom_size < sizeof(ngx_mp4_atom_header_t)) {
 
             if (atom_size == 1) {
+
+                if (end - mp4->offset < (off_t) sizeof(ngx_mp4_atom_header64_t))
+                {
+                    ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                                  "\"%s\" mp4 atom is truncated",
+                                  mp4->file.name.data);
+                    return NGX_ERROR;
+                }
 
                 if (ngx_http_mp4_read(mp4, sizeof(ngx_mp4_atom_header64_t))
                     != NGX_OK)
@@ -1013,6 +1028,15 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
             }
         }
 
+        if (atom_size > (uint64_t) (NGX_MAX_OFF_T_VALUE - mp4->offset)
+            || mp4->offset + (off_t) atom_size > end)
+        {
+            ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
+                          "\"%s\" mp4 atom too large:%uL",
+                          mp4->file.name.data, atom_size);
+            return NGX_ERROR;
+        }
+
         if (ngx_http_mp4_read(mp4, sizeof(ngx_mp4_atom_header_t)) != NGX_OK) {
             return NGX_ERROR;
         }
@@ -1023,15 +1047,6 @@ ngx_http_mp4_read_atom(ngx_http_mp4_file_t *mp4,
         ngx_log_debug4(NGX_LOG_DEBUG_HTTP, mp4->file.log, 0,
                        "mp4 atom: %*s @%O:%uL",
                        (size_t) 4, atom_name, mp4->offset, atom_size);
-
-        if (atom_size > (uint64_t) (NGX_MAX_OFF_T_VALUE - mp4->offset)
-            || mp4->offset + (off_t) atom_size > end)
-        {
-            ngx_log_error(NGX_LOG_ERR, mp4->file.log, 0,
-                          "\"%s\" mp4 atom too large:%uL",
-                          mp4->file.name.data, atom_size);
-            return NGX_ERROR;
-        }
 
         for (n = 0; atom[n].name; n++) {
 
@@ -1852,6 +1867,7 @@ ngx_http_mp4_read_mdhd_atom(ngx_http_mp4_file_t *mp4, uint64_t atom_data_size)
     trak->mdhd_size = atom_size;
     trak->timescale = timescale;
     trak->duration = duration;
+    trak->mdhd64 = (mdhd_atom->version[0] != 0);
 
     ngx_mp4_set_32value(mdhd_atom->size, atom_size);
 
@@ -1884,7 +1900,7 @@ ngx_http_mp4_update_mdhd_atom(ngx_http_mp4_file_t *mp4,
     mdhd_atom = (ngx_mp4_mdhd_atom_t *) atom->pos;
     mdhd64_atom = (ngx_mp4_mdhd64_atom_t *) atom->pos;
 
-    if (mdhd_atom->version[0] == 0) {
+    if (!trak->mdhd64) {
         ngx_mp4_set_32value(mdhd_atom->duration, trak->duration);
 
     } else {
