@@ -22,7 +22,7 @@
 
 
 /*
- * Parse limits.  RFC 8941 requires parsers to support at least these many
+ * Parse limits.  RFC 9651 requires parsers to support at least these many
  * elements and characters; bounding the counts and individual item lengths
  * keeps parse time proportional to a well-formed field rather than to what a
  * peer chooses to send.
@@ -66,8 +66,10 @@ ngx_http_priority_state_init(ngx_http_priority_state_t *ps)
 
 /*
  * Parse an RFC 9218 Priority field, a Structured Fields Dictionary
- * (RFC 8941).  The dictionary is parsed strictly: any syntax error fails
- * the whole field (RFC 8941, Section 4.2), and only then are the RFC 9218
+ * (RFC 9651, limited to the RFC 8941 types: the Date and Display String
+ * bare items added by RFC 9651 are rejected as syntax errors).  The
+ * dictionary is parsed strictly: any syntax error fails the whole field
+ * (RFC 9651, Section 4.2), and only then are the RFC 9218
  * rules applied, ignoring unknown members, out-of-range urgency and members
  * of an unexpected type.  On error the field is treated as absent and p is
  * left at defaults; callers keep any previously signalled priority.
@@ -90,7 +92,7 @@ ngx_http_priority_parse(ngx_str_t *field, ngx_http_priority_t *p)
         return NGX_OK;
     }
 
-    /* RFC 8941, Section 4.2.2 */
+    /* RFC 9651, Section 4.2.2 */
 
     last = field->data;
     end = last + field->len;
@@ -175,7 +177,7 @@ ngx_http_priority_parse(ngx_str_t *field, ngx_http_priority_t *p)
 
 
 /*
- * Parse one dictionary member and its parameters (RFC 8941, Section 4.2.2).
+ * Parse one dictionary member and its parameters (RFC 9651, Section 4.2.2).
  * A bare key (no "=") is a Boolean true; type/value then describe the
  * member's value so the caller can pick out u and i and ignore the rest.
  */
@@ -214,7 +216,7 @@ ngx_http_priority_parse_member(u_char **pos, u_char *end, ngx_str_t *key,
 }
 
 
-/* RFC 8941, Section 4.2.1.1: an Item or an Inner List, each with Parameters */
+/* RFC 9651, Section 4.2.1.1: an Item or an Inner List, each with Parameters */
 
 static ngx_int_t
 ngx_http_priority_parse_value(u_char **pos, u_char *end, ngx_int_t *type,
@@ -250,7 +252,7 @@ ngx_http_priority_parse_value(u_char **pos, u_char *end, ngx_int_t *type,
 }
 
 
-/* RFC 8941, Section 4.2.3.3 */
+/* RFC 9651, Section 4.2.3.3 */
 
 static ngx_int_t
 ngx_http_priority_parse_key(u_char **pos, u_char *end, ngx_str_t *key)
@@ -290,7 +292,7 @@ ngx_http_priority_parse_key(u_char **pos, u_char *end, ngx_str_t *key)
 }
 
 
-/* RFC 8941, Section 4.2.3.2 */
+/* RFC 9651, Section 4.2.3.2 */
 
 static ngx_int_t
 ngx_http_priority_parse_params(u_char **pos, u_char *end)
@@ -337,7 +339,7 @@ ngx_http_priority_parse_params(u_char **pos, u_char *end)
 }
 
 
-/* RFC 8941, Section 4.2.1.2: Inner List */
+/* RFC 9651, Section 4.2.1.2: Inner List */
 
 static ngx_int_t
 ngx_http_priority_parse_inner_list(u_char **pos, u_char *end)
@@ -385,7 +387,10 @@ ngx_http_priority_parse_inner_list(u_char **pos, u_char *end)
 }
 
 
-/* RFC 8941, Section 4.2.3.1 */
+/*
+ * RFC 9651, Section 4.2.3.1, limited to the RFC 8941 types:
+ * Date and Display String bare items are rejected
+ */
 
 static ngx_int_t
 ngx_http_priority_parse_bare_item(u_char **pos, u_char *end, ngx_int_t *type,
@@ -435,7 +440,7 @@ ngx_http_priority_parse_bare_item(u_char **pos, u_char *end, ngx_int_t *type,
 }
 
 
-/* RFC 8941, Section 4.2.4: Integer or Decimal */
+/* RFC 9651, Section 4.2.4: Integer or Decimal */
 
 static ngx_int_t
 ngx_http_priority_parse_number(u_char **pos, u_char *end, ngx_int_t *type,
@@ -458,7 +463,7 @@ ngx_http_priority_parse_number(u_char **pos, u_char *end, ngx_int_t *type,
     digits = 0;
     frac = 0;
 
-    /* RFC 8941, Section 4.2.4 */
+    /* RFC 9651, Section 4.2.4 */
 
     while (last < end) {
 
@@ -538,7 +543,7 @@ ngx_http_priority_parse_number(u_char **pos, u_char *end, ngx_int_t *type,
 }
 
 
-/* RFC 8941, Section 4.2.5: String */
+/* RFC 9651, Section 4.2.5: String */
 
 static ngx_int_t
 ngx_http_priority_parse_string(u_char **pos, u_char *end)
@@ -583,7 +588,7 @@ ngx_http_priority_parse_string(u_char **pos, u_char *end)
 }
 
 
-/* RFC 8941, Section 4.2.6: Token */
+/* RFC 9651, Section 4.2.6: Token */
 
 static ngx_int_t
 ngx_http_priority_parse_token(u_char **pos, u_char *end)
@@ -620,7 +625,7 @@ ngx_http_priority_parse_token(u_char **pos, u_char *end)
 }
 
 
-/* RFC 8941, Section 4.2.7: Byte Sequence */
+/* RFC 9651, Section 4.2.7: Byte Sequence */
 
 static ngx_int_t
 ngx_http_priority_parse_binary(u_char **pos, u_char *end)
