@@ -10,6 +10,10 @@
 #include <ngx_http.h>
 
 
+static u_char *ngx_http_v3_encode_string(u_char *p, u_char *data, size_t len,
+    ngx_uint_t prefix, ngx_uint_t lower);
+
+
 uintptr_t
 ngx_http_v3_encode_varlen_int(u_char *p, uint64_t value)
 {
@@ -137,9 +141,6 @@ uintptr_t
 ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
     u_char *data, size_t len)
 {
-    size_t   hlen;
-    u_char  *p1, *p2;
-
     /* Literal Field Line With Name Reference */
 
     if (p == NULL) {
@@ -151,40 +152,15 @@ ngx_http_v3_encode_field_lri(u_char *p, ngx_uint_t dynamic, ngx_uint_t index,
     *p = dynamic ? 0x40 : 0x50;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 4);
 
-    p1 = p;
     *p = 0;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
 
-    if (data) {
-        p2 = p;
-        hlen = ngx_http_huff_encode(data, len, p, 0);
-
-        if (hlen) {
-            p = p1;
-            *p = 0x80;
-            p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
-
-            if (p != p2) {
-                ngx_memmove(p, p2, hlen);
-            }
-
-            p += hlen;
-
-        } else {
-            p = ngx_cpymem(p, data, len);
-        }
-    }
-
-    return (uintptr_t) p;
+    return (uintptr_t) ngx_http_v3_encode_string(p, data, len, 7, 0);
 }
 
 
 uintptr_t
 ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
 {
-    size_t   hlen;
-    u_char  *p1, *p2;
-
     /* Literal Field Line With Literal Name */
 
     if (p == NULL) {
@@ -194,52 +170,13 @@ ngx_http_v3_encode_field_l(u_char *p, ngx_str_t *name, ngx_str_t *value)
                + value->len;
     }
 
-    p1 = p;
     *p = 0x20;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, name->len, 3);
+    p = ngx_http_v3_encode_string(p, name->data, name->len, 3, 1);
 
-    p2 = p;
-    hlen = ngx_http_huff_encode(name->data, name->len, p, 1);
-
-    if (hlen) {
-        p = p1;
-        *p = 0x28;
-        p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 3);
-
-        if (p != p2) {
-            ngx_memmove(p, p2, hlen);
-        }
-
-        p += hlen;
-
-    } else {
-        ngx_strlow(p, name->data, name->len);
-        p += name->len;
-    }
-
-    p1 = p;
     *p = 0;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, value->len, 7);
 
-    p2 = p;
-    hlen = ngx_http_huff_encode(value->data, value->len, p, 0);
-
-    if (hlen) {
-        p = p1;
-        *p = 0x80;
-        p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
-
-        if (p != p2) {
-            ngx_memmove(p, p2, hlen);
-        }
-
-        p += hlen;
-
-    } else {
-        p = ngx_cpymem(p, value->data, value->len);
-    }
-
-    return (uintptr_t) p;
+    return (uintptr_t) ngx_http_v3_encode_string(p, value->data, value->len,
+                                                 7, 0);
 }
 
 
@@ -262,9 +199,6 @@ uintptr_t
 ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
     size_t len)
 {
-    size_t   hlen;
-    u_char  *p1, *p2;
-
     /* Literal Field Line With Post-Base Name Reference */
 
     if (p == NULL) {
@@ -276,29 +210,51 @@ ngx_http_v3_encode_field_lpbi(u_char *p, ngx_uint_t index, u_char *data,
     *p = 0;
     p = (u_char *) ngx_http_v3_encode_prefix_int(p, index, 3);
 
-    p1 = p;
     *p = 0;
-    p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, 7);
 
-    if (data) {
-        p2 = p;
-        hlen = ngx_http_huff_encode(data, len, p, 0);
+    return (uintptr_t) ngx_http_v3_encode_string(p, data, len, 7, 0);
+}
 
-        if (hlen) {
-            p = p1;
-            *p = 0x80;
-            p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, 7);
 
-            if (p != p2) {
-                ngx_memmove(p, p2, hlen);
-            }
+static u_char *
+ngx_http_v3_encode_string(u_char *p, u_char *data, size_t len,
+    ngx_uint_t prefix, ngx_uint_t lower)
+{
+    u_char  *p1, *p2, flags;
+    size_t   hlen;
 
-            p += hlen;
+    /*
+     * the Huffman-encoded string is written in place after the length
+     * of the raw string, and moved if its own length is shorter
+     */
 
-        } else {
-            p = ngx_cpymem(p, data, len);
-        }
+    p1 = p;
+    flags = *p;
+    p = (u_char *) ngx_http_v3_encode_prefix_int(p, len, prefix);
+
+    if (data == NULL) {
+        return p;
     }
 
-    return (uintptr_t) p;
+    p2 = p;
+    hlen = ngx_http_huff_encode(data, len, p, lower);
+
+    if (hlen) {
+        p = p1;
+        *p = flags | (1 << prefix);
+        p = (u_char *) ngx_http_v3_encode_prefix_int(p, hlen, prefix);
+
+        if (p != p2) {
+            ngx_memmove(p, p2, hlen);
+        }
+
+        return p + hlen;
+    }
+
+    if (lower) {
+        ngx_strlow(p, data, len);
+        return p + len;
+    }
+
+    return ngx_cpymem(p, data, len);
 }
