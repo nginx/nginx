@@ -1047,7 +1047,14 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
 
 #if (NGX_HAVE_IP_MTU_DISCOVER)
 
-        if (ls[i].quic && ls[i].sockaddr->sa_family == AF_INET) {
+        if (ls[i].quic
+            && (ls[i].sockaddr->sa_family == AF_INET
+#if (NGX_HAVE_INET6)
+                || (ls[i].sockaddr->sa_family == AF_INET6
+                    && !ls[i].ipv6only)
+#endif
+               ))
+        {
             value = IP_PMTUDISC_DO;
 
             if (setsockopt(ls[i].fd, IPPROTO_IP, IP_MTU_DISCOVER,
