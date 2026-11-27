@@ -1804,6 +1804,15 @@ ngx_http_variable_remote_user(ngx_http_request_t *r,
 {
     ngx_int_t  rc;
 
+    if (r->remote_user_set) {
+        v->len = r->headers_in.user.len;
+        v->valid = 1;
+        v->no_cacheable = 0;
+        v->not_found = 0;
+        v->data = r->headers_in.user.data;
+        return NGX_OK;
+    }
+
     rc = ngx_http_auth_basic_user(r);
 
     if (rc == NGX_DECLINED) {
