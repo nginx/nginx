@@ -188,6 +188,10 @@ ngx_mail_proxy_init(ngx_mail_session_t *s, ngx_addr_t *peer)
 
     s->proxy->proxy_protocol = pcf->proxy_protocol;
 
+    if (!s->smtp_auth_set) {
+        s->smtp_auth = pcf->smtp_auth;
+    }
+
     s->out.len = 0;
 
     switch (s->protocol) {
@@ -636,7 +640,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         } else if (s->auth_method == NGX_MAIL_AUTH_NONE) {
             s->mail_state = ngx_smtp_helo_from;
 
-        } else if (pcf->smtp_auth) {
+        } else if (s->smtp_auth) {
             s->mail_state = ngx_smtp_helo_auth;
 
         } else {
@@ -682,9 +686,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         p = ngx_copy(p, s->connection->addr_text.data,
                      s->connection->addr_text.len);
 
-        pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
-
-        if (s->login.len && !pcf->smtp_auth) {
+        if (s->login.len && !s->smtp_auth) {
             p = ngx_cpymem(p, " LOGIN=", sizeof(" LOGIN=") - 1);
 
             if (n == 0) {
@@ -709,7 +711,7 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
         } else if (s->auth_method == NGX_MAIL_AUTH_NONE) {
             s->mail_state = ngx_smtp_xclient_from;
 
-        } else if (pcf->smtp_auth) {
+        } else if (s->smtp_auth) {
             s->mail_state = ngx_smtp_xclient_auth;
 
         } else {
@@ -737,12 +739,10 @@ ngx_mail_proxy_smtp_handler(ngx_event_t *rev)
                        &s->smtp_helo)
                    - line.data;
 
-        pcf = ngx_mail_get_module_srv_conf(s, ngx_mail_proxy_module);
-
         if (s->auth_method == NGX_MAIL_AUTH_NONE) {
             s->mail_state = ngx_smtp_helo_from;
 
-        } else if (pcf->smtp_auth) {
+        } else if (s->smtp_auth) {
             s->mail_state = ngx_smtp_helo_auth;
 
         } else {
