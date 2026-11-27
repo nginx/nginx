@@ -9,8 +9,14 @@
 #include <ngx_core.h>
 
 
-void
-ngx_gettimeofday(struct timeval *tp)
+struct ngx_win32_timeval {
+    time_t  tv_sec;
+    long    tv_usec;
+};
+
+
+static ngx_inline void
+ngx_win32_gettimeofday(struct ngx_win32_timeval *tp)
 {
     uint64_t  intervals;
     FILETIME  ft;
@@ -33,8 +39,20 @@ ngx_gettimeofday(struct timeval *tp)
     intervals = ((uint64_t) ft.dwHighDateTime << 32) | ft.dwLowDateTime;
     intervals -= 116444736000000000;
 
-    tp->tv_sec = (long) (intervals / 10000000);
+    tp->tv_sec = (time_t) (intervals / 10000000);
     tp->tv_usec = (long) ((intervals % 10000000) / 10);
+}
+
+
+void
+ngx_gettimeofday(struct timeval *tp)
+{
+    struct ngx_win32_timeval  tv;
+
+    ngx_win32_gettimeofday(&tv);
+
+    tp->tv_sec = (long) tv.tv_sec;
+    tp->tv_usec = tv.tv_usec;
 }
 
 
@@ -81,3 +99,14 @@ ngx_gettimezone(void)
         return 0;
     }
 }
+
+
+/* Use the wide seconds field only when compiling the core clock cache. */
+
+#define timeval           ngx_win32_timeval
+#define ngx_gettimeofday  ngx_win32_gettimeofday
+
+#include "../../core/ngx_times.c"
+
+#undef ngx_gettimeofday
+#undef timeval
