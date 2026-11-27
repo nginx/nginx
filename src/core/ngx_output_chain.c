@@ -628,7 +628,7 @@ ngx_output_chain_copy_buf(ngx_output_chain_ctx_t *ctx)
             return (ngx_int_t) n;
         }
 
-        if (n != size) {
+        if (n == 0) {
             ngx_log_error(NGX_LOG_ALERT, ctx->pool->log, 0,
                           ngx_read_file_n " read only %z of %O from \"%s\"",
                           n, size, src->file->name.data);
