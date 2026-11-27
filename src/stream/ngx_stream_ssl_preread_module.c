@@ -92,13 +92,16 @@ ngx_module_t  ngx_stream_ssl_preread_module = {
 static ngx_stream_variable_t  ngx_stream_ssl_preread_vars[] = {
 
     { ngx_string("ssl_preread_protocol"), NULL,
-      ngx_stream_ssl_preread_protocol_variable, 0, 0, 0 },
+      ngx_stream_ssl_preread_protocol_variable,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("ssl_preread_server_name"), NULL,
-      ngx_stream_ssl_preread_server_name_variable, 0, 0, 0 },
+      ngx_stream_ssl_preread_server_name_variable,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
     { ngx_string("ssl_preread_alpn_protocols"), NULL,
-      ngx_stream_ssl_preread_alpn_protocols_variable, 0, 0, 0 },
+      ngx_stream_ssl_preread_alpn_protocols_variable,
+      0, NGX_STREAM_VAR_NOCACHEABLE, 0 },
 
       ngx_stream_null_variable
 };
