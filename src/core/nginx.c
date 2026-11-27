@@ -1635,7 +1635,11 @@ ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     value = cf->args->elts;
 
     if (ngx_strcmp(value[1].data, "auto") == 0) {
+#if (NGX_LINUX)
+        ccf->worker_processes = ngx_linux_worker_processes(ngx_ncpu);
+#else
         ccf->worker_processes = ngx_ncpu;
+#endif
         return NGX_CONF_OK;
     }
 
