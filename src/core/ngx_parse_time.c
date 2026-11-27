@@ -229,7 +229,7 @@ ngx_parse_http_time(u_char *value, size_t len)
             return NGX_ERROR;
         }
 
-    } else if (day > mday[month]) {
+    } else if (day == 0 || day > mday[month]) {
         return NGX_ERROR;
     }
 
