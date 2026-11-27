@@ -13,6 +13,10 @@
 #include <zlib.h>
 #endif
 
+#if (NGX_SSL_ECH_BORINGSSL_API)
+#include <openssl/hpke.h>
+#endif
+
 
 #define NGX_SSL_PASSWORD_BUFFER_SIZE  4096
 
@@ -36,6 +40,10 @@ static void ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where,
 static int ngx_ssl_cmp_x509_name(const X509_NAME *const *a,
     const X509_NAME *const *b);
 static void ngx_ssl_passwords_cleanup(void *data);
+#if (NGX_SSL_ECH_BORINGSSL_API)
+static ngx_int_t ngx_ssl_ech_read_pem(ngx_ssl_t *ssl, SSL_ECH_KEYS *keys,
+    ngx_str_t *file, ngx_uint_t for_retry);
+#endif
 static int ngx_ssl_new_client_session(ngx_ssl_conn_t *ssl_conn,
     ngx_ssl_session_t *sess);
 #ifdef SSL_READ_EARLY_DATA_SUCCESS
@@ -1747,6 +1755,55 @@ cleanup:
     OSSL_ECHSTORE_free(es);
     return rc;
 
+#elif (NGX_SSL_ECH_BORINGSSL_API)
+    ngx_int_t      rc;
+    ngx_str_t     *filename;
+    ngx_uint_t     i;
+    SSL_ECH_KEYS  *keys;
+
+    if (filenames == NULL) {
+        return NGX_OK;
+    }
+
+    keys = SSL_ECH_KEYS_new();
+    if (keys == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "SSL_ECH_KEYS_new() failed");
+        return NGX_ERROR;
+    }
+
+    rc = NGX_ERROR;
+    filename = filenames->elts;
+
+    for (i = 0; i < filenames->nelts; i++) {
+
+        if (ngx_conf_full_name(cf->cycle, &filename[i], 1) != NGX_OK) {
+            goto cleanup;
+        }
+
+        if (ngx_ssl_ech_read_pem(ssl, keys, &filename[i], i == 0) != NGX_OK) {
+            goto cleanup;
+        }
+    }
+
+    if (SSL_ECH_KEYS_has_duplicate_config_id(keys)) {
+        ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
+                      "duplicate ECH config ids, "
+                      "this may increase server load");
+    }
+
+    if (SSL_CTX_set1_ech_keys(ssl->ctx, keys) != 1) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "SSL_CTX_set1_ech_keys() failed");
+        goto cleanup;
+    }
+
+    rc = NGX_OK;
+
+cleanup:
+
+    SSL_ECH_KEYS_free(keys);
+    return rc;
+
 #else
     if (filenames != NULL) {
         ngx_log_error(NGX_LOG_WARN, ssl->log, 0,
@@ -1757,6 +1814,129 @@ cleanup:
     return NGX_OK;
 #endif
 }
+
+
+#if (NGX_SSL_ECH_BORINGSSL_API)
+
+static ngx_int_t
+ngx_ssl_ech_read_pem(ngx_ssl_t *ssl, SSL_ECH_KEYS *keys, ngx_str_t *file,
+    ngx_uint_t for_retry)
+{
+    BIO           *bio;
+    char          *name;
+    long           datalen;
+    size_t         keylen, clen;
+    u_char        *data, *p, *end;
+    EVP_PKEY      *pkey;
+    ngx_int_t      rc;
+    EVP_HPKE_KEY  *hkey;
+    u_char         key[X25519_PRIVATE_KEY_LEN];
+
+    /*
+     * The file format is described in RFC 9934.
+     * Unlike OSSL_ECHSTORE_read_pem() in OpenSSL, an X25519 private
+     * key is required and all ECHConfigs must be supported and match it.
+     */
+
+    bio = BIO_new_file((char *) file->data, "r");
+    if (bio == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "BIO_new_file(\"%s\") failed", file->data);
+        return NGX_ERROR;
+    }
+
+    rc = NGX_ERROR;
+    data = NULL;
+    keylen = sizeof(key);
+    name = NULL;
+    hkey = NULL;
+
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    if (pkey == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "PEM_read_bio_PrivateKey(\"%s\") failed", file->data);
+        goto cleanup;
+    }
+
+    if (PEM_bytes_read_bio(&data, &datalen, &name, "ECHCONFIG", bio, NULL, NULL)
+        != 1)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "PEM_bytes_read_bio(\"%s\") failed", file->data);
+        goto cleanup;
+    }
+
+    if (datalen < 6
+        || (size_t) (data[0] << 8) + data[1] + 2 != (size_t) datalen)
+    {
+        ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "malformed ECHConfigList in \"%s\"", file->data);
+        goto cleanup;
+    }
+
+    if (EVP_PKEY_get_raw_private_key(pkey, key, &keylen) != 1) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_PKEY_get_raw_private_key(\"%s\") failed",
+                      file->data);
+        goto cleanup;
+    }
+
+    hkey = EVP_HPKE_KEY_new();
+    if (hkey == NULL) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "EVP_HPKE_KEY_new() failed");
+        goto cleanup;
+    }
+
+    if (EVP_HPKE_KEY_init(hkey, EVP_hpke_x25519_hkdf_sha256(), key, keylen)
+        != 1)
+    {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                      "EVP_HPKE_KEY_init(\"%s\") failed", file->data);
+        goto cleanup;
+    }
+
+    p = data + 2;
+    end = data + datalen;
+
+    while (p < end) {
+        if ((size_t) (end - p) < 4) {
+            ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "malformed ECHConfigList in \"%s\"", file->data);
+            goto cleanup;
+        }
+
+        clen = (size_t) (p[2] << 8) + p[3] + 4;
+
+        if ((size_t) (end - p) < clen) {
+            ngx_log_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "malformed ECHConfigList in \"%s\"", file->data);
+            goto cleanup;
+        }
+
+        if (SSL_ECH_KEYS_add(keys, for_retry, p, clen, hkey) != 1) {
+            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                          "SSL_ECH_KEYS_add(\"%s\") failed", file->data);
+            goto cleanup;
+        }
+
+        p += clen;
+    }
+
+    rc = NGX_OK;
+
+cleanup:
+
+    EVP_PKEY_free(pkey);
+    EVP_HPKE_KEY_free(hkey);
+    BIO_free(bio);
+    OPENSSL_free(name);
+    OPENSSL_free(data);
+    ngx_explicit_memzero(key, sizeof(key));
+
+    return rc;
+}
+
+#endif
 
 
 ngx_int_t
@@ -6182,6 +6362,13 @@ ngx_ssl_get_ech_status(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 
     OPENSSL_free(inner_sni);
     OPENSSL_free(outer_sni);
+#elif (NGX_SSL_ECH_BORINGSSL_API)
+    if (SSL_ech_accepted(c->ssl->connection)) {
+        ngx_str_set(s, "SUCCESS");
+
+    } else {
+        s->len = 0;
+    }
 #else
     s->len = 0;
 #endif
