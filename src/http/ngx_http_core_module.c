@@ -1636,7 +1636,22 @@ ngx_http_test_content_type(ngx_http_request_t *r, ngx_hash_t *types_hash)
         return NULL;
     }
 
-    len = r->headers_out.content_type_len;
+    /*
+     * Compare the media type only, that is, everything up to the first ";".
+     * The content_type_len value cannot be used here: it is the length of the
+     * value with the "charset" parameter stripped, so it also includes any
+     * other parameters preceding the "charset" one.  For example, with
+     * "text/plain; version=0.0.4; charset=utf-8" it is 25, and the media
+     * type "text/plain" is never matched.
+     */
+
+    len = 0;
+
+    while (len < r->headers_out.content_type.len
+           && r->headers_out.content_type.data[len] != ';')
+    {
+        len++;
+    }
 
     if (r->headers_out.content_type_lowcase == NULL) {
 
