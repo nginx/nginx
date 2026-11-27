@@ -985,9 +985,11 @@ if [ $HTTP = YES ]; then
     fi
 
     if [ $HTTP_UPSTREAM_KEEPALIVE = YES ]; then
+        have=NGX_HTTP_UPSTREAM_KEEPALIVE . auto/have
+
         ngx_module_name=ngx_http_upstream_keepalive_module
         ngx_module_incs=
-        ngx_module_deps=
+        ngx_module_deps=src/http/modules/ngx_http_upstream_keepalive_module.h
         ngx_module_srcs=src/http/modules/ngx_http_upstream_keepalive_module.c
         ngx_module_libs=
         ngx_module_link=$HTTP_UPSTREAM_KEEPALIVE
