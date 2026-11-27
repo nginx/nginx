@@ -449,7 +449,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
 
     /* status line */
     if (status_line) {
-        b->last = ngx_copy(b->last, status_line->data, status_line->len);
+        b->last = ngx_http_copy_field_value(b->last, status_line->data,
+                                           status_line->len);
 
     } else {
         b->last = ngx_sprintf(b->last, "%03ui ", status);
@@ -485,16 +486,18 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_cpymem(b->last, "Content-Type: ",
                              sizeof("Content-Type: ") - 1);
         p = b->last;
-        b->last = ngx_copy(b->last, r->headers_out.content_type.data,
-                           r->headers_out.content_type.len);
+        b->last = ngx_http_copy_field_value(b->last,
+                                           r->headers_out.content_type.data,
+                                           r->headers_out.content_type.len);
 
         if (r->headers_out.content_type_len == r->headers_out.content_type.len
             && r->headers_out.charset.len)
         {
             b->last = ngx_cpymem(b->last, "; charset=",
                                  sizeof("; charset=") - 1);
-            b->last = ngx_copy(b->last, r->headers_out.charset.data,
-                               r->headers_out.charset.len);
+            b->last = ngx_http_copy_field_value(b->last,
+                                               r->headers_out.charset.data,
+                                               r->headers_out.charset.len);
 
             /* update r->headers_out.content_type for possible logging */
 
@@ -536,14 +539,15 @@ ngx_http_header_filter(ngx_http_request_t *r)
 #endif
 
         *b->last++ = ':'; *b->last++ = '/'; *b->last++ = '/';
-        b->last = ngx_copy(b->last, host.data, host.len);
+        b->last = ngx_http_copy_field_value(b->last, host.data, host.len);
 
         if (port) {
             b->last = ngx_sprintf(b->last, ":%ui", port);
         }
 
-        b->last = ngx_copy(b->last, r->headers_out.location->value.data,
-                           r->headers_out.location->value.len);
+        b->last = ngx_http_copy_field_value(b->last,
+                                           r->headers_out.location->value.data,
+                                           r->headers_out.location->value.len);
 
         /* update r->headers_out.location->value for possible logging */
 
@@ -606,7 +610,8 @@ ngx_http_header_filter(ngx_http_request_t *r)
         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
         *b->last++ = ':'; *b->last++ = ' ';
 
-        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+        b->last = ngx_http_copy_field_value(b->last, header[i].value.data,
+                                           header[i].value.len);
         *b->last++ = CR; *b->last++ = LF;
     }
 
@@ -710,7 +715,8 @@ ngx_http_early_hints_filter(ngx_http_request_t *r)
         b->last = ngx_copy(b->last, header[i].key.data, header[i].key.len);
         *b->last++ = ':'; *b->last++ = ' ';
 
-        b->last = ngx_copy(b->last, header[i].value.data, header[i].value.len);
+        b->last = ngx_http_copy_field_value(b->last, header[i].value.data,
+                                           header[i].value.len);
         *b->last++ = CR; *b->last++ = LF;
     }
 
