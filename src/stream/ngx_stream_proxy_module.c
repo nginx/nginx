@@ -1924,7 +1924,7 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
     ngx_uint_t do_write)
 {
     char                         *recv_action, *send_action;
-    off_t                        *received, limit;
+    off_t                        *received, limit, sent;
     size_t                        size, limit_rate;
     ssize_t                       n;
     ngx_buf_t                    *b;
@@ -1982,6 +1982,14 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         busy = &u->upstream_busy;
         recv_action = "proxying and reading from client";
         send_action = "proxying and sending to upstream";
+    }
+
+#if (NGX_SUPPRESS_WARN)
+    sent = 0;
+#endif
+
+    if (dst) {
+        sent = dst->sent;
     }
 
     for ( ;; ) {
@@ -2132,7 +2140,9 @@ ngx_stream_proxy_process(ngx_stream_session_t *s, ngx_uint_t from_upstream,
         }
 
         if (!c->read->delayed && !pc->read->delayed) {
-            ngx_add_timer(c->write, pscf->timeout);
+            if (dst->sent != sent || !c->write->timer_set) {
+                ngx_add_timer(c->write, pscf->timeout);
+            }
 
         } else if (c->write->timer_set) {
             ngx_del_timer(c->write);

@@ -133,6 +133,7 @@ ngx_stream_return_handler(ngx_stream_session_t *s)
 static void
 ngx_stream_return_write_handler(ngx_event_t *ev)
 {
+    off_t                     sent;
     ngx_connection_t         *c;
     ngx_stream_session_t     *s;
     ngx_stream_return_ctx_t  *ctx;
@@ -145,6 +146,8 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
         ngx_stream_finalize_session(s, NGX_STREAM_OK);
         return;
     }
+
+    sent = c->sent;
 
     ctx = ngx_stream_get_module_ctx(s, ngx_stream_return_module);
 
@@ -167,7 +170,9 @@ ngx_stream_return_write_handler(ngx_event_t *ev)
         return;
     }
 
-    ngx_add_timer(ev, 5000);
+    if (c->sent != sent || !ev->timer_set) {
+        ngx_add_timer(ev, 5000);
+    }
 }
 
 
