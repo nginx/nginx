@@ -40,7 +40,9 @@ ngx_quic_handle_path_challenge_frame(ngx_connection_t *c,
     ngx_quic_frame_t       *fp;
     ngx_quic_connection_t  *qc;
 
-    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION || pkt->path_challenged) {
+    if (pkt->level != NGX_QUIC_ENCRYPTION_APPLICATION || pkt->path_challenged
+        || pkt->path->cid == NULL)
+    {
         ngx_log_debug0(NGX_LOG_DEBUG_EVENT, c->log, 0,
                        "quic ignoring PATH_CHALLENGE");
         return NGX_OK;
@@ -194,7 +196,9 @@ valid:
 
     path->validated = 1;
 
-    ngx_quic_set_connection_path(c, path);
+    if (path == qc->path) {
+        ngx_quic_set_connection_path(c, path);
+    }
 
     if (path->mtu_unvalidated) {
         path->mtu_unvalidated = 0;
@@ -416,13 +420,17 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
 
     /*
      * invalidate CID that is no longer usable for any other path;
-     * this also requests new CIDs from client
+     * this also requests new CIDs from client;
+     * a zero-length CID is used on all paths and cannot be retired
      */
-    if (path->cid) {
+    if (path->cid && path->cid->len) {
         if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
             return NGX_ERROR;
         }
     }
+
+    /* a freed path has no client id; pkt->path may still reference it */
+    path->cid = NULL;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL addr:%V retired",
@@ -458,6 +466,11 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     ngx_quic_connection_t  *qc;
 
     /* got non-probing packet via non-active path */
+
+    if (pkt->path->cid == NULL) {
+        /* the path was retired while handling the packet */
+        return NGX_OK;
+    }
 
     qc = ngx_quic_get_connection(c);
 
@@ -809,6 +822,8 @@ ngx_quic_expire_path_validation(ngx_connection_t *c, ngx_quic_path_t *path)
 
         qc->path = bkp;
         qc->path->tag = NGX_QUIC_PATH_ACTIVE;
+
+        ngx_quic_set_connection_path(c, qc->path);
 
         ngx_log_error(NGX_LOG_INFO, c->log, 0,
                       "quic path seq:%uL addr:%V is restored from backup",
