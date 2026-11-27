@@ -2470,3 +2470,49 @@ invalid:
 
     return NGX_ERROR;
 }
+
+
+ngx_int_t
+ngx_valid_http_field_value(ngx_str_t *value)
+{
+    size_t i;
+
+    for (i = 0; i < value->len; ++i) {
+        if (value->data[i] == '\0' || value->data[i] == CR
+            || value->data[i] == LF) {
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
+ngx_int_t
+ngx_valid_http_field_name(ngx_str_t *value)
+{
+    size_t i;
+    u_char ch;
+
+    if (value->len < 1) {
+        return NGX_ERROR;
+    }
+
+    for (i = 0; i < value->len; ++i) {
+        ch = value->data[i];
+        if ((ch == '!') ||
+            (ch >= '#' && ch <= '\'') ||
+            (ch >= '*' && ch <= '+') ||
+            (ch >= '-' && ch <= '.') ||
+            (ch >= '0' && ch <= '9') ||
+            (ch >= 'A' && ch <= 'Z') ||
+            (ch >= '^' && ch <= 'z') ||
+            (ch == '~'))
+        {
+            continue;
+        }
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
