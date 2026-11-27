@@ -656,8 +656,8 @@ ngx_http_file_cache_read(ngx_http_request_t *r, ngx_http_cache_t *c)
     now = ngx_time();
 
     if (c->valid_sec < now) {
-        c->stale_updating = c->valid_sec + c->updating_sec >= now;
-        c->stale_error = c->valid_sec + c->error_sec >= now;
+        c->stale_updating = c->updating_sec >= now - c->valid_sec;
+        c->stale_error = c->error_sec >= now - c->valid_sec;
 
         ngx_shmtx_lock(&cache->shpool->mutex);
 
