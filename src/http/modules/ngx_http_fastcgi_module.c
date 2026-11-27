@@ -359,6 +359,13 @@ static ngx_command_t  ngx_http_fastcgi_commands[] = {
       offsetof(ngx_http_fastcgi_loc_conf_t, upstream.intercept_errors),
       NULL },
 
+    { ngx_string("fastcgi_conditional"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      ngx_conf_set_flag_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fastcgi_loc_conf_t, upstream.check_conditional),
+      NULL },
+
     { ngx_string("fastcgi_read_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
@@ -2981,6 +2988,7 @@ ngx_http_fastcgi_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.pass_headers = NGX_CONF_UNSET_PTR;
 
     conf->upstream.intercept_errors = NGX_CONF_UNSET;
+    conf->upstream.check_conditional = NGX_CONF_UNSET;
 
     /* "fastcgi_cyclic_temp_file" is disabled */
     conf->upstream.cyclic_temp_file = 0;
@@ -3288,6 +3296,9 @@ ngx_http_fastcgi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_value(conf->upstream.intercept_errors,
                               prev->upstream.intercept_errors, 0);
+
+    ngx_conf_merge_value(conf->upstream.check_conditional,
+                              prev->upstream.check_conditional, 0);
 
     ngx_conf_merge_ptr_value(conf->catch_stderr, prev->catch_stderr, NULL);
 

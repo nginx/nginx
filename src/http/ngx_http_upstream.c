@@ -3223,6 +3223,12 @@ ngx_http_upstream_process_headers(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     r->disable_not_modified = !u->cacheable;
 
+    if (u->conf->check_conditional
+        && (r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD)))
+    {
+        r->disable_not_modified = 0;
+    }
+
     if (u->conf->force_ranges) {
         r->allow_ranges = 1;
         r->single_range = 1;
