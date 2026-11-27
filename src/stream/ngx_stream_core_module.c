@@ -1031,6 +1031,10 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     lsopt.ipv6only = 1;
 #endif
 
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+    lsopt.transparent = 0;
+#endif
+
     backlog = 0;
 
     for (i = 2; i < cf->args->nelts; i++) {
@@ -1132,6 +1136,16 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 return NGX_CONF_ERROR;
             }
 
+            continue;
+        }
+        if (ngx_strcmp(value[i].data, "transparent") == 0) {
+#if (NGX_HAVE_TRANSPARENT_PROXY && defined IP_TRANSPARENT)
+            lsopt.transparent = 1;
+#else
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                               "transparent mode is not supported "
+                               "on this platform, ignored");
+#endif
             continue;
         }
 
