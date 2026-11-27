@@ -14,6 +14,14 @@
 #include <ngx_http.h>
 
 
+/*
+ * Maximum buffered length of a PRIORITY_UPDATE Priority Field Value.  The
+ * recognized "u"/"i" members need ~10 bytes; the rest is bounded headroom for
+ * unknown extension members a peer may legitimately send.
+ */
+#define NGX_HTTP_V3_PRIORITY_VALUE_LEN  256
+
+
 typedef struct {
     ngx_uint_t                      state;
     uint64_t                        value;
@@ -32,6 +40,24 @@ typedef struct {
     uint64_t                        id;
     ngx_http_v3_parse_varlen_int_t  vlint;
 } ngx_http_v3_parse_settings_t;
+
+
+typedef struct {
+    ngx_uint_t                      state;
+    uint64_t                        element_id;
+    ngx_http_v3_parse_varlen_int_t  vlint;
+
+    /*
+     * The Priority Field Value is buffered across reads and parsed as a whole
+     * by the shared ngx_http_priority_parse() once the frame completes.  A
+     * value that does not fit is flagged as overflow and later rejected as
+     * excessive load rather than silently truncated, which could change the
+     * parsed priority.
+     */
+    u_char                          value[NGX_HTTP_V3_PRIORITY_VALUE_LEN];
+    ngx_uint_t                      value_len;
+    ngx_uint_t                      value_overflow; /* value_overflow:1 */
+} ngx_http_v3_parse_priority_t;
 
 
 typedef struct {
@@ -104,6 +130,7 @@ typedef struct {
     ngx_uint_t                      length;
     ngx_http_v3_parse_varlen_int_t  vlint;
     ngx_http_v3_parse_settings_t    settings;
+    ngx_http_v3_parse_priority_t    priority;
 } ngx_http_v3_parse_control_t;
 
 
