@@ -1015,6 +1015,7 @@ ngx_http_core_find_config_phase(ngx_http_request_t *r,
 
     if (r->headers_in.content_length_n != -1
         && !r->discard_body
+        && !r->error_page
         && clcf->client_max_body_size
         && clcf->client_max_body_size < r->headers_in.content_length_n)
     {
