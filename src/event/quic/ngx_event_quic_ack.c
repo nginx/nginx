@@ -643,7 +643,9 @@ ngx_quic_detect_lost(ngx_connection_t *c, ngx_quic_ack_stat_t *st)
                 break;
             }
 
-            if ((ngx_msec_int_t) (start->send_time - qc->first_rtt) > 0) {
+            if ((ngx_msec_int_t) (start->send_time - qc->first_rtt) > 0
+                && start->pnum >= qc->rst_pnum)
+            {
 
                 if (nlost == 0
                     || (ngx_msec_int_t) (start->send_time - oldest) < 0)

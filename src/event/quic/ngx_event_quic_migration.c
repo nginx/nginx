@@ -18,8 +18,6 @@ static void ngx_quic_set_connection_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
 static ngx_int_t ngx_quic_validate_path(ngx_connection_t *c,
     ngx_quic_path_t *path);
-static ngx_int_t ngx_quic_send_path_challenge(ngx_connection_t *c,
-    ngx_quic_path_t *path);
 static void ngx_quic_set_path_timer(ngx_connection_t *c);
 static ngx_int_t ngx_quic_expire_path_validation(ngx_connection_t *c,
     ngx_quic_path_t *path);
@@ -134,9 +132,7 @@ ngx_quic_handle_path_response_frame(ngx_connection_t *c,
             continue;
         }
 
-        if (ngx_memcmp(path->challenge[0], f->data, sizeof(f->data)) == 0
-            || ngx_memcmp(path->challenge[1], f->data, sizeof(f->data)) == 0)
-        {
+        if (ngx_memcmp(path->challenge, f->data, sizeof(f->data)) == 0) {
             goto valid;
         }
     }
@@ -258,7 +254,7 @@ ngx_quic_new_path(ngx_connection_t *c,
     ngx_queue_insert_tail(&qc->paths, &path->queue);
 
     path->cid = cid;
-    cid->used = 1;
+    cid->used++;
 
     path->seqnum = qc->path_seqnum++;
 
@@ -308,7 +304,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 {
     off_t                   len;
     ngx_queue_t            *q;
-    ngx_quic_path_t        *path, *probe;
+    ngx_quic_path_t        *path, *probe, *same;
     ngx_quic_socket_t      *qsock;
     ngx_quic_send_ctx_t    *ctx;
     ngx_quic_client_id_t   *cid;
@@ -326,6 +322,7 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
     }
 
     probe = NULL;
+    same = NULL;
 
     for (q = ngx_queue_head(&qc->paths);
          q != ngx_queue_sentinel(&qc->paths);
@@ -343,6 +340,12 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
         if (path->tag == NGX_QUIC_PATH_PROBE) {
             probe = path;
         }
+
+        if (path->sid_seqnum == qsock->sid.seqnum
+            && (same == NULL || path == qc->path))
+        {
+            same = path;
+        }
     }
 
     /* packet from new path, drop current probe, if any */
@@ -357,17 +360,50 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
         return NGX_DONE;
     }
 
-    if (probe && ngx_quic_free_path(c, probe) != NGX_OK) {
-        return NGX_ERROR;
+    if (probe) {
+        if (same == probe) {
+            same = NULL;
+        }
+
+        if (ngx_quic_free_path(c, probe) != NGX_OK) {
+            return NGX_ERROR;
+        }
     }
 
-    /* new path requires new client id */
-    cid = ngx_quic_next_client_id(c);
-    if (cid == NULL) {
-        ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                      "quic no available client ids for new path");
-        /* stop processing of this datagram */
-        return NGX_DONE;
+    if (qsock->used) {
+        /*
+         * client arrived using new path and previously seen DCID,
+         * this indicates NAT rebinding (or bad client)
+         */
+        pkt->rebound = 1;
+    }
+
+    if (same) {
+        /*
+         * RFC 9000, 9.5.  Privacy Implications of Connection Migration
+         *
+         * Due to network changes outside the control of its peer, an
+         * endpoint might receive packets from a new source address with
+         * the same Destination Connection ID field value, in which case
+         * it MAY continue to use the current connection ID with the new
+         * remote address while still sending from the same local address.
+         *
+         * The connection id is shared with the path where this DCID
+         * was last received; a DCID seen only on a path since freed
+         * is a migration, and a new connection id is used.
+         */
+        cid = same->cid;
+
+    } else {
+
+        /* new path requires new client id */
+        cid = ngx_quic_next_client_id(c);
+        if (cid == NULL) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0,
+                          "quic no available client ids for new path");
+            /* stop processing of this datagram */
+            return NGX_DONE;
+        }
     }
 
     path = ngx_quic_new_path(c, &qsock->sockaddr.sockaddr, qsock->socklen, cid);
@@ -377,18 +413,11 @@ ngx_quic_set_path(ngx_connection_t *c, ngx_quic_header_t *pkt)
 
     path->tag = NGX_QUIC_PATH_PROBE;
 
-    /*
-     * client arrived using new path and previously seen DCID,
-     * this indicates NAT rebinding (or bad client)
-     */
-    if (qsock->used) {
-        pkt->rebound = 1;
-    }
-
 update:
 
     qsock->used = 1;
     pkt->path = path;
+    path->sid_seqnum = qsock->sid.seqnum;
 
     /* TODO: this may be too late in some cases;
      *       for example, if error happens during decrypt(), we cannot
@@ -418,14 +447,18 @@ ngx_quic_free_path(ngx_connection_t *c, ngx_quic_path_t *path)
     ngx_queue_remove(&path->queue);
     ngx_queue_insert_head(&qc->free_paths, &path->queue);
 
-    /*
-     * invalidate CID that is no longer usable for any other path;
-     * this also requests new CIDs from client;
-     * a zero-length CID is used on all paths and cannot be retired
-     */
-    if (path->cid && path->cid->len) {
-        if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
-            return NGX_ERROR;
+    if (path->cid) {
+        path->cid->used--;
+
+        /*
+         * invalidate CID that is no longer used by any other path;
+         * this also requests new CIDs from client;
+         * a zero-length CID is used on all paths and cannot be retired
+         */
+        if (path->cid->used == 0 && path->cid->len) {
+            if (ngx_quic_free_client_id(c, path->cid) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
     }
 
@@ -529,9 +562,17 @@ ngx_quic_handle_migration(ngx_connection_t *c, ngx_quic_header_t *pkt)
     if (next->validated) {
         ngx_quic_set_connection_path(c, next);
 
-    } else if (next->state != NGX_QUIC_PATH_VALIDATING) {
-        if (ngx_quic_validate_path(c, next) != NGX_OK) {
-            return NGX_ERROR;
+    } else {
+        /* prevent old path packets contribution to congestion control */
+
+        ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+        qc->rst_pnum = ctx->pnum;
+        qc->congestion.in_flight = 0;
+
+        if (next->state != NGX_QUIC_PATH_VALIDATING) {
+            if (ngx_quic_validate_path(c, next) != NGX_OK) {
+                return NGX_ERROR;
+            }
         }
     }
 
@@ -559,7 +600,7 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 
     path->tries = 0;
 
-    if (RAND_bytes((u_char *) path->challenge, sizeof(path->challenge)) != 1) {
+    if (RAND_bytes(path->challenge, sizeof(path->challenge)) != 1) {
         return NGX_ERROR;
     }
 
@@ -577,52 +618,66 @@ ngx_quic_validate_path(ngx_connection_t *c, ngx_quic_path_t *path)
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_quic_send_path_challenge(ngx_connection_t *c, ngx_quic_path_t *path)
 {
-    size_t             min;
-    ngx_uint_t         n;
-    ngx_quic_frame_t  *frame;
+    size_t                  min;
+    ngx_int_t               rc;
+    ngx_quic_frame_t       *frame;
+    ngx_quic_send_ctx_t    *ctx;
+    ngx_quic_connection_t  *qc;
 
     ngx_log_debug2(NGX_LOG_DEBUG_EVENT, c->log, 0,
                    "quic path seq:%uL send path_challenge tries:%ui",
                    path->seqnum, path->tries);
 
-    for (n = 0; n < 2; n++) {
-
-        frame = ngx_quic_alloc_frame(c);
-        if (frame == NULL) {
-            return NGX_ERROR;
-        }
-
-        frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
-        frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
-
-        ngx_memcpy(frame->u.path_challenge.data, path->challenge[n], 8);
-
-        /*
-         * RFC 9000, 8.2.1.  Initiating Path Validation
-         *
-         * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
-         * to at least the smallest allowed maximum datagram size of 1200 bytes,
-         * unless the anti-amplification limit for the path does not permit
-         * sending a datagram of this size.
-         */
-
-        if (path->mtu_unvalidated
-            || ngx_quic_path_limit(c, path, 1200) < 1200)
-        {
-            min = 0;
-            path->mtu_unvalidated = 1;
-
-        } else {
-            min = 1200;
-        }
-
-        if (ngx_quic_frame_sendto(c, frame, min, path) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
+    frame = ngx_quic_alloc_frame(c);
+    if (frame == NULL) {
+        return NGX_ERROR;
     }
+
+    frame->level = NGX_QUIC_ENCRYPTION_APPLICATION;
+    frame->type = NGX_QUIC_FT_PATH_CHALLENGE;
+
+    ngx_memcpy(frame->u.path_challenge.data, path->challenge, 8);
+
+    /*
+     * RFC 9000, 8.2.1.  Initiating Path Validation
+     *
+     * An endpoint MUST expand datagrams that contain a PATH_CHALLENGE frame
+     * to at least the smallest allowed maximum datagram size of 1200 bytes,
+     * unless the anti-amplification limit for the path does not permit
+     * sending a datagram of this size.
+     */
+
+    if (path->mtu_unvalidated
+        || ngx_quic_path_limit(c, path, 1200) < 1200)
+    {
+        min = 0;
+        path->mtu_unvalidated = 1;
+
+    } else {
+        min = 1200;
+    }
+
+    rc = ngx_quic_frame_sendto(c, frame, min, path);
+
+    if (rc == NGX_ERROR) {
+        return NGX_ERROR;
+    }
+
+    if (rc == NGX_OK) {
+        /* validation timer starts once the challenge is sent */
+
+        qc = ngx_quic_get_connection(c);
+        ctx = ngx_quic_get_send_ctx(qc, NGX_QUIC_ENCRYPTION_APPLICATION);
+
+        path->expires = ngx_current_msec
+                        + (ngx_max(ngx_quic_pto(c, ctx), 1000) << path->tries);
+        ngx_quic_set_path_timer(c);
+    }
+
+    path->challenge_pending = (rc == NGX_AGAIN);
 
     return NGX_OK;
 }
