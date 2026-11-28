@@ -43,6 +43,7 @@ Enterprise distributions, commercial support and training are available from [F5
   - [Running and testing the installed binary](#running-and-testing-the-installed-binary)
 - [Asking questions and reporting issues](#asking-questions-and-reporting-issues)
 - [Contributing code](#contributing-code)
+- [Agent skills marketplace](#agent-skills-marketplace)
 - [Additional help and resources](#additional-help-and-resources)
 - [Changelog](#changelog)
 - [License](#license)
@@ -217,6 +218,25 @@ See our [Support](SUPPORT.md) guidelines for information on how discuss the code
 
 # Contributing code
 Please see the [Contributing](CONTRIBUTING.md) guide for information on how to contribute code.
+
+# Agent skills marketplace
+This repository includes an agent-agnostic [agent skills](https://agentskills.io/)
+plugin marketplace so coding agents can load NGINX-focused skills (configuration,
+builds, module development, and contributing).
+
+The marketplace catalog is [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
+It registers the local [`plugins/nginx`](plugins/nginx) plugin, which ships
+`SKILL.md` skills under [`plugins/nginx/skills/`](plugins/nginx/skills/).
+
+**Install (generic):** point your agent’s marketplace/plugin loader at this
+repository (or at `.agents/plugins/marketplace.json`) and install the `nginx`
+plugin. Any tool that reads `.agents` marketplaces can consume the same catalog.
+
+**Codex:** use the marketplace entry above; plugin metadata lives in
+[`plugins/nginx/.codex-plugin/plugin.json`](plugins/nginx/.codex-plugin/plugin.json).
+
+**Claude Code:** install from this repo’s marketplace/plugin layout; see
+[`plugins/nginx/.claude-plugin/plugin.json`](plugins/nginx/.claude-plugin/plugin.json).
 
 # Additional help and resources
 - See the [NGINX Community Blog](https://blog.nginx.org/) for more tips, tricks and HOW-TOs related to NGINX and related projects.

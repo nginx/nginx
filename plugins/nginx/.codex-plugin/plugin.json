@@ -1,0 +1,41 @@
+{
+  "name": "nginx",
+  "version": "1.0.0",
+  "description": "Agent skills for writing nginx.conf, building NGINX from source, developing modules, and contributing to the NGINX codebase.",
+  "author": {
+    "name": "Nginx, Inc.",
+    "url": "https://nginx.org/"
+  },
+  "homepage": "https://nginx.org/",
+  "repository": "https://github.com/nginx/nginx",
+  "license": "BSD-2-Clause",
+  "keywords": [
+    "nginx",
+    "web-server",
+    "reverse-proxy",
+    "load-balancer",
+    "http3",
+    "quic",
+    "tls",
+    "modules",
+    "agent-skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "NGINX",
+    "shortDescription": "NGINX config and modules",
+    "longDescription": "Agent-agnostic skills for the NGINX open source web server, reverse proxy, and load balancer. Use them to write and review nginx.conf (contexts, location matching, upstream/proxy, TLS, HTTP/2, HTTP/3/QUIC), configure and build NGINX from this repository with auto/configure (static and dynamic modules), develop HTTP/stream/core modules that follow the Development Guide and in-tree code style, and contribute changes with NGINX commit message conventions and nginx-tests. Skills are grounded in the directives and configure flags defined in this source tree.",
+    "developerName": "Nginx, Inc.",
+    "category": "Coding",
+    "capabilities": [],
+    "websiteURL": "https://nginx.org/",
+    "defaultPrompt": [
+      "Review this nginx.conf for location and proxy issues",
+      "Enable TLS and HTTP/3 for this NGINX build",
+      "Scaffold an HTTP module matching NGINX style"
+    ],
+    "brandColor": "#009639",
+    "composerIcon": "./assets/composer-icon.png",
+    "logo": "./assets/logo.png"
+  }
+}
